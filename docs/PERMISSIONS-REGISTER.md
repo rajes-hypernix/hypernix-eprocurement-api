@@ -51,12 +51,21 @@ The perimeter is now enforced in the framework, not just in services (SEC-1/2/3)
   deny-on-uncertainty) + audited; vendor bank `AccountNo`/`Swift` masked (last-4) for any
   non-Buyer/Admin on `GET /api/vendors/{id}` (list DTOs carry no bank fields at all).
 
-### Still open (deferred, out of Slice F's perimeter scope)
-- **Role-matrix authorization** — which role may perform which enumerated action above (Buyer vs
-  Approver etc.) beyond the existing service-layer `ICurrentUser` checks. Slice F required only
-  *authentication* everywhere + scoping for confirmed leaks; per-action role policies are a later pass.
-- **File-ownership schema** — ownership is inferred by scanning answer-value GUIDs (`StoredFile` has no
-  owner column); add a typed column in Slice G (see BACKLOG).
+### Still open — the ONE remaining authorization item
+- **Role-matrix authorization** — which role may perform which enumerated action (Buyer vs Approver
+  etc.) beyond the existing service-layer `ICurrentUser` checks. After Slice F (authentication +
+  perimeter scoping) and Slice G (data-integrity + status encapsulation), **this is the only
+  outstanding authorization item.** It must assign a role policy to each of the **10 enumerated
+  actions** in this register (8 RFQ-lifecycle + 2 vendor-portal). Everything else — authentication,
+  the anonymous exemption list, vendor/file/bank scoping, concurrency, the golden status constraint —
+  is now enforced and test-guarded.
+
+### Closed by Slice G (data integrity)
+- **File-ownership schema** — CLOSED (T5): `StoredFile` gained typed `OwnerKind`/`OwnerVendorId`/
+  `OwnerEntityId`; `FileAccessPolicy` reads the column (fail-closed), retiring the answer-value
+  inference. See BACKLOG.
+- **Golden status constraint** — CLOSED (T3/T4): status transitions go through guarded domain methods
+  (private setters), enforced by an executable architecture test.
 
 ## Tickets raised by Slice J (next backend slice)
 
@@ -68,9 +77,10 @@ The perimeter is now enforced in the framework, not just in services (SEC-1/2/3)
 
 ## Known items for the hardening pass (not fixed in this slice)
 
-- **Extend/close race** — two buyers extending (or one extending while another closes) concurrently.
-  Last-write-wins is acceptable for now (both `RfqEvent` rows are still recorded); add a concurrency
-  token (RowVersion/xmin) when the deferred concurrency pass lands (RFQ-LIFECYCLE-ADDENDUM E11).
+- ~~**Extend/close race**~~ — **CLOSED (Slice G T2):** an `xmin` optimistic-concurrency token now
+  guards Rfq (and eight other aggregate roots); a stale extend/close raises
+  `DbUpdateConcurrencyException` → HTTP 409 "Concurrent modification" instead of last-write-wins
+  (RFQ-LIFECYCLE-ADDENDUM E11 closed).
 - **FluentValidation referenced but unused** — the `FluentValidation` package is on
   `eProcure.Application` but no validators/pipeline exist. Slice I follows the codebase's existing
   inline `DomainRuleException → 409` convention for reason-code / note-length validation rather than
