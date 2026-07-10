@@ -43,9 +43,7 @@ public sealed class PoService(
     {
         EnsureInternal();
         var po = await Load(id, ct);
-        if (po.Status != PoStatus.Draft)
-            throw new DomainRuleException($"PO {po.Code} has already been issued.");
-        po.Status = PoStatus.Issued;
+        po.Issue();                     // guards Draft; same message as before
         po.NsId ??= $"NS-PO-{po.Code[^4..]}";
         po.UpdatedUtc = clock.UtcNow;
         await db.SaveChangesAsync(ct);
@@ -58,9 +56,7 @@ public sealed class PoService(
     {
         var po = await Load(id, ct);
         VendorAccess.EnsureCanAccess(user, po.VendorId);   // only the awarded vendor acknowledges
-        if (po.Status != PoStatus.Issued)
-            throw new DomainRuleException($"PO {po.Code} must be Issued before it can be acknowledged.");
-        po.Status = PoStatus.Acknowledged;
+        po.Acknowledge();               // guards Issued; same message as before
         po.Acknowledged = true;
         po.UpdatedUtc = clock.UtcNow;
         await db.SaveChangesAsync(ct);

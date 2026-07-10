@@ -64,7 +64,7 @@ public sealed class VendorService(
             Code = await codes.NextAsync("SWK-V", ct),
             Name = req.Name,
             RegisteredName = req.Name,
-            Status = VendorStatus.Pending,
+            // Status defaults to Pending (no explicit set — the setter is now private).
             Type = VendorType.NonSwec,
             Region = req.Region ?? "Peninsular",
             State = req.State ?? "—",
@@ -97,7 +97,6 @@ public sealed class VendorService(
             RegistrationNo = string.IsNullOrWhiteSpace(req.RegistrationNo) ? "—" : req.RegistrationNo,
             TaxId = string.IsNullOrWhiteSpace(req.TaxId) ? "—" : req.TaxId!,
             Type = type,
-            Status = VendorStatus.Registered,           // manual entry is registered straight away (C1) — no approval
             // Conformed dimensions stored as seeded lookup CODES (§4).
             Country = string.IsNullOrWhiteSpace(req.Country) ? "MY" : req.Country!,
             Region = req.Region ?? "", State = req.State ?? "", City = req.City ?? "",
@@ -106,6 +105,7 @@ public sealed class VendorService(
             CreatedUtc = now, UpdatedUtc = now,
             Currencies = [new VendorCurrency { Code = string.IsNullOrWhiteSpace(req.Currency) ? "MYR" : req.Currency!, IsPrimary = true }],
         };
+        v.Register();   // manual entry is registered straight away (C1) — no approval
         if (!string.IsNullOrWhiteSpace(req.Bank))
             v.BankAccounts.Add(new VendorBankAccount { Bank = req.Bank!, AccountNo = req.AccountNo ?? "", Swift = req.Swift ?? "", IsPrimary = true });
         if (!string.IsNullOrWhiteSpace(req.ContactName) || !string.IsNullOrWhiteSpace(req.ContactEmail))
@@ -155,7 +155,7 @@ public sealed class VendorService(
     {
         var v = await Load(id, ct);
         var before = v.Status.ToString();
-        v.Status = v.Status == VendorStatus.Inactive ? VendorStatus.Registered : VendorStatus.Inactive;
+        v.ToggleActive();
         v.UpdatedUtc = clock.UtcNow;
         await db.SaveChangesAsync(ct);
         await audit.WriteAsync("Vendor", v.Code, "Status changed", before: before, after: v.Status.ToString(), ct: ct);

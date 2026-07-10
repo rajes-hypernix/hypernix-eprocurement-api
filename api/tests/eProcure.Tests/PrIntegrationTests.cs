@@ -56,13 +56,13 @@ public class PrIntegrationTests
         var now = c.Clock.UtcNow;
         var rfq = new Rfq
         {
-            Code = "RFQ-2026-0950", Envelope = RfqEnvelope.Dual, Status = RfqStatus.Evaluation,
+            Code = "RFQ-2026-0950", Envelope = RfqEnvelope.Dual,
             TechnicalOpened = true, TechFinalized = true, CommercialOpened = true,
             TechnicalEvaluatorIds = ["u_hafiz"],
             Lines = [new RfqLine { LineCode = "PUMP", ItemCode = "PUMP", Description = "Pump", Qty = 4, Uom = "Unit" },
                      new RfqLine { LineCode = "VALVE", ItemCode = "VALVE", Description = "Valve", Qty = 2, Uom = "Unit" }],
             CreatedUtc = now, UpdatedUtc = now,
-        };
+        }.SeededAs(RfqStatus.Evaluation);
         rfq.WithInvites(now, va.Id);
         c.Db.Rfqs.Add(rfq);
         c.Db.Bids.Add(new Bid
@@ -111,10 +111,10 @@ public class PrIntegrationTests
         var line = pr.Lines[0];
         var rfq = new Rfq
         {
-            Code = "RFQ-2026-0951", Status = RfqStatus.Open, ClosesUtc = now.AddDays(1),
+            Code = "RFQ-2026-0951", ClosesUtc = now.AddDays(1),
             Lines = [new RfqLine { LineCode = "A", ItemCode = "A", Qty = 5, Uom = "Unit", SourcePrLineIds = [line.Id.ToString()] }],
             CreatedUtc = now, UpdatedUtc = now,
-        };
+        }.SeededAs(RfqStatus.Open);
         c.Db.Rfqs.Add(rfq);
         c.Db.PrLineSourcings.Add(new PrLineSourcing(line.Id, rfq.Id, "A", 5, now));
         await c.Db.SaveChangesAsync();
@@ -138,7 +138,7 @@ public class PrIntegrationTests
         var line = pr.Lines[0];
         var rfq = new Rfq
         {
-            Code = "RFQ-2026-0952", Status = RfqStatus.Draft,
+            Code = "RFQ-2026-0952",   // Status defaults to Draft
             Lines = [new RfqLine { LineCode = "A", ItemCode = "A", Qty = 5, Uom = "Unit", SourcePrLineIds = [line.Id.ToString()] }],
             CreatedUtc = now, UpdatedUtc = now,
         };

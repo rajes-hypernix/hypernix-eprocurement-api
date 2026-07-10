@@ -20,7 +20,7 @@ public class RfqLifecycleTests
     private const int MaxExt = 2;
 
     private static Rfq Rfq(RfqStatus status = RfqStatus.Open, DateTime? closes = null) =>
-        new() { Code = "RFQ-2026-0001", Status = status, ClosesUtc = closes ?? Close, OriginalClosesUtc = closes ?? Close };
+        new Rfq { Code = "RFQ-2026-0001", ClosesUtc = closes ?? Close, OriginalClosesUtc = closes ?? Close }.SeededAs(status);
 
     private static RfqInvitation Invite(Rfq r, Guid v) => r.InviteVendor(v, Now, MinHrs);
 
@@ -30,7 +30,7 @@ public class RfqLifecycleTests
     {
         var r = Rfq(RfqStatus.Draft, closes);
         r.InviteVendor(v, Now.AddDays(-1), MinHrs);
-        r.Status = RfqStatus.Open;
+        r.MarkReleased();
         return r;
     }
 

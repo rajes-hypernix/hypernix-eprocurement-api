@@ -118,7 +118,7 @@ public sealed class AwardService(
             award = new Award { Code = await codes.NextAsync("AWD", ct), RfqId = rfqId, CreatedUtc = clock.UtcNow };
             db.Awards.Add(award);
         }
-        award.Status = AwardStatus.PendingApproval;
+        award.MarkPendingApproval();    // guards not-already-Approved (service also blocks above)
         award.CreatedByUserId = actor;
         award.Allocations = allocations;
         // TotalValue is computed from Allocations (DBA-10) — no longer stored. `total` is retained
@@ -161,7 +161,7 @@ public sealed class AwardService(
                 VendorId = grp.Key,
                 RfqId = rfq.Id,
                 AwardCode = award.Code,
-                Status = PoStatus.Draft,
+                // Status defaults to Draft (the setter is now private).
                 NsId = $"NS-PO-{code[^4..]}",
                 CreatedUtc = clock.UtcNow,
                 UpdatedUtc = clock.UtcNow,
@@ -176,11 +176,8 @@ public sealed class AwardService(
             poCodes.Add(code);
         }
 
-        award.Status = AwardStatus.Approved;
-        award.ApproverUserId = approver;
-        award.ApprovedUtc = clock.UtcNow;
-        award.UpdatedUtc = clock.UtcNow;
-        rfq.Status = RfqStatus.Awarded;
+        award.Approve(approver, clock.UtcNow);   // guards PendingApproval; stamps approver/approvedUtc
+        rfq.MarkAwarded();
         rfq.UpdatedUtc = clock.UtcNow;
 
         // [Slice D] Settle PR-line provenance for the awarded RFQ: awarded source lines → Awarded

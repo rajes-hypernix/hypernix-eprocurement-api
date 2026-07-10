@@ -38,8 +38,9 @@ public class PurchaseRequisition
     public string RequiredDate { get; set; } = "";
 
     /// <summary>Legacy free-text status ("Approved") — preserved for existing readers. The
-    /// analytics-grade lifecycle is <see cref="HeaderStatus"/>.</summary>
-    public string Status { get; set; } = "Approved";
+    /// analytics-grade lifecycle is <see cref="HeaderStatus"/>. Setter is private (T3); the string→enum
+    /// convergence is deferred to a later slice as it fans out to RequisitionDto/web (see BACKLOG).</summary>
+    public string Status { get; private set; } = "Approved";
 
     /// <summary>Whether the PR has been submitted (vs a portal Draft). Seeded PRs are submitted.</summary>
     public bool Submitted { get; set; } = true;
@@ -80,6 +81,19 @@ public class PurchaseRequisition
         UpdatedUtc = nowUtc;
         RecomputeHeaderStatus();
     }
+
+    /// <summary>Cancels the PR — keeps the legacy display field in step with HeaderStatus (which the
+    /// caller drives to Cancelled via RecomputeHeaderStatus after cancelling the open lines).</summary>
+    public void Cancel() => Status = "Cancelled";
+
+    /// <summary>Aligns the legacy display string with the derived <see cref="HeaderStatus"/>. Used at
+    /// creation, where "Submitted"/"Draft" is exactly HeaderStatus — until the deferred string→enum
+    /// convergence lands (see BACKLOG).</summary>
+    public void SyncLegacyStatus() => Status = HeaderStatus.ToString();
+
+    /// <summary>TEST/SEED ONLY — sets the legacy display status directly. Never call from production
+    /// service code (enforced by the ArchitectureTests source-scan).</summary>
+    public PurchaseRequisition SeededAs(string status) { Status = status; return this; }
 
     /// <summary>
     /// Recomputes the derived header status from line states (mirrors the mockup's

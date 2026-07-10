@@ -21,11 +21,11 @@ public sealed class EvaluationServiceTests
         var rfq = new Rfq
         {
             Code = "RFQ-2026-0079", Title = "Pumps", Envelope = RfqEnvelope.Dual,
-            Status = RfqStatus.Evaluation, TechnicalOpened = techOpened, TechFinalized = finalized,
+            TechnicalOpened = techOpened, TechFinalized = finalized,
             TechnicalEvaluatorIds = ["u_hafiz", "u_nur"],
             CommercialEvaluatorIds = ["u_tan"],
             CreatedUtc = c.Clock.UtcNow, UpdatedUtc = c.Clock.UtcNow,
-        };
+        }.SeededAs(RfqStatus.Evaluation);
         // Vendor Ids are generated at construction, so seed invitations/bids/scores with the real ids
         // from the start (no post-hoc re-point — a Restrict FK can't have its collection severed).
         var alpha = new eProcure.Domain.Suppliers.Vendor { Code = "V-A", Name = "Alpha Engineering", RegisteredName = "Alpha Engineering" };

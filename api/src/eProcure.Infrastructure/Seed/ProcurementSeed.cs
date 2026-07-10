@@ -28,11 +28,10 @@ public static class ProcurementSeed
             [("ELE-MOT-055", "LV Motor, 55 kW, IE3", 3, "Unit", 9600, 0, 0)]),
     ];
 
-    public static PurchaseOrder ToPo(PoSeedRow r, Guid vendorId, DateTime now) => new()
+    public static PurchaseOrder ToPo(PoSeedRow r, Guid vendorId, DateTime now) => new PurchaseOrder
     {
         Code = r.Code,
         VendorId = vendorId,
-        Status = r.Status,
         Acknowledged = r.Ack,
         NsId = r.NsId,
         Incoterm = r.Incoterm,
@@ -44,5 +43,5 @@ public static class ProcurementSeed
             ItemCode = l.Code, Description = l.Desc, Qty = l.Qty, Uom = l.Uom,
             UnitPrice = l.Price, ReceivedQty = l.Recv, InvoicedQty = l.Inv,
         }).ToList(),
-    };
+    }.SeededAs(r.Status);
 }

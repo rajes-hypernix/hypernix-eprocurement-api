@@ -38,9 +38,9 @@ public sealed class VendorScopingFixture : IAsyncLifetime
             var file = new StoredFile { Name = "bidA.pdf", ContentType = "application/pdf", Content = [1, 2, 3], Size = 3, CreatedUtc = now };
             db.StoredFiles.Add(file);
 
-            var rfq1 = new Rfq { Code = "RFQ-2026-9001", Title = "Invited-to-A", Status = RfqStatus.Open, ClosesUtc = new DateTime(2027, 1, 1, 0, 0, 0, DateTimeKind.Utc), CreatedUtc = now, UpdatedUtc = now };
+            var rfq1 = new Rfq { Code = "RFQ-2026-9001", Title = "Invited-to-A", ClosesUtc = new DateTime(2027, 1, 1, 0, 0, 0, DateTimeKind.Utc), CreatedUtc = now, UpdatedUtc = now }.SeededAs(RfqStatus.Open);
             rfq1.Invitations.Add(RfqInvitation.Seed(rfq1.Id, a.Id, RfqInvitationStatus.Invited, now));
-            var rfq2 = new Rfq { Code = "RFQ-2026-9002", Title = "Invited-to-B-only", Status = RfqStatus.Open, ClosesUtc = new DateTime(2027, 1, 1, 0, 0, 0, DateTimeKind.Utc), CreatedUtc = now, UpdatedUtc = now };
+            var rfq2 = new Rfq { Code = "RFQ-2026-9002", Title = "Invited-to-B-only", ClosesUtc = new DateTime(2027, 1, 1, 0, 0, 0, DateTimeKind.Utc), CreatedUtc = now, UpdatedUtc = now }.SeededAs(RfqStatus.Open);
             rfq2.Invitations.Add(RfqInvitation.Seed(rfq2.Id, b.Id, RfqInvitationStatus.Invited, now));
             db.Rfqs.AddRange(rfq1, rfq2);
 

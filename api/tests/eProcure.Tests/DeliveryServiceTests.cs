@@ -29,9 +29,9 @@ public sealed class DeliveryServiceTests
         c.Db.Vendors.Add(vendor);
         var po = new PurchaseOrder
         {
-            Code = "PO-2026-1190", VendorId = vendor.Id, Status = status, CreatedUtc = c.Clock.UtcNow, UpdatedUtc = c.Clock.UtcNow,
+            Code = "PO-2026-1190", VendorId = vendor.Id, CreatedUtc = c.Clock.UtcNow, UpdatedUtc = c.Clock.UtcNow,
             Lines = [new PoLine { ItemCode = "ITEM", Description = "Item", Qty = qty, Uom = "Unit", UnitPrice = 100, ReceivedQty = received }],
-        };
+        }.SeededAs(status);
         c.Db.PurchaseOrders.Add(po);
         await c.Db.SaveChangesAsync();
         var svc = new DeliveryService(c.Db, c.Clock, c.Codes, c.Audit, new NoopNs(), c.User);

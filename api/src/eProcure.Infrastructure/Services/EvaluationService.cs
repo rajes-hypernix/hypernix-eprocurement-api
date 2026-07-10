@@ -32,7 +32,7 @@ public sealed class EvaluationService(
         if (rfq.Status is RfqStatus.Draft or RfqStatus.Open)
             throw new DomainRuleException("Close the bid window before opening envelopes.");
         rfq.TechnicalOpened = true;
-        if (rfq.Status == RfqStatus.Closed) rfq.Status = RfqStatus.Evaluation;
+        rfq.MoveToEvaluationIfClosed();
         rfq.UpdatedUtc = clock.UtcNow;
         await db.SaveChangesAsync(ct);
         await audit.WriteAsync("Rfq", rfq.Code, "Technical envelope opened", ct: ct);
@@ -52,7 +52,7 @@ public sealed class EvaluationService(
         if (rfq.Envelope == RfqEnvelope.Dual && !rfq.CommercialEvaluatorIds.Contains(user.UserId ?? ""))
             throw new ForbiddenException("Only an assigned commercial evaluator can open the commercial envelope.");
         rfq.CommercialOpened = true;
-        if (rfq.Status == RfqStatus.Closed) rfq.Status = RfqStatus.Evaluation;
+        rfq.MoveToEvaluationIfClosed();
         rfq.UpdatedUtc = clock.UtcNow;
         await db.SaveChangesAsync(ct);
         await audit.WriteAsync("Rfq", rfq.Code, "Commercial envelope opened", ct: ct);

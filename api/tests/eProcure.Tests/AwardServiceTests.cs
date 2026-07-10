@@ -36,11 +36,11 @@ public sealed class AwardServiceTests
         var rfq = new Rfq
         {
             Code = "RFQ-2026-0079", Title = "Pumps", Envelope = RfqEnvelope.Dual,
-            Status = RfqStatus.Evaluation, TechnicalOpened = true, TechFinalized = true, CommercialOpened = true,
+            TechnicalOpened = true, TechFinalized = true, CommercialOpened = true,
             TechnicalEvaluatorIds = ["u_hafiz"],
             Lines = [new RfqLine { ItemCode = "PUMP", Description = "Pump", Qty = 4, Uom = "Unit" }],
             CreatedUtc = c.Clock.UtcNow, UpdatedUtc = c.Clock.UtcNow,
-        };
+        }.SeededAs(RfqStatus.Evaluation);
         rfq.WithInvites(c.Clock.UtcNow, va.Id, vb.Id);
         c.Db.Rfqs.Add(rfq);
         c.Db.Bids.AddRange(

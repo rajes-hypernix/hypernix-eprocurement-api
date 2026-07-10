@@ -288,7 +288,7 @@ public sealed class DevelopmentDataSeeder(
             var pr = new PurchaseRequisition
             {
                 Code = code, Requestor = "Demo Buyer", Memo = memo, CostCentre = "CC-DEMO", Currency = "MYR",
-                Submitted = submitted, Status = submitted ? "Approved" : "Draft",
+                Submitted = submitted,
                 Department = dept, DepartmentCode = SourcingMapping.DimCode(dept),
                 Category = cat, CategoryCode = SourcingMapping.DimCode(cat),
                 Location = "Bintulu Plant", LocationCode = SourcingMapping.DimCode("Bintulu Plant"),
@@ -296,7 +296,7 @@ public sealed class DevelopmentDataSeeder(
                 RaisedOn = DateOnly.FromDateTime(now), RaisedDate = now.ToString("dd/MM/yyyy", ci),
                 RequiredOn = DateOnly.FromDateTime(now.AddDays(45)), RequiredDate = now.AddDays(45).ToString("dd/MM/yyyy", ci),
                 Lines = [.. lines], CreatedUtc = now, UpdatedUtc = now,
-            };
+            }.SeededAs(submitted ? "Approved" : "Draft");
             pr.RecomputeHeaderStatus();
             return pr;
         }
@@ -433,14 +433,13 @@ public sealed class DevelopmentDataSeeder(
         {
             Code = "AWD-2026-0074",
             RfqId = rfq.Id,
-            Status = AwardStatus.Approved,
             CreatedByUserId = "u_faridah",
             ApproverUserId = "u_lim",     // different person (DoA / SoD)
             ApprovedUtc = now,
             Allocations = allocations,    // TotalValue (59,550) is derived from these (DBA-10)
             CreatedUtc = now,
             UpdatedUtc = now,
-        };
+        }.SeededAs(AwardStatus.Approved);
         db.Awards.Add(award);
 
         var po = new PurchaseOrder
@@ -449,7 +448,7 @@ public sealed class DevelopmentDataSeeder(
             VendorId = mutiara.Id,
             RfqId = rfq.Id,
             AwardCode = award.Code,
-            Status = PoStatus.Draft,
+            // Status defaults to Draft.
             NsId = "NS-PO-0074",
             CreatedUtc = now,
             UpdatedUtc = now,
@@ -498,13 +497,13 @@ public sealed class DevelopmentDataSeeder(
         {
             Code = "ASN-2026-0508", PoId = po1185.Id, VendorId = po1185.VendorId, Carrier = "Pos Logistics",
             TrackingNo = "PL-77310", ShippedDate = "12/06/2026", ExpectedDate = "14/06/2026",
-            Status = AsnStatus.Received, GrnCode = "GRN-2026-0301", CreatedUtc = now, UpdatedUtc = now,
+            GrnCode = "GRN-2026-0301", CreatedUtc = now, UpdatedUtc = now,
             Lines =
             [
                 new AsnLine { ItemCode = "MEP-PUMP-075", Description = "Centrifugal Pump, 75 kW, end-suction", ShippedQty = 4, Uom = "Unit", LotNo = "LOT-PMP-0612" },
                 new AsnLine { ItemCode = "ELE-VFD-075", Description = "VFD Drive, 75 kW, IP55", ShippedQty = 4, Uom = "Unit", LotNo = "LOT-VFD-0612" },
             ],
-        };
+        }.SeededAs(AsnStatus.Received);
         db.Asns.Add(asn0508);
         db.Grns.Add(new Grn
         {
@@ -521,7 +520,7 @@ public sealed class DevelopmentDataSeeder(
         {
             Code = "ASN-2026-0511", PoId = po1186.Id, VendorId = po1186.VendorId, Carrier = "Tiong Nam Logistics",
             TrackingNo = "TN-88421", ShippedDate = "26/06/2026", ExpectedDate = "29/06/2026",
-            Status = AsnStatus.InTransit, CreatedUtc = now, UpdatedUtc = now,
+            CreatedUtc = now, UpdatedUtc = now,   // Status defaults to InTransit
             Lines = [new AsnLine { ItemCode = "VLV-GAT-150", Description = "Gate Valve, DN150, PN16, CS", ShippedQty = 8, Uom = "Unit", LotNo = "LOT-VG-0626" }],
         });
         db.AuditEntries.Add(new AuditEntry("Asn", "ASN-2026-0508", "Goods receipt posted", null, "GRN-2026-0301", "system", "System", now));
@@ -543,28 +542,28 @@ public sealed class DevelopmentDataSeeder(
         db.Invoices.Add(new Invoice
         {
             Code = "INV-2026-0091", PoId = po1185.Id, VendorId = po1185.VendorId, InvoiceNo = "STU-INV-3391",
-            Date = "14/06/2026", Status = InvoiceStatus.Paid, NsId = "NS-VB-50121", CreatedUtc = now, UpdatedUtc = now,
+            Date = "14/06/2026", NsId = "NS-VB-50121", CreatedUtc = now, UpdatedUtc = now,
             Lines =
             [
                 new InvoiceLine { ItemCode = "MEP-PUMP-075", Description = "Centrifugal Pump, 75 kW, end-suction", Qty = 4, Uom = "Unit", UnitPrice = 48500 },
                 new InvoiceLine { ItemCode = "ELE-VFD-075", Description = "VFD Drive, 75 kW, IP55", Qty = 4, Uom = "Unit", UnitPrice = 18200 },
             ],
-        });
+        }.SeededAs(InvoiceStatus.Paid));
         // INV-0093: pantai, PO-1186, matched → Submitted (awaiting buyer approval).
         db.Invoices.Add(new Invoice
         {
             Code = "INV-2026-0093", PoId = po1186.Id, VendorId = po1186.VendorId, InvoiceNo = "PNT-INV-2207",
-            Date = "27/06/2026", Status = InvoiceStatus.Submitted, CreatedUtc = now, UpdatedUtc = now,
+            Date = "27/06/2026", CreatedUtc = now, UpdatedUtc = now,
             Lines = [new InvoiceLine { ItemCode = "VLV-GAT-150", Description = "Gate Valve, DN150, PN16, CS", Qty = 16, Uom = "Unit", UnitPrice = 980 }],
-        });
+        }.SeededAs(InvoiceStatus.Submitted));
         // INV-0094: megatech, PO-1193, price variance > 2% → Exception (blocked from payment).
         db.Invoices.Add(new Invoice
         {
             Code = "INV-2026-0094", PoId = po1193.Id, VendorId = po1193.VendorId, InvoiceNo = "MEG-INV-7720",
-            Date = "24/06/2026", Status = InvoiceStatus.Exception, CreatedUtc = now, UpdatedUtc = now,
+            Date = "24/06/2026", CreatedUtc = now, UpdatedUtc = now,
             ExceptionReason = "Unit price billed above PO (RM 23,200 vs RM 22,500).",
             Lines = [new InvoiceLine { ItemCode = "ELE-MTR-200", Description = "Motor, 200 kW, TEFC", Qty = 6, Uom = "Unit", UnitPrice = 23200 }],
-        });
+        }.SeededAs(InvoiceStatus.Exception));
 
         db.AuditEntries.Add(new AuditEntry("Invoice", "INV-2026-0091", "Invoice approved & paid", null, "NS-VB-50121", "system", "System", now));
         db.AuditEntries.Add(new AuditEntry("Invoice", "INV-2026-0093", "Invoice submitted (matched)", null, $"PO {po1186.Code}", "system", "Pantai Valve & Fitting", now));

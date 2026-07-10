@@ -21,7 +21,7 @@ public class Invoice
     public string Date { get; set; } = "";
     public string Currency { get; set; } = "MYR";
     public decimal WhtRate { get; set; }                  // withholding tax %
-    public InvoiceStatus Status { get; set; } = InvoiceStatus.Draft;
+    public InvoiceStatus Status { get; private set; } = InvoiceStatus.Draft;
     public string? ExceptionReason { get; set; }
     public string? NsId { get; set; }
     public List<InvoiceLine> Lines { get; set; } = [];
@@ -32,6 +32,28 @@ public class Invoice
     public decimal Sst => Math.Round(Subtotal * SstRate, 0, MidpointRounding.AwayFromZero);
     public decimal Wht => Math.Round(Subtotal * (WhtRate / 100m), 0, MidpointRounding.AwayFromZero);
     public decimal Total => Subtotal + Sst - Wht;
+
+    // ===== Lifecycle transitions (T3). The submit flow constructs a Draft invoice, then flips it to
+    // Submitted or Exception; approval requires a non-approved, non-paid invoice. =====
+
+    /// <summary>Draft → Submitted (matched at submission time).</summary>
+    public void MarkSubmitted() => Status = InvoiceStatus.Submitted;
+
+    /// <summary>Draft → Exception (price/qty variance at submission), capturing the reason.</summary>
+    public void MarkException(string? reason) { Status = InvoiceStatus.Exception; ExceptionReason = reason; }
+
+    /// <summary>→ Approved for payment. Guards against an already-terminal invoice; the invoice service
+    /// enforces the Exception-must-be-resolved-first rule before calling this.</summary>
+    public void Approve()
+    {
+        if (Status is InvoiceStatus.Approved or InvoiceStatus.Paid)
+            throw new DomainRuleException($"Invoice {Code} is already {Status}.");
+        Status = InvoiceStatus.Approved;
+    }
+
+    /// <summary>TEST/SEED ONLY — sets the status directly, bypassing transitions. Never call from
+    /// production service code (enforced by the ArchitectureTests source-scan).</summary>
+    public Invoice SeededAs(InvoiceStatus status) { Status = status; return this; }
 }
 
 public class InvoiceLine

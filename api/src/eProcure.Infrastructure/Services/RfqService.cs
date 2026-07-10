@@ -101,7 +101,7 @@ public sealed class RfqService(
             Code = await codes.NextAsync("RFQ", ct),
             Title = req.Title ?? "",
             Envelope = RfqEnvelope.Dual,
-            Status = RfqStatus.Draft,
+            // Status defaults to Draft (the setter is now private).
             OwnerUserId = user.UserId,
             PrRefs = req.PrRefs.Distinct().ToList(),
             Lines = req.Lines.Select(SourcingMapping.ToEntity).ToList(),
@@ -182,7 +182,7 @@ public sealed class RfqService(
         // Capture the deadline as a server timestamp and open the RFQ (BUSINESS-RULES [G]).
         rfq.OpensUtc ??= now;
         rfq.OriginalClosesUtc ??= rfq.ClosesUtc;   // immutable baseline for extension analytics (§1.3)
-        rfq.Status = RfqStatus.Open;
+        rfq.MarkReleased();
         rfq.UpdatedUtc = now;
         db.RfqEvents.Add(RfqEvent.Create(rfq.Id, RfqEventType.Released, now, actorUserId: user.UserId));
         await db.SaveChangesAsync(ct);   // status + event in one transaction (G6)
@@ -195,9 +195,7 @@ public sealed class RfqService(
     public async Task<RfqDetail> CloseAsync(Guid id, CancellationToken ct = default)
     {
         var rfq = await Load(id, ct);
-        if (rfq.Status != RfqStatus.Open)
-            throw new DomainRuleException($"Only an open RFQ can be closed early (RFQ {rfq.Code} is {rfq.Status}).");
-        rfq.Status = RfqStatus.Closed;
+        rfq.CloseEarly();               // guards Open; throws the same message the service used to
         rfq.ClosesUtc = clock.UtcNow;   // close now, ahead of the original deadline
         rfq.UpdatedUtc = clock.UtcNow;
         db.RfqEvents.Add(RfqEvent.Create(rfq.Id, RfqEventType.Closed, clock.UtcNow, actorUserId: user.UserId));
@@ -209,10 +207,8 @@ public sealed class RfqService(
     public async Task<RfqDetail> CancelAsync(Guid id, CancellationToken ct = default)
     {
         var rfq = await Load(id, ct);
-        if (rfq.Status is RfqStatus.Awarded or RfqStatus.Cancelled)
-            throw new DomainRuleException($"RFQ {rfq.Code} cannot be cancelled ({rfq.Status}).");
         var before = rfq.Status.ToString();
-        rfq.Status = RfqStatus.Cancelled;
+        rfq.CancelRfq();                // guards not-Awarded/not-Cancelled; same message as before
         rfq.UpdatedUtc = clock.UtcNow;
 
         // [Slice D] Return this RFQ's sourced PR lines so the demand isn't stranded (A9 / A4).

@@ -30,7 +30,7 @@ public class RequisitionServiceTests
     {
         var pr = new PurchaseRequisition
         {
-            Code = "PR-2026-0500", Requestor = "Seed", Department = "Ops", Status = "Approved", Submitted = true,
+            Code = "PR-2026-0500", Requestor = "Seed", Department = "Ops", Submitted = true,   // Status defaults to "Approved"
             Lines = [.. lineStates.Select((s, i) => PrLine.Create($"ITEM-{i}", $"Item {i}", 5, "Unit", 20m, s))],
             CreatedUtc = c.Clock.UtcNow, UpdatedUtc = c.Clock.UtcNow,
         };

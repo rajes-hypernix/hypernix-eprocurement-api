@@ -69,7 +69,6 @@ public static class VendorSeed
             TaxId = $"C{new string(r.Code.Where(char.IsDigit).ToArray())}02000",
             Type = r.Type,
             LlrcTier = r.Llrc,
-            Status = r.Status,
             Region = r.Region,
             State = r.State,
             City = r.City,
@@ -99,6 +98,6 @@ public static class VendorSeed
             Currencies = currencies,
             CreatedUtc = Created,
             UpdatedUtc = Updated,
-        };
+        }.SeededAs(r.Status);
     }
 }

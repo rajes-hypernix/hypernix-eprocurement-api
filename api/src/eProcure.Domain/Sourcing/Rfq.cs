@@ -11,7 +11,7 @@ public class Rfq
     public string Code { get; set; } = default!;          // RFQ-2026-0001
     public string Title { get; set; } = "";
     public RfqEnvelope Envelope { get; set; } = RfqEnvelope.Dual;
-    public RfqStatus Status { get; set; } = RfqStatus.Draft;
+    public RfqStatus Status { get; private set; } = RfqStatus.Draft;
     public string Currency { get; set; } = "MYR";
     public string? OwnerUserId { get; set; }              // buyer in charge of this RFQ
 
@@ -197,6 +197,50 @@ public class Rfq
         invitation.ToIntendFromBid(nowUtc);
         return invitation;
     }
+
+    // ===== RFQ lifecycle transitions (T3 — golden constraint: status changes only through guarded
+    // domain methods). Guards + messages preserve the exact behaviour the services enforced before. =====
+
+    /// <summary>Draft → Open. The service still checks its own release preconditions (invited vendors,
+    /// close date, provenance) before calling this; the guard here is the invariant.</summary>
+    public void MarkReleased()
+    {
+        if (Status != RfqStatus.Draft) throw new DomainRuleException($"RFQ {Code} is already released.");
+        Status = RfqStatus.Open;
+    }
+
+    /// <summary>Open → Closed (early close).</summary>
+    public void CloseEarly()
+    {
+        if (Status != RfqStatus.Open)
+            throw new DomainRuleException($"Only an open RFQ can be closed early (RFQ {Code} is {Status}).");
+        Status = RfqStatus.Closed;
+    }
+
+    /// <summary>Any non-terminal state → Cancelled.</summary>
+    public void CancelRfq()
+    {
+        if (Status is RfqStatus.Awarded or RfqStatus.Cancelled)
+            throw new DomainRuleException($"RFQ {Code} cannot be cancelled ({Status}).");
+        Status = RfqStatus.Cancelled;
+    }
+
+    /// <summary>→ Awarded, on award approval. NOTE: the pre-Slice-G code set this with no precondition;
+    /// preserved as-is (behaviour-preserving). A tighter guard (require Closed/Evaluation) is a candidate
+    /// for a later slice — see the Slice G report.</summary>
+    public void MarkAwarded() => Status = RfqStatus.Awarded;
+
+    /// <summary>Closed → Evaluation when an envelope is opened; a no-op in any other state (this exactly
+    /// mirrors EvaluationService's `if (Status == Closed) Status = Evaluation`).</summary>
+    public void MoveToEvaluationIfClosed()
+    {
+        if (Status == RfqStatus.Closed) Status = RfqStatus.Evaluation;
+    }
+
+    /// <summary>TEST/SEED ONLY — sets the lifecycle status directly, bypassing the transition guards, so
+    /// fixtures can start in any state. Never call from production service code (enforced by the
+    /// ArchitectureTests source-scan).</summary>
+    public Rfq SeededAs(RfqStatus status) { Status = status; return this; }
 }
 
 public class RfqLine

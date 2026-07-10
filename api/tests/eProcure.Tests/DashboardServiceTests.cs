@@ -8,11 +8,11 @@ namespace eProcure.Tests;
 
 public sealed class DashboardServiceTests
 {
-    private static Rfq OpenRfq(string code, DateTime now) => new()
+    private static Rfq OpenRfq(string code, DateTime now) => new Rfq
     {
-        Code = code, Title = "Pumps", Status = RfqStatus.Open,
+        Code = code, Title = "Pumps",
         ClosesUtc = now.AddDays(5), CreatedUtc = now, UpdatedUtc = now,
-    };
+    }.SeededAs(RfqStatus.Open);
 
     // BACKLOG / K6a: a declined invitation is not an outstanding action and must not inflate the
     // vendor's "RFQs to bid" tile.

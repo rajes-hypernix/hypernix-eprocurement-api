@@ -37,10 +37,10 @@ public class RfqGovernanceServiceTests
         c.Db.Vendors.AddRange(vA, vB);
         var rfq = new Rfq
         {
-            Code = "RFQ-2026-0500", Title = "Pumps", Status = RfqStatus.Open,
+            Code = "RFQ-2026-0500", Title = "Pumps",
             ClosesUtc = c.Clock.UtcNow.AddDays(10), OriginalClosesUtc = c.Clock.UtcNow.AddDays(10),
             CreatedUtc = c.Clock.UtcNow, UpdatedUtc = c.Clock.UtcNow,
-        };
+        }.SeededAs(RfqStatus.Open);
         rfq.WithInvites(c.Clock.UtcNow, vA.Id, vB.Id);
         c.Db.Rfqs.Add(rfq);
         await c.Db.SaveChangesAsync();
@@ -153,7 +153,7 @@ public class RfqGovernanceServiceTests
         await using (var seed = new AppDbContext(opts))
         {
             // mark-viewed matches the invitation by VendorId only, so no Vendor row is needed.
-            var rfq = new Rfq { Code = "RFQ-2026-0600", Title = "Pumps", Status = RfqStatus.Open, ClosesUtc = clock.UtcNow.AddDays(5), CreatedUtc = clock.UtcNow, UpdatedUtc = clock.UtcNow };
+            var rfq = new Rfq { Code = "RFQ-2026-0600", Title = "Pumps", ClosesUtc = clock.UtcNow.AddDays(5), CreatedUtc = clock.UtcNow, UpdatedUtc = clock.UtcNow }.SeededAs(RfqStatus.Open);
             rfq.WithInvites(clock.UtcNow, vendorId);   // status Invited → first view would write
             seed.Rfqs.Add(rfq);
             await seed.SaveChangesAsync();

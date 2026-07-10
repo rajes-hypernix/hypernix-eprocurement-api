@@ -16,8 +16,8 @@ public sealed class ClarificationServiceTests
         c.Db.Vendors.AddRange(a, b);
         var rfq = new Rfq
         {
-            Code = "RFQ-2026-0001", Title = "Pumps", Status = RfqStatus.Open, CreatedUtc = c.Clock.UtcNow, UpdatedUtc = c.Clock.UtcNow,
-        };
+            Code = "RFQ-2026-0001", Title = "Pumps", CreatedUtc = c.Clock.UtcNow, UpdatedUtc = c.Clock.UtcNow,
+        }.SeededAs(RfqStatus.Open);
         rfq.WithInvites(c.Clock.UtcNow, a.Id, b.Id);
         c.Db.Rfqs.Add(rfq);
         await c.Db.SaveChangesAsync();

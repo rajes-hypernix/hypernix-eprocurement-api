@@ -87,13 +87,13 @@ public static class SourcingSeed
             {
                 Code = code, Requestor = requestor, Department = dept, Location = loc, Memo = memo, Job = job,
                 Category = cat, RaisedDate = raised, RequiredDate = need, Value = value, Lines = lines,
-                CostCentre = costCentre, Project = project, Status = "Approved", Submitted = true,
+                CostCentre = costCentre, Project = project, Submitted = true,
                 Currency = "MYR",
                 DepartmentCode = DimCode(dept), LocationCode = DimCode(loc),
                 CategoryCode = DimCode(cat), JobCode = DimCode(job),
                 RaisedOn = Day(raised), RequiredOn = Day(need),
                 CreatedUtc = now, UpdatedUtc = now,
-            };
+            }.SeededAs("Approved");
             pr.RecomputeHeaderStatus();   // derive header from line states (§2.5)
             return pr;
         }
@@ -212,7 +212,6 @@ public static class SourcingSeed
             Code = s.Code,
             Title = s.Title,
             Envelope = s.Envelope,
-            Status = s.Status,
             Currency = "MYR",
             OwnerUserId = s.Owner,
             OpensUtc = created,
@@ -229,7 +228,7 @@ public static class SourcingSeed
             CommercialSections = comm,
             CreatedUtc = created,
             UpdatedUtc = now,
-        };
+        }.SeededAs(s.Status);
         // Invited vendors are now RfqInvitation rows. Seeded at Invited; the data seeder promotes to
         // BidSubmitted where a submitted bid exists (mirrors the migration backfill).
         foreach (var slug in s.InvitedSlugs)

@@ -83,7 +83,7 @@ public sealed class DeliveryService(
         {
             Code = await codes.NextAsync("ASN", ct),
             PoId = poId, VendorId = po.VendorId, Carrier = req.Carrier, TrackingNo = req.TrackingNo,
-            ShippedDate = req.ShippedDate, ExpectedDate = req.ExpectedDate, Status = AsnStatus.InTransit,
+            ShippedDate = req.ShippedDate, ExpectedDate = req.ExpectedDate,   // Status defaults to InTransit
             Lines = lines, CreatedUtc = clock.UtcNow, UpdatedUtc = clock.UtcNow,
         };
         db.Asns.Add(asn);
@@ -131,14 +131,14 @@ public sealed class DeliveryService(
         db.Grns.Add(grn);
         // Under-receipt: ASN becomes Received (no longer in transit), so the shortfall
         // re-enters remaining-to-ship automatically.
-        asn.Status = AsnStatus.Received;
+        asn.MarkReceived();
         asn.GrnCode = grn.Code;
         asn.UpdatedUtc = clock.UtcNow;
 
         if (po.Status is PoStatus.Issued or PoStatus.Acknowledged or PoStatus.PartiallyReceived)
         {
             var allReceived = po.Lines.Sum(l => l.ReceivedQty) >= po.Lines.Sum(l => l.Qty);
-            po.Status = allReceived ? PoStatus.Received : PoStatus.PartiallyReceived;
+            po.RecordReceipt(allReceived);
             po.UpdatedUtc = clock.UtcNow;
         }
         await db.SaveChangesAsync(ct);

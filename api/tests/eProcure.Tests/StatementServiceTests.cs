@@ -17,17 +17,17 @@ public sealed class StatementServiceTests
         // PO received 4 of 4 @ 100 = 400 received value
         var po = new PurchaseOrder
         {
-            Code = "PO-1", VendorId = vendor.Id, Status = PoStatus.Received, CreatedUtc = c.Clock.UtcNow, UpdatedUtc = c.Clock.UtcNow,
+            Code = "PO-1", VendorId = vendor.Id, CreatedUtc = c.Clock.UtcNow, UpdatedUtc = c.Clock.UtcNow,
             Lines = [new PoLine { ItemCode = "X", Description = "X", Qty = 4, Uom = "Unit", UnitPrice = 100, ReceivedQty = 4, InvoicedQty = 4 }],
-        };
+        }.SeededAs(PoStatus.Received);
         c.Db.PurchaseOrders.Add(po);
         // A Paid invoice (subtotal 400, SST 32 → total 432) settles the line
         c.Db.Invoices.Add(new Invoice
         {
-            Code = "INV-1", PoId = po.Id, VendorId = vendor.Id, Date = "14/06/2026", Status = InvoiceStatus.Paid,
+            Code = "INV-1", PoId = po.Id, VendorId = vendor.Id, Date = "14/06/2026",
             Lines = [new InvoiceLine { ItemCode = "X", Description = "X", Qty = 4, Uom = "Unit", UnitPrice = 100 }],
             CreatedUtc = c.Clock.UtcNow, UpdatedUtc = c.Clock.UtcNow,
-        });
+        }.SeededAs(InvoiceStatus.Paid));
         await c.Db.SaveChangesAsync();
         return (new StatementService(c.Db, c.Clock, c.User), c, vendor.Id);
     }
@@ -52,9 +52,9 @@ public sealed class StatementServiceTests
         // Add a PO received but with no invoice → GRNI accrual
         var po2 = new PurchaseOrder
         {
-            Code = "PO-2", VendorId = vid, Status = PoStatus.PartiallyReceived, CreatedUtc = c.Clock.UtcNow, UpdatedUtc = c.Clock.UtcNow,
+            Code = "PO-2", VendorId = vid, CreatedUtc = c.Clock.UtcNow, UpdatedUtc = c.Clock.UtcNow,
             Lines = [new PoLine { ItemCode = "Y", Description = "Y", Qty = 10, Uom = "Unit", UnitPrice = 50, ReceivedQty = 6 }],
-        };
+        }.SeededAs(PoStatus.PartiallyReceived);
         c.Db.PurchaseOrders.Add(po2);
         await c.Db.SaveChangesAsync();
 

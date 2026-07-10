@@ -13,7 +13,7 @@ public class Award
     public Guid Id { get; private set; } = Guid.NewGuid();
     public string Code { get; set; } = default!;          // AWD-2026-0001
     public Guid RfqId { get; set; }
-    public AwardStatus Status { get; set; } = AwardStatus.PendingApproval;
+    public AwardStatus Status { get; private set; } = AwardStatus.PendingApproval;
     public string CreatedByUserId { get; set; } = default!;
 
     public List<AwardAllocation> Allocations { get; set; } = [];
@@ -28,6 +28,31 @@ public class Award
 
     public DateTime CreatedUtc { get; set; }
     public DateTime UpdatedUtc { get; set; }
+
+    // ===== Lifecycle transitions (T3). =====
+
+    /// <summary>(Re)submits the award for approval. The service blocks re-submitting an already-approved
+    /// award before calling this; the guard here is the invariant.</summary>
+    public void MarkPendingApproval()
+    {
+        if (Status == AwardStatus.Approved) throw new DomainRuleException($"Award {Code} is already approved.");
+        Status = AwardStatus.PendingApproval;
+    }
+
+    /// <summary>PendingApproval → Approved, stamping the approver (DoA/SoD checks live in the service).</summary>
+    public void Approve(string approverUserId, DateTime nowUtc)
+    {
+        if (Status != AwardStatus.PendingApproval)
+            throw new DomainRuleException($"Award {Code} is not pending approval.");
+        Status = AwardStatus.Approved;
+        ApproverUserId = approverUserId;
+        ApprovedUtc = nowUtc;
+        UpdatedUtc = nowUtc;
+    }
+
+    /// <summary>TEST/SEED ONLY — sets the status directly, bypassing transitions. Never call from
+    /// production service code (enforced by the ArchitectureTests source-scan).</summary>
+    public Award SeededAs(AwardStatus status) { Status = status; return this; }
 }
 
 public class AwardAllocation

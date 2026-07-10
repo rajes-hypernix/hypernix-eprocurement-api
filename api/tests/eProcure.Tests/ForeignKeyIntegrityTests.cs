@@ -31,7 +31,7 @@ public sealed class ForeignKeyIntegrityTests
     private static PurchaseOrder NewPo(Guid vendorId, Guid? rfqId) => new()
     {
         Code = "PO-FKTEST-" + Guid.NewGuid().ToString("N")[..8],
-        VendorId = vendorId, RfqId = rfqId, Status = PoStatus.Draft, CreatedUtc = Now, UpdatedUtc = Now,
+        VendorId = vendorId, RfqId = rfqId, CreatedUtc = Now, UpdatedUtc = Now,   // Status defaults to Draft
     };
 
     [Fact]

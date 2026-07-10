@@ -48,7 +48,6 @@ public sealed class RequisitionService(
             Job = req.Job, JobCode = SourcingMapping.DimCode(req.Job),
             Currency = "MYR",
             Submitted = submit,
-            Status = submit ? "Submitted" : "Draft",
             RaisedOn = DateOnly.FromDateTime(now),
             RaisedDate = now.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture),
             RequiredOn = ParseDate(req.RequiredDate),
@@ -57,6 +56,7 @@ public sealed class RequisitionService(
             CreatedUtc = now, UpdatedUtc = now,
         };
         pr.RecomputeHeaderStatus();
+        pr.SyncLegacyStatus();          // "Submitted"/"Draft" == HeaderStatus at creation
         db.PurchaseRequisitions.Add(pr);
         await db.SaveChangesAsync(ct);
         await audit.WriteTransitionAsync("PurchaseRequisition", pr.Code,
@@ -146,7 +146,7 @@ public sealed class RequisitionService(
         foreach (var line in pr.Lines.Where(l => l.LifecycleStatus == PrLineStatus.Open))
             line.Cancel(reason ?? "", now);
         pr.RecomputeHeaderStatus();
-        pr.Status = "Cancelled";
+        pr.Cancel();                    // keeps the legacy display status in step
         pr.UpdatedUtc = now;
         await db.SaveChangesAsync(ct);
         await audit.WriteTransitionAsync("PurchaseRequisition", pr.Code, "PR cancelled",

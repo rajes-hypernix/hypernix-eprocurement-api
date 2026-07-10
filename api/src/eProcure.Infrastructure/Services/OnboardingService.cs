@@ -326,7 +326,6 @@ public sealed class OnboardingService(
             RegistrationNo = string.IsNullOrWhiteSpace(app.RegistrationNo) ? "—" : app.RegistrationNo,
             TaxId = string.IsNullOrWhiteSpace(app.TaxId) ? "—" : app.TaxId,
             Type = app.Type,
-            Status = app.Type == VendorType.Swec ? VendorStatus.Registered : VendorStatus.Provisional,
             Region = app.Region, State = string.IsNullOrWhiteSpace(app.State) ? "—" : app.State,
             City = string.IsNullOrWhiteSpace(app.City) ? "—" : app.City, Country = app.Country,
             Categories = [.. app.Categories],
@@ -337,6 +336,8 @@ public sealed class OnboardingService(
             Currencies = [new VendorCurrency { Code = "MYR", IsPrimary = true }],
             CreatedUtc = now, UpdatedUtc = now,
         };
+        // SWEC vendors are registered on promotion; Non-SWEC are provisional (SPEC §7).
+        if (app.Type == VendorType.Swec) vendor.Register(); else vendor.MarkProvisional();
         var vendorUser = new VendorUser(await codes.NextAsync("VU", ct), vendor.Id, $"{app.Name} — Portal",
             await UniqueLoginEmailAsync(app.Email, vendorCode, ct)) { CreatedUtc = now, UpdatedUtc = now };
 

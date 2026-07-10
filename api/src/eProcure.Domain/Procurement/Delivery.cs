@@ -16,11 +16,19 @@ public class Asn
     public string TrackingNo { get; set; } = "";
     public string ShippedDate { get; set; } = "";
     public string ExpectedDate { get; set; } = "";
-    public AsnStatus Status { get; set; } = AsnStatus.InTransit;
+    public AsnStatus Status { get; private set; } = AsnStatus.InTransit;
     public string? GrnCode { get; set; }
     public List<AsnLine> Lines { get; set; } = [];
     public DateTime CreatedUtc { get; set; }
     public DateTime UpdatedUtc { get; set; }
+
+    /// <summary>→ Received, once the buyer posts a GRN against this shipment (no longer in transit).
+    /// The pre-Slice-G code set this with no precondition; preserved as-is (behaviour-preserving).</summary>
+    public void MarkReceived() => Status = AsnStatus.Received;
+
+    /// <summary>TEST/SEED ONLY — sets the status directly, bypassing transitions. Never call from
+    /// production service code (enforced by the ArchitectureTests source-scan).</summary>
+    public Asn SeededAs(AsnStatus status) { Status = status; return this; }
 }
 
 public class AsnLine

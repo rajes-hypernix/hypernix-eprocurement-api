@@ -73,7 +73,7 @@ public class RfqConsolidationTests
         // a draft RFQ with ONE merged line carrying both source PR-line ids (per-source qty kept)
         var rfq = new Rfq
         {
-            Code = "RFQ-2026-0900", Status = RfqStatus.Draft,
+            Code = "RFQ-2026-0900",   // Status defaults to Draft
             ClosesUtc = c.Clock.UtcNow.AddDays(7),
             Lines = [new RfqLine { LineCode = "ITEM-0", ItemCode = "ITEM-0", Qty = 11, Uom = "Unit", SourcePrLineIds = [l0.ToString(), l1.ToString()] }],
             CreatedUtc = c.Clock.UtcNow, UpdatedUtc = c.Clock.UtcNow,
@@ -108,7 +108,7 @@ public class RfqConsolidationTests
 
         var rfq = new Rfq
         {
-            Code = "RFQ-2026-0901", Status = RfqStatus.Draft,
+            Code = "RFQ-2026-0901",   // Status defaults to Draft
             ClosesUtc = c.Clock.UtcNow.AddDays(7),
             Lines = [new RfqLine { LineCode = "ITEM-0", ItemCode = "ITEM-0", Qty = 5, Uom = "Unit", SourcePrLineIds = [l0.ToString()] }],
             CreatedUtc = c.Clock.UtcNow, UpdatedUtc = c.Clock.UtcNow,
@@ -129,7 +129,7 @@ public class RfqConsolidationTests
         var (_, rfqs, c) = Build();
         var rfq = new Rfq
         {
-            Code = "RFQ-2026-0902", Status = RfqStatus.Draft,
+            Code = "RFQ-2026-0902",   // Status defaults to Draft
             ClosesUtc = c.Clock.UtcNow.AddDays(7),
             Lines = [new RfqLine { LineCode = "X", ItemCode = "X", Qty = 1, Uom = "Unit" }],   // no SourcePrLineIds
             CreatedUtc = c.Clock.UtcNow, UpdatedUtc = c.Clock.UtcNow,

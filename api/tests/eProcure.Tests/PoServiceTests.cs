@@ -28,9 +28,9 @@ public sealed class PoServiceTests
         c.Db.Vendors.Add(vendor);
         var po = new PurchaseOrder
         {
-            Code = "PO-2026-1001", VendorId = vendor.Id, Status = status, CreatedUtc = c.Clock.UtcNow, UpdatedUtc = c.Clock.UtcNow,
+            Code = "PO-2026-1001", VendorId = vendor.Id, CreatedUtc = c.Clock.UtcNow, UpdatedUtc = c.Clock.UtcNow,
             Lines = [new PoLine { ItemCode = "X", Description = "Item", Qty = 4, Uom = "Unit", UnitPrice = 100 }],
-        };
+        }.SeededAs(status);
         c.Db.PurchaseOrders.Add(po);
         await c.Db.SaveChangesAsync();
         return (new PoService(c.Db, c.Clock, c.Audit, new NoopNs(), c.User), c, po.Id, vendor.Id);
@@ -72,7 +72,7 @@ public sealed class PoServiceTests
         // add a second PO for another vendor
         var other = new Vendor { Code = "V-B", Name = "Beta", RegisteredName = "Beta" };
         c.Db.Vendors.Add(other);
-        c.Db.PurchaseOrders.Add(new PurchaseOrder { Code = "PO-2026-1002", VendorId = other.Id, Status = PoStatus.Issued, CreatedUtc = c.Clock.UtcNow, UpdatedUtc = c.Clock.UtcNow });
+        c.Db.PurchaseOrders.Add(new PurchaseOrder { Code = "PO-2026-1002", VendorId = other.Id, CreatedUtc = c.Clock.UtcNow, UpdatedUtc = c.Clock.UtcNow }.SeededAs(PoStatus.Issued));
         await c.Db.SaveChangesAsync();
 
         c.User.Roles = [Roles.Vendor]; c.User.VendorId = vendorId;

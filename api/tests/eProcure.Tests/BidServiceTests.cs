@@ -25,12 +25,11 @@ public sealed class BidServiceTests
             Code = "RFQ-2026-0099",
             Title = "Test",
             Envelope = RfqEnvelope.Single,
-            Status = status,
             ClosesUtc = closes,
             Lines = [new RfqLine { ItemCode = "PIP-CS6-SCH40", Description = "Pipe", Qty = 120, Uom = "Length" }],
             CreatedUtc = c.Clock.UtcNow,
             UpdatedUtc = c.Clock.UtcNow,
-        };
+        }.SeededAs(status);
         rfq.WithInvites(c.Clock.UtcNow, VendorA, VendorB);
         c.Db.Rfqs.Add(rfq);
         await c.Db.SaveChangesAsync();

@@ -87,13 +87,12 @@ public sealed class InvoiceService(
             Code = await codes.NextAsync("INV", ct),
             PoId = poId, VendorId = po.VendorId, InvoiceNo = req.InvoiceNo, Date = req.Date,
             WhtRate = req.WhtRate, Lines = lines,
-            Status = priceVariance ? InvoiceStatus.Exception : InvoiceStatus.Submitted,
-            ExceptionReason = priceVariance ? reason : null,
             CreatedUtc = clock.UtcNow, UpdatedUtc = clock.UtcNow,
         };
+        if (priceVariance) inv.MarkException(reason); else inv.MarkSubmitted();
         db.Invoices.Add(inv);
         if (priceVariance && po.Status is PoStatus.Issued or PoStatus.Acknowledged or PoStatus.PartiallyReceived or PoStatus.Received)
-            po.Status = PoStatus.Discrepancy;
+            po.MarkDiscrepancy();
         await db.SaveChangesAsync(ct);
 
         await audit.WriteAsync("Invoice", inv.Code, $"Invoice submitted ({(priceVariance ? "exception" : "matched")})",
@@ -127,14 +126,14 @@ public sealed class InvoiceService(
 
     private async Task ApproveInternal(Invoice inv, string action, CancellationToken ct)
     {
-        inv.Status = InvoiceStatus.Approved;
+        inv.Approve();                  // guards not already Approved/Paid
         inv.NsId ??= $"NS-VB-{(await NextSeqSuffix(ct))}";
         inv.UpdatedUtc = clock.UtcNow;
 
         var po = await LoadPo(inv.PoId, ct);
         if (po.Status is PoStatus.Received or PoStatus.PartiallyReceived or PoStatus.Discrepancy
             && po.Lines.Sum(l => l.InvoicedQty) >= po.Lines.Sum(l => l.Qty))
-            po.Status = PoStatus.Matched;
+            po.MarkMatched();
         await db.SaveChangesAsync(ct);
         await netsuite.PushVendorBillAsync(inv.Code, ct);   // stub
         await audit.WriteAsync("Invoice", inv.Code, action, after: $"Vendor Bill {inv.NsId}", ct: ct);

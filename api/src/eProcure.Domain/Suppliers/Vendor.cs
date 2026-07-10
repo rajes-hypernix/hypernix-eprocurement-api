@@ -20,7 +20,7 @@ public class Vendor
     public string TaxId { get; set; } = "—";
     public VendorType Type { get; set; } = VendorType.NonSwec;
     public string? LlrcTier { get; set; }
-    public VendorStatus Status { get; set; } = VendorStatus.Pending;
+    public VendorStatus Status { get; private set; } = VendorStatus.Pending;
     public string Region { get; set; } = "Peninsular";
     public string State { get; set; } = "—";
     public string City { get; set; } = "—";
@@ -43,6 +43,22 @@ public class Vendor
     public DateTime UpdatedUtc { get; set; }
 
     public Vendor() { }
+
+    // ===== Status transitions (T3). =====
+
+    /// <summary>Registers the vendor into the master immediately (manual entry, C1 — no approval).</summary>
+    public void Register() => Status = VendorStatus.Registered;
+
+    /// <summary>Provisional registration on onboarding promotion (Non-SWEC path).</summary>
+    public void MarkProvisional() => Status = VendorStatus.Provisional;
+
+    /// <summary>Toggles a vendor between active (Registered) and Inactive — the buyer's enable/disable.</summary>
+    public void ToggleActive() =>
+        Status = Status == VendorStatus.Inactive ? VendorStatus.Registered : VendorStatus.Inactive;
+
+    /// <summary>TEST/SEED ONLY — sets the status directly, bypassing transitions. Never call from
+    /// production service code (enforced by the ArchitectureTests source-scan).</summary>
+    public Vendor SeededAs(VendorStatus status) { Status = status; return this; }
 }
 
 public class VendorPerformance

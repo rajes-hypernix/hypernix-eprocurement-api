@@ -29,9 +29,9 @@ public sealed class InvoiceServiceTests
         c.Db.Vendors.Add(vendor);
         var po = new PurchaseOrder
         {
-            Code = "PO-2026-1193", VendorId = vendor.Id, Status = PoStatus.Received, CreatedUtc = c.Clock.UtcNow, UpdatedUtc = c.Clock.UtcNow,
+            Code = "PO-2026-1193", VendorId = vendor.Id, CreatedUtc = c.Clock.UtcNow, UpdatedUtc = c.Clock.UtcNow,
             Lines = [new PoLine { ItemCode = "MTR", Description = "Motor", Qty = qty, Uom = "Unit", UnitPrice = poPrice, ReceivedQty = received }],
-        };
+        }.SeededAs(PoStatus.Received);
         c.Db.PurchaseOrders.Add(po);
         await c.Db.SaveChangesAsync();
         var svc = new InvoiceService(c.Db, c.Clock, c.Codes, c.Audit, new NoopNs(), c.User);
