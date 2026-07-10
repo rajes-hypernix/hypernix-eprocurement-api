@@ -1,0 +1,12 @@
+{
+  "name": "eprocure-prototype-tests",
+  "private": true,
+  "description": "Headless behavioural oracle for the eProcure prototype. Run these to see the exact expected outcomes the React+.NET build must match.",
+  "scripts": {
+    "test": "node e2e.js && node safety.js && node fixes.js",
+    "e2e": "node e2e.js",
+    "safety": "node safety.js",
+    "fixes": "node fixes.js"
+  },
+  "devDependencies": { "jsdom": "^24.0.0" }
+}

@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/eProcure.Api/eProcure.Api.csproj" />
+    <Project Path="src/eProcure.Application/eProcure.Application.csproj" />
+    <Project Path="src/eProcure.Domain/eProcure.Domain.csproj" />
+    <Project Path="src/eProcure.Infrastructure/eProcure.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/eProcure.Tests/eProcure.Tests.csproj" />
+  </Folder>
+</Solution>

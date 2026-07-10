@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>eProcure — PR Module &amp; Consolidate Lines (Spec Mockup)</title>
+<!--
+  ============================================================================
+  SPEC MOCKUP — PR MODULE + CONSOLIDATE LINES WORKSPACE
+  ============================================================================
+  Purpose: a behavioural spec for Claude Code, built in the SAME idiom as
+  prototype/eprocure-portal.html (same :root tokens, same square corners,
+  Inter/Georgia/JetBrains Mono, teal #336374, same S.* state convention,
+  same chip/drawer patterns from procReqs).
+
+  This file demonstrates THREE new things to add to the existing app
+  (no rebuild — these are new screens beside the current Requisitions flow):
+
+    1. PR LIST + CREATE/EDIT FORM   (portal PR creation; seeded PRs editable)
+    2. CONSOLIDATE LINES WORKSPACE  (two-pane line basket builder; left shows
+                                     open lines only, +/- move, up/down resequence)
+    3. LINE LIFECYCLE + EDGE CASES  (cancel line, release for re-sourcing,
+                                     no-quote handling, merge w/ provenance)
+
+  The existing "Confirm lines" flow in procReqs STAYS AS-IS. "Consolidate
+  Lines" is an ADDITIONAL button/path for the multi-PR power-user case.
+
+  DATA-MODEL NOTES (read by Claude Code — these drive the backend):
+  - PrLine.Status lifecycle: Open | InDraftRfq | InRfq | Awarded | Cancelled | Closed
+  - PrLineSourcing link table is the SOURCE OF TRUTH for provenance:
+      { PrLineId, RfqId, RfqLineCode, QtySourced, LinkStatus(Active|Returned|Cancelled),
+        Reason, CreatedUtc, ClosedUtc }
+  - An RFQ line built by MERGE = multiple link rows (one per source PR line).
+  - Provenance is NEVER lost on merge/reorder/return.
+  - PR header status is DERIVED from its lines (Draft/Submitted/PartiallySourced/
+    Sourced/Closed/Cancelled).
+  - Editability: header + Open lines editable; InRfq/Awarded lines read-only;
+    new lines addable to any non-cancelled PR.
+  - v1 scope: whole-line sourcing in UX (schema is qty-capable for later partial);
+    soft reservation on draft-add, hard commit on RFQ release; DEFER awarded-rebid
+    (needs PO cancel, not built); keep Closed in enum, Awarded = v1 end-state.
+  - PERMISSION/CONCURRENCY CANDIDATES (for the later hardening pass — track, don't
+    build yet): create-PR, edit-open-line, cancel-line, release-line-for-resourcing,
+    source-line, merge-lines. New write surfaces (sourcing links, PR edit) need
+    RowVersion when concurrency work happens.
+  ============================================================================
+-->
+<style>
+  :root{
+    --teal:#336374; --teal-d:#27505f; --teal-l:#5a8298; --teal-nav:#25586B; --accent:#2C5C6E;
+    --cream:#F3EFE9; --card:#F6F4EF; --ink:#2b2b2b; --muted:#7d8a93;
+    --line:#E4DED2; --soft:#f7f5f1;
+    --amber:#E08A3C; --amber-bg:#FBEFDF; --green:#3f8f5f; --green-bg:#E7F2EB;
+    --red:#C5564B; --red-bg:#FBE9E7; --blue:#3b6ea5; --blue-bg:#E8F0F8;
+    --radius:0; --shadow:0 2px 10px rgba(51,99,119,0.08); --shadow-l:0 8px 30px rgba(51,99,119,0.16);
+    --sans:'Inter',-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; --serif:Georgia,'Times New Roman',serif;
+    --mono:'JetBrains Mono','SF Mono',Menlo,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{font-family:var(--sans);background:var(--cream);color:var(--ink);font-size:14px;line-height:1.45}
+  button{font-family:inherit;cursor:pointer}
+  a{color:inherit;text-decoration:none}
+  .hidden{display:none!important}
+
+  /* ---- top bar (mirrors prototype) ---- */
+  .topbar{height:58px;background:var(--teal);color:#fff;display:flex;align-items:center;padding:0 22px;gap:18px;position:sticky;top:0;z-index:50}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;letter-spacing:.2px}
+  .brand .logo{width:30px;height:30px;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center;font-family:var(--serif)}
+  .brand small{font-weight:500;opacity:.7;font-size:11px;display:block;letter-spacing:.4px}
+  .spacer{flex:1}
+  .specbadge{background:var(--amber);color:#fff;font-size:11px;font-weight:700;padding:4px 10px;letter-spacing:.4px}
+
+  .shell{display:flex;min-height:calc(100vh - 58px)}
+  .side{width:222px;background:#fff;border-right:1px solid var(--line);padding:16px 12px;flex-shrink:0}
+  .side .grp{font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin:14px 10px 6px}
+  .nav{display:flex;align-items:center;gap:11px;padding:10px 12px;color:#54606a;font-weight:600;font-size:13.5px;margin-bottom:2px;cursor:pointer}
+  .nav:hover{background:var(--soft)}
+  .nav.on{background:var(--teal-nav);color:#fff}
+  .main{flex:1;padding:26px 30px;max-width:1320px;width:100%;min-width:0}
+
+  .pagehead{display:flex;align-items:flex-start;gap:16px;margin-bottom:18px}
+  .pagehead h1{font-family:var(--serif);font-size:23px;margin:0 0 3px;font-weight:600}
+  .pagehead p{margin:0;color:var(--muted);font-size:13px}
+  .crumb{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:12.5px;margin-bottom:12px}
+  .crumb a{color:var(--teal);font-weight:600;cursor:pointer}
+
+  .ribbon{background:var(--blue-bg);border:1px solid #cfe0f0;color:#345; padding:8px 12px;font-size:12.5px;display:flex;align-items:center;gap:8px;margin-bottom:14px}
+  .ribbon .ns{background:var(--teal);color:#fff;font-size:10.5px;font-weight:700;padding:2px 7px;display:inline-flex;gap:4px;align-items:center}
+
+  .card{background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow)}
+  .card.rq table{width:100%;border-collapse:collapse}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:700;padding:10px 12px;border-bottom:1px solid var(--line);background:#efeae1}
+  td{padding:10px 12px;border-bottom:1px solid var(--line)}
+  td.amt,th.amt{text-align:right;font-variant-numeric:tabular-nums;font-family:var(--mono);font-size:12px}
+  .prid,.code{font-family:var(--mono);font-size:12px;font-weight:600}
+
+  .btn{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--teal);background:var(--teal);color:#fff;font-weight:600;font-size:13px;padding:8px 14px}
+  .btn-pri{background:var(--teal);color:#fff}
+  .btn-out{background:transparent;color:var(--teal)}
+  .btn-ghost{background:transparent;border-color:var(--line);color:#54606a}
+  .btn-amber{background:var(--amber);border-color:var(--amber);color:#fff}
+  .btn-sm{padding:5px 10px;font-size:12px}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .btn-danger{background:var(--red);border-color:var(--red);color:#fff}
+
+  /* ---- filter bar (mirrors fbar2) ---- */
+  .fbar2{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px}
+  .msel{position:relative;display:flex;flex-direction:column;gap:4px}
+  .msel>label,.fitem2>label{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:700}
+  .mbtn{display:flex;align-items:center;gap:8px;justify-content:space-between;min-width:130px;background:#fff;border:1px solid var(--line);padding:7px 10px;font-size:12.5px;color:var(--ink)}
+  .mbtn.has{border-color:var(--teal);color:var(--teal);font-weight:600}
+  .fitem2{display:flex;flex-direction:column;gap:4px}
+  .fitem2 select,.field input,.field select,.field textarea{background:#fff;border:1px solid var(--line);padding:7px 10px;font-size:12.5px;font-family:inherit}
+  .freset{background:transparent;border:1px solid var(--line);color:var(--muted);padding:7px 12px;font-size:12px;align-self:flex-end}
+  .searchbox{display:flex;flex-direction:column;gap:4px}
+  .searchbox input{min-width:200px}
+
+  /* ---- action bar ---- */
+  .abar2{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--line);padding:10px 14px;margin-bottom:12px}
+  .abar2.live{border-color:var(--teal);background:#f0f6f8}
+  .abar2 .info{font-size:13px;color:#54606a}
+  .abar2 .sp{flex:1}
+
+  /* ---- line status dots (mirror .lst) ---- */
+  .lst{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600}
+  .lst .d{width:7px;height:7px;border-radius:50%;display:inline-block}
+  .lst.a{color:var(--green)} .lst.a .d{background:var(--green)}
+  .lst.r{color:var(--blue)} .lst.r .d{background:var(--blue)}
+  .lst.c{color:var(--muted)} .lst.c .d{background:var(--muted)}
+  .lst.x{color:var(--red)} .lst.x .d{background:var(--red)}
+  .lst.w{color:var(--amber)} .lst.w .d{background:var(--amber)}
+
+  .chev{display:inline-flex;transition:transform .15s;color:var(--muted)}
+  .prrow{cursor:pointer}
+  .prrow.open .chev{transform:rotate(90deg)}
+  .prrow:hover{background:#fbfaf7}
+
+  /* ========================================================================
+     CONSOLIDATE LINES — two-pane workspace
+     ======================================================================== */
+  .cl-wrap{display:flex;gap:0;border:1px solid var(--line);background:#fff;min-height:560px}
+  .cl-left{flex:1;min-width:0;border-right:1px solid var(--line);display:flex;flex-direction:column}
+  .cl-right{width:46%;min-width:380px;display:flex;flex-direction:column;background:#fbfaf7}
+  .cl-paneh{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;background:#efeae1}
+  .cl-paneh h3{margin:0;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#54606a}
+  .cl-paneh .ct{margin-left:auto;font-size:12px;color:var(--muted)}
+  .cl-body{flex:1;overflow:auto;padding:10px}
+  .cl-foot{padding:10px 14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:10px;background:#efeae1}
+
+  /* left: PR group cards */
+  .prg{border:1px solid var(--line);background:#fff;margin-bottom:10px}
+  .prg-h{display:flex;align-items:center;gap:10px;padding:9px 12px;background:#f7f5f1;border-bottom:1px solid var(--line);cursor:pointer}
+  .prg-h .prid{font-size:12px}
+  .prg-h .meta{font-size:11.5px;color:var(--muted)}
+  .prg-h .addall{margin-left:auto;font-size:11.5px;color:var(--teal);font-weight:600;background:none;border:1px solid var(--line);padding:4px 9px}
+  .prg-line{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--soft);cursor:grab}
+  .prg-line:last-child{border-bottom:none}
+  .prg-line:hover{background:#fbfaf7}
+  .prg-line.inbasket{opacity:.45}
+  .prg-line .lc{flex:1;min-width:0}
+  .prg-line .desc{font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .prg-line .sub{font-size:11px;color:var(--muted);font-family:var(--mono)}
+  .prg-line .add{width:26px;height:26px;border:1px solid var(--teal);background:#fff;color:var(--teal);font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .prg-line .add:disabled{border-color:var(--line);color:var(--line)}
+  .lockchip{font-size:11px;color:var(--muted);display:inline-flex;gap:4px;align-items:center}
+
+  /* two-tier PR header */
+  .prh{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+  .prh1{display:flex;align-items:center;gap:10px}
+  .prh1 .needby{font-size:11px;color:var(--amber);font-weight:600;display:inline-flex;gap:3px;align-items:center}
+  .prh2{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  /* basket resequence buttons */
+  .bk-line .seq{display:flex;flex-direction:column;gap:1px;flex-shrink:0}
+  .bk-line .seqb{width:22px;height:15px;border:1px solid var(--line);background:#fff;color:#54606a;font-size:9px;display:flex;align-items:center;justify-content:center;padding:0;line-height:1}
+  .bk-line .seqb:disabled{opacity:.3;cursor:not-allowed}
+  .bk-line .seqb:hover:not(:disabled){border-color:var(--teal);color:var(--teal)}
+
+  /* collapsible provenance */
+  .prov{font-size:10.5px;color:var(--teal);margin-top:2px}
+  .prov.merged{cursor:pointer;display:inline-flex;align-items:center;gap:4px;font-weight:600}
+  .prov.merged .provtog{display:inline-flex;transition:transform .15s}
+  .prov.merged:hover{text-decoration:underline}
+  .provlist{margin-top:5px;border:1px solid #e9d3b3;background:#fffdf8}
+  .provrow{display:flex;justify-content:space-between;padding:4px 8px;font-size:11px;border-bottom:1px solid #f0e6d2}
+  .provrow:last-child{border-bottom:none}
+  .provrow .ppr{font-family:var(--mono);color:#8a5a1e}
+  .provrow .pqty{font-family:var(--mono);font-weight:600}
+
+  /* uom-mismatch note */
+  .uomnote{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--red-bg);border:1px solid #e6c4bf;color:#8a3b33;padding:7px 11px;margin-bottom:8px;font-size:12px}
+  .uomnote button{margin-left:auto;background:none;border:1px solid #e6c4bf;color:#8a3b33;font-size:11px;padding:3px 9px}
+
+  /* right: basket */
+  .bk-line{display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid var(--line);background:#fff;margin-bottom:7px}
+  .bk-line .lc{flex:1;min-width:0}
+  .bk-line .desc{font-size:12.5px;font-weight:600}
+  .bk-line .sub{font-size:11px;color:var(--muted);font-family:var(--mono)}
+  .bk-line .prov{font-size:10.5px;color:var(--teal);margin-top:2px}
+  .bk-line .qty{font-family:var(--mono);font-size:12px;font-weight:600;text-align:right}
+  .bk-line .rm{width:24px;height:24px;border:1px solid var(--red);background:#fff;color:var(--red);font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .bk-merge{background:var(--amber-bg);border:1px solid #e9d3b3}
+  .bk-merge .desc{color:#8a5a1e}
+  .bk-empty{color:var(--muted);text-align:center;padding:50px 20px;font-size:13px;border:1.5px dashed var(--line)}
+  .bk-empty.dropok{border-color:var(--teal);background:#eef5f7;color:var(--teal)}
+  .mergebar{display:flex;align-items:center;gap:8px;background:var(--amber-bg);border:1px solid #e9d3b3;padding:7px 11px;margin-bottom:8px;font-size:12px;color:#8a5a1e}
+
+  .summ{display:flex;gap:18px;font-size:12.5px}
+  .summ b{font-family:var(--mono)}
+
+  /* ---- PR form ---- */
+  .field{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+  .field label{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:700}
+  .frow{display:flex;gap:14px}.frow .field{flex:1}
+  .formcard{background:#fff;border:1px solid var(--line);padding:18px 20px;margin-bottom:14px}
+  .formcard h3{margin:0 0 14px;font-size:14px;font-weight:700}
+  .lineedit td{padding:6px 8px}
+  .lineedit input{width:100%;border:1px solid var(--line);padding:6px 8px;font-size:12.5px;font-family:inherit}
+  .lineedit input.amt{text-align:right;font-family:var(--mono)}
+  .lineedit .ro{background:#f4f2ed;color:var(--muted)}
+  .badge{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 8px;text-transform:uppercase;letter-spacing:.4px}
+  .badge.draft{background:#eee;color:#777}
+  .badge.sub{background:var(--blue-bg);color:var(--blue)}
+  .badge.part{background:var(--amber-bg);color:#9a5a1e}
+  .badge.sourced{background:var(--green-bg);color:var(--green)}
+  .badge.cancel{background:var(--red-bg);color:var(--red)}
+
+  /* tabs (switch the three demos) */
+  .tabs{display:flex;gap:2px;margin-bottom:18px;border-bottom:1px solid var(--line)}
+  .tabs button{background:none;border:none;padding:10px 16px;font-size:13px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px}
+  .tabs button.on{color:var(--teal);border-bottom-color:var(--teal)}
+
+  .note{font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center}
+  .hint{color:var(--muted);font-size:12px}
+  .specnote{background:#fffdf6;border:1px dashed var(--amber);padding:8px 11px;font-size:11.5px;color:#7a5a1e;margin:10px 0}
+  .specnote b{color:#8a4a1e}
+
+  /* view toggle (mirrors RfqList table/kanban switch) */
+  .vtoggle{display:flex;border:1px solid var(--line);background:#fff;margin-right:10px}
+  .vtoggle button{background:#fff;border:none;padding:7px 13px;font-size:12.5px;font-weight:600;color:var(--muted);display:inline-flex;gap:6px;align-items:center;border-right:1px solid var(--line)}
+  .vtoggle button:last-child{border-right:none}
+  .vtoggle button.on{background:var(--teal);color:#fff}
+
+  /* kanban */
+  .kanban{display:flex;gap:12px;overflow-x:auto;padding-bottom:6px}
+  .kcol{flex:1;min-width:230px;background:#efeae1;border:1px solid var(--line)}
+  .kcol-h{padding:10px 12px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#54606a;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--line)}
+  .kcol-h .kcount{margin-left:auto;background:#fff;border:1px solid var(--line);font-size:11px;padding:1px 8px;color:var(--muted)}
+  .kcol-b{padding:10px;display:flex;flex-direction:column;gap:9px;min-height:60px}
+  .kcard{background:#fff;border:1px solid var(--line);padding:10px 11px;cursor:pointer;box-shadow:var(--shadow)}
+  .kcard:hover{border-color:var(--teal)}
+  .kc-top{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+  .kc-top .prid{font-size:12px}
+  .kc-top .needby{margin-left:auto;font-size:10.5px;color:var(--amber);font-weight:600;display:inline-flex;gap:3px;align-items:center}
+  .kc-memo{font-size:12.5px;font-weight:600;line-height:1.35;margin-bottom:5px}
+  .kc-meta{font-size:11px;color:var(--muted);margin-bottom:8px}
+  .kc-foot{display:flex;align-items:center;gap:8px;border-top:1px solid var(--soft);padding-top:7px}
+  .kc-val{margin-left:auto;font-family:var(--mono);font-size:11.5px;font-weight:600}
+  .kempty{color:var(--muted);text-align:center;font-size:12px;padding:14px 0}
+
+  /* row action menu */
+  .rowact{display:flex;gap:6px}
+  .rowact button{font-size:11px;padding:3px 8px;border:1px solid var(--line);background:#fff;color:#54606a}
+  .rowact button.danger{color:var(--red);border-color:#e6c4bf}
+  .rowact button.go{color:var(--teal);border-color:#bcd3da}
+
+  /* modal */
+  .scrim{position:fixed;inset:0;background:rgba(30,40,46,.45);z-index:90}
+  .modal{position:fixed;z-index:91;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border:1px solid var(--line);box-shadow:var(--shadow-l);width:440px;max-width:92vw}
+  .modal .mh{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;font-weight:700}
+  .modal .mb{padding:18px}
+  .modal .mf{padding:12px 18px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end}
+  .reason{width:100%;min-height:70px;border:1px solid var(--line);padding:8px;font-family:inherit;font-size:13px}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand"><div class="logo">eP</div><div>Hypernix eProcure<small>Sourcing &amp; Vendor Portal</small></div></div>
+  <div class="spacer"></div>
+  <div class="specbadge">SPEC MOCKUP — PR MODULE</div>
+</div>
+
+<div class="shell">
+  <div class="side">
+    <div class="grp">Sourcing</div>
+    <div class="nav on"><span>▤</span> Requisitions</div>
+    <div class="nav"><span>▤</span> RFQs</div>
+    <div class="nav"><span>▤</span> Awards &amp; POs</div>
+    <div class="grp">New in this spec</div>
+    <div class="nav" style="color:var(--teal)"><span>＋</span> Create PR</div>
+    <div class="nav" style="color:var(--teal)"><span>⇄</span> Consolidate Lines</div>
+  </div>
+
+  <div class="main">
+    <div class="tabs">
+      <button class="on" onclick="tab('cl',this)">1 · Consolidate Lines (workspace)</button>
+      <button onclick="tab('list',this)">2 · PR List (+ lifecycle actions)</button>
+      <button onclick="tab('form',this)">3 · Create / Edit PR (form)</button>
+    </div>
+
+    <div id="pane"></div>
+  </div>
+</div>
+
+<div id="modalhost"></div>
+
+<script>
+/* =====================================================================
+   ICONS (subset, mirrors prototype's I())
+   ===================================================================== */
+function I(k){const m={
+  rfq:'▤',plus:'＋',chev:'›',lock:'🔒',eye:'◉',split:'��',check:'✓',x:'✕',
+  back:'‹',box:'▦',send:'➤',edit:'✎',flag:'⚑',clock:'◔',doc:'▭',merge:'⤵'};
+  return `<span style="font-style:normal">${m[k]||'•'}</span>`;
+}
+const fmt=n=>'RM '+(n||0).toLocaleString('en-MY',{minimumFractionDigits:0,maximumFractionDigits:0});
+
+/* =====================================================================
+   SEED DATA  (extends prototype DATA.prs with line lifecycle status)
+   PrLine.status: available | rfq | awarded | cancelled | closed
+   line.ref carries the RFQ/PO code for non-available lines.
+   ===================================================================== */
+const DATA = { prs:[
+  {id:'PR-2026-0412', requestor:'Aishah Karim', dept:'Facilities', loc:'Bintulu Plant', memo:'Cooling water pump set replacement', job:'JOB-CWS-014', cat:'Rotating Equipment', date:'02/06/2026', need:'30/07/2026', status:'submitted', lines:[
+    {item:'Centrifugal Pump, 75 kW, end-suction', code:'MEP-PUMP-075', qty:4, uom:'Unit', rate:38500, status:'available'},
+    {item:'VFD Drive, 75 kW, IP55', code:'ELE-VFD-075', qty:4, uom:'Unit', rate:7500, status:'available'},
+  ]},
+  {id:'PR-2026-0415', requestor:'Ramesh Nair', dept:'Production', loc:'Samalaju Terminal', memo:'Valve replacement, Train 2 shutdown', job:'JOB-SD2-009', cat:'Valves & Fittings', date:'04/06/2026', need:'25/07/2026', status:'part', lines:[
+    {item:'Gate Valve, DN150, PN16, CS', code:'VLV-GAT-150', qty:24, uom:'Unit', rate:2900, status:'rfq', ref:'RFQ-2026-031'},
+    {item:'Globe Valve, DN100, PN16', code:'VLV-GLB-100', qty:12, uom:'Unit', rate:2250, status:'available'},
+  ]},
+  {id:'PR-2026-0418', requestor:'Lim Chee Keong', dept:'Maintenance', loc:'Bintulu Plant', memo:'Tank farm piping, corrosion replacement', job:'JOB-TF-031', cat:'Piping', date:'05/06/2026', need:'12/08/2026', status:'submitted', lines:[
+    {item:'Carbon Steel Pipe, 6", SCH40, 6m', code:'PIP-CS6-SCH40', qty:120, uom:'Length', rate:850, status:'available'},
+    {item:'Pipe Elbow 90°, 6", SCH40', code:'PIP-ELB-6', qty:80, uom:'Unit', rate:180, status:'available'},
+    {item:'Weld Neck Flange, 6", PN16', code:'PIP-FLG-6', qty:60, uom:'Unit', rate:420, status:'available'},
+  ]},
+  {id:'PR-2026-0421', requestor:'Siti Aminah', dept:'HSE', loc:'Kuching HQ', memo:'PPE restock, working at height', job:'OPEX-2026', cat:'Safety / PPE', date:'06/06/2026', need:'05/08/2026', status:'part', lines:[
+    {item:'Safety Harness, full body, double lanyard', code:'HSE-HARN-2L', qty:60, uom:'Set', rate:320, status:'available'},
+    {item:'Gas Detector, 4-gas, portable', code:'HSE-GAS-4', qty:15, uom:'Unit', rate:1280, status:'awarded', ref:'PO-2026-1185'},
+  ]},
+  {id:'PR-2026-0423', requestor:'Ramesh Nair', dept:'Production', loc:'Samalaju Terminal', memo:'Rotating spares restock', job:'JOB-RS-077', cat:'Rotating Equipment', date:'09/06/2026', need:'20/08/2026', status:'submitted', lines:[
+    {item:'Electric Motor, 37 kW, TEFC, IE3', code:'ELE-MOT-037', qty:6, uom:'Unit', rate:8500, status:'available'},
+    {item:'Bearing, spherical roller, 22220', code:'MEC-BRG-22220', qty:40, uom:'Unit', rate:500, status:'available'},
+    {item:'Centrifugal Pump, 75 kW, end-suction', code:'MEP-PUMP-075', qty:2, uom:'Unit', rate:38500, status:'available'},
+  ]},
+  {id:'PR-2026-0428', requestor:'Nurul Izzah', dept:'Electrical', loc:'Samalaju Terminal', memo:'Switchgear maintenance spares — no quotes received', job:'JOB-EL-040', cat:'Electrical', date:'13/06/2026', need:'28/08/2026', status:'submitted', lines:[
+    {item:'Contactor, 3-pole, 40 A, AC-3', code:'ELE-CON-040', qty:30, uom:'Unit', rate:680, status:'noquote', ref:'RFQ-2026-029'},
+    {item:'Control Relay, 4PDT, 24 VDC', code:'ELE-RLY-4PDT', qty:50, uom:'Unit', rate:145, status:'available'},
+  ]},
+]};
+
+/* =====================================================================
+   LINE-STATE HELPERS  (mirror reqAvail/reqSelectable naming)
+   A line is "open" (sourceable) only when status==='available'.
+   ===================================================================== */
+const openLines = pr => pr.lines.filter(l => l.status==='available');
+const isOpen    = l  => l.status==='available';
+const lineKey   = (pr,i)=> pr.id+':'+i;
+
+/* WORKSPACE STATE (mirrors S.* convention) */
+const S = {
+  expand:{},          // which PR groups are expanded on the left
+  basket:[],          // [{prId, lineKey, item, code, qty, uom, rate, merged?:[{prId,lineKey,qty}]}]
+  f:{dept:[],cat:[],loc:[]}, search:'',
+  provOpen:{},        // which merged basket lines have provenance expanded
+  uomNote:null,       // {code,a,b} when a same-code line couldn't merge on UoM
+  mergePrompt:null,   // {existingIdx, incoming}
+};
+
+/* =====================================================================
+   TAB SWITCH
+   ===================================================================== */
+function tab(which, btn){
+  document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  if(which==='cl') renderConsolidate();
+  if(which==='list') renderPrList();
+  if(which==='form') renderPrForm();
+}
+
+/* =====================================================================
+   DEMO 1 — CONSOLIDATE LINES WORKSPACE  (two-pane)
+   ===================================================================== */
+function inBasket(key){ return S.basket.some(b=>b.lineKey===key || (b.merged||[]).some(m=>m.lineKey===key)); }
+function uniq(k){const s=[];DATA.prs.forEach(p=>{const v=p[k]||'';if(v&&!s.includes(v))s.push(v);});return s;}
+
+function clFilteredPrs(){
+  const f=S.f, q=(S.search||'').toLowerCase();
+  const inA=(a,v)=>!a||!a.length||a.includes(v);
+  return DATA.prs.filter(p=>{
+    if(!inA(f.dept,p.dept))return false;
+    if(!inA(f.cat,p.cat))return false;
+    if(!inA(f.loc,p.loc||''))return false;
+    if(openLines(p).length===0)return false;            // LEFT shows only PRs with open lines
+    if(q){
+      const hay=(p.id+' '+p.requestor+' '+p.memo+' '+p.lines.map(l=>l.item+' '+l.code).join(' ')).toLowerCase();
+      if(!hay.includes(q))return false;
+    }
+    return true;
+  });
+}
+
+function renderConsolidate(){
+  const prs=clFilteredPrs();
+  const fsel=(k,label)=>{
+    const sel=S.f[k]||[];
+    const opts=uniq(k).map(v=>`<label class="mopt" style="display:block;padding:4px 0"><input type="checkbox" ${sel.includes(v)?'checked':''} onchange="clFchk('${k}','${v.replace(/'/g,"\\'")}',this.checked)"> ${v}</label>`).join('');
+    const summ=sel.length===0?'All':sel.length===1?sel[0]:sel.length+' selected';
+    return `<div class="msel"><label>${label}</label>
+      <button class="mbtn ${sel.length?'has':''}" onclick="clToggleF(event,'${k}')"><span>${summ}</span><span>${I('chev')}</span></button>
+      ${S.openF===k?`<div class="mpop" style="position:absolute;top:100%;left:0;z-index:30;background:#fff;border:1px solid var(--line);box-shadow:var(--shadow-l);padding:8px 12px;min-width:160px" onclick="event.stopPropagation()">${opts}</div>`:''}</div>`;
+  };
+
+  /* LEFT pane — PR groups with open lines */
+  let left='';
+  if(!prs.length){ left='<div class="bk-empty">No PRs with open lines match these filters.</div>'; }
+  prs.forEach(pr=>{
+    const op=S.expand[pr.id]!==false; // default expanded
+    const ol=openLines(pr).length;
+    let lines='';
+    pr.lines.forEach((l,i)=>{
+      if(!isOpen(l))return;                     // hide locked lines entirely
+      const key=lineKey(pr,i);
+      const used=inBasket(key);
+      lines+=`<div class="prg-line ${used?'inbasket':''}">
+        <span class="lc"><div class="desc">${l.item}</div><div class="sub">${l.code} · ${l.qty} ${l.uom} · ${fmt(l.qty*l.rate)}</div></span>
+        <button class="add" ${used?'disabled':''} onclick="clAdd('${key}')" title="${used?'Already in basket':'Add to RFQ'}">${used?'✓':'+'}</button>
+      </div>`;
+    });
+    // two-tier header: line 1 = PR code + need-by (triage fields); line 2 = requestor · dept · category (muted)
+    left+=`<div class="prg">
+      <div class="prg-h" onclick="clToggleExpand('${pr.id}')">
+        <span class="chev" style="${op?'transform:rotate(90deg)':''}">${I('chev')}</span>
+        <span class="prh">
+          <span class="prh1"><span class="prid">${pr.id}</span><span class="needby">${I('clock')} ${pr.need}</span></span>
+          <span class="prh2">${pr.requestor} · ${pr.dept} · ${pr.cat}</span>
+        </span>
+        <button class="addall" onclick="event.stopPropagation();clAddAll('${pr.id}')">+ ${ol} open</button>
+      </div>
+      ${op?lines:''}
+    </div>`;
+  });
+
+  /* RIGHT pane — basket */
+  let right='';
+  if(S.mergePrompt){
+    const ex=S.basket[S.mergePrompt.existingIdx];
+    right+=`<div class="mergebar">${I('merge')} Same item code <b style="font-family:var(--mono)">${ex.code}</b> already in basket — 
+      <button class="btn btn-amber btn-sm" onclick="clDoMerge()">Merge (sum qty)</button>
+      <button class="btn btn-ghost btn-sm" onclick="clKeepSeparate()">Keep separate</button></div>`;
+  }
+  if(S.uomNote){
+    right+=`<div class="uomnote">${I('flag')} Same item code <b style="font-family:var(--mono)">${S.uomNote.code}</b> but different UoM (<b>${S.uomNote.a}</b> vs <b>${S.uomNote.b}</b>) — can't sum, kept as separate lines.
+      <button onclick="clDismissUom()">Dismiss</button></div>`;
+  }
+  if(!S.basket.length){
+    right+=`<div class="bk-empty">Click + on the left to add open PR lines.<br><span class="hint">Lines you don't add stay open for future RFQs.</span></div>`;
+  } else {
+    S.basket.forEach((b,idx)=>{
+      const sources=b.merged||[{prId:b.prId,lineKey:b.lineKey,qty:b.qty}];
+      const isMerged=sources.length>1;
+      const provOpen=S.provOpen&&S.provOpen[idx];
+      let prov;
+      if(!isMerged){
+        prov=`<div class="prov">from ${sources[0].prId}</div>`;
+      } else {
+        // collapse-with-qty-breakdown: one line when collapsed, full per-source qty on expand
+        const breakdown=sources.map(s=>`<div class="provrow"><span class="ppr">${s.prId}</span><span class="pqty">${s.qty} ${b.uom}</span></div>`).join('');
+        prov=`<div class="prov merged" onclick="clToggleProv(${idx})">
+            <span class="provtog" style="${provOpen?'transform:rotate(90deg)':''}">${I('chev')}</span> Merged from ${sources.length} PRs
+          </div>${provOpen?`<div class="provlist">${breakdown}</div>`:''}`;
+      }
+      const upDis=idx===0?'disabled':'', dnDis=idx===S.basket.length-1?'disabled':'';
+      right+=`<div class="bk-line ${isMerged?'bk-merge':''}">
+        <span class="seq">
+          <button class="seqb" ${upDis} onclick="clMove(${idx},-1)" title="Move up">▲</button>
+          <button class="seqb" ${dnDis} onclick="clMove(${idx},1)" title="Move down">▼</button>
+        </span>
+        <span class="lc"><div class="desc">${isMerged?I('merge')+' ':''}${b.item}</div>
+          <div class="sub">${b.code} · ${b.uom}</div>
+          ${prov}</span>
+        <span class="qty">${b.qty} ${b.uom}</span>
+        <button class="rm" onclick="clRemove(${idx})" title="Send back — line returns to open">−</button>
+      </div>`;
+    });
+  }
+
+  const nLines=S.basket.length;
+  const nPrs=new Set(S.basket.flatMap(b=> b.merged? b.merged.map(m=>m.prId): [b.prId])).size;
+  const total=S.basket.reduce((s,b)=>s+b.qty*b.rate,0);
+
+  document.getElementById('pane').innerHTML=`
+    <div class="crumb"><a>Requisitions</a> ${I('chev')} <span>Consolidate Lines</span></div>
+    <div class="pagehead"><div>
+      <h1>Consolidate Lines</h1>
+      <p>Pull open PR lines from across multiple requisitions into one RFQ. The existing one-click <b>Confirm lines</b> flow still works for simple single-PR sourcing — this is for multi-PR consolidation.</p>
+    </div></div>
+    <div class="ribbon"><span class="ns">${I('box')} NetSuite</span> Left shows only OPEN lines (not sourced, awarded, or cancelled). Sourced lines are locked to their RFQ. Adding to the basket soft-reserves a line until the RFQ is released.</div>
+
+    ${S.openF?'<div style="position:fixed;inset:0;z-index:20" onclick="clCloseF()"></div>':''}
+    <div class="fbar2">
+      ${fsel('dept','Dept')}${fsel('cat','Category')}${fsel('loc','Location')}
+      <div class="searchbox"><label>Search</label><input placeholder="item, code, PR, requestor…" value="${S.search}" oninput="clSearch(this.value)"></div>
+      <button class="freset" onclick="clReset()">Reset</button>
+    </div>
+
+    <div class="cl-wrap">
+      <div class="cl-left">
+        <div class="cl-paneh"><h3>Open PR lines</h3><span class="ct">${prs.length} PR${prs.length===1?'':'s'}</span></div>
+        <div class="cl-body">${left}</div>
+      </div>
+      <div class="cl-right">
+        <div class="cl-paneh"><h3>${I('rfq')} RFQ basket</h3><span class="ct">${nLines} line${nLines===1?'':'s'}</span></div>
+        <div class="cl-body">${right}</div>
+        <div class="cl-foot">
+          <div class="summ"><span><b>${nLines}</b> lines</span><span>from <b>${nPrs}</b> PR${nPrs===1?'':'s'}</span><span>est. <b>${fmt(total)}</b></span></div>
+          <span style="flex:1"></span>
+          <button class="btn btn-ghost btn-sm" ${nLines?'':'disabled'} onclick="clClear()">Clear</button>
+          <button class="btn btn-pri" ${nLines?'':'disabled'} onclick="clProceed()">Build RFQ ${I('chev')}</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="specnote"><b>Hand-off:</b> "Build RFQ" passes the basket lines into the EXISTING RFQ Builder wizard (settings → questionnaire → invite → release). This screen replaces line <i>selection</i> only — there is still one RFQ wizard and one award path. On release, each basket line writes a <b>PrLineSourcing</b> link (provenance kept, incl. per-source qty for merged lines) and flips the source PR line(s) to <b>InRfq</b>.</div>
+  `;
+}
+
+/* left interactions */
+function clToggleExpand(id){ S.expand[id]=S.expand[id]===false?true:false; renderConsolidate(); }
+function clToggleF(e,k){ e.stopPropagation(); S.openF=S.openF===k?null:k; renderConsolidate(); }
+function clCloseF(){ S.openF=null; renderConsolidate(); }
+function clFchk(k,v,on){ const a=S.f[k]; const i=a.indexOf(v); if(on&&i<0)a.push(v); if(!on&&i>=0)a.splice(i,1); renderConsolidate(); }
+function clSearch(v){ S.search=v; const p=document.getElementById('pane'); renderConsolidate(); /* keep focus */ const inp=p.querySelector('.searchbox input'); if(inp){inp.focus();inp.setSelectionRange(v.length,v.length);} }
+function clReset(){ S.f={dept:[],cat:[],loc:[]}; S.search=''; S.openF=null; renderConsolidate(); }
+
+/* add / remove with MERGE detection */
+function findLine(key){ const [pid,ix]=key.split(':'); const pr=DATA.prs.find(p=>p.id===pid); return {pr, l:pr.lines[+ix], key}; }
+function clAdd(key){
+  if(inBasket(key))return;
+  const {pr,l}=findLine(key);
+  // merge detection: same item code already in basket?
+  const exIdx=S.basket.findIndex(b=>b.code===l.code);
+  const incoming={prId:pr.id, lineKey:key, item:l.item, code:l.code, qty:l.qty, uom:l.uom, rate:l.rate};
+  if(exIdx>=0){
+    // UOM-match guard — different UoM cannot be summed; keep separate AND tell the user why
+    if(S.basket[exIdx].uom!==l.uom){
+      S.basket.push(Object.assign({}, incoming, {merged:[{prId:pr.id,lineKey:key,qty:l.qty}]}));
+      S.uomNote={code:l.code, a:S.basket[exIdx].uom, b:l.uom};
+      renderConsolidate();
+      return;
+    }
+    S.mergePrompt={existingIdx:exIdx, incoming};
+    renderConsolidate();
+    return;
+  }
+  S.basket.push(Object.assign({}, incoming, {merged:[{prId:pr.id,lineKey:key,qty:l.qty}]}));
+  renderConsolidate();
+}
+function clAddAll(prId){ const pr=DATA.prs.find(p=>p.id===prId); pr.lines.forEach((l,i)=>{const key=lineKey(pr,i); if(isOpen(l)&&!inBasket(key))clAdd(key);}); }
+function clRemove(idx){ S.basket.splice(idx,1); if(S.provOpen)delete S.provOpen[idx]; renderConsolidate(); }
+function clClear(){ S.basket=[]; S.mergePrompt=null; S.uomNote=null; S.provOpen={}; renderConsolidate(); }
+
+/* merge resolution */
+function clDoMerge(){
+  const {existingIdx,incoming}=S.mergePrompt;
+  const ex=S.basket[existingIdx];
+  ex.qty += incoming.qty;
+  ex.merged=(ex.merged||[{prId:ex.prId,lineKey:ex.lineKey,qty:ex.qty-incoming.qty}]);
+  ex.merged.push({prId:incoming.prId,lineKey:incoming.lineKey,qty:incoming.qty});
+  S.mergePrompt=null; renderConsolidate();
+}
+function clKeepSeparate(){
+  const {incoming}=S.mergePrompt;
+  S.basket.push(Object.assign({}, incoming, {merged:[{prId:incoming.prId,lineKey:incoming.lineKey,qty:incoming.qty}]}));
+  S.mergePrompt=null; renderConsolidate();
+}
+
+/* resequence within basket (up/down), provenance toggle, uom dismiss */
+function clMove(idx,dir){ const j=idx+dir; if(j<0||j>=S.basket.length)return; const t=S.basket[idx]; S.basket[idx]=S.basket[j]; S.basket[j]=t; renderConsolidate(); }
+function clToggleProv(idx){ S.provOpen=S.provOpen||{}; S.provOpen[idx]=!S.provOpen[idx]; renderConsolidate(); }
+function clDismissUom(){ S.uomNote=null; renderConsolidate(); }
+
+function clProceed(){
+  showModal('Build RFQ',
+    `<p>This hands <b>${S.basket.length}</b> line(s) into the existing <b>RFQ Builder</b> wizard.</p>
+     <p class="hint">On release, each line writes a PrLineSourcing link and flips its source PR line(s) to <b>InRfq</b>. Merged lines keep one link per source PR line.</p>`,
+    [{label:'Open RFQ Builder',cls:'btn-pri',fn:closeModal}]);
+}
+
+/* =====================================================================
+   DEMO 2 — PR LIST + LIFECYCLE ACTIONS (cancel line / release for re-sourcing)
+   ===================================================================== */
+function prStatusBadge(s){
+  const m={draft:['draft','Draft'],submitted:['sub','Submitted'],part:['part','Partially sourced'],sourced:['sourced','Sourced'],cancelled:['cancel','Cancelled']};
+  const [c,t]=m[s]||['draft',s]; return `<span class="badge ${c}">${t}</span>`;
+}
+function renderPrList(){
+  let rows='';
+  DATA.prs.forEach(pr=>{
+    const op=S.expand['L'+pr.id];
+    const a=pr.lines.filter(l=>l.status==='available').length;
+    const r=pr.lines.filter(l=>l.status==='rfq').length;
+    const other=pr.lines.length-a-r;
+    let summ='';
+    if(a)summ+=`<span class="lst a"><span class="d"></span>${a}</span> `;
+    if(r)summ+=`<span class="lst r"><span class="d"></span>${r}</span> `;
+    if(other)summ+=`<span class="lst c"><span class="d"></span>${other}</span>`;
+    rows+=`<tr class="prrow ${op?'open':''}" onclick="prToggle('${pr.id}')">
+      <td><span class="chev">${I('chev')}</span> <span class="prid">${pr.id}</span></td>
+      <td>${pr.requestor}</td><td>${pr.dept}</td><td>${pr.cat}</td><td>${pr.need}</td>
+      <td>${prStatusBadge(pr.status)}</td>
+      <td>${summ||'<span class="hint">—</span>'}</td>
+      <td class="rowact" onclick="event.stopPropagation()">
+        <button class="go" onclick="renderPrFormFor('${pr.id}')">${I('edit')} Open</button>
+      </td></tr>`;
+    if(op){
+      let lr='';
+      pr.lines.forEach((l,i)=>{
+        const st=l.status;
+        const chip = st==='available'?'<span class="lst a"><span class="d"></span>Open</span>'
+          : st==='rfq'?`<span class="lst r"><span class="d"></span>In ${l.ref||'RFQ'}</span>`
+          : st==='awarded'?`<span class="lst c"><span class="d"></span>Awarded · ${l.ref||''}</span>`
+          : st==='noquote'?`<span class="lst w"><span class="d"></span>No quotes · ${l.ref||''}</span>`
+          : st==='cancelled'?'<span class="lst x"><span class="d"></span>Cancelled</span>'
+          : '<span class="lst c"><span class="d"></span>Closed</span>';
+        // ROW ACTIONS per line state (the edge-case handling)
+        let act='';
+        if(st==='available'){
+          act=`<button class="danger" onclick="lineAct('${pr.id}',${i},'cancel')">Cancel line</button>`;
+        } else if(st==='noquote'){
+          act=`<button class="go" onclick="lineAct('${pr.id}',${i},'release')">Release for re-sourcing</button>
+               <button class="danger" onclick="lineAct('${pr.id}',${i},'cancel')">Cancel line</button>`;
+        } else if(st==='rfq'){
+          act=`<span class="hint">Locked to ${l.ref||'RFQ'} (live)</span>`;
+        } else if(st==='awarded'){
+          act=`<span class="hint">Awarded — PO issued</span>`;
+        } else if(st==='cancelled'){
+          act=`<button class="go" onclick="lineAct('${pr.id}',${i},'reopen')">Re-open</button>`;
+        }
+        lr+=`<tr style="background:#fbfbf9"><td style="padding-left:30px"><span class="code">${l.code}</span></td>
+          <td colspan="2">${l.item}</td>
+          <td class="amt">${l.qty} ${l.uom}</td>
+          <td class="amt">${fmt(l.qty*l.rate)}</td>
+          <td>${chip}</td>
+          <td class="rowact">${act}</td></tr>`;
+      });
+      rows+=`<tr><td colspan="8" style="padding:0">
+        <table style="margin:0"><thead><tr><th>Item code</th><th colspan="2">Description</th><th class="amt">Qty</th><th class="amt">Est. amount</th><th>Line status</th><th>Action</th></tr></thead>
+        <tbody>${lr}</tbody></table></td></tr>`;
+    }
+  });
+
+  const view=S.prView||'table';
+  const toggle=`<div class="vtoggle">
+      <button class="${view==='table'?'on':''}" onclick="prSetView('table')">${I('doc')} Table</button>
+      <button class="${view==='kanban'?'on':''}" onclick="prSetView('kanban')">${I('box')} Kanban</button>
+    </div>`;
+
+  const tableHTML=`<div class="card rq"><table>
+      <thead><tr><th>PR #</th><th>Requestor</th><th>Dept</th><th>Category</th><th>Required by</th><th>PR status</th><th>Lines</th><th>Action</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>`;
+
+  document.getElementById('pane').innerHTML=`
+    <div class="pagehead"><div>
+      <h1>Requisitions</h1>
+      <p>All PRs — seeded (NetSuite-origin) and portal-created. Expand a PR to act on individual lines. Header + open lines are editable; sourced/awarded lines are read-only.</p>
+    </div><span class="spacer"></span>${toggle}<button class="btn btn-pri" onclick="renderPrFormFor(null)">${I('plus')} Create PR</button></div>
+
+    ${view==='kanban'?prKanban():tableHTML}
+
+    <div class="specnote"><b>Line lifecycle (the edge cases):</b>
+      <br>• <b>Open</b> → can Cancel line, or source into RFQ.
+      <br>• <b>No quotes</b> (no vendor bid this line) → <b>Release for re-sourcing</b> (back to Open, link marked Returned + reason) or Cancel.
+      <br>• <b>In RFQ (live)</b> → locked; release only happens via RFQ cancel / no-award / residual.
+      <br>• <b>Awarded</b> → terminal in v1 (awarded-rebid deferred — needs PO cancel).
+      <br>• <b>Cancelled</b> → Re-open returns it to Open.
+      <br>Every transition writes an AuditEntry; release/cancel capture a <b>reason</b>.</div>
+  `;
+}
+function prSetView(v){ S.prView=v; renderPrList(); }
+
+/* Kanban: columns by PR header status (mirrors RfqList kanban) */
+function prKanban(){
+  const cols=[
+    ['draft','Draft'],['submitted','Submitted'],['part','Partially sourced'],
+    ['sourced','Sourced'],['cancelled','Cancelled']
+  ];
+  const colHTML=cols.map(([key,label])=>{
+    const items=DATA.prs.filter(p=>p.status===key);
+    const cards=items.map(pr=>{
+      const ol=openLines(pr).length;
+      const total=pr.lines.reduce((s,l)=>s+(+l.qty||0)*(+l.rate||0),0);
+      const a=pr.lines.filter(l=>l.status==='available').length;
+      const r=pr.lines.filter(l=>l.status==='rfq').length;
+      const other=pr.lines.length-a-r;
+      let dots='';
+      if(a)dots+=`<span class="lst a"><span class="d"></span>${a}</span> `;
+      if(r)dots+=`<span class="lst r"><span class="d"></span>${r}</span> `;
+      if(other)dots+=`<span class="lst c"><span class="d"></span>${other}</span>`;
+      return `<div class="kcard" onclick="renderPrFormFor('${pr.id}')">
+        <div class="kc-top"><span class="prid">${pr.id}</span><span class="needby">${I('clock')} ${pr.need}</span></div>
+        <div class="kc-memo">${pr.memo||''}</div>
+        <div class="kc-meta">${pr.requestor} · ${pr.dept}</div>
+        <div class="kc-foot"><span class="kc-lines">${dots||'<span class="hint">—</span>'}</span><span class="kc-val">${fmt(total)}</span></div>
+      </div>`;
+    }).join('') || `<div class="kempty">—</div>`;
+    return `<div class="kcol">
+      <div class="kcol-h">${label}<span class="kcount">${items.length}</span></div>
+      <div class="kcol-b">${cards}</div>
+    </div>`;
+  }).join('');
+  return `<div class="kanban">${colHTML}</div>`;
+}
+function prToggle(id){ S.expand['L'+id]=!S.expand['L'+id]; renderPrList(); }
+
+function lineAct(prId,i,action){
+  const pr=DATA.prs.find(p=>p.id===prId); const l=pr.lines[i];
+  if(action==='cancel'){
+    showModal('Cancel line',
+      `<p>Cancel <b>${l.item}</b> (<span class="code">${l.code}</span>, ${l.qty} ${l.uom})?</p>
+       <p class="hint">The demand is withdrawn. This is terminal for the line.</p>
+       <label class="field"><span style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:700">Reason</span><textarea class="reason" id="rsn" placeholder="e.g. Duplicate of PR-2026-0423 / no longer required"></textarea></label>`,
+      [{label:'Keep line',cls:'btn-ghost',fn:closeModal},
+       {label:'Cancel line',cls:'btn-danger',fn:()=>{l.status='cancelled'; recomputePr(pr); closeModal(); renderPrList();}}]);
+  }
+  if(action==='release'){
+    showModal('Release for re-sourcing',
+      `<p>Release <b>${l.item}</b> back to <b>Open</b> so it can go into a new RFQ?</p>
+       <p class="hint">Its previous sourcing link to ${l.ref||'the RFQ'} is marked <b>Returned</b>; provenance is preserved for audit/analytics.</p>
+       <label class="field"><span style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:700">Reason</span><textarea class="reason" id="rsn" placeholder="e.g. No vendor quoted this line"></textarea></label>`,
+      [{label:'Cancel',cls:'btn-ghost',fn:closeModal},
+       {label:'Release to Open',cls:'btn-pri',fn:()=>{l.status='available'; delete l.ref; recomputePr(pr); closeModal(); renderPrList();}}]);
+  }
+  if(action==='reopen'){
+    l.status='available'; recomputePr(pr); renderPrList();
+  }
+}
+function recomputePr(pr){
+  const has=s=>pr.lines.some(l=>l.status===s);
+  const allCancelled=pr.lines.every(l=>l.status==='cancelled');
+  if(allCancelled){pr.status='cancelled';return;}
+  const open=pr.lines.some(l=>l.status==='available');
+  const sourced=pr.lines.some(l=>['rfq','awarded'].includes(l.status));
+  pr.status = sourced&&open?'part' : sourced?'sourced' : 'submitted';
+}
+
+/* =====================================================================
+   DEMO 3 — CREATE / EDIT PR FORM
+   ===================================================================== */
+let formPr=null;
+function renderPrForm(){ renderPrFormFor(formPr?formPr.id:null); }
+function renderPrFormFor(id){
+  // switch the active tab visual
+  document.querySelectorAll('.tabs button').forEach((b,ix)=>b.classList.toggle('on', ix===2));
+  formPr = id ? JSON.parse(JSON.stringify(DATA.prs.find(p=>p.id===id))) : {
+    id:'(new)', requestor:'', dept:'', loc:'', memo:'', job:'', cat:'', need:'', status:'draft',
+    lines:[{item:'',code:'',qty:'',uom:'',rate:'',status:'available'}]
+  };
+  drawForm();
+}
+function drawForm(){
+  const pr=formPr;
+  const isNew = pr.id==='(new)';
+  const lineRows=pr.lines.map((l,i)=>{
+    const ro = l.status!=='available' && !isNew;     // committed lines read-only
+    const lockchip = ro? `<span class="lockchip">${I('lock')} ${l.status==='rfq'?('In '+(l.ref||'RFQ')):l.status==='awarded'?'Awarded':l.status}</span>` : '';
+    return `<tr>
+      <td><input ${ro?'class="ro" readonly':''} value="${l.code||''}" placeholder="ITEM-CODE" oninput="formLine(${i},'code',this.value)"></td>
+      <td><input ${ro?'class="ro" readonly':''} value="${(l.item||'').replace(/"/g,'&quot;')}" placeholder="Description" oninput="formLine(${i},'item',this.value)"></td>
+      <td><input class="amt ${ro?'ro':''}" ${ro?'readonly':''} value="${l.qty||''}" placeholder="0" oninput="formLine(${i},'qty',this.value)"></td>
+      <td><input ${ro?'class="ro" readonly':''} value="${l.uom||''}" placeholder="Unit" oninput="formLine(${i},'uom',this.value)"></td>
+      <td><input class="amt ${ro?'ro':''}" ${ro?'readonly':''} value="${l.rate||''}" placeholder="0" oninput="formLine(${i},'rate',this.value)"></td>
+      <td>${ro?lockchip:`<button class="rowact" onclick="formDelLine(${i})"><button class="danger">Remove</button></button>`}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('pane').innerHTML=`
+    <div class="crumb"><a onclick="document.querySelectorAll('.tabs button')[1].click()">Requisitions</a> ${I('chev')} <span>${isNew?'New PR':pr.id}</span></div>
+    <div class="pagehead"><div>
+      <h1>${isNew?'Create Purchase Requisition':'Edit '+pr.id}</h1>
+      <p>${isNew?'Raise a PR directly in the portal — same fields as a NetSuite-origin PR.':'Header and open lines are editable. Sourced / awarded lines are locked.'}</p>
+    </div><span class="spacer"></span>${isNew?'':prStatusBadge(pr.status)}</div>
+
+    <div class="formcard">
+      <h3>Header</h3>
+      <div class="frow">
+        <div class="field"><label>Requestor</label><input value="${pr.requestor||''}" oninput="formH('requestor',this.value)" placeholder="Name"></div>
+        <div class="field"><label>Department</label><input value="${pr.dept||''}" oninput="formH('dept',this.value)" placeholder="e.g. Maintenance"></div>
+        <div class="field"><label>Category</label><input value="${pr.cat||''}" oninput="formH('cat',this.value)" placeholder="e.g. Piping"></div>
+      </div>
+      <div class="frow">
+        <div class="field"><label>Location</label><input value="${pr.loc||''}" oninput="formH('loc',this.value)" placeholder="e.g. Bintulu Plant"></div>
+        <div class="field"><label>Job / Cost ref</label><input value="${pr.job||''}" oninput="formH('job',this.value)" placeholder="JOB-…"></div>
+        <div class="field"><label>Required by</label><input value="${pr.need||''}" oninput="formH('need',this.value)" placeholder="dd/mm/yyyy"></div>
+      </div>
+      <div class="field"><label>Memo / Justification</label><input value="${(pr.memo||'').replace(/"/g,'&quot;')}" oninput="formH('memo',this.value)" placeholder="Short description of the requirement"></div>
+    </div>
+
+    <div class="formcard">
+      <h3>Lines</h3>
+      <table class="lineedit">
+        <thead><tr><th style="width:18%">Item code</th><th>Description</th><th class="amt" style="width:10%">Qty</th><th style="width:10%">UoM</th><th class="amt" style="width:12%">Est. rate</th><th style="width:12%"></th></tr></thead>
+        <tbody>${lineRows}</tbody>
+      </table>
+      <button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="formAddLine()">${I('plus')} Add line</button>
+      <div class="note" style="margin-top:10px">${I('eye')} Estimated total: <b style="font-family:var(--mono)">${fmt(pr.lines.reduce((s,l)=>s+(+l.qty||0)*(+l.rate||0),0))}</b></div>
+    </div>
+
+    <div style="display:flex;gap:10px">
+      ${isNew
+        ? `<button class="btn btn-ghost" onclick="formSave('draft')">Save draft</button><button class="btn btn-pri" onclick="formSave('submitted')">Submit PR</button>`
+        : `<button class="btn btn-pri" onclick="formSave('keep')">Save changes</button>
+           ${pr.status==='submitted'||pr.status==='draft'?`<button class="btn btn-out" onclick="document.querySelectorAll('.tabs button')[0].click()">${I('rfq')} Source these lines</button>`:''}`}
+      <span class="spacer"></span>
+      ${(!isNew && pr.lines.every(l=>['available','cancelled'].includes(l.status)))
+        ? `<button class="btn btn-danger" onclick="formCancelPr()">Cancel PR</button>` : ''}
+    </div>
+
+    <div class="specnote"><b>Editability rule:</b> the header and <b>Open</b> lines are editable; <b>InRfq / Awarded</b> lines render read-only (committed). New lines can be added to any non-cancelled PR. A PR can only be cancelled when no line is live in an RFQ or awarded. Seeded PRs use this same form — nothing special about portal-created vs NetSuite-origin once it exists.</div>
+  `;
+}
+function formH(k,v){ formPr[k]=v; }
+function formLine(i,k,v){ formPr.lines[i][k]= (k==='qty'||k==='rate')? v.replace(/[^0-9.]/g,''): v; const t=document.querySelector('.note b'); if(t)t.textContent=fmt(formPr.lines.reduce((s,l)=>s+(+l.qty||0)*(+l.rate||0),0)); }
+function formAddLine(){ formPr.lines.push({item:'',code:'',qty:'',uom:'',rate:'',status:'available'}); drawForm(); }
+function formDelLine(i){ formPr.lines.splice(i,1); drawForm(); }
+function formSave(mode){
+  showModal('Saved (mock)', `<p>In the real app this would <b>${mode==='draft'?'save as Draft':mode==='submitted'?'submit the PR':'save changes'}</b> via <span class="code">POST/PUT /api/requisitions</span>, generate the PR code from the server sequence, and write an AuditEntry.</p>`,
+   [{label:'OK',cls:'btn-pri',fn:()=>{closeModal(); document.querySelectorAll('.tabs button')[1].click();}}]);
+}
+function formCancelPr(){
+  showModal('Cancel PR', `<p>Cancel <b>${formPr.id}</b> and all its open lines?</p><label class="field"><span style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:700">Reason</span><textarea class="reason"></textarea></label>`,
+   [{label:'Keep',cls:'btn-ghost',fn:closeModal},{label:'Cancel PR',cls:'btn-danger',fn:()=>{closeModal(); document.querySelectorAll('.tabs button')[1].click();}}]);
+}
+
+/* =====================================================================
+   MODAL
+   ===================================================================== */
+function showModal(title, body, buttons){
+  const btns=buttons.map((b,i)=>`<button class="btn ${b.cls}" data-i="${i}">${b.label}</button>`).join('');
+  document.getElementById('modalhost').innerHTML=`<div class="scrim" onclick="closeModal()"></div>
+    <div class="modal"><div class="mh">${title}</div><div class="mb">${body}</div><div class="mf">${btns}</div></div>`;
+  document.querySelectorAll('.modal .mf .btn').forEach((el,i)=>el.onclick=buttons[i].fn);
+}
+function closeModal(){ document.getElementById('modalhost').innerHTML=''; }
+
+/* boot */
+renderConsolidate();
+</script>
+</body>
+</html>

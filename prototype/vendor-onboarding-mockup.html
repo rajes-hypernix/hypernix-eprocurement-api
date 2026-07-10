@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>eProcure — Vendor Onboarding (Concept)</title>
+<!--
+  VENDOR ONBOARDING — behavioural prototype / oracle.
+  Buyer: Vendor Master -> New Vendor (Enter manually | Invite vendor) -> invite with
+  selectable question packs -> Onboarding queue -> Review (Approve / Reject / batched
+  Clarification). Vendor (magic link): one unified multi-section form with LIVE financial
+  scoring (Altman Z', ported from the first prototype) -> Submit -> resubmit only flagged
+  items. Staging application is separate from the vendor master until approval.
+  Self-contained vanilla JS. eProcure idiom. Logic is the oracle; Claude Code uses the real
+  style package for visuals.
+-->
+<style>
+  :root{
+    --teal:#336377;--teal-d:#27505f;--teal-l:#5a8298;
+    --cream:#F4F1EC;--card:#fff;--ink:#2b2b2b;--muted:#7d8a93;
+    --line:#e7e2da;--soft:#f7f5f1;
+    --amber:#E08A3C;--amber-bg:#FBEFDF;--green:#3f8f5f;--green-bg:#E7F2EB;
+    --red:#C5564B;--red-bg:#FBE9E7;--blue:#3b6ea5;--blue-bg:#E8F0F8;--plum:#7C6A86;--plum-bg:#EFEAF1;
+    --radius:12px;--shadow:0 1px 2px rgba(40,70,84,.05),0 2px 10px rgba(40,70,84,.05);
+    --shadow-l:0 12px 30px rgba(40,70,84,.16);
+    --sans:'Inter',-apple-system,'Segoe UI',Roboto,Arial,sans-serif;--serif:Georgia,serif;--mono:'JetBrains Mono',Menlo,monospace;
+  }
+  *{box-sizing:border-box}html,body{margin:0}
+  body{font-family:var(--sans);background:var(--cream);color:var(--ink);font-size:14px;line-height:1.45}
+  button{font-family:inherit;cursor:pointer}
+  .num{font-variant-numeric:tabular-nums}.mono{font-family:var(--mono)}.hidden{display:none!important}
+  .topbar{height:58px;background:var(--teal);color:#fff;display:flex;align-items:center;padding:0 20px;gap:16px;position:sticky;top:0;z-index:50}
+  .brand{display:flex;align-items:center;gap:11px;font-weight:700;font-size:16px}
+  .brand .logo{width:32px;height:32px;background:rgba(255,255,255,.14);border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:18px}
+  .brand small{font-weight:500;opacity:.72;font-size:11px;display:block}
+  .spacer{flex:1}
+  .roleswitch{display:inline-flex;background:rgba(255,255,255,.12);border-radius:9px;padding:3px}
+  .roleswitch button{background:transparent;border:0;color:#dceaee;font-size:12.5px;font-weight:600;padding:6px 13px;border-radius:7px}
+  .roleswitch button.on{background:#fff;color:var(--teal)}
+  .ava{width:32px;height:32px;border-radius:50%;background:#cfe0e6;color:var(--teal-d);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px}
+
+  .shell{display:flex;min-height:calc(100vh - 58px)}
+  .side{width:222px;background:#fff;border-right:1px solid var(--line);padding:16px 12px;flex-shrink:0}
+  .side .grp{font-size:10.5px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin:14px 10px 6px;font-weight:700}
+  .nav{display:flex;align-items:center;gap:11px;padding:9px 12px;border-radius:9px;color:#54606a;font-weight:600;font-size:13.5px;margin-bottom:2px}
+  .nav svg{width:17px;height:17px;opacity:.8}
+  .nav:hover{background:var(--soft)}.nav.on{background:var(--teal);color:#fff}.nav.on svg{opacity:1}
+  .nav .tag{margin-left:auto;background:var(--amber);color:#fff;font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:9px}
+  .main{flex:1;padding:24px 30px 70px;max-width:1180px;width:100%;min-width:0}
+  .full .main{max-width:940px;margin:0 auto}
+
+  .crumb{font-size:12.5px;color:var(--muted);margin-bottom:10px}.crumb a{color:var(--teal);font-weight:600;cursor:pointer}
+  .pagehead{display:flex;align-items:flex-start;gap:16px;margin-bottom:20px}
+  .pagehead h1{font-family:var(--serif);font-size:23px;margin:0 0 3px;font-weight:600}
+  .pagehead p{margin:0;color:var(--muted);font-size:13px;max-width:70ch}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:16px}
+  .chead{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+  .chead h3{margin:0;font-size:15px}.chead .sub{color:var(--muted);font-size:12px}
+  .cbody{padding:16px 18px}
+  .grid{display:grid;gap:14px}.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:1fr 1fr 1fr}.g4{grid-template-columns:repeat(4,1fr)}
+  .btn{border:none;border-radius:9px;padding:9px 15px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:7px}
+  .btn svg{width:15px;height:15px}
+  .btn-pri{background:var(--teal);color:#fff}.btn-pri:hover{background:var(--teal-d)}.btn-pri:disabled{background:#cfcabf;cursor:not-allowed}
+  .btn-out{background:#fff;color:#445;border:1px solid var(--line)}.btn-out:hover{background:var(--soft)}
+  .btn-amber{background:var(--amber);color:#fff}.btn-red{background:var(--red);color:#fff}
+  .btn-ghost{background:transparent;color:var(--teal);padding:7px 10px}.btn-ghost:hover{background:var(--soft)}
+  .btn-sm{padding:6px 11px;font-size:12px}
+  .link{color:var(--teal);font-weight:700;cursor:pointer;font-size:12.5px}.link:hover{text-decoration:underline}
+  .badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px}
+  .b-amber{background:var(--amber-bg);color:#9a5a1c}.b-green{background:var(--green-bg);color:#256b41}.b-red{background:var(--red-bg);color:#9c3a30}
+  .b-teal{background:#e3edf0;color:var(--teal-d)}.b-grey{background:var(--soft);color:var(--muted)}.b-blue{background:var(--blue-bg);color:#2a527c}.b-plum{background:var(--plum-bg);color:#5b4a66}
+  table{width:100%;border-collapse:collapse}
+  th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding:10px 14px;border-bottom:1px solid var(--line);font-weight:700;background:var(--soft)}
+  td{padding:11px 14px;border-bottom:1px solid var(--line);font-size:13px;vertical-align:middle}
+  tr:last-child td{border-bottom:0}
+  .amt{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:12.5px}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:11.5px;font-weight:600;color:#5a6670;margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px}
+  .field .req{color:var(--red)}
+  input,select,textarea{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:9px;font-family:inherit;font-size:13px;background:#fff;color:var(--ink)}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px rgba(51,99,119,.13)}
+  input:disabled{background:var(--soft);color:var(--muted)}
+  .hint{color:var(--muted);font-size:12px}
+  .ribbon{display:flex;gap:10px;align-items:center;background:linear-gradient(90deg,#eaf1f3,#f4f1ec);border:1px solid #d9e3e6;border-radius:12px;padding:11px 15px;font-size:12.5px;color:var(--teal-d);margin-bottom:18px}
+  .ribbon.warn{background:var(--amber-bg);border-color:#f0d9bf;color:#9a5a1c}
+  .ribbon.ok{background:var(--green-bg);border-color:#bfe0cc;color:#256b41}
+  .swec{display:inline-flex;align-items:center;gap:5px;background:#eef3f1;border:1px solid #d8e6e0;color:#2f6d56;font-size:11px;font-weight:700;padding:3px 8px;border-radius:7px;margin:0 5px 5px 0}
+  .stat{padding:14px 16px}.stat .lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:700}
+  .stat .num{font-family:var(--serif);font-size:26px;font-weight:600;margin-top:5px;color:var(--teal)}.stat .sub{font-size:11.5px;color:var(--muted);margin-top:3px}
+  .empty{padding:34px;text-align:center;color:var(--muted)}
+  .kv{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--line)}.kv:last-child{border-bottom:0}.kv .k{color:var(--muted);font-size:12.5px}.kv .v{font-weight:600;text-align:right}
+
+  /* chooser */
+  .choose{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .choice{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:24px;cursor:pointer;transition:.14s;box-shadow:var(--shadow)}
+  .choice:hover{box-shadow:var(--shadow-l);transform:translateY(-2px);border-color:#cfe0e5}
+  .choice .ci{width:44px;height:44px;border-radius:11px;background:var(--soft);display:flex;align-items:center;justify-content:center;color:var(--teal);margin-bottom:14px}
+  .choice .ci svg{width:22px;height:22px}
+  .choice h3{margin:0 0 6px;font-size:16px}.choice p{margin:0;color:var(--muted);font-size:13px}
+
+  /* onboarding form layout */
+  .obwrap{display:flex;gap:22px}
+  .obside{width:230px;flex-shrink:0}
+  .obstep{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:9px;font-size:13px;font-weight:600;color:#5a6670;cursor:pointer;margin-bottom:2px}
+  .obstep:hover{background:#fff}.obstep.on{background:#fff;box-shadow:var(--shadow);color:var(--teal)}
+  .obstep .n{width:22px;height:22px;border-radius:50%;background:var(--soft);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--muted);flex:none}
+  .obstep.on .n{background:var(--teal);color:#fff}.obstep.done .n{background:var(--green);color:#fff}
+  .obmain{flex:1;min-width:0}
+  .q{margin-bottom:16px}.q .qt{font-size:13.5px;font-weight:600;margin-bottom:7px}
+  .yn{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+  .yn button{background:#fff;border:0;padding:7px 16px;font-size:12.5px;font-weight:600;color:#5a6670;border-right:1px solid var(--line)}
+  .yn button:last-child{border-right:0}.yn button.on{background:var(--teal);color:#fff}
+  .doc{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}.doc:last-child{border-bottom:0}
+  .doc .di{width:30px;height:30px;border-radius:8px;background:var(--soft);display:flex;align-items:center;justify-content:center;color:var(--teal);flex:none}
+  .doc .dn{flex:1;font-size:13px;font-weight:600}
+  .filepill{display:inline-flex;align-items:center;gap:6px;background:var(--green-bg);color:#256b41;font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:7px}
+
+  /* toast */
+  #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#26333b;color:#fff;padding:11px 18px;border-radius:10px;font-size:13px;box-shadow:var(--shadow-l);z-index:99;opacity:0;transition:.2s;pointer-events:none}
+  #toast.show{opacity:1}
+  /* drawer */
+  #drawer{position:fixed;inset:0;background:rgba(20,30,36,.4);z-index:80;display:none}
+  #drawer.show{display:block}
+  .drawer-panel{position:absolute;right:0;top:0;bottom:0;width:min(560px,94vw);background:var(--cream);box-shadow:var(--shadow-l);overflow-y:auto;padding:20px 22px}
+  .drawer-panel h2{font-family:var(--serif);font-size:19px;margin:0 0 2px}
+  /* sticky action bar */
+  .actionbar{position:sticky;bottom:0;background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 -4px 16px rgba(40,70,84,.08);padding:12px 16px;display:flex;align-items:center;gap:10px;margin-top:16px}
+  .clarflag{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)}
+  .comp{width:100%;border-collapse:collapse}.comp th,.comp td{padding:8px 10px;border-bottom:1px solid var(--line);font-size:12.5px}
+  @media(max-width:1000px){.g2,.g3,.g4,.choose{grid-template-columns:1fr}.obwrap{flex-direction:column}.obside{width:100%}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="brand"><span class="logo">e</span><div>Hypernix eProcure<small>Vendor Onboarding · concept</small></div></div>
+  <span class="spacer"></span>
+  <div class="roleswitch">
+    <button id="rB" class="on" onclick="setRole('buyer')">Buyer view</button>
+    <button id="rV" onclick="setRole('vendor')">Vendor view</button>
+  </div>
+  <div class="ava" id="ava">FY</div>
+</div>
+<div class="shell" id="shell">
+  <nav class="side" id="side"></nav>
+  <main class="main" id="main"></main>
+</div>
+<div id="toast"></div>
+<div id="drawer" onclick="if(event.target.id==='drawer')closeDrawer()"><div class="drawer-panel" id="drawerBody"></div></div>
+
+<script>
+/* ===== icons ===== */
+function I(k,s){s=s||16;const p={
+ store:'<path d="M3 9l1-5h16l1 5"/><path d="M4 9v11h16V9"/><path d="M9 20v-6h6v6"/>',
+ inbox:'<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5 5h14l3 7v6H2v-6z"/>',
+ user:'<circle cx="12" cy="8" r="4"/><path d="M4 20a8 8 0 0 1 16 0"/>',
+ mail:'<rect x="3" y="5" width="18" height="14" rx="1"/><path d="M3 6l9 7 9-7"/>',
+ link:'<path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/>',
+ check:'<path d="M20 6L9 17l-5-5"/>',x:'<path d="M18 6L6 18M6 6l12 12"/>',
+ plus:'<path d="M12 5v14M5 12h14"/>',doc:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/>',
+ flag:'<path d="M4 22V4h13l-2 4 2 4H4"/>',chart:'<path d="M3 3v18h18"/><rect x="7" y="11" width="3" height="6"/><rect x="12" y="7" width="3" height="10"/>',
+ bank:'<path d="M3 21h18M4 10h16M12 3l9 6H3z"/><path d="M6 10v8M10 10v8M14 10v8M18 10v8"/>',
+ shield:'<path d="M12 2l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V5z"/>',
+ edit:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+ clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',chev:'<path d="M9 6l6 6-6 6"/>',up:'<path d="M12 19V5M5 12l7-7 7 7"/>'
+};return `<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p[k]||''}</svg>`;}
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2200);}
+function openDrawer(html){document.getElementById('drawerBody').innerHTML=html;document.getElementById('drawer').classList.add('show');}
+function closeDrawer(){document.getElementById('drawer').classList.remove('show');}
+function initials(n){return n.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();}
+
+/* ===== financial model (ported from first prototype) ===== */
+const FIN_ITEMS=[['Revenue','revenue'],['Net profit','netProfit'],['EBIT','ebit'],['Total assets','totalAssets'],['Current assets','currentAssets'],['Inventory','inventory'],['Current liabilities','currentLiab'],['Total liabilities','totalLiab'],['Shareholders\u2019 equity','equity'],['Retained earnings','retainedEarnings'],['Fixed assets','fixedAssets']];
+const FIN_W=[0.2,0.3,0.5];
+const RATIO_META=[['current','Current ratio','x'],['quick','Quick ratio','x'],['debt','Debt ratio','%'],['gearing','Gearing (D/E)','x'],['npm','Net profit margin','%'],['roce','Return on capital employed','%'],['fat','Fixed-asset turnover','x'],['tat','Total-asset turnover','x']];
+function ratiosFor(d,i){const CA=d.currentAssets[i],CL=d.currentLiab[i],INV=d.inventory[i],TA=d.totalAssets[i],TL=d.totalLiab[i],EQ=d.equity[i],REV=d.revenue[i],NP=d.netProfit[i],EBIT=d.ebit[i],FA=d.fixedAssets[i];
+  return {current:CA/CL,quick:(CA-INV)/CL,debt:TL/TA,gearing:TL/EQ,npm:NP/REV,roce:EBIT/(TA-CL),fat:REV/FA,tat:REV/TA};}
+function altmanZ(d,i){const CA=d.currentAssets[i],CL=d.currentLiab[i],TA=d.totalAssets[i],TL=d.totalLiab[i],EQ=d.equity[i],REV=d.revenue[i],EBIT=d.ebit[i],RE=d.retainedEarnings[i];
+  const X1=(CA-CL)/TA,X2=RE/TA,X3=EBIT/TA,X4=EQ/TL,X5=REV/TA;return 0.717*X1+0.847*X2+3.107*X3+0.420*X4+0.998*X5;}
+function weighted(a){return a.reduce((s,v,i)=>s+v*FIN_W[i],0);}
+function bandFor(z){if(z>=2.9)return{band:'A',risk:'Low',zone:'Safe zone',cls:'b-green'};if(z>=2.0)return{band:'B',risk:'Low\u2013Medium',zone:'Safe / grey',cls:'b-teal'};if(z>=1.23)return{band:'C',risk:'Medium',zone:'Grey zone',cls:'b-amber'};return{band:'D',risk:'High',zone:'Distress zone',cls:'b-red'};}
+function scoreFor(z){return Math.max(5,Math.min(99,Math.round(z/4.5*100)));}
+function bandStatement(b){return{A:'Financially sound across the review period with strong liquidity, solvency and consistent profitability. Recommended for registration without financial conditions.',B:'Generally stable financial position with adequate liquidity and acceptable gearing. Recommended for registration; a routine annual financial review is advised.',C:'Moderate financial risk \u2014 weakening liquidity and rising gearing over the period. Recommend conditional registration with enhanced annual monitoring.',D:'Elevated financial-distress indicators with the Z-score in the distress zone. Recommend conditional registration subject to a performance bond / bank guarantee and close monitoring.'}[b];}
+function fmtRatio(v,f){if(v==null||isNaN(v)||!isFinite(v))return '\u2014';return f==='%'?(v*100).toFixed(1)+'%':v.toFixed(2)+'\u00d7';}
+function fmtK(n){return (n<0?'(':'')+Math.abs(Math.round(n)).toLocaleString('en-MY')+(n<0?')':'');}
+function blankFin(){return Object.fromEntries(FIN_ITEMS.map(it=>[it[1],[0,0,0]]));}
+function computeFin(d){const zs=[0,1,2].map(i=>altmanZ(d,i));const zW=weighted(zs);return{zs,zW,bd:bandFor(zW),score:scoreFor(zW)};}
+
+/* ===== question packs (STARTER SET — buyer prunes) ===== */
+const PACKS={
+  hse:{name:'Health, Safety & Environment',icon:'shield',q:[
+    {id:'hse1',t:'yn',q:'Do you maintain a documented HSE policy?'},
+    {id:'hse2',t:'num',q:'Lost-time incidents in the last 3 years'},
+    {id:'hse3',t:'text',q:'HSE certification held (e.g. ISO 45001)'}]},
+  quality:{name:'Quality & Certification',icon:'check',q:[
+    {id:'ql1',t:'yn',q:'ISO 9001:2015 certified?'},
+    {id:'ql2',t:'sel',q:'CIDB grade',opts:['\u2014','G1','G2','G3','G4','G5','G6','G7']},
+    {id:'ql3',t:'text',q:'Other relevant certifications'}]},
+  capability:{name:'Capability & Capacity',icon:'chart',q:[
+    {id:'cp1',t:'num',q:'Years in operation'},
+    {id:'cp2',t:'num',q:'Number of technical personnel'},
+    {id:'cp3',t:'area',q:'Major equipment / facilities'}]},
+  references:{name:'Client References',icon:'user',q:[
+    {id:'rf1',t:'text',q:'Reference 1 \u2014 client & project'},
+    {id:'rf2',t:'text',q:'Reference 2 \u2014 client & project'},
+    {id:'rf3',t:'text',q:'Reference 3 \u2014 client & project'}]},
+  compliance:{name:'Compliance & Declarations',icon:'flag',q:[
+    {id:'dc1',t:'yn',q:'Any conflict of interest with SPSB staff?'},
+    {id:'dc2',t:'yn',q:'Ongoing litigation that could affect delivery?'},
+    {id:'dc3',t:'yn',q:'Agree to SPSB anti-bribery & code of conduct?'}]},
+};
+const DOC_LIST=[
+  {id:'ssm',n:'SSM / CCM Registration',req:'all'},
+  {id:'iso',n:'ISO 9001:2015 Certificate',req:'opt',exp:true},
+  {id:'cidb',n:'CIDB Grade Certificate',req:'opt',exp:true},
+  {id:'bank',n:'Bank Confirmation Letter',req:'all'},
+  {id:'acct',n:'Audited Accounts (3 years)',req:'nonswec'},
+  {id:'swec',n:'PETRONAS SWEC Certificate',req:'swec'},
+];
+
+/* ===== state ===== */
+const LC={Draft:'Draft',Invited:'Invited',InProgress:'In progress',Submitted:'Submitted',UnderReview:'Under review',ClarificationRequested:'Clarification requested',Resubmitted:'Resubmitted',Approved:'Approved',Rejected:'Rejected'};
+const statusCls={Invited:'b-grey',InProgress:'b-blue',Submitted:'b-amber',UnderReview:'b-plum',ClarificationRequested:'b-amber',Resubmitted:'b-blue',Approved:'b-green',Rejected:'b-red',Draft:'b-grey'};
+let AID=1000;
+function mkApp(o){return Object.assign({id:'VOB-2026-'+(++AID),name:'',type:'Non-SWEC',status:'Invited',source:'SelfService',email:'',reg:'',loc:'',contact:'',bank:{bank:'',acct:'',swift:''},cats:[],fin:blankFin(),answers:{},docs:{},packs:['hse','quality','references','compliance'],rounds:[],created:'01/07/2026'},o);}
+
+const MASTER=[
+  {name:'Sentausa Engineering Sdn Bhd',type:'SWEC',reg:'SWK-V-10293',status:'Registered',loc:'Shah Alam'},
+  {name:'Pantai Valve & Fitting',type:'SWEC',reg:'SWK-V-10410',status:'Registered',loc:'Klang'},
+  {name:'KL Industrial Supplies',type:'Non-SWEC',reg:'1099282-K',status:'Registered',loc:'Petaling Jaya'},
+];
+const FIN_C={revenue:[18000,17000,16500],netProfit:[600,400,350],ebit:[1100,800,750],totalAssets:[20000,20500,21000],currentAssets:[9000,8800,8600],inventory:[3500,3800,4000],currentLiab:[7500,8200,8800],totalLiab:[13000,14000,14800],equity:[7000,6500,6200],retainedEarnings:[3000,2700,2400],fixedAssets:[8500,8800,9000]};
+const FIN_D={revenue:[9000,8200,7500],netProfit:[200,-150,-400],ebit:[450,100,-200],totalAssets:[11000,10800,10500],currentAssets:[5000,4600,4200],inventory:[2200,2400,2500],currentLiab:[5500,6000,6500],totalLiab:[8500,9200,9800],equity:[2500,1600,700],retainedEarnings:[900,500,100],fixedAssets:[5500,5800,6000]};
+
+const APPS=[
+  mkApp({id:'VOB-2026-0007',name:'Sarawak Flow Controls',type:'Non-SWEC',status:'Submitted',reg:'1188221-P',loc:'Bintulu',contact:'sales@swflow.com.my',email:'sales@swflow.com.my',bank:{bank:'Maybank',acct:'5141-2290-8831',swift:'MBBEMYKL'},cats:['E12','E15'],fin:JSON.parse(JSON.stringify(FIN_C)),answers:{hse1:'Yes',hse2:'1',ql1:'Yes',ql2:'G7',cp1:'12',rf1:'Petronas Carigali — Bintulu tie-in',dc3:'Yes'},docs:{ssm:'SSM_Form.pdf',bank:'Bank_Letter.pdf',acct:'Audited_FY25.pdf'},created:'29/06/2026'}),
+  mkApp({id:'VOB-2026-0006',name:'Delta Gas Detection',type:'Non-SWEC',status:'ClarificationRequested',reg:'1042771-T',loc:'Kuantan',email:'admin@deltagas.my',bank:{bank:'CIMB',acct:'8009-4421-1190',swift:'CIBBMYKL'},cats:['S11','E21'],fin:JSON.parse(JSON.stringify(FIN_C)),answers:{hse1:'Yes',ql1:'No'},docs:{ssm:'SSM.pdf',bank:'Bank.pdf'},rounds:[{no:1,dir:'BuyerToVendor',status:'Open',by:'Faridah Yusof',at:'30/06/2026',msg:'A few items before we can proceed.',items:[{topic:'ISO 9001 certificate',req:'Not attached — please upload a valid certificate.',resp:''},{topic:'Audited accounts (FY2025)',req:'Only FY2023\u201324 provided; add FY2025.',resp:''}]}],created:'27/06/2026'}),
+  mkApp({id:'VOB-2026-0005',name:'Borneo Rotating Equipment',type:'SWEC',status:'UnderReview',reg:'SWK-V-10920',loc:'Kuching',email:'proc@borneorotate.my',cats:['E07','E09'],docs:{ssm:'SSM.pdf',swec:'SWEC_Cert.pdf',bank:'Bank.pdf'},created:'28/06/2026'}),
+  mkApp({id:'VOB-2026-0004',name:'Titan MRO Supplies',type:'Non-SWEC',status:'Submitted',reg:'0992281-X',loc:'Miri',email:'sales@titanmro.my',bank:{bank:'RHB',acct:'2140-9983-2207',swift:'RHBBMYKL'},cats:['G01','E33'],fin:JSON.parse(JSON.stringify(FIN_D)),answers:{hse1:'No',ql1:'No',dc2:'Yes'},docs:{ssm:'SSM.pdf',bank:'Bank.pdf'},created:'26/06/2026'}),
+];
+
+const S={role:'buyer',screen:'master',appId:null,vendorAppId:null,obStep:0,clarMode:false,clarItems:[]};
+
+/* ===== sidebar ===== */
+function renderSide(){
+  if(S.role==='vendor'){document.getElementById('shell').classList.add('full');document.getElementById('side').classList.add('hidden');return;}
+  document.getElementById('shell').classList.remove('full');const sd=document.getElementById('side');sd.classList.remove('hidden');
+  const nav=(k,ic,lbl,tag)=>`<div class="nav ${S.screen===k||(k==='onboard'&&['onboard','invite','review','chooser','manual'].includes(S.screen))?'on':''}" onclick="go('${k}')">${I(ic)} <span>${lbl}</span>${tag?`<span class="tag">${tag}</span>`:''}</div>`;
+  const pending=APPS.filter(a=>!['Approved','Rejected'].includes(a.status)).length;
+  sd.innerHTML=`<div class="grp">Suppliers</div>${nav('master','store','Vendor Master')}${nav('onboard','inbox','Onboarding',pending)}`;
+}
+
+/* ===== router ===== */
+function go(scr){S.screen=scr;S.clarMode=false;render();}
+function setRole(r){S.role=r;S.screen=r==='buyer'?'master':(S.vendorAppId?'form':'link');document.getElementById('rB').classList.toggle('on',r==='buyer');document.getElementById('rV').classList.toggle('on',r==='vendor');document.getElementById('ava').textContent=r==='buyer'?'FY':'PV';render();}
+function render(){renderSide();const m=document.getElementById('main');
+  if(S.role==='vendor'){return ({link:vLink,form:vForm,submitted:vSubmitted,clarify:vClarify,approved:vApproved}[S.screen]||vLink)(m);}
+  ({master:bMaster,chooser:bChooser,manual:bManual,invite:bInvite,onboard:bQueue,review:bReview}[S.screen]||bMaster)(m);
+}
+function appById(id){return APPS.find(a=>a.id===id);}
+
+/* =========================================================
+ * BUYER
+ * =======================================================*/
+function bMaster(m){
+  m.innerHTML=`<div class="pagehead"><div><h1>Vendor Master</h1><p>The approved supplier register. New suppliers are onboarded before they appear here.</p></div><div class="spacer"></div><button class="btn btn-pri" onclick="go('chooser')">${I('plus')} New Vendor</button></div>
+  <div class="card"><div class="chead"><h3>Registered suppliers</h3><span class="sub">· ${MASTER.length}</span></div>
+    <table><thead><tr><th>Supplier</th><th>Type</th><th>Reg. no.</th><th>Location</th><th>Status</th></tr></thead><tbody>
+    ${MASTER.map(v=>`<tr><td style="font-weight:600">${v.name}</td><td>${v.type==='SWEC'?'<span class="badge b-teal">SWEC</span>':'<span class="badge b-amber">Non-SWEC</span>'}</td><td class="mono">${v.reg}</td><td>${v.loc}</td><td><span class="badge b-green">${v.status}</span></td></tr>`).join('')}
+    </tbody></table></div>`;
+}
+function bChooser(m){
+  m.innerHTML=`<div class="crumb"><a onclick="go('master')">Vendor Master</a> ${I('chev',12)} New Vendor</div>
+  <div class="pagehead"><div><h1>New Vendor</h1><p>Add a supplier yourself, or invite them to complete onboarding through the portal.</p></div></div>
+  <div class="choose">
+    <div class="choice" onclick="go('manual')"><div class="ci">${I('edit',22)}</div><h3>Enter manually</h3><p>You key in the supplier's details now. Added straight to the master \u2014 no approval step. Best for a known supplier you're setting up quickly.</p></div>
+    <div class="choice" onclick="go('invite')"><div class="ci">${I('mail',22)}</div><h3>Invite vendor</h3><p>Send a secure link. The vendor fills their own profile, financials and your selected questions, then it routes to you to review and approve.</p></div>
+  </div>`;
+}
+function bManual(m){
+  m.innerHTML=`<div class="crumb"><a onclick="go('master')">Vendor Master</a> ${I('chev',12)} <a onclick="go('chooser')">New Vendor</a> ${I('chev',12)} Enter manually</div>
+  <div class="pagehead"><div><h1>Enter vendor manually</h1><p>Added directly to the master \u2014 no approval in this version. An approval step can be switched on later via the workflow engine.</p></div></div>
+  <div class="card"><div class="cbody">
+    <div class="grid g2"><div class="field"><label>Registered name <span class="req">*</span></label><input id="mv_name" placeholder="e.g. Kuching Marine Services"></div>
+    <div class="field"><label>Type</label><select id="mv_type"><option>Non-SWEC</option><option>SWEC</option></select></div></div>
+    <div class="grid g3"><div class="field"><label>Reg. no. (SSM)</label><input id="mv_reg" placeholder="1234567-A"></div>
+    <div class="field"><label>Location</label><input id="mv_loc" placeholder="City"></div>
+    <div class="field"><label>Primary email</label><input id="mv_email" placeholder="name@company.my"></div></div>
+  </div></div>
+  <div class="actionbar"><span class="hint">Manual entries skip onboarding review.</span><div class="spacer" style="flex:1"></div><button class="btn btn-out" onclick="go('chooser')">Back</button><button class="btn btn-pri" onclick="mvSave()">${I('check')} Add to master</button></div>`;
+}
+function mvSave(){const n=document.getElementById('mv_name').value.trim();if(!n){toast('Enter the registered name');return;}
+  MASTER.unshift({name:n,type:document.getElementById('mv_type').value,reg:document.getElementById('mv_reg').value||'\u2014',status:'Registered',loc:document.getElementById('mv_loc').value||'\u2014'});
+  toast('Vendor added to master');go('master');}
+
+function bInvite(m){
+  m.innerHTML=`<div class="crumb"><a onclick="go('master')">Vendor Master</a> ${I('chev',12)} <a onclick="go('chooser')">New Vendor</a> ${I('chev',12)} Invite vendor</div>
+  <div class="pagehead"><div><h1>Invite vendor to onboard</h1><p>Compose one onboarding pack. Core profile, banking and documents are always included. Pick the question packs to add on top.</p></div></div>
+  <div class="card"><div class="chead"><h3>Invitation</h3></div><div class="cbody">
+    <div class="grid g2"><div class="field"><label>Vendor email <span class="req">*</span></label><input id="iv_email" placeholder="contact@vendor.my"></div>
+    <div class="field"><label>Vendor name (as known)</label><input id="iv_name" placeholder="e.g. Pacific Valve Sdn Bhd"></div></div>
+    <div class="field"><label>Registration type</label>
+      <div class="yn" id="iv_type"><button class="on" onclick="ivType('Non-SWEC',this)">Non-SWEC</button><button onclick="ivType('SWEC',this)">PETRONAS SWEC</button></div>
+      <div class="hint" id="iv_typehint" style="margin-top:7px">Non-SWEC \u2014 financial pre-qualification (ratios + Altman Z-score) is included automatically.</div>
+    </div>
+  </div></div>
+  <div class="card"><div class="chead"><h3>Question packs</h3><span class="sub">· added on top of core details</span></div><div class="cbody">
+    ${Object.entries(PACKS).map(([k,p])=>`<label class="clarflag" style="cursor:pointer"><input type="checkbox" class="ivpack" value="${k}" ${['hse','quality','references','compliance'].includes(k)?'checked':''} style="width:auto"><span style="color:var(--teal)">${I(p.icon,16)}</span><div style="flex:1"><div style="font-weight:600;font-size:13px">${p.name}</div><div class="hint">${p.q.length} questions</div></div></label>`).join('')}
+  </div></div>
+  <div class="card"><div class="chead"><h3>Documents requested</h3></div><div class="cbody">
+    ${DOC_LIST.map(d=>`<div class="doc"><div class="di">${I('doc',15)}</div><div class="dn">${d.n}</div><span class="badge ${d.req==='all'?'b-red':d.req==='opt'?'b-grey':'b-blue'}">${d.req==='all'?'Required':d.req==='opt'?'Optional':d.req==='swec'?'SWEC only':'Non-SWEC only'}</span></div>`).join('')}
+  </div></div>
+  <div class="actionbar"><span class="hint">${I('link',13)} A secure magic link (14-day expiry) is emailed \u2014 no password needed until approved.</span><div class="spacer" style="flex:1"></div><button class="btn btn-out" onclick="go('chooser')">Back</button><button class="btn btn-pri" onclick="ivSend()">${I('mail')} Generate & send link</button></div>`;
+  S._ivType='Non-SWEC';
+}
+function ivType(t,btn){S._ivType=t;[...document.querySelectorAll('#iv_type button')].forEach(b=>b.classList.remove('on'));btn.classList.add('on');
+  document.getElementById('iv_typehint').textContent=t==='SWEC'?'SWEC \u2014 pre-vetted on the PETRONAS LLRC; financial pre-qualification is waived.':'Non-SWEC \u2014 financial pre-qualification (ratios + Altman Z-score) is included automatically.';}
+function ivSend(){const email=document.getElementById('iv_email').value.trim();if(!email){toast('Enter the vendor email');return;}
+  const packs=[...document.querySelectorAll('.ivpack:checked')].map(c=>c.value);
+  const app=mkApp({name:document.getElementById('iv_name').value.trim()||'Pacific Valve Sdn Bhd',type:S._ivType||'Non-SWEC',email,status:'Invited',packs});
+  APPS.unshift(app);S.vendorAppId=app.id;
+  openDrawer(`<div style="display:flex;justify-content:space-between;align-items:start"><div><h2>Invitation sent</h2><p class="hint">${app.id} \u00b7 emailed to ${email}</p></div><button class="btn btn-ghost btn-sm" onclick="closeDrawer()">${I('x')}</button></div>
+    <div class="ribbon ok" style="margin-top:14px">${I('check',15)} A secure onboarding link has been emailed. It expires in 14 days.</div>
+    <div class="card"><div class="cbody"><div class="field" style="margin:0"><label>Magic link (demo)</label><input value="https://portal.eprocure.my/onboard/${app.id.toLowerCase()}?t=${Math.random().toString(36).slice(2,10)}" readonly></div></div></div>
+    <p class="hint">To simulate the vendor: close this, switch to <b>Vendor view</b> (top right) \u2014 the link opens their onboarding form.</p>
+    <button class="btn btn-pri" style="margin-top:8px" onclick="closeDrawer();setRole('vendor')">Open as vendor ${I('chev',14)}</button>`);
+  go('onboard');
+}
+
+function bQueue(m){
+  const rows=APPS.map(a=>{const cls=statusCls[a.status]||'b-grey';const round=a.rounds.find(r=>r.status==='Open');
+    return `<tr><td class="mono" style="font-weight:600">${a.id}</td><td style="font-weight:600">${a.name}</td><td>${a.type==='SWEC'?'<span class="badge b-teal">SWEC</span>':'<span class="badge b-amber">Non-SWEC</span>'}</td>
+      <td class="hint">${a.created}</td><td><span class="badge ${cls}">${LC[a.status]}</span>${round?` <span class="hint">\u00b7 rd ${round.no}</span>`:''}</td>
+      <td style="text-align:right"><button class="btn btn-out btn-sm" onclick="openReview('${a.id}')">Review ${I('chev',13)}</button></td></tr>`;}).join('');
+  m.innerHTML=`<div class="pagehead"><div><h1>Onboarding</h1><p>Applications in progress. Approve to promote into the Vendor Master.</p></div><div class="spacer"></div><button class="btn btn-pri" onclick="go('chooser')">${I('plus')} New Vendor</button></div>
+  <div class="card"><table><thead><tr><th>Application</th><th>Vendor</th><th>Type</th><th>Received</th><th>Status</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+function openReview(id){S.appId=id;S.clarMode=false;S.clarItems=[];go('review');}
+function bReview(m){
+  const a=appById(S.appId);if(!a){go('onboard');return;}
+  const isNon=a.type!=='SWEC';const fin=isNon?computeFin(a.fin):null;
+  const answered=Object.keys(a.answers||{}).length;
+  const openRound=a.rounds.find(r=>r.status==='Open');
+  m.innerHTML=`<div class="crumb"><a onclick="go('onboard')">Onboarding</a> ${I('chev',12)} ${a.name}</div>
+  <div class="pagehead"><div style="display:flex;gap:14px;align-items:center"><span class="ava" style="width:46px;height:46px;background:var(--teal);color:#fff;border-radius:11px;font-size:15px">${initials(a.name)}</span>
+    <div><h1 style="display:flex;align-items:center;gap:10px">${a.name} ${a.type==='SWEC'?'<span class="badge b-teal">SWEC</span>':'<span class="badge b-amber">Non-SWEC</span>'}</h1>
+    <p>${a.id} \u00b7 ${a.reg||'reg. pending'} \u00b7 ${a.loc||'\u2014'} \u00b7 <span class="badge ${statusCls[a.status]}">${LC[a.status]}</span></p></div></div></div>
+
+  ${openRound?`<div class="ribbon warn">${I('flag',15)} Clarification round ${openRound.no} is open (${openRound.items.length} item${openRound.items.length>1?'s':''}) \u2014 awaiting the vendor's resubmission.</div>`:''}
+
+  <div class="grid g2">
+    <div class="card"><div class="chead"><h3>Company &amp; contact</h3></div><div class="cbody">
+      <div class="kv"><span class="k">Registered name</span><span class="v">${a.name}</span></div>
+      <div class="kv"><span class="k">Reg. no. (SSM)</span><span class="v mono">${a.reg||'\u2014'}</span></div>
+      <div class="kv"><span class="k">Location</span><span class="v">${a.loc||'\u2014'}</span></div>
+      <div class="kv"><span class="k">Email</span><span class="v">${a.email||'\u2014'}</span></div>
+      <div class="kv"><span class="k">Source</span><span class="v">${a.source==='SelfService'?'Vendor self-service':'Manual'}</span></div>
+    </div></div>
+    <div class="card"><div class="chead"><h3>Banking</h3></div><div class="cbody">
+      <div class="kv"><span class="k">Bank</span><span class="v">${a.bank.bank||'\u2014'}</span></div>
+      <div class="kv"><span class="k">Account no.</span><span class="v mono">${a.bank.acct||'\u2014'}</span></div>
+      <div class="kv"><span class="k">SWIFT</span><span class="v mono">${a.bank.swift||'\u2014'}</span></div>
+      <div class="kv"><span class="k">SWEC categories</span><span class="v">${(a.cats||[]).map(c=>`<span class="swec">${c}</span>`).join('')||'\u2014'}</span></div>
+    </div></div>
+  </div>
+
+  ${isNon?`<div class="card"><div class="chead"><h3>Financial pre-qualification</h3><div class="spacer" style="flex:1"></div><button class="btn btn-out btn-sm" onclick="showCalc('${a.id}')">${I('chart',13)} View calculation</button></div><div class="cbody">
+    <div class="grid g3">
+      <div class="card stat" style="margin:0"><div class="lbl">Altman Z \u00b7 weighted</div><div class="num" style="color:${fin.bd.cls==='b-red'?'var(--red)':fin.bd.cls==='b-amber'?'var(--amber)':'var(--teal)'}">${fin.zW.toFixed(2)}</div><div class="sub">${fin.bd.zone}</div></div>
+      <div class="card stat" style="margin:0"><div class="lbl">Score</div><div class="num">${fin.score}<span style="font-size:14px;color:var(--muted)"> /100</span></div><div class="sub">current \u00d70.5 weighted</div></div>
+      <div class="card stat" style="margin:0"><div class="lbl">Band \u2192 Risk</div><div class="num" style="font-size:22px;margin-top:7px;color:${fin.bd.cls==='b-red'?'var(--red)':fin.bd.cls==='b-amber'?'var(--amber)':'var(--teal)'}">Band ${fin.bd.band}</div><div class="sub"><span class="badge ${fin.bd.cls}">${fin.bd.risk} risk</span></div></div>
+    </div>
+    <p style="margin:14px 0 0;line-height:1.55">${bandStatement(fin.bd.band)}</p>
+  </div></div>`:`<div class="ribbon ok">${I('check',15)} SWEC-registered \u2014 financial pre-qualification waived (verified against the PETRONAS LLRC).</div>`}
+
+  <div class="card"><div class="chead"><h3>Questionnaire</h3><span class="sub">· ${answered} answered</span></div><div class="cbody">
+    ${(a.packs||[]).map(pk=>{const p=PACKS[pk];if(!p)return'';return `<div style="margin-bottom:12px"><div style="font-weight:700;font-size:12.5px;color:var(--teal);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">${p.name}</div>${p.q.map(q=>`<div class="kv"><span class="k">${q.q}</span><span class="v">${a.answers[q.id]||'<span class="hint">\u2014</span>'}</span></div>`).join('')}</div>`;}).join('')}
+  </div></div>
+
+  <div class="card"><div class="chead"><h3>Documents</h3></div><div class="cbody">
+    ${DOC_LIST.filter(d=>d.req!=='swec'||a.type==='SWEC').filter(d=>d.req!=='nonswec'||a.type!=='SWEC').map(d=>`<div class="doc"><div class="di">${I('doc',15)}</div><div class="dn">${d.n}</div>${a.docs[d.id]?`<span class="filepill">${I('check',12)} ${a.docs[d.id]}</span>`:`<span class="badge ${d.req==='all'?'b-red':'b-grey'}">${d.req==='all'?'Missing':'Optional'}</span>`}</div>`).join('')}
+  </div></div>
+
+  ${S.clarMode?clarPanel(a):''}
+
+  <div class="actionbar">
+    ${S.clarMode?`<span class="hint">${S.clarItems.length} item${S.clarItems.length!==1?'s':''} flagged</span><div class="spacer" style="flex:1"></div>
+      <button class="btn btn-out" onclick="S.clarMode=false;render()">Cancel</button>
+      <button class="btn btn-amber" onclick="sendClar()" ${S.clarItems.length?'':'disabled'}>${I('flag')} Send clarification (${S.clarItems.length})</button>`
+    :`<span class="hint">Decide once all items check out.</span><div class="spacer" style="flex:1"></div>
+      <button class="btn btn-red" onclick="rejectApp()">${I('x')} Reject</button>
+      <button class="btn btn-out" onclick="S.clarMode=true;S.clarItems=[];render()">${I('flag')} Request clarification</button>
+      <button class="btn btn-pri" onclick="approveApp()">${I('check')} Approve &amp; onboard</button>`}
+  </div>`;
+}
+function clarPanel(a){
+  const suggestions=['Missing / expired document','Banking details incomplete','Financial figures need clarification','Certification not attached','Questionnaire answer unclear'];
+  return `<div class="card" style="border-color:var(--amber)"><div class="chead"><h3>${I('flag',15)} Clarification round ${(a.rounds.length+1)}</h3><span class="sub">· batched \u2014 sent together as one request</span></div><div class="cbody">
+    <div id="clarList">${S.clarItems.map((it,i)=>`<div class="clarflag"><div style="flex:1"><div style="font-weight:600;font-size:13px">${it.topic}</div><div class="hint">${it.req}</div></div><button class="btn btn-ghost btn-sm" onclick="rmClar(${i})">${I('x',14)}</button></div>`).join('')||'<p class="hint" style="margin:0">Add each item the vendor must fix. They\u2019ll receive them all in one message.</p>'}</div>
+    <div class="grid g2" style="margin-top:14px"><div class="field" style="margin:0"><label>Item / topic</label><input id="cl_topic" list="cl_sug" placeholder="e.g. ISO 9001 certificate"><datalist id="cl_sug">${suggestions.map(s=>`<option>${s}</option>`).join('')}</datalist></div>
+    <div class="field" style="margin:0"><label>What the vendor must do</label><input id="cl_req" placeholder="e.g. Upload a valid certificate"></div></div>
+    <button class="btn btn-out btn-sm" style="margin-top:10px" onclick="addClar()">${I('plus',14)} Add item</button>
+  </div></div>`;
+}
+function addClar(){const t=document.getElementById('cl_topic').value.trim(),r=document.getElementById('cl_req').value.trim();if(!t){toast('Enter the item/topic');return;}
+  S.clarItems.push({topic:t,req:r||'Please review and resubmit.',resp:''});render();}
+function rmClar(i){S.clarItems.splice(i,1);render();}
+function sendClar(){const a=appById(S.appId);a.rounds.push({no:a.rounds.length+1,dir:'BuyerToVendor',status:'Open',by:'Faridah Yusof',at:'01/07/2026',msg:'Please address the items below.',items:S.clarItems.map(x=>({topic:x.topic,req:x.req,resp:''}))});
+  a.status='ClarificationRequested';S.clarMode=false;S.clarItems=[];toast('Clarification sent to vendor (one message)');render();}
+function approveApp(){const a=appById(S.appId);
+  MASTER.unshift({name:a.name,type:a.type,reg:a.reg||'\u2014',status:a.type==='SWEC'?'Registered':'Provisional',loc:a.loc||'\u2014'});
+  a.status='Approved';toast('Approved \u2014 promoted to master; vendor login provisioned');go('onboard');}
+function rejectApp(){const a=appById(S.appId);openDrawer(`<div style="display:flex;justify-content:space-between"><h2>Reject application</h2><button class="btn btn-ghost btn-sm" onclick="closeDrawer()">${I('x')}</button></div>
+  <div class="field" style="margin-top:12px"><label>Reason (sent to vendor)</label><textarea id="rej" rows="3" placeholder="e.g. Financial standing below threshold; may reapply after 12 months."></textarea></div>
+  <button class="btn btn-red" onclick="doReject()">${I('x')} Confirm reject</button>`);}
+function doReject(){const a=appById(S.appId);a.status='Rejected';a.rejectReason=document.getElementById('rej').value;closeDrawer();toast('Application rejected');go('onboard');}
+function showCalc(id){const a=appById(id),d=a.fin,yrs=['FY2023','FY2024','FY2025'];
+  const X=i=>{const CA=d.currentAssets[i],CL=d.currentLiab[i],TA=d.totalAssets[i],TL=d.totalLiab[i],EQ=d.equity[i],REV=d.revenue[i],EBIT=d.ebit[i],RE=d.retainedEarnings[i];return{x1:(CA-CL)/TA,x2:RE/TA,x3:EBIT/TA,x4:EQ/TL,x5:REV/TA};};
+  const zs=[0,1,2].map(i=>altmanZ(d,i)),zW=weighted(zs),bd=bandFor(zW);
+  const row=(l,k,c)=>`<tr><td>${l}</td>${yrs.map((y,i)=>`<td class="amt">${X(i)[k].toFixed(3)}</td>`).join('')}<td class="amt hint">\u00d7 ${c}</td></tr>`;
+  const rr=RATIO_META.map(([k,l,f])=>`<tr><td style="font-weight:600">${l}</td>${[0,1,2].map(i=>`<td class="amt">${fmtRatio(ratiosFor(d,i)[k],f)}</td>`).join('')}<td class="amt" style="font-weight:700;color:var(--teal)">${fmtRatio(weighted([0,1,2].map(i=>ratiosFor(d,i)[k])),f)}</td></tr>`).join('');
+  openDrawer(`<div style="display:flex;justify-content:space-between"><div><h2>How the assessment is calculated</h2><p class="hint">Altman Z\u2032 (private-firm), weighted over 3 years</p></div><button class="btn btn-ghost btn-sm" onclick="closeDrawer()">${I('x')}</button></div>
+    <div class="card"><div class="chead"><h3>Z\u2032 components</h3></div><div class="cbody"><table class="comp"><thead><tr><th>Component</th>${yrs.map(y=>`<th class="amt">${y}</th>`).join('')}<th class="amt">Coef.</th></tr></thead><tbody>
+      ${row('X1 \u00b7 Working capital / TA','x1','0.717')}${row('X2 \u00b7 Retained earnings / TA','x2','0.847')}${row('X3 \u00b7 EBIT / TA','x3','3.107')}${row('X4 \u00b7 Equity / TL','x4','0.420')}${row('X5 \u00b7 Revenue / TA','x5','0.998')}
+      <tr style="background:var(--soft)"><td style="font-weight:700">Z\u2032</td>${zs.map(z=>`<td class="amt" style="font-weight:800">${z.toFixed(2)}</td>`).join('')}<td></td></tr>
+    </tbody></table></div></div>
+    <div class="card"><div class="cbody">
+      <div class="kv"><span class="k">Year weighting</span><span class="v">FY-2 \u00d70.2 \u00b7 FY-1 \u00d70.3 \u00b7 current \u00d70.5</span></div>
+      <div class="kv"><span class="k">Weighted Z\u2032</span><span class="v">${zW.toFixed(2)}</span></div>
+      <div class="kv"><span class="k">Score</span><span class="v">${scoreFor(zW)} / 100</span></div>
+      <div class="kv"><span class="k">Band</span><span class="v">Band ${bd.band} \u00b7 ${bd.zone} \u00b7 ${bd.risk} risk</span></div>
+      <p class="hint" style="margin:10px 0 0">Bands: Z\u2032 \u2265 2.9 = A \u00b7 2.0\u20132.9 = B \u00b7 1.23\u20132.0 = C \u00b7 &lt; 1.23 = D. Thresholds &amp; weights are indicative \u2014 finalised by SPSB Finance.</p>
+    </div></div>
+    <div class="card"><div class="chead"><h3>Ratios</h3></div><div class="cbody"><table class="comp"><thead><tr><th>Ratio</th>${yrs.map(y=>`<th class="amt">${y}</th>`).join('')}<th class="amt">Weighted</th></tr></thead><tbody>${rr}</tbody></table></div></div>`);
+}
+
+/* =========================================================
+ * VENDOR
+ * =======================================================*/
+function currentVApp(){return appById(S.vendorAppId)||APPS.find(a=>a.status==='Invited')||APPS[0];}
+function vLink(m){const a=currentVApp();
+  m.innerHTML=`<div style="max-width:560px;margin:40px auto;text-align:center">
+    <div class="ava" style="width:56px;height:56px;border-radius:14px;background:var(--teal);color:#fff;font-size:20px;margin:0 auto 16px">${I('shield',26)}</div>
+    <h1 style="font-family:var(--serif);font-size:26px;margin:0 0 6px">Welcome to SPSB supplier onboarding</h1>
+    <p class="hint" style="font-size:14px">You've been invited to register as a supplier. This link is secure and expires in 14 days \u2014 no password needed. You can save and return any time via the same link.</p>
+    <div class="card" style="text-align:left;margin-top:20px"><div class="cbody">
+      <div class="kv"><span class="k">Application</span><span class="v mono">${a.id}</span></div>
+      <div class="kv"><span class="k">Registration type</span><span class="v">${a.type}</span></div>
+      <div class="kv"><span class="k">You'll provide</span><span class="v" style="text-align:right">Company &amp; banking, documents${a.type!=='SWEC'?', 3-yr financials':''}, ${a.packs.length} question set${a.packs.length>1?'s':''}</span></div>
+    </div></div>
+    <button class="btn btn-pri" style="margin-top:18px;padding:11px 22px" onclick="S.vendorAppId='${a.id}';a_start('${a.id}')">Start onboarding ${I('chev',15)}</button>
+  </div>`;
+}
+function a_start(id){const a=appById(id);if(a.status==='Invited')a.status='InProgress';S.obStep=0;S.screen='form';render();}
+function vSteps(a){const s=[{k:'company',n:'Company & contact'},{k:'banking',n:'Banking'},{k:'docs',n:'Documents'},{k:'cats',n:'SWEC categories'}];
+  if(a.type!=='SWEC')s.push({k:'fin',n:'Financials'});
+  a.packs.forEach(pk=>PACKS[pk]&&s.push({k:'pack:'+pk,n:PACKS[pk].name}));
+  s.push({k:'review',n:'Review & submit'});return s;}
+function vForm(m){const a=currentVApp();if(a.status==='Invited')a.status='InProgress';
+  const steps=vSteps(a);const cur=steps[S.obStep]||steps[0];
+  const side=steps.map((st,i)=>`<div class="obstep ${i===S.obStep?'on':''} ${i<S.obStep?'done':''}" onclick="S.obStep=${i};render()"><span class="n">${i<S.obStep?'\u2713':i+1}</span>${st.n}</div>`).join('');
+  m.innerHTML=`<div class="pagehead"><div><h1>${a.name} \u2014 onboarding</h1><p>${a.type} \u00b7 ${a.id} \u00b7 progress saves automatically.</p></div></div>
+  <div class="obwrap"><div class="obside">${side}</div><div class="obmain">${vSection(a,cur.k)}
+    <div class="actionbar"><button class="btn btn-out" onclick="if(S.obStep>0){S.obStep--;render()}" ${S.obStep?'':'disabled'}>Back</button><div class="spacer" style="flex:1"></div>
+      ${S.obStep<steps.length-1?`<button class="btn btn-pri" onclick="S.obStep++;render()">Next ${I('chev',14)}</button>`:`<button class="btn btn-pri" onclick="vSubmit()">${I('check')} Submit application</button>`}</div>
+  </div></div>`;
+}
+function vBind(field,val){const a=currentVApp();const path=field.split('.');if(path.length===1)a[path[0]]=val;else a[path[0]][path[1]]=val;}
+function vSection(a,k){
+  if(k==='company')return card('Company & contact',`
+    <div class="grid g2"><div class="field"><label>Registered name <span class="req">*</span></label><input value="${a.name}" oninput="vBind('name',this.value)"></div>
+    <div class="field"><label>Reg. no. (SSM) <span class="req">*</span></label><input value="${a.reg}" oninput="vBind('reg',this.value)" placeholder="1234567-A"></div></div>
+    <div class="grid g2"><div class="field"><label>Location</label><input value="${a.loc}" oninput="vBind('loc',this.value)" placeholder="City"></div>
+    <div class="field"><label>Primary contact email</label><input value="${a.email}" oninput="vBind('email',this.value)"></div></div>`);
+  if(k==='banking')return card('Banking',`<div class="grid g3">
+    <div class="field"><label>Bank</label><input value="${a.bank.bank}" oninput="vBind('bank.bank',this.value)" placeholder="Bank name"></div>
+    <div class="field"><label>Account no.</label><input value="${a.bank.acct}" oninput="vBind('bank.acct',this.value)"></div>
+    <div class="field"><label>SWIFT</label><input value="${a.bank.swift}" oninput="vBind('bank.swift',this.value)"></div></div>`);
+  if(k==='docs')return card('Documents',DOC_LIST.filter(d=>d.req!=='swec'||a.type==='SWEC').filter(d=>d.req!=='nonswec'||a.type!=='SWEC').map(d=>`<div class="doc"><div class="di">${I('doc',15)}</div><div class="dn">${d.n} ${d.req==='all'?'<span class="req">*</span>':''}</div>${a.docs[d.id]?`<span class="filepill">${I('check',12)} ${a.docs[d.id]}</span> <button class="btn btn-ghost btn-sm" onclick="delDoc('${d.id}')">${I('x',13)}</button>`:`<button class="btn btn-out btn-sm" onclick="upDoc('${d.id}')">${I('up',13)} Upload</button>`}</div>`).join(''));
+  if(k==='cats')return card('SWEC categories',`<p class="hint" style="margin-top:0">Select the PETRONAS SWEC categories you're registered for (demo).</p>
+    <div>${['E07','E09','E12','E15','E21','E33','S04','S11','G01'].map(c=>`<span class="swec" style="cursor:pointer;${a.cats.includes(c)?'background:var(--teal);color:#fff;border-color:var(--teal)':''}" onclick="toggleCat('${c}')">${c}</span>`).join('')}</div>`);
+  if(k==='fin'){const c=computeFin(a.fin);const col=c.bd.cls==='b-red'?'var(--red)':c.bd.cls==='b-amber'?'var(--amber)':'var(--teal)';
+    const rows=FIN_ITEMS.map(([lbl,key])=>`<tr><td style="font-weight:600">${lbl}</td>${[0,1,2].map(i=>`<td><input type="number" value="${a.fin[key][i]||''}" oninput="finSet('${key}',${i},this.value)" style="text-align:right"></td>`).join('')}</tr>`).join('');
+    return `<div class="ribbon warn">${I('flag',15)} Non-SWEC supplier \u2014 enter 3 years of figures (RM\u2019000). Ratios and an Altman Z-score are computed automatically as you type.</div>
+    <div class="card" id="finPrev"><div class="cbody"><div class="grid g3">
+      <div class="card stat" style="margin:0"><div class="lbl">Altman Z \u00b7 weighted</div><div class="num" style="color:${col}">${c.zW.toFixed(2)}</div><div class="sub">${c.bd.zone}</div></div>
+      <div class="card stat" style="margin:0"><div class="lbl">Score</div><div class="num">${c.score}<span style="font-size:13px;color:var(--muted)"> /100</span></div></div>
+      <div class="card stat" style="margin:0"><div class="lbl">Band \u2192 Risk</div><div class="num" style="font-size:21px;margin-top:6px;color:${col}">Band ${c.bd.band}</div><div class="sub"><span class="badge ${c.bd.cls}">${c.bd.risk} risk</span></div></div>
+    </div></div></div>
+    ${card('Financial data (RM\u2019000)',`<table class="comp"><thead><tr><th>Item</th><th class="amt">FY2023</th><th class="amt">FY2024</th><th class="amt">FY2025</th></tr></thead><tbody>${rows}</tbody></table>`)}`;
+  }
+  if(k.startsWith('pack:')){const p=PACKS[k.slice(5)];return card(p.name,p.q.map(q=>vQuestion(a,q)).join(''));}
+  if(k==='review'){const miss=[];if(!a.name)miss.push('Registered name');if(!a.reg)miss.push('Reg. no.');
+    return `${miss.length?`<div class="ribbon warn">${I('flag',15)} Still needed: ${miss.join(', ')}</div>`:`<div class="ribbon ok">${I('check',15)} Looks complete. Submit to route to SPSB procurement.</div>`}
+    ${card('Summary',`<div class="kv"><span class="k">Vendor</span><span class="v">${a.name||'\u2014'}</span></div><div class="kv"><span class="k">Type</span><span class="v">${a.type}</span></div><div class="kv"><span class="k">Documents attached</span><span class="v">${Object.keys(a.docs).length}</span></div><div class="kv"><span class="k">Questions answered</span><span class="v">${Object.keys(a.answers).length}</span></div>${a.type!=='SWEC'?`<div class="kv"><span class="k">Financial band</span><span class="v">Band ${computeFin(a.fin).bd.band}</span></div>`:''}`)}`;
+  }
+  return card('Section','');
+}
+function card(title,body){return `<div class="card"><div class="chead"><h3>${title}</h3></div><div class="cbody">${body}</div></div>`;}
+function vQuestion(a,q){const v=a.answers[q.id]||'';
+  if(q.t==='yn')return `<div class="q"><div class="qt">${q.q}</div><div class="yn"><button class="${v==='Yes'?'on':''}" onclick="ans('${q.id}','Yes')">Yes</button><button class="${v==='No'?'on':''}" onclick="ans('${q.id}','No')">No</button></div></div>`;
+  if(q.t==='sel')return `<div class="q"><div class="qt">${q.q}</div><select onchange="ans('${q.id}',this.value)">${q.opts.map(o=>`<option ${v===o?'selected':''}>${o}</option>`).join('')}</select></div>`;
+  if(q.t==='num')return `<div class="q"><div class="qt">${q.q}</div><input type="number" value="${v}" oninput="ans('${q.id}',this.value)"></div>`;
+  if(q.t==='area')return `<div class="q"><div class="qt">${q.q}</div><textarea rows="2" oninput="ans('${q.id}',this.value)">${v}</textarea></div>`;
+  return `<div class="q"><div class="qt">${q.q}</div><input value="${v}" oninput="ans('${q.id}',this.value)"></div>`;}
+function ans(id,val){currentVApp().answers[id]=val;const a=currentVApp();const cur=vSteps(a)[S.obStep];if(cur&&cur.k.startsWith('pack:'))render();}
+function finSet(key,i,val){const a=currentVApp();a.fin[key][i]=Number(val)||0;
+  const c=computeFin(a.fin);const col=c.bd.cls==='b-red'?'var(--red)':c.bd.cls==='b-amber'?'var(--amber)':'var(--teal)';
+  const el=document.getElementById('finPrev');if(el)el.querySelector('.cbody').innerHTML=`<div class="grid g3">
+    <div class="card stat" style="margin:0"><div class="lbl">Altman Z \u00b7 weighted</div><div class="num" style="color:${col}">${c.zW.toFixed(2)}</div><div class="sub">${c.bd.zone}</div></div>
+    <div class="card stat" style="margin:0"><div class="lbl">Score</div><div class="num">${c.score}<span style="font-size:13px;color:var(--muted)"> /100</span></div></div>
+    <div class="card stat" style="margin:0"><div class="lbl">Band \u2192 Risk</div><div class="num" style="font-size:21px;margin-top:6px;color:${col}">Band ${c.bd.band}</div><div class="sub"><span class="badge ${c.bd.cls}">${c.bd.risk} risk</span></div></div>`;}
+function upDoc(id){const names={ssm:'SSM_Registration.pdf',iso:'ISO9001_Cert.pdf',cidb:'CIDB_G7.pdf',bank:'Bank_Confirmation.pdf',acct:'Audited_Accounts_3yr.pdf',swec:'PETRONAS_SWEC.pdf'};currentVApp().docs[id]=names[id]||'document.pdf';render();}
+function delDoc(id){delete currentVApp().docs[id];render();}
+function toggleCat(c){const a=currentVApp();const i=a.cats.indexOf(c);if(i<0)a.cats.push(c);else a.cats.splice(i,1);render();}
+function vSubmit(){const a=currentVApp();if(!a.name||!a.reg){toast('Complete the required company fields');S.obStep=0;render();return;}
+  a.status='Submitted';toast('Submitted \u2014 routed to SPSB procurement');S.screen='submitted';render();}
+function vSubmitted(m){const a=currentVApp();
+  m.innerHTML=`<div style="max-width:520px;margin:50px auto;text-align:center">
+    <div class="ava" style="width:56px;height:56px;border-radius:14px;background:var(--green);color:#fff;font-size:22px;margin:0 auto 16px">${I('check',26)}</div>
+    <h1 style="font-family:var(--serif);font-size:24px;margin:0 0 6px">Application submitted</h1>
+    <p class="hint">${a.id} is now with SPSB procurement for review. You'll be emailed if they approve, reject, or need clarification. If they request changes, this link will show exactly what to fix.</p>
+    <p class="hint" style="margin-top:18px">Demo: switch to <b>Buyer view</b> to review &amp; act on it \u2014 then come back here to see the outcome.</p>
+    ${a.rounds.some(r=>r.status==='Open')?`<button class="btn btn-amber" style="margin-top:8px" onclick="S.screen='clarify';render()">${I('flag')} View clarification request</button>`:''}
+  </div>`;
+}
+function vClarify(m){const a=currentVApp();const round=a.rounds.find(r=>r.status==='Open');
+  if(!round){S.screen='submitted';return vSubmitted(m);}
+  m.innerHTML=`<div class="pagehead"><div><h1>Clarification requested</h1><p>SPSB procurement asked for ${round.items.length} item${round.items.length>1?'s':''}. Fix them all and resubmit in one go.</p></div></div>
+  <div class="ribbon warn">${I('flag',15)} ${round.msg} \u2014 requested ${round.at} by ${round.by}</div>
+  <div class="card"><div class="cbody">
+    ${round.items.map((it,i)=>`<div style="padding:12px 0;border-bottom:1px solid var(--line)">
+      <div style="font-weight:600;font-size:13.5px">${it.topic}</div><div class="hint" style="margin:3px 0 8px">${it.req}</div>
+      <div style="display:flex;gap:10px;align-items:center"><input placeholder="Your response / note" value="${it.resp||''}" oninput="clarResp(${i},this.value)" style="flex:1"><button class="btn btn-out btn-sm" onclick="clarFile(${i})">${I('up',13)} Attach</button>${it._file?`<span class="filepill">${I('check',12)} ${it._file}</span>`:''}</div>
+    </div>`).join('')}
+  </div></div>
+  <div class="actionbar"><span class="hint">All items are sent back together.</span><div class="spacer" style="flex:1"></div><button class="btn btn-pri" onclick="resubmit()">${I('check')} Resubmit all (${round.items.length})</button></div>`;
+}
+function clarResp(i,v){const a=currentVApp();a.rounds.find(r=>r.status==='Open').items[i].resp=v;}
+function clarFile(i){const a=currentVApp();const it=a.rounds.find(r=>r.status==='Open').items[i];it._file='updated_document.pdf';render();}
+function resubmit(){const a=currentVApp();const r=a.rounds.find(x=>x.status==='Open');r.status='Responded';r.respondedAt='01/07/2026';a.status='UnderReview';toast('Resubmitted \u2014 back with procurement');S.screen='submitted';render();}
+function vApproved(m){vSubmitted(m);}
+
+setRole('buyer');
+</script>
+</body>
+</html>

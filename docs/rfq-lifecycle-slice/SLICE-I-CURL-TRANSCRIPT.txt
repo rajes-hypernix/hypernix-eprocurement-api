@@ -1,0 +1,25 @@
+eProcure — Slice I RFQ Lifecycle — live curl transcript (2026-07-02T20:45:46Z)
+All on fresh RFQs created via the API. Buyer=u_faridah. DomainRuleException→409, Forbidden→403.
+==========================================================================================
+RFQ #1 = 3aca805e-b5e1-4f18-a755-fbf264b715bf (Open, closes 2026-07-13, invited VU-mutiara)
+
+## A. Happy path: decline -> reverse -> submit -> withdraw  (vendor VU-mutiara)
+A1 vendor declines (CAPACITY)       HTTP 204  
+A2 vendor reverses decline (intend) HTTP 204  
+A3 vendor submits a bid             HTTP 200  
+A4 vendor withdraws the bid         HTTP 204  
+
+## D. G3 — rescinding a vendor with a SUBMITTED bid is blocked
+D1 vendor re-submits the bid        HTTP 200  
+D2 buyer rescinds bidder (G3)       HTTP 409  An invitation with a submitted bid cannot be rescinded.
+D3 buyer rescinds w/ bad reason     HTTP 409  'BOGUS' is not a valid rfq rescind reason.
+
+## C. G5 — extensions forward-only, capped at 2
+C1 extend #1 (+2d)                  HTTP 200  Slice I demo RFQ
+C2 extend #2 (+5d)                  HTTP 200  Slice I demo RFQ
+C3 extend #3 -> capped (G5)         HTTP 409  This RFQ has reached the maximum of 2 extension(s).
+C4 extend backwards -> forward-only HTTP 409  A new close date must be later than the current one — extensions are forward-only.
+
+## B. G2 — late invite inside the 72h window is blocked (extend first)
+RFQ #2 = 20aa6edf-3cd4-4383-9c5d-136696afc05e (Open, closes in ~6h, invited VU-sentausa)
+B1 buyer late-invites another (G2)  HTTP 409  Less than 72h remain before close — extend the deadline before inviting more vendors.

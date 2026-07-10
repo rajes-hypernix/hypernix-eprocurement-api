@@ -1,0 +1,32 @@
+# --- .NET ---
+bin/
+obj/
+*.user
+.vs/
+
+# --- Node / web ---
+node_modules/
+dist/
+dist-ssr/
+coverage/
+*.local
+
+# --- Test / e2e outputs ---
+test-results/
+playwright-report/
+
+# --- Local config / secrets (never commit real credentials) ---
+appsettings.*.local.json
+# real dev secrets (JWT key + DB password); copy from the .example and fill in
+appsettings.Development.json
+.env
+.env.*
+
+# --- Editors ---
+.idea/
+
+# --- OS ---
+.DS_Store
+
+# --- Logs ---
+*.log

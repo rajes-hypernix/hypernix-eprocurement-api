@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>eProcure — Sourcing Dashboard (Analytics Prototype)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --teal:#336374; --teal-active:#25586B; --link:#2C5C6E;
+    --cream:#F3EFE9; --greige:#F6F4EF; --border:#E4DED2;
+    --ink:#22333B; --muted:#6B7A80;
+    --s-materials:#336374; --s-services:#C0703C; --s-mro:#7E6389;
+    --b-mfr:#25586B; --b-dist:#B06A78; --b-svc:#4FA3A5;
+    --up:#2E7D4F; --warn:#B5651D;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',sans-serif;background:var(--cream);color:var(--ink);font-size:14px}
+  .mono{font-family:'JetBrains Mono',monospace;font-weight:500}
+  a{color:var(--link);text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ---- top bar ---- */
+  .topbar{background:var(--teal);color:#fff;height:60px;display:flex;align-items:center;padding:0 20px;gap:12px}
+  .topbar .logo{width:34px;height:34px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:17px}
+  .topbar .brand b{font-size:16px;display:block;line-height:1.15}
+  .topbar .brand span{font-size:11.5px;opacity:.75}
+  .topbar .spacer{flex:1}
+  .topbar .actas{font-size:13px;opacity:.85}
+  .topbar select{background:#fff;color:var(--ink);border:none;padding:8px 12px;font-family:inherit;font-size:13.5px;min-width:190px}
+  .topbar .avatar{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:600}
+  .topbar .who b{display:block;font-size:13.5px;line-height:1.2}
+  .topbar .who span{font-size:11.5px;opacity:.75}
+
+  /* ---- shell ---- */
+  .shell{display:flex;min-height:calc(100vh - 60px)}
+  .side{width:236px;background:var(--cream);border-right:1px solid var(--border);padding:18px 12px;flex-shrink:0}
+  .side .grp{font-size:10.5px;letter-spacing:.09em;color:var(--muted);font-weight:600;margin:16px 10px 6px}
+  .side .grp:first-child{margin-top:0}
+  .side .item{display:block;padding:9px 12px;color:var(--ink);font-size:13.5px;font-weight:500}
+  .side .item:hover{background:var(--greige);text-decoration:none}
+  .side .item.active{background:var(--teal-active);color:#fff}
+  main{flex:1;padding:28px 34px;max-width:1240px}
+
+  h1{font-family:Georgia,serif;font-size:29px;font-weight:700;letter-spacing:-.01em}
+  .sub{color:var(--muted);margin:5px 0 22px}
+
+  /* ---- KPI cards (unchanged from current build) ---- */
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:26px}
+  .kpi{padding:18px 20px;border:1px solid var(--border)}
+  .kpi .lab{font-size:11px;letter-spacing:.08em;font-weight:600;color:#5a5145}
+  .kpi .num{font-family:Georgia,serif;font-size:34px;font-weight:700;margin:6px 0 2px}
+  .kpi .cap{font-size:12.5px;color:var(--muted)}
+  .kpi.req{background:#F7E9E2;border-top:3px solid #C97B5F}.kpi.req .num{color:#B4552D}
+  .kpi.bids{background:#FAF0E1;border-top:3px solid #D89B3D}.kpi.bids .num{color:#B5651D}
+  .kpi.open{background:#EAF1E6;border-top:3px solid #7FA36B}.kpi.open .num{color:#4C6B3C}
+  .kpi.eval{background:#EFEAF3;border-top:3px solid #9B85AE}.kpi.eval .num{color:#6C5687}
+
+  /* ---- analytics panel (REPLACES Active RFQs table) ---- */
+  .panel{background:#fff;border:1px solid var(--border)}
+  .panel-head{display:flex;align-items:center;gap:12px;padding:14px 22px;border-bottom:1px solid var(--border)}
+  .panel-head .t{font-family:Georgia,serif;font-size:17px;font-weight:700}
+  .panel-head .meta{font-size:12px;color:var(--muted)}
+  .panel-head .spacer{flex:1}
+  .toggle{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--muted);cursor:pointer;user-select:none}
+  .toggle .tk{width:32px;height:17px;background:var(--border);position:relative;transition:background .15s}
+  .toggle .tk::after{content:'';position:absolute;top:2px;left:2px;width:13px;height:13px;background:#fff;transition:left .15s}
+  .toggle.on .tk{background:var(--teal)}
+  .toggle.on .tk::after{left:17px}
+
+  .grid{display:grid;grid-template-columns:1fr 380px;gap:0}
+  .colL{padding:24px 26px;border-right:1px solid var(--border)}
+  .colR{display:flex;flex-direction:column}
+
+  .headline{font-family:Georgia,serif;font-size:25px;font-weight:700;line-height:1.28;max-width:520px}
+  .headline .up{color:var(--up)}
+  .hlrow{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+  .hlrow a{font-size:13px;white-space:nowrap;margin-top:8px}
+  .hlsub{font-size:13px;color:var(--muted);margin:9px 0 18px;max-width:560px;line-height:1.5}
+
+  .legend{display:flex;gap:18px;font-size:12px;color:var(--muted);margin-top:12px;flex-wrap:wrap}
+  .legend .li{display:flex;align-items:center;gap:6px}
+  .sw{width:11px;height:11px;flex-shrink:0}
+  .sw.dash{background:none;border-top:2.5px dashed currentColor;height:0;width:16px}
+
+  .chartwrap{position:relative}
+  .tip{position:absolute;pointer-events:none;background:#fff;border:1px solid var(--border);box-shadow:0 3px 10px rgba(34,51,59,.13);padding:9px 12px;font-size:12px;display:none;min-width:170px;z-index:5}
+  .tip b{display:block;font-size:12.5px;margin-bottom:5px}
+  .tip .r{display:flex;justify-content:space-between;gap:14px;margin-top:2.5px}
+  .tip .r .k{display:flex;align-items:center;gap:6px;color:var(--muted)}
+  .tip .r .v{font-weight:600}
+
+  .rblock{padding:20px 22px}
+  .rblock + .rblock{border-top:1px solid var(--border)}
+  .rhead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px}
+  .rhead .t{font-family:Georgia,serif;font-size:16.5px;font-weight:700}
+  .rhead a{font-size:12.5px}
+  .rsub{font-size:12px;color:var(--muted);margin-bottom:12px}
+
+  table.pos{width:100%;border-collapse:collapse;font-size:12.8px}
+  table.pos th{text-align:left;font-size:10.5px;letter-spacing:.07em;color:var(--muted);font-weight:600;padding:6px 0;border-bottom:1px solid var(--border)}
+  table.pos td{padding:9px 0;border-bottom:1px solid var(--greige);vertical-align:middle}
+  table.pos td:last-child,table.pos th:last-child{text-align:right}
+  .pill{display:inline-block;padding:2.5px 9px;font-size:11px;font-weight:600}
+  .pill.issued{background:#E3EDF2;color:#25586B}
+  .pill.ack{background:#E0EEEC;color:#1F6B5E}
+  .pill.partial{background:#FAF0E1;color:#B5651D}
+  .pill.receipted{background:#EAF1E6;color:#4C6B3C}
+  .pill.invoiced{background:#EFEAF3;color:#6C5687}
+
+  .demo-note{margin-top:14px;font-size:11.5px;color:var(--muted)}
+  @media(max-width:1080px){.grid{grid-template-columns:1fr}.colL{border-right:none;border-bottom:1px solid var(--border)}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">▣</div>
+  <div class="brand"><b>Hypernix eProcure</b><span>Sourcing &amp; Vendor Portal</span></div>
+  <div class="spacer"></div>
+  <span class="actas">Act as</span>
+  <select><option>Faridah Yusof</option></select>
+  <div class="avatar">FY</div>
+  <div class="who"><b>Faridah Yusof</b><span>Buyer</span></div>
+</div>
+
+<div class="shell">
+  <nav class="side">
+    <div class="grp">SOURCING</div>
+    <a class="item active" href="#">Dashboard</a>
+    <a class="item" href="#">Requisitions</a>
+    <a class="item" href="#">RFQs</a>
+    <a class="item" href="#">Awards &amp; POs</a>
+    <div class="grp">PROCURE TO PAY</div>
+    <a class="item" href="#">Purchase Orders</a>
+    <a class="item" href="#">Deliveries</a>
+    <a class="item" href="#">Invoices</a>
+    <a class="item" href="#">Payments</a>
+    <a class="item" href="#">Statements</a>
+    <div class="grp">EVALUATION</div>
+    <a class="item" href="#">Bid Openings</a>
+    <div class="grp">SETUP</div>
+    <a class="item" href="#">Vendor Master</a>
+    <a class="item" href="#">Onboarding</a>
+    <a class="item" href="#">Forms</a>
+  </nav>
+
+  <main>
+    <h1>Sourcing Dashboard</h1>
+    <div class="sub">Live picture of requisitions, active RFQs and awards.</div>
+
+    <!-- KPI strip — unchanged -->
+    <div class="kpis">
+      <div class="kpi req"><div class="lab">OPEN REQUISITIONS</div><div class="num">12</div><div class="cap">ready to source</div></div>
+      <div class="kpi bids"><div class="lab">RFQS AWAITING BIDS</div><div class="num">2</div><div class="cap">vendors responding</div></div>
+      <div class="kpi open"><div class="lab">READY TO OPEN</div><div class="num">1</div><div class="cap">bid window closed</div></div>
+      <div class="kpi eval"><div class="lab">UNDER EVALUATION</div><div class="num">1</div><div class="cap">comparing &amp; negotiating</div></div>
+    </div>
+
+    <!-- ANALYTICS PANEL — replaces the Active RFQs table -->
+    <div class="panel">
+      <div class="panel-head">
+        <span class="t">Sourcing analytics</span>
+        <span class="meta">Updated just now · FY to date</span>
+        <div class="spacer"></div>
+        <div class="toggle on" id="fcToggle" onclick="toggleForecast()"><span class="tk"></span><span>Show forecast</span></div>
+      </div>
+
+      <div class="grid">
+        <!-- LEFT: editorial headline + forecast area chart -->
+        <div class="colL">
+          <div class="hlrow">
+            <div class="headline">Compared with this time last year, awarded spend is <span class="up">up&nbsp;12.8%</span></div>
+            <a href="#">View details</a>
+          </div>
+          <div class="hlsub">In June 2026, committed spend increased by RM 214,380 (+8.1% growth) compared with June 2025. Materials packages drive most of the increase.</div>
+
+          <div class="chartwrap">
+            <svg id="area" viewBox="0 0 640 320" width="100%" xmlns="http://www.w3.org/2000/svg" aria-label="Committed spend by month with forecast"></svg>
+            <div class="tip" id="tip"></div>
+          </div>
+
+          <div class="legend">
+            <span class="li"><span class="sw" style="background:var(--s-materials)"></span>Materials</span>
+            <span class="li"><span class="sw" style="background:var(--s-services)"></span>Services</span>
+            <span class="li"><span class="sw" style="background:var(--s-mro)"></span>MRO &amp; consumables</span>
+            <span class="li fc" style="color:var(--s-materials)"><span class="sw dash"></span><span style="color:var(--muted)">Materials forecast</span></span>
+            <span class="li fc" style="color:var(--s-services)"><span class="sw dash"></span><span style="color:var(--muted)">Services forecast</span></span>
+            <span class="li fc" style="color:var(--s-mro)"><span class="sw dash"></span><span style="color:var(--muted)">MRO forecast</span></span>
+          </div>
+        </div>
+
+        <!-- RIGHT: onboarding bars + top recent POs -->
+        <div class="colR">
+          <div class="rblock">
+            <div class="rhead"><span class="t">New vendors onboarded</span><a href="#">View all</a></div>
+            <div class="rsub">Vendors approved into the master each month over the past year.</div>
+            <svg id="bars" viewBox="0 0 340 180" width="100%" xmlns="http://www.w3.org/2000/svg" aria-label="New vendors onboarded per month"></svg>
+            <div class="legend" style="margin-top:8px">
+              <span class="li"><span class="sw" style="background:var(--b-mfr)"></span>Manufacturer</span>
+              <span class="li"><span class="sw" style="background:var(--b-dist)"></span>Distributor</span>
+              <span class="li"><span class="sw" style="background:var(--b-svc)"></span>Service provider</span>
+            </div>
+          </div>
+
+          <div class="rblock">
+            <div class="rhead"><span class="t">Top recent purchase orders</span><a href="#">View all</a></div>
+            <div class="rsub">Based on POs issued in the last 30 days.</div>
+            <table class="pos">
+              <thead><tr><th>PO</th><th>Vendor</th><th>Status</th><th>Total</th></tr></thead>
+              <tbody>
+                <tr><td><a class="mono" href="#">PO-2026-0141</a></td><td>Sentausa Engineering</td><td><span class="pill partial">Partially received</span></td><td>RM 296,203.85</td></tr>
+                <tr><td><a class="mono" href="#">PO-2026-0139</a></td><td>Perkasa Valves Sdn Bhd</td><td><span class="pill ack">Acknowledged</span></td><td>RM 205,850.21</td></tr>
+                <tr><td><a class="mono" href="#">PO-2026-0134</a></td><td>Borneo Instrumentation</td><td><span class="pill receipted">Receipted</span></td><td>RM 102,100.75</td></tr>
+                <tr><td><a class="mono" href="#">PO-2026-0128</a></td><td>MegaFlow Industrial</td><td><span class="pill issued">Issued</span></td><td>RM 95,401.54</td></tr>
+                <tr><td><a class="mono" href="#">PO-2026-0122</a></td><td>TitanWeld Services</td><td><span class="pill invoiced">Invoiced</span></td><td>RM 67,234.44</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="demo-note">Prototype — figures are illustrative demo data pending the analytics layer.</div>
+  </main>
+</div>
+
+<script>
+/* ================= DATA (demo, hardcoded) ================= */
+const months = ['Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep'];
+const ACTUAL_N = 12; // Jul'25..Jun'26 actual; Jul'26..Sep'26 forecast
+const series = [
+  {key:'Materials', color:getComputedStyle(document.documentElement).getPropertyValue('--s-materials').trim(),
+   vals:[512,655,838,782,560,548,575,610,668,625,590,690, 735,790,845]},
+  {key:'Services', color:getComputedStyle(document.documentElement).getPropertyValue('--s-services').trim(),
+   vals:[398,415,432,418,402,395,388,405,398,412,405,398, 408,420,435]},
+  {key:'MRO & consumables', color:getComputedStyle(document.documentElement).getPropertyValue('--s-mro').trim(),
+   vals:[300,368,502,340,320,335,310,342,330,378,352,368, 372,390,405]},
+];
+const barMonths = ['Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep'];
+const bars = [ // [manufacturer, distributor, service]
+  [4,3,2],[5,3,3],[6,4,5],[4,4,2],[5,3,3],[4,4,3],[5,4,3],[4,4,3],[5,3,4],[4,3,3],[5,4,3],[4,4,3],[6,4,4]
+];
+
+/* ================= AREA CHART ================= */
+const W=640,H=320,P={l:52,r:14,t:12,b:30};
+const iw=W-P.l-P.r, ih=H-P.t-P.b;
+const maxV=1000; // RM '000
+const x=i=>P.l+iw*(i/(months.length-1));
+const y=v=>P.t+ih*(1-v/maxV);
+const svg=document.getElementById('area');
+let showFc=true;
+
+function pathFrom(vals,from,to){
+  let d='';
+  for(let i=from;i<=to;i++) d+=(i===from?'M':'L')+x(i).toFixed(1)+' '+y(vals[i]).toFixed(1)+' ';
+  return d.trim();
+}
+function draw(){
+  let s='';
+  // gridlines + y labels
+  for(let g=0;g<=4;g++){
+    const v=maxV*g/4, yy=y(v);
+    s+=`<line x1="${P.l}" y1="${yy}" x2="${W-P.r}" y2="${yy}" stroke="#E4DED2" stroke-width="1"/>`;
+    s+=`<text x="${P.l-8}" y="${yy+4}" text-anchor="end" font-size="10.5" fill="#6B7A80" font-family="Inter">${v===0?'RM 0':'RM '+(v)}k</text>`;
+  }
+  // divider between actual and forecast
+  const xd=x(ACTUAL_N-1);
+  s+=`<line x1="${xd}" y1="${P.t}" x2="${xd}" y2="${H-P.b}" stroke="#E4DED2" stroke-width="1" stroke-dasharray="3 3"/>`;
+  // x labels
+  months.forEach((m,i)=>{
+    const fc=i>ACTUAL_N-1;
+    if(fc&&!showFc)return;
+    s+=`<text x="${x(i)}" y="${H-10}" text-anchor="middle" font-size="10.5" fill="${i===ACTUAL_N-1?'#22333B':'#6B7A80'}" font-weight="${i===ACTUAL_N-1?'600':'400'}" font-family="Inter">${m}</text>`;
+  });
+  // areas (actual only) — painted back-to-front by value
+  [...series].sort((a,b)=>Math.max(...b.vals)-Math.max(...a.vals)).forEach(sr=>{
+    let d=pathFrom(sr.vals,0,ACTUAL_N-1);
+    d+=` L ${x(ACTUAL_N-1)} ${y(0)} L ${x(0)} ${y(0)} Z`;
+    s+=`<path d="${d}" fill="${sr.color}" opacity="0.13"/>`;
+  });
+  // actual lines
+  series.forEach(sr=>{
+    s+=`<path d="${pathFrom(sr.vals,0,ACTUAL_N-1)}" fill="none" stroke="${sr.color}" stroke-width="2.2"/>`;
+  });
+  // forecast dashed
+  if(showFc) series.forEach(sr=>{
+    s+=`<path d="${pathFrom(sr.vals,ACTUAL_N-1,months.length-1)}" fill="none" stroke="${sr.color}" stroke-width="2" stroke-dasharray="5 5" opacity="0.85"/>`;
+  });
+  // current-month markers
+  series.forEach(sr=>{
+    s+=`<circle cx="${x(ACTUAL_N-1)}" cy="${y(sr.vals[ACTUAL_N-1])}" r="4" fill="${sr.color}"/>`;
+  });
+  s+=`<rect id="hit" x="${P.l}" y="${P.t}" width="${iw}" height="${ih}" fill="transparent"/>`;
+  s+=`<line id="cursor" x1="0" y1="${P.t}" x2="0" y2="${H-P.b}" stroke="#22333B" stroke-width="1" opacity="0" stroke-dasharray="2 3"/>`;
+  svg.innerHTML=s;
+  bindHover();
+}
+
+/* hover tooltip */
+const tip=document.getElementById('tip');
+function bindHover(){
+  const hit=document.getElementById('hit'),cur=document.getElementById('cursor');
+  svg.addEventListener('mousemove',e=>{
+    const r=svg.getBoundingClientRect();
+    const sx=(e.clientX-r.left)*(W/r.width);
+    const lim=showFc?months.length-1:ACTUAL_N-1;
+    let i=Math.round((sx-P.l)/iw*(months.length-1));
+    i=Math.max(0,Math.min(lim,i));
+    cur.setAttribute('x1',x(i));cur.setAttribute('x2',x(i));cur.setAttribute('opacity','.4');
+    const fc=i>ACTUAL_N-1;
+    const yr=i<6?"2025":"2026";
+    let html=`<b>${months[i]} ${yr}${fc?' · forecast':''}</b>`;
+    let tot=0;
+    series.forEach(sr=>{tot+=sr.vals[i];
+      html+=`<div class="r"><span class="k"><span class="sw" style="background:${sr.color}"></span>${sr.key}</span><span class="v">RM ${sr.vals[i].toLocaleString()}k</span></div>`;});
+    html+=`<div class="r" style="border-top:1px solid var(--border);margin-top:5px;padding-top:5px"><span class="k">Total</span><span class="v">RM ${(tot/1000).toFixed(2)}M</span></div>`;
+    tip.innerHTML=html;tip.style.display='block';
+    const px=x(i)/W*r.width;
+    tip.style.left=Math.min(px+14,r.width-190)+'px';
+    tip.style.top='40px';
+  });
+  svg.addEventListener('mouseleave',()=>{tip.style.display='none';document.getElementById('cursor').setAttribute('opacity','0');});
+}
+
+function toggleForecast(){
+  showFc=!showFc;
+  document.getElementById('fcToggle').classList.toggle('on',showFc);
+  document.querySelectorAll('.legend .fc').forEach(el=>el.style.display=showFc?'flex':'none');
+  draw();
+}
+
+/* ================= BAR CHART ================= */
+(function(){
+  const bw=340,bh=180,bp={l:26,r:4,t:8,b:22};
+  const biw=bw-bp.l-bp.r,bih=bh-bp.t-bp.b;
+  const maxB=16;
+  const cols=['--b-mfr','--b-dist','--b-svc'].map(v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim());
+  const gap=6, cw=(biw-gap*(bars.length-1))/bars.length;
+  let s='';
+  for(let g=0;g<=2;g++){
+    const v=maxB*g/2, yy=bp.t+bih*(1-v/maxB);
+    s+=`<line x1="${bp.l}" y1="${yy}" x2="${bw-bp.r}" y2="${yy}" stroke="#E4DED2"/>`;
+    s+=`<text x="${bp.l-6}" y="${yy+3.5}" text-anchor="end" font-size="9.5" fill="#6B7A80" font-family="Inter">${v}</text>`;
+  }
+  bars.forEach((b,i)=>{
+    const bx=bp.l+i*(cw+gap);
+    let cy=bp.t+bih;
+    b.forEach((v,si)=>{
+      const h=bih*v/maxB; cy-=h;
+      s+=`<rect x="${bx.toFixed(1)}" y="${cy.toFixed(1)}" width="${cw.toFixed(1)}" height="${h.toFixed(1)}" fill="${cols[si]}"><title>${barMonths[i]}: ${v}</title></rect>`;
+    });
+    s+=`<text x="${(bx+cw/2).toFixed(1)}" y="${bh-8}" text-anchor="middle" font-size="9" fill="#6B7A80" font-family="Inter">${barMonths[i]}</text>`;
+  });
+  document.getElementById('bars').innerHTML=s;
+})();
+
+draw();
+</script>
+</body>
+</html>

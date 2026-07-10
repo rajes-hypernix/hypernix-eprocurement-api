@@ -1,0 +1,6 @@
+@eProcure.Api_HostAddress = http://localhost:5260
+
+GET {{eProcure.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
