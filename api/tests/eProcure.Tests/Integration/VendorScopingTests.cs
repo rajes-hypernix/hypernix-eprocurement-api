@@ -34,8 +34,8 @@ public sealed class VendorScopingFixture : IAsyncLifetime
                 new VendorUser("VU-A", a.Id, "Alpha User", "a@vendor.test"),
                 new VendorUser("VU-B", b.Id, "Beta User", "b@vendor.test"));
 
-            // A file A owns, referenced by A's submitted bid via the "<fileId>::<name>" convention.
-            var file = new StoredFile { Name = "bidA.pdf", ContentType = "application/pdf", Content = [1, 2, 3], Size = 3, CreatedUtc = now };
+            // A file A owns — now a typed ownership fact (T5) rather than inferred from the bid answer.
+            var file = new StoredFile { Name = "bidA.pdf", ContentType = "application/pdf", Content = [1, 2, 3], Size = 3, CreatedUtc = now, OwnerKind = FileOwnerKind.Bid, OwnerVendorId = a.Id };
             db.StoredFiles.Add(file);
 
             var rfq1 = new Rfq { Code = "RFQ-2026-9001", Title = "Invited-to-A", ClosesUtc = new DateTime(2027, 1, 1, 0, 0, 0, DateTimeKind.Utc), CreatedUtc = now, UpdatedUtc = now }.SeededAs(RfqStatus.Open);

@@ -214,7 +214,8 @@ public sealed class OnboardingService(
     {
         var app = await ResolveAppByToken(rawToken, ct);
         RequireDraftable(app);
-        var stored = await files.SaveAsync(fileName, contentType, content, ct);
+        var stored = await files.SaveAsync(fileName, contentType, content,
+            FileOwnership.OnboardingDocument(app.Id), ct);   // owned by the onboarding application (T5)
 
         app.Documents.RemoveAll(d => d.Key == key);
         app.Documents.Add(new OnboardingDocument { Key = key, FileName = fileName, StoredFileId = stored.Id, UploadedUtc = clock.UtcNow });

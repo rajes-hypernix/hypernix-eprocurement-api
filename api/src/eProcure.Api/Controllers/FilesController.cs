@@ -9,7 +9,7 @@ namespace eProcure.Api.Controllers;
 // resource scoping + a probity audit trail (SEC-3).
 [ApiController]
 [Route("api/files")]
-public sealed class FilesController(IFileStore files, IFileAccessPolicy access, IAuditLog audit) : ControllerBase
+public sealed class FilesController(IFileStore files, IFileAccessPolicy access, IAuditLog audit, ICurrentUser user) : ControllerBase
 {
     [HttpPost]
     [RequestSizeLimit(20_000_000)]   // 20 MB cap for demo uploads
@@ -18,7 +18,10 @@ public sealed class FilesController(IFileStore files, IFileAccessPolicy access, 
         if (file is null || file.Length == 0) return BadRequest("No file provided.");
         using var ms = new MemoryStream();
         await file.CopyToAsync(ms, ct);
-        return Ok(await files.SaveAsync(file.FileName, file.ContentType, ms.ToArray(), ct));
+        // Stamp ownership at upload (T5): a vendor's generic upload is a bid attachment owned by them;
+        // an internal upload is Internal (buyer/admin only).
+        var owner = user.VendorId is { } vid ? FileOwnership.Bid(vid) : FileOwnership.Internal;
+        return Ok(await files.SaveAsync(file.FileName, file.ContentType, ms.ToArray(), owner, ct));
     }
 
     [HttpGet("{id:guid}")]

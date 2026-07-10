@@ -8,7 +8,7 @@ namespace eProcure.Infrastructure.Services;
 
 public sealed class FileStore(AppDbContext db, IClock clock) : IFileStore
 {
-    public async Task<StoredFileInfo> SaveAsync(string name, string contentType, byte[] content, CancellationToken ct = default)
+    public async Task<StoredFileInfo> SaveAsync(string name, string contentType, byte[] content, FileOwnership owner, CancellationToken ct = default)
     {
         var sf = new StoredFile
         {
@@ -17,6 +17,9 @@ public sealed class FileStore(AppDbContext db, IClock clock) : IFileStore
             Content = content,
             Size = content.LongLength,
             CreatedUtc = clock.UtcNow,
+            OwnerKind = owner.Kind,
+            OwnerVendorId = owner.VendorId,
+            OwnerEntityId = owner.EntityId,
         };
         db.StoredFiles.Add(sf);
         await db.SaveChangesAsync(ct);

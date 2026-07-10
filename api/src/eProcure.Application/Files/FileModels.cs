@@ -1,11 +1,28 @@
+using eProcure.Domain.Files;
+
 namespace eProcure.Application.Files;
 
 public sealed record StoredFileInfo(Guid Id, string Name, long Size);
 public sealed record StoredFileContent(string Name, string ContentType, byte[] Content);
 
+/// <summary>Typed ownership stamped on a file at upload time (T5), so downloads scope by column, not
+/// by scanning answer values.</summary>
+public sealed record FileOwnership(FileOwnerKind Kind, Guid? VendorId, Guid? EntityId)
+{
+    /// <summary>Buyer/admin upload — readable only by internal principals.</summary>
+    public static readonly FileOwnership Internal = new(FileOwnerKind.Internal, null, null);
+
+    /// <summary>A vendor's bid attachment.</summary>
+    public static FileOwnership Bid(Guid vendorId) => new(FileOwnerKind.Bid, vendorId, null);
+
+    /// <summary>An onboarding document (anonymous, token-scoped — no vendor principal yet).</summary>
+    public static FileOwnership OnboardingDocument(Guid applicationId) =>
+        new(FileOwnerKind.OnboardingDocument, null, applicationId);
+}
+
 public interface IFileStore
 {
-    Task<StoredFileInfo> SaveAsync(string name, string contentType, byte[] content, CancellationToken ct = default);
+    Task<StoredFileInfo> SaveAsync(string name, string contentType, byte[] content, FileOwnership owner, CancellationToken ct = default);
     Task<StoredFileContent?> GetAsync(Guid id, CancellationToken ct = default);
 }
 

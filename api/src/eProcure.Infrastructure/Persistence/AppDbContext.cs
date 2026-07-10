@@ -508,6 +508,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasKey(x => x.Id);
             e.Property(x => x.Name).HasMaxLength(260);
             e.Property(x => x.ContentType).HasMaxLength(120);
+            // Typed ownership (T5): download scoping reads these instead of scanning answer values.
+            e.Property(x => x.OwnerKind).HasConversion<string>().HasMaxLength(20);
+            e.HasIndex(x => x.OwnerVendorId);
+            e.HasOne<Vendor>().WithMany().HasForeignKey(x => x.OwnerVendorId).OnDelete(DeleteBehavior.Restrict);  // DBA-1 (nullable)
         });
 
         // Money convention: every decimal maps to numeric(18,2) (BUSINESS-RULES [$]).
