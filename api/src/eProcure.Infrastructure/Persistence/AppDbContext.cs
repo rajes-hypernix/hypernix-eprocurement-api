@@ -517,5 +517,23 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             prop.SetColumnType("numeric(18,2)");
         }
+
+        // Optimistic concurrency: use PostgreSQL's system column `xmin` as a row-version token on the
+        // aggregate roots that carry a lifecycle. A stale write (e.g. two buyers extending one RFQ)
+        // then raises DbUpdateConcurrencyException -> HTTP 409 instead of last-write-wins. The Npgsql
+        // `UseXminAsConcurrencyToken` helper maps the existing system column, so this adds NO physical
+        // column and needs no schema migration.
+        foreach (var clr in new[]
+                 {
+                     typeof(Rfq), typeof(PurchaseRequisition), typeof(Award), typeof(PurchaseOrder),
+                     typeof(Invoice), typeof(Asn), typeof(Grn), typeof(Vendor), typeof(VendorOnboardingApplication),
+                 })
+        {
+            b.Entity(clr).Property<uint>("xmin")
+                .HasColumnName("xmin")
+                .HasColumnType("xid")
+                .ValueGeneratedOnAddOrUpdate()
+                .IsConcurrencyToken();
+        }
     }
 }

@@ -1,12 +1,13 @@
 using eProcure.Application;
 using eProcure.Domain;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace eProcure.Api.Middleware;
 
 /// <summary>
 /// Maps domain/application exceptions to ProblemDetails:
-/// NotFound→404, Forbidden→403, DomainRule→409 (CONVENTIONS.md).
+/// NotFound→404, Forbidden→403, DomainRule→409, concurrency conflict→409 (CONVENTIONS.md).
 /// </summary>
 public sealed class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddleware> logger)
 {
@@ -27,6 +28,14 @@ public sealed class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionM
         catch (DomainRuleException ex)
         {
             await Write(ctx, StatusCodes.Status409Conflict, "Rule violation", ex.Message);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // Optimistic-concurrency clash (xmin token, T2): someone else modified this record since
+            // it was loaded. Surface a distinct 409 telling the user to reload — never swallow or
+            // auto-retry (a blind retry would clobber the other write). Closes RFQ-LIFECYCLE E11.
+            await Write(ctx, StatusCodes.Status409Conflict, "Concurrent modification",
+                "This record was changed by someone else since you loaded it. Reload and try again.");
         }
         catch (Exception ex)
         {
