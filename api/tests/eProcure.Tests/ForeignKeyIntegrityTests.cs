@@ -1,4 +1,5 @@
 using eProcure.Domain.Procurement;
+using eProcure.Domain.Suppliers;
 using eProcure.Infrastructure.Persistence;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
@@ -53,14 +54,19 @@ public sealed class ForeignKeyIntegrityTests
     {
         await using var db = NewCtx();
         await RequireDb(db);
-        var vendorId = await db.Vendors.Select(v => v.Id).FirstAsync();
-
         await using var tx = await db.Database.BeginTransactionAsync();
-        db.PurchaseOrders.Add(NewPo(vendorId, rfqId: null));   // real vendor, no RFQ (RfqId is nullable)
+
+        // Insert a real vendor in-transaction so the test is hermetic — it proves the FK accepts a
+        // valid reference without depending on seed data (a schema-only CI DB has no vendors).
+        var vendor = new Vendor { Code = "V-FKTEST-" + Guid.NewGuid().ToString("N")[..8], Name = "FK Test", RegisteredName = "FK Test" };
+        db.Vendors.Add(vendor);
+        await db.SaveChangesAsync();
+
+        db.PurchaseOrders.Add(NewPo(vendor.Id, rfqId: null));   // real vendor, no RFQ (RfqId is nullable)
 
         var act = async () => await db.SaveChangesAsync();
         await act.Should().NotThrowAsync("a PO pointing at a real vendor satisfies every FK");
 
-        await tx.RollbackAsync();   // leave the dev DB untouched
+        await tx.RollbackAsync();   // roll back — leave the DB untouched
     }
 }
