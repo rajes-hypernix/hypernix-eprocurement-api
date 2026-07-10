@@ -12,3 +12,5 @@ Deferred work registered at slice sign-offs. One row per item.
 | `StoredFile` has no `OwnerVendorId`/attachment linkage — file-download ownership is inferred by scanning `"<fileId>::<name>"` answer values + `OnboardingDocument.StoredFileId` (Slice F `FileAccessPolicy`, deny-on-uncertainty). Add a typed ownership column so Slice G fixes the schema instead of the inference calcifying | Slice F Phase 2 | Slice G (integrity) | Open |
 | Replace personal email (vieshall@hypernix.net) in seed data, tests and docs with a neutral placeholder (vendor@example.test) — 14 files. Must land BEFORE the repo is handed to the partner's tech team; git history is permanent, so the scrub only helps if done before wide distribution. | Git init secrets sweep | before handover | Open |
 | Git initialized + secrets swept + tagged v0.1-slice-f | Slice F close-out | ✅ Done |
+| Add Invoice.GrnId (nullable) + FK — needed for three-way-match lineage | Slice G T1 | Slice H | Open |
+| PrLineSourcing→PR: no PrId column; PrLine is an owned entity so its key can't be FK'd. Resolve when PrLine gets a stable Guid key | Slice G T1 | Slice H | Open |

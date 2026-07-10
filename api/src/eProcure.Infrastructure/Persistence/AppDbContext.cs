@@ -181,6 +181,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.RfqId);
             e.HasIndex(x => x.RfqLineCode);
             e.HasIndex(x => x.LinkStatus);
+            e.HasOne<Rfq>().WithMany().HasForeignKey(x => x.RfqId).OnDelete(DeleteBehavior.Restrict);  // DBA-1
+            // PrLineSourcing->PR deferred to Slice H: no PrId column, PrLine is owned (see BACKLOG).
         });
 
         b.Entity<Rfq>(e =>
@@ -381,6 +383,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.OwnsMany(x => x.Lines, o => o.ToTable("BidLines"));
             e.OwnsMany(x => x.Answers, o => o.ToTable("BidAnswers"));
             e.OwnsMany(x => x.Files, o => o.ToTable("BidAttachments"));
+            // Referential integrity, no nav props (aggregate boundaries preserved) — DBA-1.
+            e.HasOne<Rfq>().WithMany().HasForeignKey(x => x.RfqId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Vendor>().WithMany().HasForeignKey(x => x.VendorId).OnDelete(DeleteBehavior.Restrict);
         });
 
         b.Entity<TechnicalScore>(e =>
@@ -402,7 +407,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Code).HasMaxLength(50).IsRequired();
             e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
             e.Property(x => x.CreatedByUserId).HasMaxLength(50).IsRequired();
-            e.OwnsMany(x => x.Allocations, o => o.ToTable("AwardAllocations"));
+            e.HasOne<Rfq>().WithMany().HasForeignKey(x => x.RfqId).OnDelete(DeleteBehavior.Restrict);  // DBA-1
+            e.OwnsMany(x => x.Allocations, o =>
+            {
+                o.ToTable("AwardAllocations");
+                o.HasOne<Vendor>().WithMany().HasForeignKey(a => a.VendorId).OnDelete(DeleteBehavior.Restrict);  // DBA-1
+            });
         });
 
         b.Entity<PurchaseOrder>(e =>
@@ -414,6 +424,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Code).HasMaxLength(50).IsRequired();
             e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
             e.OwnsMany(x => x.Lines, o => o.ToTable("PoLines"));
+            e.HasOne<Vendor>().WithMany().HasForeignKey(x => x.VendorId).OnDelete(DeleteBehavior.Restrict);       // DBA-1
+            e.HasOne<Rfq>().WithMany().HasForeignKey(x => x.RfqId).OnDelete(DeleteBehavior.Restrict);             // DBA-1 (RfqId nullable)
         });
 
         b.Entity<Asn>(e =>
@@ -424,6 +436,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Code).HasMaxLength(50).IsRequired();
             e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
             e.OwnsMany(x => x.Lines, o => o.ToTable("AsnLines"));
+            e.HasOne<PurchaseOrder>().WithMany().HasForeignKey(x => x.PoId).OnDelete(DeleteBehavior.Restrict);    // DBA-1
+            e.HasOne<Vendor>().WithMany().HasForeignKey(x => x.VendorId).OnDelete(DeleteBehavior.Restrict);       // DBA-1
         });
 
         b.Entity<Grn>(e =>
@@ -433,6 +447,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.Code).IsUnique();
             e.Property(x => x.Code).HasMaxLength(50).IsRequired();
             e.OwnsMany(x => x.Lines, o => o.ToTable("GrnLines"));
+            e.HasOne<PurchaseOrder>().WithMany().HasForeignKey(x => x.PoId).OnDelete(DeleteBehavior.Restrict);    // DBA-1
+            e.HasOne<Asn>().WithMany().HasForeignKey(x => x.AsnId).OnDelete(DeleteBehavior.Restrict);             // DBA-1 (AsnId required — model is right)
         });
 
         b.Entity<Invoice>(e =>
@@ -447,6 +463,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Code).HasMaxLength(50).IsRequired();
             e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
             e.OwnsMany(x => x.Lines, o => o.ToTable("InvoiceLines"));
+            e.HasOne<PurchaseOrder>().WithMany().HasForeignKey(x => x.PoId).OnDelete(DeleteBehavior.Restrict);    // DBA-1
+            e.HasOne<Vendor>().WithMany().HasForeignKey(x => x.VendorId).OnDelete(DeleteBehavior.Restrict);       // DBA-1
+            // Invoice->Grn deferred to Slice H: Invoice has no GrnId column (see BACKLOG).
         });
 
         b.Entity<Clarification>(e =>
