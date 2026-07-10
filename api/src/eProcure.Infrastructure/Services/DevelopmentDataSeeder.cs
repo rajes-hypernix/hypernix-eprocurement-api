@@ -1,6 +1,7 @@
 using eProcure.Application.Abstractions;
 using eProcure.Domain;
 using eProcure.Domain.Communication;
+using eProcure.Domain.Files;
 using eProcure.Domain.Identity;
 using eProcure.Domain.Procurement;
 using eProcure.Domain.Sourcing;
@@ -53,9 +54,51 @@ public sealed class DevelopmentDataSeeder(
         await SeedDeliveriesAsync(ct);
         await SeedInvoicesAsync(ct);
         await SeedClarificationsAsync(ct);
+        await SeedFilesAsync(ct);
         await SeedPrLineageDemoAsync(ct);
         await SeedNumberSequencesAsync(ct);
         logger.LogInformation("DataSeeder complete (Slice 1–8 master + sourcing + full P2P + clarifications).");
+    }
+
+    // One StoredFile per ownership class, carrying the TYPED ownership that FileAccessPolicy reads
+    // (Slice G T5), so future migrations and the crawl exercise real file rows with real ownership
+    // instead of an empty table. The Bid file points at a real submitted bid + its vendor (owner +
+    // lineage); the two onboarding files point at a real vendor — the seed has no onboarding
+    // application, so their OwnerEntityId is null (they are typed uploads, not reconstructed from the
+    // pre-T5 answer-value convention); the Internal file is buyer/admin-only (fail-closed, no owner).
+    private async Task SeedFilesAsync(CancellationToken ct)
+    {
+        if (await db.StoredFiles.AnyAsync(ct)) return;
+
+        var now = clock.UtcNow;
+        static StoredFile File(string name, FileOwnerKind kind, Guid? vendorId, Guid? entityId, DateTime at)
+        {
+            var content = System.Text.Encoding.UTF8.GetBytes($"seed {kind} file: {name}");
+            return new StoredFile
+            {
+                Name = name, ContentType = "application/pdf", Content = content, Size = content.Length,
+                CreatedUtc = at, OwnerKind = kind, OwnerVendorId = vendorId, OwnerEntityId = entityId,
+            };
+        }
+
+        var files = new List<StoredFile>();
+
+        var bid = await db.Bids.Where(b => b.Submitted).OrderBy(b => b.Code).FirstOrDefaultAsync(ct);
+        if (bid is not null)
+            files.Add(File("bid-technical-proposal.pdf", FileOwnerKind.Bid, bid.VendorId, bid.Id, now));
+
+        var onbVendor = await db.Vendors.FirstOrDefaultAsync(v => v.Code == "SWK-V-11002", ct); // megatech
+        if (onbVendor is not null)
+        {
+            files.Add(File("ssm-certificate.pdf", FileOwnerKind.OnboardingDocument, onbVendor.Id, null, now));
+            files.Add(File("iso-9001-cert.pdf", FileOwnerKind.OnboardingAnswer, onbVendor.Id, null, now));
+        }
+
+        files.Add(File("buyer-scope-of-work.pdf", FileOwnerKind.Internal, null, null, now));
+
+        db.StoredFiles.AddRange(files);
+        await db.SaveChangesAsync(ct);
+        logger.LogInformation("Seeded {Count} StoredFiles (one per ownership class).", files.Count);
     }
 
     // Align the code sequences with the highest seeded code per (prefix, year) so the
