@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  api:
+    name: API (build + test)
+    runs-on: ubuntu-latest
+
+    # CI drives the tests at a real Postgres via the service container below — never the
+    # developer localhost fallback baked into the test classes.
+    env:
+      ConnectionStrings__Default: "Host=localhost;Port=5432;Database=eprocure;Username=eprocure;Password=localdev"
+
+    services:
+      postgres:
+        image: postgres:16
+        # Credentials/DB match docker-compose.yml so the seed + integrity tests behave identically.
+        env:
+          POSTGRES_USER: eprocure
+          POSTGRES_PASSWORD: localdev
+          POSTGRES_DB: eprocure
+        ports:
+          - 5432:5432
+        # Hold the job until Postgres answers pg_isready, so the DB is guaranteed up before tests run.
+        options: >-
+          --health-cmd "pg_isready -U eprocure -d eprocure"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.x
+
+      - name: Restore
+        run: dotnet restore api/eProcure.slnx
+
+      # Scoped warning-as-error: NU1605 (package downgrade) fails the build. A blanket -warnaserror
+      # is NOT used because of a pre-existing MSB3277 EF Core Relational version conflict in
+      # eProcure.Tests (tracked in docs/BACKLOG.md).
+      - name: Build
+        run: dotnet build api/eProcure.slnx --no-restore -warnaserror:NU1605
+
+      # Prove CI is really talking to the service Postgres, not silently succeeding against some
+      # incidental local instance. This must connect with the eProcure role/db (which only OUR
+      # service container has); if the service never came up, this fails the job loudly here, before
+      # any test can false-green off a localhost fallback.
+      - name: Verify database is reachable
+        env:
+          PGPASSWORD: localdev
+        run: psql -h localhost -p 5432 -U eprocure -d eprocure -c 'select 1;'
+
+      - name: Test
+        run: dotnet test api/eProcure.slnx --no-build
+
+  web:
+    name: Web (typecheck + lint + test)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: web
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc -b
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm run test
