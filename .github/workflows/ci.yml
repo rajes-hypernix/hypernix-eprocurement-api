@@ -58,6 +58,17 @@ jobs:
           PGPASSWORD: localdev
         run: psql -h localhost -p 5432 -U eprocure -d eprocure -c 'select 1;'
 
+      # The service container is an EMPTY Postgres — create the schema the DB-backed tests need.
+      # The design-time factory reads ConnectionStrings__Default (set above), so this targets the
+      # service container. Migrations only build schema; the tests seed their own rows.
+      - name: Apply database migrations
+        run: |
+          dotnet tool install --global dotnet-ef
+          export PATH="$PATH:$HOME/.dotnet/tools"
+          dotnet ef database update \
+            --project api/src/eProcure.Infrastructure \
+            --startup-project api/src/eProcure.Api
+
       - name: Test
         run: dotnet test api/eProcure.slnx --no-build
 
@@ -78,8 +89,11 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
 
+      # --legacy-peer-deps: openapi-typescript (dev-only codegen for `gen:api`, unused in
+      # build/lint/test) still declares peer typescript@^5.x while the app is on typescript 6.
+      # This only relaxes peer resolution; it disables no check and installs from the lockfile.
       - name: Install
-        run: npm ci
+        run: npm ci --legacy-peer-deps
 
       - name: Typecheck
         run: npx tsc -b
