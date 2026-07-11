@@ -23,7 +23,7 @@ import { ChatDock } from './components/comm/ChatDock'
 import { VendorPortal } from './components/vendor/VendorPortal'
 import { OnboardingPage } from './components/onboarding/OnboardingPage'
 import { OnboardingPortal } from './components/onboarding/OnboardingPortal'
-import { BUYER_NAV } from './nav'
+import { BUYER_NAV, gateNav } from './nav'
 import { VENDOR_NAV } from './vendorNav'
 import { useIdentity } from './identity'
 
@@ -72,7 +72,7 @@ const RECENT_ROUTES: { re: RegExp; type: RecentRecord['type']; key: (id: string)
 ]
 
 export default function App() {
-  const { isVendor, code: principal } = useIdentity()
+  const { isVendor, code: principal, permissions } = useIdentity()
   const qc = useQueryClient()
   const [active, setActive] = useState(() => window.location.hash.slice(1) || 'dashboard')
 
@@ -110,7 +110,9 @@ export default function App() {
     <>
       <TopBar onNavigate={go} />
       <div className="shell">
-        <Sidebar nav={isVendor ? VENDOR_NAV : DEV_BUYER_NAV} active={base} onSelect={go} />
+        {/* RM-P1: internal nav filtered by the server-derived permission list (same source as
+            <Gated>); the vendor portal nav is already role-built and stays as-is. */}
+        <Sidebar nav={isVendor ? VENDOR_NAV : gateNav(DEV_BUYER_NAV, permissions)} active={base} onSelect={go} />
         <main className="main">
           {isVendor ? (
             <VendorPortal route={active} onNavigate={go} />

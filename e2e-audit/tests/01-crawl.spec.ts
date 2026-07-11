@@ -13,8 +13,6 @@ const buyerRoutes: [string, string][] = [
   ['vendors', 'U5-vendor-master'],
   ['onboarding', 'U41-onboarding-queue'],
   ['onboarding/invite', 'U43-onboarding-invite'],
-  ['admin', 'U10-admin-users'],
-  ['lists', 'U11-admin-custom-lists'],
   ['reqs', 'U12-requisitions'],
   ['consolidate', 'U14-consolidate'],
   ['rfqs', 'U15-rfq-list'],
@@ -27,6 +25,13 @@ const buyerRoutes: [string, string][] = [
   ['statements', 'U34-statements'],
   ['chats', 'U36-clarifications'],
   ['payments', 'U47-payments-placeholder'],
+]
+
+// Admin screens crawl as the ADMIN persona (RM-P1 nav gating: a buyer no longer sees them —
+// the buyer-persona steps relied on cross-role nav visibility, same species as the OD-9 fix).
+const adminRoutes: [string, string][] = [
+  ['admin', 'U10-admin-users'],
+  ['lists', 'U11-admin-custom-lists'],
 ]
 
 const vendorRoutes: [string, string][] = [
@@ -47,6 +52,17 @@ for (const [route, name] of buyerRoutes) {
     await shot(page, name)
     const issues = reportHealth(w, info, name)
     // Hard-fail only on JS/page errors (a broken screen); net/slow are reported.
+    expect(w.pageErrors, `page errors on ${route}: ${issues.join(' ; ')}`).toEqual([])
+  })
+}
+
+for (const [route, name] of adminRoutes) {
+  test(`admin load: ${route}`, async ({ page }, info) => {
+    const w = watch(page)
+    await goAs(page, ADMIN, route)
+    await page.waitForTimeout(1200)
+    await shot(page, name)
+    const issues = reportHealth(w, info, name)
     expect(w.pageErrors, `page errors on ${route}: ${issues.join(' ; ')}`).toEqual([])
   })
 }

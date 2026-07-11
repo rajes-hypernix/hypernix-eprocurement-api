@@ -11,6 +11,9 @@ describe('App shell', () => {
     vi.spyOn(client, 'getPersonas').mockResolvedValue([
       { code: 'u_faridah', name: 'Faridah Yusof', kind: 'internal', roles: ['Buyer'], vendorName: null },
     ])
+    // RM-P1: the sidebar derives from the server permission list — the nav item the test
+    // clicks exists only when /auth/permissions grants its action.
+    vi.spyOn(client, 'getPermissions').mockResolvedValue(['ViewDashboard', 'ViewVendors', 'ViewRequisitions', 'ViewRfqs'])
     vi.spyOn(client, 'getRequisitions').mockResolvedValue([])
     vi.spyOn(client, 'getDashboard').mockResolvedValue({
       title: 'Sourcing Dashboard', subtitle: 'Live picture of requisitions, active RFQs and awards.',
@@ -32,7 +35,8 @@ describe('App shell', () => {
 
   it('navigates to another screen when a nav item is clicked', async () => {
     renderWithProviders(<App />)
-    await userEvent.click(screen.getByText('Vendor Master'))
+    // findBy: the nav renders once the permissions query resolves (server-derived, RM-P1).
+    await userEvent.click(await screen.findByText('Vendor Master'))
     expect(screen.getByRole('heading', { level: 1, name: 'Vendor Master' })).toBeInTheDocument()
   })
 })
