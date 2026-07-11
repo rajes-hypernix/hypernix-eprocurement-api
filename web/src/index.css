@@ -350,6 +350,9 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--t
 .ribbon-warn { background: var(--amber-bg); border-color: var(--amber-line); color: var(--amber-ink); }
 .ribbon-success { background: var(--green-bg); border-color: var(--green-line); color: var(--green-ink-alt); }
 .btn-danger { background: var(--red); border-color: var(--red); }
+/* Red-text destructive idiom on ghost/outline buttons (ui/Button `red` prop);
+   replaces the inline style={{color:'var(--red)'}} sites as screens migrate. */
+.btn-red { color: var(--red); }
 .btn-danger:hover { background: #b23b30; }
 .ns { display: inline-flex; align-items: center; gap: 6px; background: #1c2b36; color: #fff; font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: 20px; letter-spacing: 0.3px; }
 

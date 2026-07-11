@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { TopBar } from './components/TopBar'
 import { Sidebar } from './components/Sidebar'
 import { Dashboard } from './components/Dashboard'
@@ -28,6 +28,14 @@ import { useIdentity } from './identity'
 const LABELS: Record<string, string> = Object.fromEntries(
   BUYER_NAV.flatMap((g) => g.items.map((i) => [i.key, i.label])),
 )
+
+// /design/gallery — dev-only living catalogue of the ui/ primitives, gated the
+// same way demo identity is (Development only). The dynamic import behind the
+// DEV check keeps the gallery module tree-shaken OUT of production bundles.
+const Gallery = import.meta.env.DEV ? lazy(() => import('./ui/gallery/Gallery')) : null
+const DEV_BUYER_NAV = import.meta.env.DEV
+  ? [...BUYER_NAV, { title: 'Design (dev)', items: [{ key: 'design', icon: 'edit', label: 'Gallery' }] }]
+  : BUYER_NAV
 
 function PvPlaceholder() {
   return (
@@ -76,7 +84,7 @@ export default function App() {
     <>
       <TopBar />
       <div className="shell">
-        <Sidebar nav={isVendor ? VENDOR_NAV : BUYER_NAV} active={base} onSelect={go} />
+        <Sidebar nav={isVendor ? VENDOR_NAV : DEV_BUYER_NAV} active={base} onSelect={go} />
         <main className="main">
           {isVendor ? (
             <VendorPortal route={active} onNavigate={go} />
@@ -104,7 +112,8 @@ export default function App() {
               {base === 'statements' && <StatementPage route={active} onNavigate={go} />}
               {base === 'chats' && <Clarifications />}
               {base === 'payments' && <PvPlaceholder />}
-              {!['dashboard', 'vendors', 'onboarding', 'admin', 'lists', 'reqs', 'consolidate', 'rfqs', 'forms', 'openings', 'awards', 'pos', 'deliveries', 'invoices', 'statements', 'chats', 'payments'].includes(base) && (
+              {base === 'design' && Gallery && <Suspense fallback={null}><Gallery /></Suspense>}
+              {!['dashboard', 'vendors', 'onboarding', 'admin', 'lists', 'reqs', 'consolidate', 'rfqs', 'forms', 'openings', 'awards', 'pos', 'deliveries', 'invoices', 'statements', 'chats', 'payments', 'design'].includes(base) && (
                 <Placeholder label={LABELS[base] ?? base} />
               )}
             </>
