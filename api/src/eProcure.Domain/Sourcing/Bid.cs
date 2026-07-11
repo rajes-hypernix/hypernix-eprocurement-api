@@ -42,6 +42,7 @@ public class Bid
 
 public class BidLine
 {
+    public Guid Id { get; private set; } = Guid.NewGuid();   // stable grain key for facts/lineage (Slice H T1)
     public string ItemCode { get; set; } = default!;
     public bool Bidding { get; set; } = true;     // is the vendor quoting this line?
     public decimal Price { get; set; }            // unit price
@@ -52,11 +53,13 @@ public class BidLine
 
 public class BidAnswer
 {
+    public Guid Id { get; private set; } = Guid.NewGuid();   // stable grain key for facts/lineage (Slice H T1)
     public int QuestionOrder { get; set; }        // aligns to RfqForm FormItem.Order
     public string Value { get; set; } = "";
 }
 
 public class BidAttachment
 {
+    public Guid Id { get; private set; } = Guid.NewGuid();   // stable grain key for facts/lineage (Slice H T1)
     public string FileName { get; set; } = default!;
 }

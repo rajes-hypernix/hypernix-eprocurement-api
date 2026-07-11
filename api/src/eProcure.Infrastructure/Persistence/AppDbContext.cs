@@ -202,6 +202,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.OwnsMany(x => x.Lines, o =>
             {
                 o.ToTable("RfqLines");
+                o.HasKey(l => l.Id);                            // stable grain key (Slice H T1)
+                o.Property(l => l.Id).ValueGeneratedNever();    // client-assigned Guid — insert on Add (services replace the collection)
                 o.Property(l => l.LineCode).HasMaxLength(60);   // lineage target (§2.4)
                 o.Property(l => l.SourcePrLineIds).HasConversion(listConverter, listComparer);
             });
@@ -380,9 +382,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.Code).IsUnique();
             e.HasIndex(x => new { x.RfqId, x.VendorId }).IsUnique();
             e.Property(x => x.Code).HasMaxLength(50).IsRequired();
-            e.OwnsMany(x => x.Lines, o => o.ToTable("BidLines"));
-            e.OwnsMany(x => x.Answers, o => o.ToTable("BidAnswers"));
-            e.OwnsMany(x => x.Files, o => o.ToTable("BidAttachments"));
+            e.OwnsMany(x => x.Lines, o => { o.ToTable("BidLines"); o.HasKey(l => l.Id); o.Property(l => l.Id).ValueGeneratedNever(); });          // stable grain key (Slice H T1)
+            e.OwnsMany(x => x.Answers, o => { o.ToTable("BidAnswers"); o.HasKey(l => l.Id); o.Property(l => l.Id).ValueGeneratedNever(); });      // stable grain key (Slice H T1)
+            e.OwnsMany(x => x.Files, o => { o.ToTable("BidAttachments"); o.HasKey(l => l.Id); o.Property(l => l.Id).ValueGeneratedNever(); });    // stable grain key (Slice H T1)
             // Referential integrity, no nav props (aggregate boundaries preserved) — DBA-1.
             e.HasOne<Rfq>().WithMany().HasForeignKey(x => x.RfqId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<Vendor>().WithMany().HasForeignKey(x => x.VendorId).OnDelete(DeleteBehavior.Restrict);
@@ -411,6 +413,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.OwnsMany(x => x.Allocations, o =>
             {
                 o.ToTable("AwardAllocations");
+                o.HasKey(a => a.Id);                            // stable grain key (Slice H T1)
+                o.Property(a => a.Id).ValueGeneratedNever();    // client-assigned Guid — insert on Add (services replace the collection)
                 o.HasOne<Vendor>().WithMany().HasForeignKey(a => a.VendorId).OnDelete(DeleteBehavior.Restrict);  // DBA-1
             });
         });
@@ -423,7 +427,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.Code).IsUnique();
             e.Property(x => x.Code).HasMaxLength(50).IsRequired();
             e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
-            e.OwnsMany(x => x.Lines, o => o.ToTable("PoLines"));
+            e.OwnsMany(x => x.Lines, o => { o.ToTable("PoLines"); o.HasKey(l => l.Id); o.Property(l => l.Id).ValueGeneratedNever(); });            // stable grain key (Slice H T1)
             e.HasOne<Vendor>().WithMany().HasForeignKey(x => x.VendorId).OnDelete(DeleteBehavior.Restrict);       // DBA-1
             e.HasOne<Rfq>().WithMany().HasForeignKey(x => x.RfqId).OnDelete(DeleteBehavior.Restrict);             // DBA-1 (RfqId nullable)
         });
@@ -435,7 +439,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.Code).IsUnique();
             e.Property(x => x.Code).HasMaxLength(50).IsRequired();
             e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
-            e.OwnsMany(x => x.Lines, o => o.ToTable("AsnLines"));
+            e.OwnsMany(x => x.Lines, o => { o.ToTable("AsnLines"); o.HasKey(l => l.Id); o.Property(l => l.Id).ValueGeneratedNever(); });            // stable grain key (Slice H T1)
             e.HasOne<PurchaseOrder>().WithMany().HasForeignKey(x => x.PoId).OnDelete(DeleteBehavior.Restrict);    // DBA-1
             e.HasOne<Vendor>().WithMany().HasForeignKey(x => x.VendorId).OnDelete(DeleteBehavior.Restrict);       // DBA-1
         });
@@ -446,7 +450,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasKey(x => x.Id);
             e.HasIndex(x => x.Code).IsUnique();
             e.Property(x => x.Code).HasMaxLength(50).IsRequired();
-            e.OwnsMany(x => x.Lines, o => o.ToTable("GrnLines"));
+            e.OwnsMany(x => x.Lines, o => { o.ToTable("GrnLines"); o.HasKey(l => l.Id); o.Property(l => l.Id).ValueGeneratedNever(); });            // stable grain key (Slice H T1)
             e.HasOne<PurchaseOrder>().WithMany().HasForeignKey(x => x.PoId).OnDelete(DeleteBehavior.Restrict);    // DBA-1
             e.HasOne<Asn>().WithMany().HasForeignKey(x => x.AsnId).OnDelete(DeleteBehavior.Restrict);             // DBA-1 (AsnId required — model is right)
         });
@@ -462,7 +466,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.Code).IsUnique();
             e.Property(x => x.Code).HasMaxLength(50).IsRequired();
             e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
-            e.OwnsMany(x => x.Lines, o => o.ToTable("InvoiceLines"));
+            e.OwnsMany(x => x.Lines, o => { o.ToTable("InvoiceLines"); o.HasKey(l => l.Id); o.Property(l => l.Id).ValueGeneratedNever(); });        // stable grain key (Slice H T1)
             e.HasOne<PurchaseOrder>().WithMany().HasForeignKey(x => x.PoId).OnDelete(DeleteBehavior.Restrict);    // DBA-1
             e.HasOne<Vendor>().WithMany().HasForeignKey(x => x.VendorId).OnDelete(DeleteBehavior.Restrict);       // DBA-1
             // Invoice->Grn deferred to Slice H: Invoice has no GrnId column (see BACKLOG).

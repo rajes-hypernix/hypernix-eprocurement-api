@@ -57,6 +57,7 @@ public class Award
 
 public class AwardAllocation
 {
+    public Guid Id { get; private set; } = Guid.NewGuid();   // stable grain key for facts/lineage (Slice H T1)
     public string RfqLineCode { get; set; } = default!;    // item code
     public Guid VendorId { get; set; }
     public decimal Qty { get; set; }

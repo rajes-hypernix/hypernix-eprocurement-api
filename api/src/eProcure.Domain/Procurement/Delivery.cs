@@ -33,6 +33,7 @@ public class Asn
 
 public class AsnLine
 {
+    public Guid Id { get; private set; } = Guid.NewGuid();   // stable grain key for facts/lineage (Slice H T1)
     public string ItemCode { get; set; } = default!;
     public string Description { get; set; } = "";
     public decimal ShippedQty { get; set; }
@@ -60,6 +61,7 @@ public class Grn
 
 public class GrnLine
 {
+    public Guid Id { get; private set; } = Guid.NewGuid();   // stable grain key for facts/lineage (Slice H T1)
     public string ItemCode { get; set; } = default!;
     public string Description { get; set; } = "";
     public decimal ExpectedQty { get; set; }

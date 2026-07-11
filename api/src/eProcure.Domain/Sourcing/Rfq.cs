@@ -245,6 +245,8 @@ public class Rfq
 
 public class RfqLine
 {
+    public Guid Id { get; private set; } = Guid.NewGuid();   // stable grain key for facts/lineage (Slice H T1)
+
     /// <summary>Stable per-RFQ line code — the lineage target referenced by
     /// <see cref="PrLineSourcing.RfqLineCode"/> (PR-MODULE-SPEC §2.4). One line per item in v1,
     /// so it defaults to <see cref="ItemCode"/>; kept distinct so merged/aliased lines can carry
