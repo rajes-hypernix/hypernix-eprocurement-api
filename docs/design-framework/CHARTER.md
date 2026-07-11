@@ -67,10 +67,12 @@ the product.
   Either ship the two font files (self-hosted; no CDN) or amend this charter
   line to the de-facto system stacks. Until decided, no component may hardcode
   a font-family; everything goes through the token.
-- **Square corners** apply to structural chrome (cards, inputs, buttons,
-  modals; `--radius: 0`). Pills, chips, dot-badges, ribbons, and the chat/
-  health badges are the codified exception family (rounded by design for
-  affordance). D1 must not "fix" them to square.
+- **Square corners** — corrected at D1 Phase 1 (the D0 wording overstated):
+  `--radius: 0` is referenced by exactly one class, `.card`. CARDS are square;
+  inputs/buttons are 9px (`--radius-control`), modals 16px (`--radius-modal`),
+  pills/chips 20px (`--radius-pill`) — all ported verbatim from the prototype,
+  now named as tokens, values unchanged. If the operator ever wants literally
+  square controls, that is a product restyle decision, not a design-slice fix.
 
 ## 6. Derived from reality
 No primitive exists that D0's inventory cannot trace to a real usage in the

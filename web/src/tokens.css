@@ -1,0 +1,153 @@
+/* ============================================================================
+   tokens.css — the single source of truth for the design tokens (D1 Phase 1).
+
+   Extracted from index.css's :root (itself ported from
+   prototype/eprocure-portal.html). Values are NOT restyled: every token names
+   what already renders, except the four referenced-but-undefined variables
+   (--amber-bg / --blue-bg / --red-bg at the PROTOTYPE's values, --shadow-l at
+   its in-place fallback) whose definition is the one sanctioned bug-fix pixel
+   change of Phase 1 — see docs/design-framework/ D1 Phase 1 report.
+
+   Typed TS mirror: web/src/ui/tokens.ts. Keep the two in lockstep.
+   ========================================================================== */
+
+/* ---- Brand fonts — self-hosted, OFL-licensed (licenses alongside the files
+   in assets/fonts/). Subset to the weights actually in use per the D0 census:
+   Inter 400/500/600/700; JetBrains Mono 400/600. Georgia stays a system font.
+   The one italic in the app (.crcpt caption) uses synthesized oblique. ---- */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./assets/fonts/Inter-Regular.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./assets/fonts/Inter-Medium.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./assets/fonts/Inter-SemiBold.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./assets/fonts/Inter-Bold.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./assets/fonts/JetBrainsMono-Regular.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./assets/fonts/JetBrainsMono-SemiBold.woff2') format('woff2');
+}
+
+:root {
+  /* ---- Brand (locked; charter rule 5) ---- */
+  --teal: #336374;
+  --teal-d: #27505f;
+  --teal-nav: #25586b;
+  --accent: #2c5c6e;
+  --cream: #f3efe9;
+  --card: #f6f4ef;
+  --ink: #2b2b2b;
+  --muted: #7d8a93;
+  --line: #e4ded2;
+  --soft: #f7f5f1;
+
+  /* ---- Status palette: one dot / bg / ink / line set per tone.
+     Dots are darker than the base tone for contrast (deliberate; census). ---- */
+  --amber: #e08a3c;
+  --amber-dot: #d2952f;
+  --amber-bg: #fbefdf;      /* was referenced, never defined — prototype value */
+  --amber-ink: #9a5a1c;
+  --amber-line: #f0d9bf;
+  --amber-deep: #b9762a;    /* .lst line-status text; .stat.tone-amber numeral */
+  --amber-dot-soft: #e0a93c; /* .lst.w "no quotes" dot */
+
+  --green: #3f8f5f;
+  --green-dot: #2f9e6e;
+  --green-bg: #e7f2eb;
+  --green-ink: #256b41;
+  --green-ink-alt: #2c6b46; /* ribbon-success / health-ok variant of --green-ink;
+                               near-duplicate kept verbatim (no restyle) — logged
+                               as a convergence candidate in docs/BACKLOG.md */
+  --green-line: #cfe6d6;
+
+  --blue-dot: #3f78c2;
+  --blue-bg: #e8f0f8;       /* was referenced, never defined — prototype value */
+  --blue-ink: #2d557f;
+
+  --red: #c5564b;
+  --red-dot: #cf5149;
+  --red-bg: #fbe9e7;        /* was referenced, never defined — prototype value */
+  --red-ink: #9c3a30;
+  --red-line: #f0c9c4;
+
+  --grey-dot: #aab0b6;
+  --grey-bg: #eee9e1;
+  --grey-ink: #6f6a60;
+
+  --teal-bg: #e3edf0;       /* pill b-teal background */
+  --chip-teal-bg: #eef5f6;  /* swchip */
+  --chip-teal-line: #d6e6e9;
+  --chip-hit-bg: #d8efe0;   /* swchip.hit (ink = --green-ink) */
+  --chip-hit-line: #aed9bf;
+
+  /* Stat-card tone washes (dashboard/detail KPI tiles) */
+  --stat-teal-bg: #eef4f5;
+  --stat-amber-bg: #f8ede0;
+  --stat-red-bg: #fbeeec;
+
+  /* Dusty accent palette for dashboard tiles */
+  --clay: #b5836a;
+  --clay-bg: #f4e9e2;
+  --sage: #7e9b6b;
+  --sage-bg: #e9efe2;
+  --velvet: #8a7298;
+  --velvet-bg: #ece6f1;
+
+  /* ---- Typography (scales actually in use; census-enumerated) ---- */
+  --sans: 'Inter', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --serif: Georgia, 'Times New Roman', serif;
+  --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --fs-body: 14px;          /* body */
+  --fs-control: 13px;       /* inputs, selects, textareas, buttons */
+  --fs-label: 11.5px;       /* .field label, .hint */
+  --fs-badge: 12px;         /* .badge */
+  --fs-pill: 11px;          /* .pill, .swchip */
+  --label-ink: #5a6670;     /* .field label colour */
+
+  /* ---- Spacing (named where a value repeats structurally) ---- */
+  --space-field: 14px;      /* .field margin-bottom */
+  --gap-grid: 16px;         /* .grid gap */
+
+  /* ---- Border / radius. Cards are square (--radius: 0, the brand rule);
+     controls/modals/pills carry the prototype's rounded values — named here,
+     unchanged. ---- */
+  --radius: 0;
+  --radius-control: 9px;    /* inputs, buttons, health chip */
+  --radius-modal: 16px;
+  --radius-pill: 20px;
+
+  /* ---- Elevation & focus ---- */
+  --shadow: 0 2px 10px rgba(51, 99, 119, 0.08);
+  --shadow-l: 0 8px 30px rgba(51, 99, 119, 0.16); /* was fallback-only in .modal */
+  --focus-ring: 0 0 0 3px rgba(51, 99, 119, 0.13);
+}
