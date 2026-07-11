@@ -323,6 +323,10 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--t
   letter-spacing: 0.4px;
 }
 .hint { font-size: var(--fs-label); color: var(--muted); }
+/* Field-chrome error state (ui/FieldChrome) — mirrors BidForm's missing-answer
+   idiom (red left border + red bold tag); additive, used only by primitives. */
+.field.f-error { border-left: 3px solid var(--red); padding-left: 10px; }
+.ferr { color: var(--red); font-weight: 600; text-transform: none; letter-spacing: normal; }
 
 /* ---- Ribbon ---- */
 .ribbon {
