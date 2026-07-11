@@ -133,7 +133,7 @@ public sealed class DeliveryService(
         db.Grns.Add(grn);
         // Under-receipt: ASN becomes Received (no longer in transit), so the shortfall
         // re-enters remaining-to-ship automatically.
-        asn.MarkReceived();
+        asn.MarkReceived(clock.UtcNow);
         asn.GrnCode = grn.Code;
         asn.UpdatedUtc = clock.UtcNow;
 

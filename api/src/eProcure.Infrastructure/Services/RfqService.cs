@@ -182,7 +182,7 @@ public sealed class RfqService(
         // Capture the deadline as a server timestamp and open the RFQ (BUSINESS-RULES [G]).
         rfq.OpensUtc ??= now;
         rfq.OriginalClosesUtc ??= rfq.ClosesUtc;   // immutable baseline for extension analytics (§1.3)
-        rfq.MarkReleased();
+        rfq.MarkReleased(clock.UtcNow);
         rfq.UpdatedUtc = now;
         db.RfqEvents.Add(RfqEvent.Create(rfq.Id, RfqEventType.Released, now, actorUserId: user.UserId));
         await db.SaveChangesAsync(ct);   // status + event in one transaction (G6)
@@ -195,8 +195,8 @@ public sealed class RfqService(
     public async Task<RfqDetail> CloseAsync(Guid id, CancellationToken ct = default)
     {
         var rfq = await Load(id, ct);
-        rfq.CloseEarly();               // guards Open; throws the same message the service used to
-        rfq.ClosesUtc = clock.UtcNow;   // close now, ahead of the original deadline
+        rfq.CloseEarly(clock.UtcNow);   // guards Open; stamps ClosedUtc (actual). The planned ClosesUtc
+                                        // is NOT overwritten (Slice H T5): it stays the planned deadline.
         rfq.UpdatedUtc = clock.UtcNow;
         db.RfqEvents.Add(RfqEvent.Create(rfq.Id, RfqEventType.Closed, clock.UtcNow, actorUserId: user.UserId));
         await db.SaveChangesAsync(ct);

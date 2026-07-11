@@ -93,7 +93,7 @@ public sealed class InvoiceService(
             WhtRate = req.WhtRate, Lines = lines,
             CreatedUtc = clock.UtcNow, UpdatedUtc = clock.UtcNow,
         };
-        if (priceVariance) inv.MarkException(reason); else inv.MarkSubmitted();
+        if (priceVariance) inv.MarkException(reason); else inv.MarkSubmitted(clock.UtcNow);
         db.Invoices.Add(inv);
         if (priceVariance && po.Status is PoStatus.Issued or PoStatus.Acknowledged or PoStatus.PartiallyReceived or PoStatus.Received)
             po.MarkDiscrepancy();
@@ -130,7 +130,7 @@ public sealed class InvoiceService(
 
     private async Task ApproveInternal(Invoice inv, string action, CancellationToken ct)
     {
-        inv.Approve();                  // guards not already Approved/Paid
+        inv.Approve(clock.UtcNow);                  // guards not already Approved/Paid
         inv.NsId ??= $"NS-VB-{(await NextSeqSuffix(ct))}";
         inv.UpdatedUtc = clock.UtcNow;
 

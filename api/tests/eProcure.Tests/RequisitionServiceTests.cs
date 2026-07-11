@@ -68,6 +68,9 @@ public class RequisitionServiceTests
         var audit = await c.Db.AuditEntries.FirstAsync(a => a.Action == "PR submitted");
         audit.FromState.Should().Be("Draft");
         audit.ToState.Should().Be("Submitted");
+        // T5: the transition stamps SubmittedUtc inside the domain method (via IClock).
+        var pr = await c.Db.PurchaseRequisitions.FirstAsync(p => p.Id == draft.Id);
+        pr.SubmittedUtc.Should().Be(c.Clock.UtcNow);
     }
 
     [Fact] // C2

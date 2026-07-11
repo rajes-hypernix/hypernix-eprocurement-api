@@ -179,7 +179,7 @@ public sealed class AwardService(
         }
 
         award.Approve(approver, clock.UtcNow);   // guards PendingApproval; stamps approver/approvedUtc
-        rfq.MarkAwarded();
+        rfq.MarkAwarded(clock.UtcNow);
         rfq.UpdatedUtc = clock.UtcNow;
 
         // [Slice D] Settle PR-line provenance for the awarded RFQ: awarded source lines → Awarded

@@ -23,23 +23,27 @@ public class PurchaseOrder
     public List<PoLine> Lines { get; set; } = [];
     public DateTime CreatedUtc { get; set; }
     public DateTime UpdatedUtc { get; set; }
+    public DateTime? IssuedUtc { get; private set; }      // actual transition instants (Slice H T5)
+    public DateTime? AcknowledgedUtc { get; private set; }
 
     public decimal Total => Lines.Sum(l => l.Qty * l.UnitPrice);
 
     // ===== Lifecycle transitions (T3). Guards + messages preserve prior service behaviour. =====
 
     /// <summary>Draft → Issued.</summary>
-    public void Issue()
+    public void Issue(DateTime nowUtc)
     {
         if (Status != PoStatus.Draft) throw new DomainRuleException($"PO {Code} has already been issued.");
         Status = PoStatus.Issued;
+        IssuedUtc = nowUtc;
     }
 
     /// <summary>Issued → Acknowledged.</summary>
-    public void Acknowledge()
+    public void Acknowledge(DateTime nowUtc)
     {
         if (Status != PoStatus.Issued) throw new DomainRuleException($"PO {Code} must be Issued before it can be acknowledged.");
         Status = PoStatus.Acknowledged;
+        AcknowledgedUtc = nowUtc;
     }
 
     /// <summary>Records a goods receipt: Received when everything has arrived, else PartiallyReceived.

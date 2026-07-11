@@ -43,7 +43,7 @@ public sealed class PoService(
     {
         EnsureInternal();
         var po = await Load(id, ct);
-        po.Issue();                     // guards Draft; same message as before
+        po.Issue(clock.UtcNow);                     // guards Draft; same message as before
         po.NsId ??= $"NS-PO-{po.Code[^4..]}";
         po.UpdatedUtc = clock.UtcNow;
         await db.SaveChangesAsync(ct);
@@ -56,7 +56,7 @@ public sealed class PoService(
     {
         var po = await Load(id, ct);
         VendorAccess.EnsureCanAccess(user, po.VendorId);   // only the awarded vendor acknowledges
-        po.Acknowledge();               // guards Issued; same message as before
+        po.Acknowledge(clock.UtcNow);               // guards Issued; same message as before
         po.Acknowledged = true;
         po.UpdatedUtc = clock.UtcNow;
         await db.SaveChangesAsync(ct);

@@ -28,6 +28,8 @@ public class Invoice
     public List<InvoiceLine> Lines { get; set; } = [];
     public DateTime CreatedUtc { get; set; }
     public DateTime UpdatedUtc { get; set; }
+    public DateTime? SubmittedUtc { get; private set; }   // actual transition instants (Slice H T5)
+    public DateTime? ApprovedUtc { get; private set; }
 
     public decimal Subtotal => Lines.Sum(l => l.Qty * l.UnitPrice);
     public decimal Sst => Math.Round(Subtotal * SstRate, 0, MidpointRounding.AwayFromZero);
@@ -38,18 +40,19 @@ public class Invoice
     // Submitted or Exception; approval requires a non-approved, non-paid invoice. =====
 
     /// <summary>Draft → Submitted (matched at submission time).</summary>
-    public void MarkSubmitted() => Status = InvoiceStatus.Submitted;
+    public void MarkSubmitted(DateTime nowUtc) { Status = InvoiceStatus.Submitted; SubmittedUtc = nowUtc; }
 
     /// <summary>Draft → Exception (price/qty variance at submission), capturing the reason.</summary>
     public void MarkException(string? reason) { Status = InvoiceStatus.Exception; ExceptionReason = reason; }
 
     /// <summary>→ Approved for payment. Guards against an already-terminal invoice; the invoice service
     /// enforces the Exception-must-be-resolved-first rule before calling this.</summary>
-    public void Approve()
+    public void Approve(DateTime nowUtc)
     {
         if (Status is InvoiceStatus.Approved or InvoiceStatus.Paid)
             throw new DomainRuleException($"Invoice {Code} is already {Status}.");
         Status = InvoiceStatus.Approved;
+        ApprovedUtc = nowUtc;
     }
 
     /// <summary>TEST/SEED ONLY — sets the status directly, bypassing transitions. Never call from

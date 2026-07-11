@@ -34,6 +34,7 @@ public class PurchaseRequisition
     // --- Business dates: typed source of truth (§5) + the legacy display strings kept intact ---
     public DateOnly? RaisedOn { get; set; }               // typed source of truth (Slice H T4 retired the display strings)
     public DateOnly? RequiredOn { get; set; }
+    public DateTime? SubmittedUtc { get; private set; }   // actual transition instant (Slice H T5)
 
     /// <summary>Legacy free-text status ("Approved") — preserved for existing readers. The
     /// analytics-grade lifecycle is <see cref="HeaderStatus"/>. Setter is private (T3); the string→enum
@@ -77,6 +78,7 @@ public class PurchaseRequisition
         Submitted = true;
         Status = "Submitted";          // keep the legacy display field in step
         UpdatedUtc = nowUtc;
+        SubmittedUtc = nowUtc;
         RecomputeHeaderStatus();
     }
 

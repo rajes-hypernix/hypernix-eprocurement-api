@@ -30,7 +30,7 @@ public class RfqLifecycleTests
     {
         var r = Rfq(RfqStatus.Draft, closes);
         r.InviteVendor(v, Now.AddDays(-1), MinHrs);
-        r.MarkReleased();
+        r.MarkReleased(Now);
         return r;
     }
 

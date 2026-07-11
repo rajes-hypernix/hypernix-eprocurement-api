@@ -21,10 +21,11 @@ public class Asn
     public List<AsnLine> Lines { get; set; } = [];
     public DateTime CreatedUtc { get; set; }
     public DateTime UpdatedUtc { get; set; }
+    public DateTime? ReceivedUtc { get; private set; }    // actual transition instant (Slice H T5)
 
     /// <summary>→ Received, once the buyer posts a GRN against this shipment (no longer in transit).
     /// The pre-Slice-G code set this with no precondition; preserved as-is (behaviour-preserving).</summary>
-    public void MarkReceived() => Status = AsnStatus.Received;
+    public void MarkReceived(DateTime nowUtc) { Status = AsnStatus.Received; ReceivedUtc = nowUtc; }
 
     /// <summary>TEST/SEED ONLY — sets the status directly, bypassing transitions. Never call from
     /// production service code (enforced by the ArchitectureTests source-scan).</summary>

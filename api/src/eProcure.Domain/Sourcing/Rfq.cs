@@ -23,6 +23,12 @@ public class Rfq
     /// "days extended" analytics. Set once when the RFQ is released; never modified by an extension.</summary>
     public DateTime? OriginalClosesUtc { get; set; }
 
+    // Actual transition instants (Slice H T5, cycle-time analytics) — stamped inside the transition,
+    // the single place it happens. Distinct from the PLANNED ClosesUtc, which early close never touches.
+    public DateTime? ReleasedUtc { get; private set; }
+    public DateTime? ClosedUtc { get; private set; }
+    public DateTime? AwardedUtc { get; private set; }
+
     /// <summary>Reserved for multi-round bidding (SOW, deferred). Always 1 in this slice.</summary>
     public int RoundNumber { get; set; } = 1;
 
@@ -203,18 +209,21 @@ public class Rfq
 
     /// <summary>Draft → Open. The service still checks its own release preconditions (invited vendors,
     /// close date, provenance) before calling this; the guard here is the invariant.</summary>
-    public void MarkReleased()
+    public void MarkReleased(DateTime nowUtc)
     {
         if (Status != RfqStatus.Draft) throw new DomainRuleException($"RFQ {Code} is already released.");
         Status = RfqStatus.Open;
+        ReleasedUtc = nowUtc;
     }
 
-    /// <summary>Open → Closed (early close).</summary>
-    public void CloseEarly()
+    /// <summary>Open → Closed (early close). Stamps the ACTUAL close; the planned ClosesUtc /
+    /// OriginalClosesUtc are left untouched (Slice I discipline preserved).</summary>
+    public void CloseEarly(DateTime nowUtc)
     {
         if (Status != RfqStatus.Open)
             throw new DomainRuleException($"Only an open RFQ can be closed early (RFQ {Code} is {Status}).");
         Status = RfqStatus.Closed;
+        ClosedUtc = nowUtc;
     }
 
     /// <summary>Any non-terminal state → Cancelled.</summary>
@@ -228,7 +237,7 @@ public class Rfq
     /// <summary>→ Awarded, on award approval. NOTE: the pre-Slice-G code set this with no precondition;
     /// preserved as-is (behaviour-preserving). A tighter guard (require Closed/Evaluation) is a candidate
     /// for a later slice — see the Slice G report.</summary>
-    public void MarkAwarded() => Status = RfqStatus.Awarded;
+    public void MarkAwarded(DateTime nowUtc) { Status = RfqStatus.Awarded; AwardedUtc = nowUtc; }
 
     /// <summary>Closed → Evaluation when an envelope is opened; a no-op in any other state (this exactly
     /// mirrors EvaluationService's `if (Status == Closed) Status = Evaluation`).</summary>
