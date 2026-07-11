@@ -7,6 +7,13 @@ import {
 import { Icon } from '../Icon'
 import { Modal, Notice, Spinner } from '../ui'
 import { PrHeaderBadge } from '../../lib/prStatus'
+import type { FieldSpec } from '../../ui/fieldSpec'
+import { TextField } from '../../ui/TextField'
+import { TextAreaField } from '../../ui/TextAreaField'
+import { NumberField } from '../../ui/NumberField'
+import { MoneyField } from '../../ui/MoneyField'
+import { DateField } from '../../ui/DateField'
+import { Button } from '../../ui/Button'
 
 type PrLine = NonNullable<RequisitionDto['lines']>[number]
 // A line being edited: carries the server id (existing) or undefined (new).
@@ -19,12 +26,31 @@ const toEdit = (l: PrLine): EditLine => ({
 })
 const blankLine = (): EditLine => ({ itemCode: '', description: '', qty: '', uom: '', estUnitPrice: '', lifecycleStatus: 'Open', editable: true })
 
+// The header AS DATA (D1 Phase 3): the form renders from this FieldSpec array
+// through the one pipeline. D5 custom fields will extend arrays like this one.
+type HeaderKey = 'requestor' | 'department' | 'category' | 'location' | 'job' | 'requiredDate' | 'memo'
+const HEADER_SPECS: (FieldSpec & { key: HeaderKey })[] = [
+  { key: 'requestor', label: 'Requestor', dataType: 'text', placeholder: 'Name' },
+  { key: 'department', label: 'Department', dataType: 'text', placeholder: 'e.g. Maintenance' },
+  { key: 'category', label: 'Category', dataType: 'text', placeholder: 'e.g. Piping' },
+  { key: 'location', label: 'Location', dataType: 'text', placeholder: 'e.g. Bintulu Plant' },
+  { key: 'job', label: 'Job / Cost ref', dataType: 'text', placeholder: 'JOB-…' },
+  { key: 'requiredDate', label: 'Required by', dataType: 'date' },
+  { key: 'memo', label: 'Memo / Justification', dataType: 'text', placeholder: 'Short description of the requirement' },
+]
+const specOf = (k: HeaderKey) => HEADER_SPECS.find((s) => s.key === k)!
+
+// Line-cell specs: bare chrome, so spec.label becomes the aria-label —
+// preserving today's `Line N …` accessible names exactly.
+const lineSpec = (i: number, part: string, over: Partial<FieldSpec> = {}): FieldSpec =>
+  ({ key: `line-${i}-${part}`, label: `Line ${i + 1} ${part}`, dataType: 'text', ...over })
+
 export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }) {
   const qc = useQueryClient()
   const isNew = id === null
   const { data: pr, isPending } = useQuery({ queryKey: ['requisition', id], queryFn: () => getRequisition(id!), enabled: !isNew })
 
-  const [h, setH] = useState({ requestor: '', department: '', category: '', location: '', job: '', requiredDate: '', memo: '' })
+  const [h, setH] = useState<Record<HeaderKey, string>>({ requestor: '', department: '', category: '', location: '', job: '', requiredDate: '', memo: '' })
   const [lines, setLines] = useState<EditLine[]>([blankLine()])
   const [err, setErr] = useState<string | null>(null)
   const [confirmCancel, setConfirmCancel] = useState(false)
@@ -77,6 +103,14 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
 
   if (!isNew && isPending) return <Spinner />
 
+  const setHeader = (k: HeaderKey) => (v: string) => setH((p) => ({ ...p, [k]: v }))
+  const header = (k: HeaderKey) => {
+    const spec = specOf(k)
+    return spec.dataType === 'date'
+      ? <DateField key={k} spec={spec} value={h[k]} onChange={setHeader(k)} />
+      : <TextField key={k} spec={spec} value={h[k]} onChange={setHeader(k)} />
+  }
+
   const setLine = (i: number, k: keyof EditLine, v: string) =>
     setLines((ls) => ls.map((l, x) => (x === i ? { ...l, [k]: v } : l)))
   const removeLine = (i: number) => setLines((ls) => ls.filter((_, x) => x !== i))
@@ -88,20 +122,20 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
     <div className="pr-actions">
       {isNew ? (
         <>
-          <button type="button" className="btn btn-ghost" disabled={save.isPending} onClick={() => save.mutate('draft')}>Save draft</button>
-          <button type="button" className="btn btn-pri" disabled={save.isPending} onClick={() => save.mutate('submit')}><Icon name="check" size={15} /> Submit PR</button>
+          <Button variant="ghost" busy={save.isPending} onClick={() => save.mutate('draft')}>Save draft</Button>
+          <Button variant="primary" icon="check" busy={save.isPending} onClick={() => save.mutate('submit')}>Submit PR</Button>
         </>
       ) : headerStatus === 'Draft' ? (
         <>
-          <button type="button" className="btn btn-out" disabled={save.isPending || submit.isPending} onClick={() => save.mutate('keep')}>Save changes</button>
-          <button type="button" className="btn btn-pri" disabled={submit.isPending || save.isPending} onClick={() => submit.mutate()}><Icon name="check" size={15} /> Submit PR</button>
+          <Button variant="outline" busy={save.isPending || submit.isPending} onClick={() => save.mutate('keep')}>Save changes</Button>
+          <Button variant="primary" icon="check" busy={submit.isPending || save.isPending} onClick={() => submit.mutate()}>Submit PR</Button>
         </>
       ) : (
-        <button type="button" className="btn btn-pri" disabled={save.isPending} onClick={() => save.mutate('keep')}><Icon name="check" size={15} /> Save changes</button>
+        <Button variant="primary" icon="check" busy={save.isPending} onClick={() => save.mutate('keep')}>Save changes</Button>
       )}
       <div className="spacer" />
       {!isNew && !hasLiveLine && headerStatus !== 'Cancelled' && (
-        <button type="button" className="btn btn-danger" onClick={() => setConfirmCancel(true)}>Cancel PR</button>
+        <Button variant="ghost" red onClick={() => setConfirmCancel(true)}>Cancel PR</Button>
       )}
     </div>
   )
@@ -124,17 +158,9 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
 
       <div className="card" style={{ padding: 18, marginBottom: 16 }}>
         <h3 style={{ marginTop: 0 }}>Header</h3>
-        <div className="frow">
-          <Field label="Requestor" value={h.requestor} onChange={(v) => setH({ ...h, requestor: v })} placeholder="Name" />
-          <Field label="Department" value={h.department} onChange={(v) => setH({ ...h, department: v })} placeholder="e.g. Maintenance" />
-          <Field label="Category" value={h.category} onChange={(v) => setH({ ...h, category: v })} placeholder="e.g. Piping" />
-        </div>
-        <div className="frow">
-          <Field label="Location" value={h.location} onChange={(v) => setH({ ...h, location: v })} placeholder="e.g. Bintulu Plant" />
-          <Field label="Job / Cost ref" value={h.job} onChange={(v) => setH({ ...h, job: v })} placeholder="JOB-…" />
-          <Field label="Required by" type="date" value={h.requiredDate} onChange={(v) => setH({ ...h, requiredDate: v })} />
-        </div>
-        <Field label="Memo / Justification" value={h.memo} onChange={(v) => setH({ ...h, memo: v })} placeholder="Short description of the requirement" />
+        <div className="frow">{(['requestor', 'department', 'category'] as const).map(header)}</div>
+        <div className="frow">{(['location', 'job', 'requiredDate'] as const).map(header)}</div>
+        {header('memo')}
       </div>
 
       <div className="card" style={{ padding: 18, marginBottom: 16 }}>
@@ -146,22 +172,22 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
               const ro = !isNew && !l.editable
               return (
                 <tr key={l.id ?? `new-${i}`}>
-                  <td><input className={ro ? 'ro' : ''} readOnly={ro} value={l.itemCode} placeholder="ITEM-CODE" onChange={(e) => setLine(i, 'itemCode', e.target.value)} aria-label={`Line ${i + 1} item code`} /></td>
-                  <td><input className={ro ? 'ro' : ''} readOnly={ro} value={l.description} placeholder="Description" onChange={(e) => setLine(i, 'description', e.target.value)} aria-label={`Line ${i + 1} description`} /></td>
-                  <td><input className={`amt ${ro ? 'ro' : ''}`} readOnly={ro} value={l.qty} placeholder="0" onChange={(e) => setLine(i, 'qty', e.target.value.replace(/[^0-9.]/g, ''))} aria-label={`Line ${i + 1} qty`} /></td>
-                  <td><input className={ro ? 'ro' : ''} readOnly={ro} value={l.uom} placeholder="Unit" onChange={(e) => setLine(i, 'uom', e.target.value)} aria-label={`Line ${i + 1} uom`} /></td>
-                  <td><input className={`amt ${ro ? 'ro' : ''}`} readOnly={ro} value={l.estUnitPrice} placeholder="0" onChange={(e) => setLine(i, 'estUnitPrice', e.target.value.replace(/[^0-9.]/g, ''))} aria-label={`Line ${i + 1} rate`} /></td>
+                  <td><TextField chrome="bare" spec={lineSpec(i, 'item code', { placeholder: 'ITEM-CODE', readOnly: ro })} value={l.itemCode} onChange={(v) => setLine(i, 'itemCode', v)} /></td>
+                  <td><TextField chrome="bare" spec={lineSpec(i, 'description', { placeholder: 'Description', readOnly: ro })} value={l.description} onChange={(v) => setLine(i, 'description', v)} /></td>
+                  <td><NumberField chrome="bare" spec={lineSpec(i, 'qty', { dataType: 'number', placeholder: '0', readOnly: ro, validation: { min: 0 } })} value={l.qty} onChange={(v) => setLine(i, 'qty', v)} /></td>
+                  <td><TextField chrome="bare" spec={lineSpec(i, 'uom', { placeholder: 'Unit', readOnly: ro })} value={l.uom} onChange={(v) => setLine(i, 'uom', v)} /></td>
+                  <td><MoneyField chrome="bare" spec={lineSpec(i, 'rate', { dataType: 'money', placeholder: '0', readOnly: ro })} value={l.estUnitPrice} onChange={(v) => setLine(i, 'estUnitPrice', v)} /></td>
                   <td>
                     {ro
                       ? <span className="lockchip"><Icon name="lock" size={12} /> {l.lifecycleStatus === 'InRfq' ? 'In RFQ' : l.lifecycleStatus}</span>
-                      : <button type="button" className="btn btn-ghost btn-sm" style={{ color: 'var(--red)' }} onClick={() => removeLine(i)} disabled={lines.length === 1}>Remove</button>}
+                      : <Button variant="ghost" size="sm" red disabled={lines.length === 1} onClick={() => removeLine(i)}>Remove</Button>}
                   </td>
                 </tr>
               )
             })}
           </tbody>
         </table>
-        <button type="button" className="btn btn-ghost btn-sm" style={{ marginTop: 10 }} onClick={addLine}><Icon name="plus" size={14} /> Add line</button>
+        <div style={{ marginTop: 10 }}><Button variant="ghost" size="sm" icon="plus" onClick={addLine}>Add line</Button></div>
         <div className="note" style={{ marginTop: 10 }}><Icon name="eye" size={13} /> Estimated total: <b>{total.toLocaleString()}</b></div>
       </div>
 
@@ -171,27 +197,17 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
         <Modal
           title={`Cancel ${pr?.code}?`} icon="x"
           footer={<>
-            <button type="button" className="btn btn-out" onClick={() => setConfirmCancel(false)}>Keep PR</button>
-            <button type="button" className="btn btn-pri btn-danger" disabled={cancel.isPending} onClick={() => cancel.mutate()}>Cancel PR</button>
+            <Button variant="outline" onClick={() => setConfirmCancel(false)}>Keep PR</Button>
+            <Button variant="danger" busy={cancel.isPending} onClick={() => cancel.mutate()}>Cancel PR</Button>
           </>}
         >
           <p style={{ marginTop: 0 }}>This cancels the PR and all its open lines. Sourced/awarded lines block cancellation, so none are present.</p>
-          <div className="field"><label>Reason</label>
-            <textarea rows={3} value={cancelReason} placeholder="e.g. Duplicate of another PR / no longer required" onChange={(e) => setCancelReason(e.target.value)} />
-          </div>
+          <TextAreaField
+            spec={{ key: 'cancelReason', label: 'Reason', dataType: 'longText', placeholder: 'e.g. Duplicate of another PR / no longer required' }}
+            value={cancelReason} onChange={setCancelReason}
+          />
         </Modal>
       )}
     </>
-  )
-}
-
-function Field({ label, value, onChange, placeholder, type = 'text' }: {
-  label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string
-}) {
-  return (
-    <div className="field">
-      <label>{label}</label>
-      <input type={type} value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />
-    </div>
   )
 }
