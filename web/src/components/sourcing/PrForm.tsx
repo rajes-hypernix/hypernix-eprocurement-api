@@ -1,19 +1,19 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   getRequisition, createPr, updatePr, cancelPr, submitPr,
   type RequisitionDto, type SavePrRequest,
 } from '../../api/client'
 import { Icon } from '../Icon'
-import { Modal, Notice, Spinner } from '../ui'
+import { Modal, Spinner } from '../ui'
 import { PrHeaderBadge } from '../../lib/prStatus'
 import type { FieldSpec } from '../../ui/fieldSpec'
 import { TextField } from '../../ui/TextField'
 import { TextAreaField } from '../../ui/TextAreaField'
 import { NumberField } from '../../ui/NumberField'
 import { MoneyField } from '../../ui/MoneyField'
-import { DateField } from '../../ui/DateField'
 import { Button } from '../../ui/Button'
+import { TransactionPage, type TransactionSection } from '../../ui/archetypes/TransactionPage'
 
 type PrLine = NonNullable<RequisitionDto['lines']>[number]
 // A line being edited: carries the server id (existing) or undefined (new).
@@ -26,19 +26,26 @@ const toEdit = (l: PrLine): EditLine => ({
 })
 const blankLine = (): EditLine => ({ itemCode: '', description: '', qty: '', uom: '', estUnitPrice: '', lifecycleStatus: 'Open', editable: true })
 
-// The header AS DATA (D1 Phase 3): the form renders from this FieldSpec array
-// through the one pipeline. D5 custom fields will extend arrays like this one.
+// The header AS DATA: one TransactionSection consumed by the archetype.
 type HeaderKey = 'requestor' | 'department' | 'category' | 'location' | 'job' | 'requiredDate' | 'memo'
-const HEADER_SPECS: (FieldSpec & { key: HeaderKey })[] = [
-  { key: 'requestor', label: 'Requestor', dataType: 'text', placeholder: 'Name' },
-  { key: 'department', label: 'Department', dataType: 'text', placeholder: 'e.g. Maintenance' },
-  { key: 'category', label: 'Category', dataType: 'text', placeholder: 'e.g. Piping' },
-  { key: 'location', label: 'Location', dataType: 'text', placeholder: 'e.g. Bintulu Plant' },
-  { key: 'job', label: 'Job / Cost ref', dataType: 'text', placeholder: 'JOB-…' },
-  { key: 'requiredDate', label: 'Required by', dataType: 'date' },
-  { key: 'memo', label: 'Memo / Justification', dataType: 'text', placeholder: 'Short description of the requirement' },
-]
-const specOf = (k: HeaderKey) => HEADER_SPECS.find((s) => s.key === k)!
+const HEADER_SECTION: TransactionSection = {
+  title: 'Header',
+  rows: [
+    [
+      { key: 'requestor', label: 'Requestor', dataType: 'text', placeholder: 'Name' },
+      { key: 'department', label: 'Department', dataType: 'text', placeholder: 'e.g. Maintenance' },
+      { key: 'category', label: 'Category', dataType: 'text', placeholder: 'e.g. Piping' },
+    ],
+    [
+      { key: 'location', label: 'Location', dataType: 'text', placeholder: 'e.g. Bintulu Plant' },
+      { key: 'job', label: 'Job / Cost ref', dataType: 'text', placeholder: 'JOB-…' },
+      { key: 'requiredDate', label: 'Required by', dataType: 'date' },
+    ],
+  ],
+  fullWidth: [
+    { key: 'memo', label: 'Memo / Justification', dataType: 'text', placeholder: 'Short description of the requirement' },
+  ],
+}
 
 // Line-cell specs: bare chrome, so spec.label becomes the aria-label —
 // preserving today's `Line N …` accessible names exactly.
@@ -55,6 +62,8 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
   const [err, setErr] = useState<string | null>(null)
   const [confirmCancel, setConfirmCancel] = useState(false)
   const [cancelReason, setCancelReason] = useState('')
+  const [dirty, setDirty] = useState(false)
+  const markClean = useRef<() => void>(() => {})
 
   // Hydrate from the loaded PR once (guard in-progress edits from a background refetch).
   const [hydrated, setHydrated] = useState(false)
@@ -83,43 +92,38 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
   })
 
   const inval = () => { void qc.invalidateQueries({ queryKey: ['requisitions'] }); if (id) void qc.invalidateQueries({ queryKey: ['requisition', id] }) }
+  // Intentional navigation must not trip the dirty guard.
+  const leave = () => { markClean.current(); onBack() }
   const save = useMutation({
     mutationFn: (mode: 'draft' | 'submit' | 'keep') =>
       isNew ? createPr(body(), mode === 'submit') : updatePr(id!, body()),
-    onSuccess: () => { inval(); onBack() },
+    onSuccess: () => { inval(); leave() },
     onError: (e: Error) => setErr(e.message),
   })
   const cancel = useMutation({
     mutationFn: () => cancelPr(id!, cancelReason),
-    onSuccess: () => { inval(); setConfirmCancel(false); onBack() },
+    onSuccess: () => { inval(); setConfirmCancel(false); leave() },
     onError: (e: Error) => { setErr(e.message); setConfirmCancel(false) },
   })
   // Draft → Submitted (Bug 3). Saves in-progress header edits first so nothing is lost.
   const submit = useMutation({
     mutationFn: async () => { await updatePr(id!, body()); return submitPr(id!) },
-    onSuccess: () => { inval(); onBack() },
+    onSuccess: () => { inval(); leave() },
     onError: (e: Error) => setErr(e.message),
   })
 
   if (!isNew && isPending) return <Spinner />
 
-  const setHeader = (k: HeaderKey) => (v: string) => setH((p) => ({ ...p, [k]: v }))
-  const header = (k: HeaderKey) => {
-    const spec = specOf(k)
-    return spec.dataType === 'date'
-      ? <DateField key={k} spec={spec} value={h[k]} onChange={setHeader(k)} />
-      : <TextField key={k} spec={spec} value={h[k]} onChange={setHeader(k)} />
-  }
-
-  const setLine = (i: number, k: keyof EditLine, v: string) =>
+  const setHeader = (k: string, v: string) => { setDirty(true); setH((p) => ({ ...p, [k]: v })) }
+  const setLine = (i: number, k: keyof EditLine, v: string) => {
+    setDirty(true)
     setLines((ls) => ls.map((l, x) => (x === i ? { ...l, [k]: v } : l)))
-  const removeLine = (i: number) => setLines((ls) => ls.filter((_, x) => x !== i))
-  const addLine = () => setLines((ls) => [...ls, blankLine()])
+  }
+  const removeLine = (i: number) => { setDirty(true); setLines((ls) => ls.filter((_, x) => x !== i)) }
+  const addLine = () => { setDirty(true); setLines((ls) => [...ls, blankLine()]) }
 
-  // One action row, rendered at the top AND bottom of the form (kept in one place so they can't
-  // drift). Long forms are easier to use when the primary actions are reachable without scrolling.
   const actions = (
-    <div className="pr-actions">
+    <>
       {isNew ? (
         <>
           <Button variant="ghost" busy={save.isPending} onClick={() => save.mutate('draft')}>Save draft</Button>
@@ -137,32 +141,25 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
       {!isNew && !hasLiveLine && headerStatus !== 'Cancelled' && (
         <Button variant="ghost" red onClick={() => setConfirmCancel(true)}>Cancel PR</Button>
       )}
-    </div>
+    </>
   )
 
   return (
-    <>
-      <div className="crumb"><button type="button" className="lnk" onClick={onBack}>Requisitions</button> <Icon name="chev" size={13} /> <span>{isNew ? 'New PR' : pr?.code}</span></div>
-      <div className="pagehead">
-        <div>
-          <h1>{isNew ? 'Create Purchase Requisition' : `Edit ${pr?.code}`}</h1>
-          <p>{isNew ? 'Raise a purchase requisition directly in the portal.' : 'Header and open lines are editable. Sourced / awarded lines are locked.'}</p>
-        </div>
-        <div className="spacer" />
-        {!isNew && <PrHeaderBadge status={headerStatus} />}
-      </div>
-
-      {err && <Notice tone="error" icon="x" style={{ marginBottom: 14 }}>Could not save: {err}</Notice>}
-
-      {actions}
-
-      <div className="card" style={{ padding: 18, marginBottom: 16 }}>
-        <h3 style={{ marginTop: 0 }}>Header</h3>
-        <div className="frow">{(['requestor', 'department', 'category'] as const).map(header)}</div>
-        <div className="frow">{(['location', 'job', 'requiredDate'] as const).map(header)}</div>
-        {header('memo')}
-      </div>
-
+    <TransactionPage
+      crumbParent="Requisitions"
+      onCrumbParent={onBack}
+      crumbCurrent={isNew ? 'New PR' : pr?.code ?? ''}
+      title={isNew ? 'Create Purchase Requisition' : `Edit ${pr?.code}`}
+      subtitle={isNew ? 'Raise a purchase requisition directly in the portal.' : 'Header and open lines are editable. Sourced / awarded lines are locked.'}
+      statusBadge={!isNew ? <PrHeaderBadge status={headerStatus} /> : undefined}
+      error={err ? `Could not save: ${err}` : null}
+      actions={actions}
+      sections={[HEADER_SECTION]}
+      values={h}
+      onFieldChange={setHeader}
+      dirty={dirty}
+      onGuardReady={(fn) => { markClean.current = fn }}
+    >
       <div className="card" style={{ padding: 18, marginBottom: 16 }}>
         <h3 style={{ marginTop: 0 }}>Lines</h3>
         <table>
@@ -191,8 +188,6 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
         <div className="note" style={{ marginTop: 10 }}><Icon name="eye" size={13} /> Estimated total: <b>{total.toLocaleString()}</b></div>
       </div>
 
-      {actions}
-
       {confirmCancel && (
         <Modal
           title={`Cancel ${pr?.code}?`} icon="x"
@@ -208,6 +203,6 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
           />
         </Modal>
       )}
-    </>
+    </TransactionPage>
   )
 }
