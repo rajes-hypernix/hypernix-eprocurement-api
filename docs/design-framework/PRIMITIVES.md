@@ -110,3 +110,17 @@ behaviour-test edits. VendorDetail/RfqList/AdminCustomLists are the D2
 Phase 3 retrofits (full 42-check e2e after each). **All three rival Field
 components are dead** (PrForm at D1; ManualVendorForm at D2 3a; OnboardingForm
 at D2 3d).
+
+## Saved views — the list-screen adoption note (D3)
+
+List screens consume SAVED VIEWS for their row sets: `ViewPicker` +
+`ViewBuilder` (`components/views/SavedViewControls.tsx`) ride the registry
+(`GET /api/views/fields`) and the run endpoint; criterion value inputs render
+by registry DataType through the D1 primitives. **New list screens must not
+hand-roll filter persistence** — a screen's default is a seeded SYSTEM view,
+user filters that deserve saving become view criteria. RfqList is the proof
+screen (system view "All RFQs"; its quick facets stay layered per the D3
+ruling — the Requisitions migration designs facets AS criteria from the
+start, see BACKLOG). Sharing is publication: the Shared toggle appears only
+for holders of ManageSharedViews (A61), derived from /api/auth/permissions
+like every other gate.

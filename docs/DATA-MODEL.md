@@ -193,3 +193,34 @@ The contract is defended by executable tests, not just prose:
   `ArchitectureTests` source-scan.
 - Each backfill (Award→PO, Invoice→GRN, transition timestamps, country conformance) —
   a Postgres-backed test over the shared statements the migration runs.
+
+## Saved views engine (D3)
+
+Four typed tables — the shared query-definition layer (list screens now; D4
+portlets/reminders/KPIs consume the same engine). No filter blobs anywhere.
+
+- **FieldRegistry** — grain: one row per queryable field per record type
+  (`RecordType` + `FieldKey` unique). `FieldKey` = the LIST DTO property name
+  (PascalCase). `Kind` ∈ {Native, Custom, Segment}: only Native rows exist —
+  Custom (D5) and Segment (D6) are reserved enum members with nullable
+  definition FKs, so those slices add rows, never reshape. Seeded from
+  `Application/Views/FieldRegistrySeed.cs` (THE single source: migration loop,
+  test seeding, and the reflection drift-test that pins every row's DataType
+  to its DTO property type all read it). 67 native rows at D3.
+- **SavedView** — grain: one row per view. `Code` from the VIEW sequence
+  (system seeds carry literal codes, e.g. VIEW-SYS-0001 "All RFQs").
+  `OwnerUserId` null for system views; `IsShared` is publication (flipped only
+  via the A61-gated share endpoint); `IsSystem` views are read-only.
+- **SavedViewFilter** — grain: one row per criterion member. Typed columns
+  FieldKey/Operator/Value/Value2 (Value2 only for Between). Composition rule:
+  same-FieldKey Eq/In rows OR (membership, mirroring the facets the operator
+  set was derived from); everything else ANDs. Values may be the three ruled
+  relative-date tokens (@today/@startOfMonth/@endOfMonth), resolved at run.
+- **SavedViewColumn** — grain: one row per output column position
+  (FieldKey, optional Label override, Sort, optional SortDirection).
+
+Field keys are validated against the registry on save AND on execute — a view
+referencing a dead key fails loudly (400), never silently drops the filter.
+The executor decorates the SAME scoped service list methods the screens use
+(vendor scoping/masking inherited by construction); aggregation is D4's
+documented seam — deliberately not built.
