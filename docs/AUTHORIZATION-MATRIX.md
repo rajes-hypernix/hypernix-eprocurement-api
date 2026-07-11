@@ -65,7 +65,8 @@ POST api/onboarding/draft/raise-clarification
 
 ## 4. The matrix — endpoint × action × role (AS RULED)
 
-102 authenticated endpoints, grouped into 42 actions. Every endpoint appears
+102 authenticated endpoints, grouped into 57 actions (A1–A57, one action per
+row; the RoleMatrix suite generates one test case per action). Every endpoint appears
 exactly once. Coverage tally in §4.6.
 
 ### 4.1 All-principal actions

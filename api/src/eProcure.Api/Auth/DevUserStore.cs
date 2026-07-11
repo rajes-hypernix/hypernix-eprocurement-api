@@ -10,7 +10,7 @@ public sealed record DevUser(string Id, string Name, string Email, string[] Role
 /// </summary>
 public sealed class DevUserStore
 {
-    public IReadOnlyList<DevUser> Users { get; } =
+    private static readonly IReadOnlyList<DevUser> Seeded =
     [
         new("u_faridah", "Faridah Yusof",     "faridah@hypernix.test", ["Buyer"]),
         new("u_lim",     "Lim Chee Kong",     "lim@hypernix.test",     ["Buyer", "Approver"]),
@@ -20,6 +20,14 @@ public sealed class DevUserStore
         new("u_tan",     "Tan Mei Ling",      "tan@hypernix.test",     ["CommEvaluator"]),
         new("u_admin",   "System Admin",      "admin@hypernix.test",   ["Admin"]),
     ];
+
+    public DevUserStore() { }
+
+    /// <summary>Test-only: append extra principals (the role-matrix suite needs one PURE persona per
+    /// role — no seeded user holds Approver alone) without touching the shipped list above.</summary>
+    public DevUserStore(IEnumerable<DevUser> extra) => Users = [.. Seeded, .. extra];
+
+    public IReadOnlyList<DevUser> Users { get; } = Seeded;
 
     public DevUser? Find(string idOrEmail) =>
         Users.FirstOrDefault(u =>

@@ -14,7 +14,9 @@ namespace eProcure.Tests.Integration;
 /// both the demo-active matrix (Testing + Demo enabled) and the demo-inactive regression (Production).
 /// A non-Development environment also skips Program's migrate/seed block (unsupported on in-memory).
 /// </summary>
-public sealed class TestWebAppFactory(string environment = "Testing", bool demoEnabled = true)
+public sealed class TestWebAppFactory(
+    string environment = "Testing", bool demoEnabled = true,
+    IEnumerable<eProcure.Api.Auth.DevUser>? extraDevUsers = null)
     : WebApplicationFactory<Program>
 {
     private readonly string _dbName = $"slicef-{Guid.NewGuid()}";
@@ -42,6 +44,11 @@ public sealed class TestWebAppFactory(string environment = "Testing", bool demoE
             foreach (var d in toRemove) services.Remove(d);
 
             services.AddDbContext<AppDbContext>(o => o.UseInMemoryDatabase(_dbName));
+
+            // Role-matrix suite: append pure per-role test principals (no seeded dev user holds
+            // Approver alone). The shipped DevUserStore list is untouched outside tests.
+            if (extraDevUsers is not null)
+                services.AddSingleton(new eProcure.Api.Auth.DevUserStore(extraDevUsers));
         });
     }
 
