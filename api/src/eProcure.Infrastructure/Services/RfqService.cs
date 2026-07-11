@@ -51,6 +51,13 @@ public sealed class RfqService(
             .FirstOrDefaultAsync(x => x.Id == id, ct);
         if (r is null) return null;
 
+        // [G] Vendor resource scoping (Slice F patch, AUTHORIZATION-MATRIX Obs-1): a vendor may
+        // read an RFQ's detail only while holding a live (non-Rescinded) invitation — the same
+        // rule the list applies above. A foreign probe gets the vendor-scoping 403 convention.
+        if (user.VendorId is { } vGuard &&
+            !r.Invitations.Any(i => i.VendorId == vGuard && i.Status != RfqInvitationStatus.Rescinded))
+            throw new ForbiddenException("Vendor users may only access RFQs they are invited to.");
+
         var events = await db.RfqEvents.AsNoTracking().Where(e => e.RfqId == id)
             .OrderByDescending(e => e.OccurredUtc).ToListAsync(ct);
 

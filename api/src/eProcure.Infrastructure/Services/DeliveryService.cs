@@ -94,6 +94,12 @@ public sealed class DeliveryService(
 
     public async Task<GrnDetailDto?> GetGrnForAsnAsync(Guid asnId, CancellationToken ct = default)
     {
+        // [G] Vendor resource scoping (Slice F patch, AUTHORIZATION-MATRIX Obs-4): the GRN read
+        // inherits the ASN's vendor chain — the same EnsureCanAccess rule as the ASN detail.
+        var asn = await db.Asns.AsNoTracking().FirstOrDefaultAsync(a => a.Id == asnId, ct);
+        if (asn is null) return null;
+        VendorAccess.EnsureCanAccess(user, asn.VendorId);
+
         var grn = await db.Grns.AsNoTracking().Include(g => g.Lines).FirstOrDefaultAsync(g => g.AsnId == asnId, ct);
         return grn is null ? null : await MapGrn(grn, ct);
     }
