@@ -180,7 +180,7 @@ export function ListPage<T>({
                       disabled={selectableRows.length === 0}
                       onChange={(e) => {
                         const next = new Set(bulkSelect.selected)
-                        for (const r of selectableRows) e.target.checked ? next.add(rowKey(r)) : next.delete(rowKey(r))
+                        for (const r of selectableRows) { if (e.target.checked) next.add(rowKey(r)); else next.delete(rowKey(r)) }
                         bulkSelect.onChange(next)
                       }}
                     />
@@ -205,7 +205,7 @@ export function ListPage<T>({
                           disabled={!canSelect}
                           onChange={(e) => {
                             const next = new Set(bulkSelect.selected)
-                            e.target.checked ? next.add(k) : next.delete(k)
+                            if (e.target.checked) next.add(k); else next.delete(k)
                             bulkSelect.onChange(next)
                           }}
                         />

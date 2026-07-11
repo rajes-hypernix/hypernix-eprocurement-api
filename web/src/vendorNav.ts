@@ -1,17 +1,6 @@
 import type { NavGroup } from './nav'
+import { VENDOR_CENTER_TABS, tabsToNavGroups } from './centerTabs'
 
 // Vendor-portal sidebar, mirroring the prototype's vendor renderSide().
-export const VENDOR_NAV: NavGroup[] = [
-  {
-    title: 'Vendor portal',
-    items: [
-      { key: 'dashboard', icon: 'dashboard', label: 'My RFQs' },
-      { key: 'bids', icon: 'box', label: 'My Bids' },
-      { key: 'pos', icon: 'box', label: 'Purchase Orders' },
-      { key: 'deliveries', icon: 'send', label: 'Deliveries' },
-      { key: 'invoices', icon: 'doc', label: 'Invoices' },
-      { key: 'statement', icon: 'clip', label: 'Statement' },
-      { key: 'chats', icon: 'msg', label: 'Clarifications' },
-    ],
-  },
-]
+// Data lives in centerTabs.ts since D2 (see the note in nav.ts).
+export const VENDOR_NAV: NavGroup[] = tabsToNavGroups(VENDOR_CENTER_TABS)

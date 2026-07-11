@@ -407,3 +407,7 @@ export const updateCustomListValue = (id: string, body: { label: string; parentV
   http<CustomListValue>(`/custom-lists/values/${id}`, { method: 'PUT', body: JSON.stringify(body) })
 export const deleteCustomListValue = (id: string) =>
   http<void>(`/custom-lists/values/${id}`, { method: 'DELETE' })
+
+// --- Global search (D2 navigation shell; hand-typed like Custom Lists — schema regen rides the next gen:api) ---
+export type SearchHit = { type: 'Vendor' | 'Requisition' | 'Rfq' | 'PurchaseOrder' | 'Invoice'; id: string; code: string; title: string }
+export const searchGlobal = (q: string) => http<SearchHit[]>(`/search?q=${encodeURIComponent(q)}`)

@@ -1,5 +1,7 @@
 // Buyer (procurement) sidebar, mirroring the prototype's renderSide() groups,
-// labels, icons and order. Counts arrive with real data in later slices.
+// labels, icons and order. Since D2 the nav DATA lives in centerTabs.ts
+// (center-tab configs, structured for D4 data-driving); this module derives
+// the NavGroup shape the sidebar renderer consumes — behaviour identical.
 export interface NavItem {
   key: string
   icon: string
@@ -11,47 +13,6 @@ export interface NavGroup {
   items: NavItem[]
 }
 
-export const BUYER_NAV: NavGroup[] = [
-  {
-    title: 'Sourcing',
-    items: [
-      { key: 'dashboard', icon: 'dashboard', label: 'Dashboard' },
-      { key: 'reqs', icon: 'doc', label: 'Requisitions' },
-      { key: 'rfqs', icon: 'rfq', label: 'RFQs' },
-      { key: 'awards', icon: 'award', label: 'Awards & POs' },
-    ],
-  },
-  {
-    title: 'Procure to Pay',
-    items: [
-      { key: 'pos', icon: 'box', label: 'Purchase Orders' },
-      { key: 'deliveries', icon: 'send', label: 'Deliveries' },
-      { key: 'invoices', icon: 'doc', label: 'Invoices' },
-      { key: 'payments', icon: 'download', label: 'Payments' },
-      { key: 'statements', icon: 'clip', label: 'Statements' },
-    ],
-  },
-  {
-    title: 'Evaluation',
-    items: [{ key: 'openings', icon: 'lock', label: 'Bid Openings' }],
-  },
-  {
-    title: 'Setup',
-    items: [
-      { key: 'vendors', icon: 'vendor', label: 'Vendor Master' },
-      { key: 'onboarding', icon: 'clip', label: 'Onboarding' },
-      { key: 'forms', icon: 'edit', label: 'Forms' },
-    ],
-  },
-  {
-    title: 'Communication',
-    items: [{ key: 'chats', icon: 'msg', label: 'Clarifications' }],
-  },
-  {
-    title: 'Administration',
-    items: [
-      { key: 'admin', icon: 'vendor', label: 'User Management' },
-      { key: 'lists', icon: 'clip', label: 'Custom Lists' },
-    ],
-  },
-]
+import { BUYER_CENTER_TABS, tabsToNavGroups } from './centerTabs'
+
+export const BUYER_NAV: NavGroup[] = tabsToNavGroups(BUYER_CENTER_TABS)

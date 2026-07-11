@@ -1,7 +1,8 @@
 import { useIdentity } from '../identity'
 import { initials, roleLabel } from '../lib/format'
+import { GlobalSearch, NewMenu, RecentsMenu } from './TopBarNav'
 
-export function TopBar() {
+export function TopBar({ onNavigate }: { onNavigate: (hash: string) => void }) {
   const { code, persona, personas, switchTo } = useIdentity()
   const name = persona?.name ?? 'Faridah Yusof'
   const sub = persona?.kind === 'vendor' ? 'Vendor' : (persona?.roles ?? []).map((r) => roleLabel(r ?? '')).join(' · ') || 'Buyer'
@@ -20,6 +21,11 @@ export function TopBar() {
           Hypernix eProcure
           <small>Sourcing &amp; Vendor Portal</small>
         </span>
+      </div>
+      <div className="tb-center">
+        <GlobalSearch onNavigate={onNavigate} />
+        <NewMenu onNavigate={onNavigate} />
+        <RecentsMenu onNavigate={onNavigate} />
       </div>
       <div className="spacer" />
       <div className="whoami">

@@ -23,6 +23,7 @@ public static class DependencyInjection
         services.AddScoped<IDataSeeder, DevelopmentDataSeeder>();
 
         services.AddScoped<IVendorService, VendorService>();
+        services.AddScoped<Application.Search.ISearchService, SearchService>();
         services.AddScoped<Application.Configuration.ICustomListService, CustomListService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<ISwecService, SwecService>();

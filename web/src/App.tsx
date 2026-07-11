@@ -1,5 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { TopBar } from './components/TopBar'
+import { recordRecent, type RecentRecord } from './lib/recents'
 import { Sidebar } from './components/Sidebar'
 import { Dashboard } from './components/Dashboard'
 import { VendorsPage } from './components/vendors/VendorsPage'
@@ -59,8 +61,19 @@ function Placeholder({ label }: { label: string }) {
   )
 }
 
+// Detail routes worth remembering, with the query key their screen already
+// populates — the recents watcher reads the CODE from the warm cache.
+const RECENT_ROUTES: { re: RegExp; type: RecentRecord['type']; key: (id: string) => unknown[] }[] = [
+  { re: /^vendors\/([0-9a-f-]{36})$/, type: 'Vendor', key: (id) => ['vendor', id] },
+  { re: /^rfqs\/([0-9a-f-]{36})$/, type: 'Rfq', key: (id) => ['rfq', id] },
+  { re: /^bid\/([0-9a-f-]{36})$/, type: 'Rfq', key: (id) => ['rfq', id] },
+  { re: /^pos\/([0-9a-f-]{36})$/, type: 'PurchaseOrder', key: (id) => ['po', id] },
+  { re: /^invoices\/([0-9a-f-]{36})$/, type: 'Invoice', key: (id) => ['invoice', id] },
+]
+
 export default function App() {
-  const { isVendor } = useIdentity()
+  const { isVendor, code: principal } = useIdentity()
+  const qc = useQueryClient()
   const [active, setActive] = useState(() => window.location.hash.slice(1) || 'dashboard')
 
   useEffect(() => {
@@ -68,6 +81,19 @@ export default function App() {
     window.addEventListener('hashchange', onHash)
     return () => window.removeEventListener('hashchange', onHash)
   }, [])
+
+  // Recents (D2): after a detail screen has loaded (its query is warm), record
+  // the visit with its business code. localStorage, per principal, capped.
+  useEffect(() => {
+    const match = RECENT_ROUTES.map((r) => ({ r, m: active.match(r.re) })).find((x) => x.m)
+    if (!match?.m) return
+    const id = match.m[1]
+    const t = setTimeout(() => {
+      const data = qc.getQueryData<{ code?: string | null }>(match.r.key(id))
+      if (data?.code) recordRecent(principal, { type: match.r.type, code: data.code, hash: active })
+    }, 1500)
+    return () => clearTimeout(t)
+  }, [active, principal, qc])
 
   const go = (key: string) => {
     window.location.hash = key
@@ -82,7 +108,7 @@ export default function App() {
 
   return (
     <>
-      <TopBar />
+      <TopBar onNavigate={go} />
       <div className="shell">
         <Sidebar nav={isVendor ? VENDOR_NAV : DEV_BUYER_NAV} active={base} onSelect={go} />
         <main className="main">
