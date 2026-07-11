@@ -121,8 +121,10 @@ public sealed class DeliveryService(
         }
 
         var code = await codes.NextAsync("GRN", ct);
-        // Receipt date = today in Malaysia time (UTC+8, no DST), formatted dd/MM/yyyy like the app's other display dates.
-        var receivedDate = clock.UtcNow.AddHours(8).ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
+        // Receipt date is a business date, not an instant: it's the Malaysia calendar day of receipt.
+        // Kuching is a fixed UTC+8 (no DST), so the local day is UtcNow+8 as a plain DateOnly — no
+        // string formatting, no stored offset (Slice H T4 retired the AddHours(8)-into-a-string hack).
+        var receivedDate = DateOnly.FromDateTime(clock.UtcNow.AddHours(8));
         var grn = new Grn
         {
             Code = code, AsnId = asn.Id, PoId = po.Id, ReceivedDate = receivedDate,

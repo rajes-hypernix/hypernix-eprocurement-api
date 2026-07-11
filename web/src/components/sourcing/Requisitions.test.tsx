@@ -12,8 +12,8 @@ const ln = (itemCode: string, description: string, qty: number, estUnitPrice: nu
 const PR = {
   id: 'p1', code: 'PR-2026-0412', requestor: 'Aishah Karim', department: 'Facilities',
   location: 'Bintulu Plant', memo: '', job: 'JOB-CWS-014', category: 'Rotating Equipment',
-  costCentre: 'CC-MAINT-01', project: 'TA-2026', raisedDate: '02/06/2026',
-  requiredDate: '30/07/2026', status: 'Approved', value: 184000,
+  costCentre: 'CC-MAINT-01', project: 'TA-2026', raisedDate: '2026-06-02',
+  requiredDate: '2026-07-30', status: 'Approved', value: 184000,
   headerStatus: 'Submitted', submitted: true,
   lines: [ln('MEP-PUMP-075', 'Pump', 4, 38500), ln('ELE-VFD-075', 'VFD', 4, 7500)],
 }

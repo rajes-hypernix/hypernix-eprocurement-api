@@ -8,7 +8,7 @@ internal static class SourcingMapping
 {
     public static RequisitionDto ToDto(PurchaseRequisition p, IReadOnlySet<Guid>? noQuoteLineIds = null) => new(
         p.Id, p.Code, p.Requestor, p.Department, p.Location, p.Memo, p.Job, p.Category,
-        p.CostCentre, p.Project, p.RaisedDate, p.RequiredDate, p.Status, p.DerivedValue,
+        p.CostCentre, p.Project, p.RaisedOn, p.RequiredOn, p.Status, p.DerivedValue,
         p.Lines.Select(l => new PrLineDto(
             l.Id, l.ItemCode, l.Description, l.Qty, l.Uom, l.EstUnitPrice,
             LegacyToken(l.LifecycleStatus), l.Ref, l.LifecycleStatus.ToString(),

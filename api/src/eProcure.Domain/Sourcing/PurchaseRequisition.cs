@@ -32,10 +32,8 @@ public class PurchaseRequisition
     public string? Project { get; set; }
 
     // --- Business dates: typed source of truth (§5) + the legacy display strings kept intact ---
-    public DateOnly? RaisedOn { get; set; }
+    public DateOnly? RaisedOn { get; set; }               // typed source of truth (Slice H T4 retired the display strings)
     public DateOnly? RequiredOn { get; set; }
-    public string RaisedDate { get; set; } = "";          // dd/MM/yyyy (display only; UI formats)
-    public string RequiredDate { get; set; } = "";
 
     /// <summary>Legacy free-text status ("Approved") — preserved for existing readers. The
     /// analytics-grade lifecycle is <see cref="HeaderStatus"/>. Setter is private (T3); the string→enum

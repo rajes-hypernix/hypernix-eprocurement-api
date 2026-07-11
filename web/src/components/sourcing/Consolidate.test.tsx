@@ -12,13 +12,13 @@ const line = (id: string, itemCode: string, qty: number, uom: string, status = '
 const PRS = [
   {
     id: 'pa', code: 'PR-2026-0701', requestor: 'Aishah', department: 'Ops', location: 'Bintulu', category: 'Piping',
-    memo: '', job: 'J1', costCentre: 'C1', project: null, raisedDate: '01/06/2026', requiredDate: '30/07/2026',
+    memo: '', job: 'J1', costCentre: 'C1', project: null, raisedDate: '2026-06-01', requiredDate: '2026-07-30',
     status: 'Approved', value: 0, headerStatus: 'Submitted', submitted: true,
     lines: [line('a-merge', 'ITEM-MERGE', 4, 'Unit'), line('a-uom', 'ITEM-UOM', 2, 'Unit'), line('a-lock', 'ITEM-LOCK', 1, 'Unit', 'InRfq')],
   },
   {
     id: 'pb', code: 'PR-2026-0702', requestor: 'Ramesh', department: 'Production', location: 'Samalaju', category: 'Valves',
-    memo: '', job: 'J2', costCentre: 'C2', project: null, raisedDate: '02/06/2026', requiredDate: '25/07/2026',
+    memo: '', job: 'J2', costCentre: 'C2', project: null, raisedDate: '2026-06-02', requiredDate: '2026-07-25',
     status: 'Approved', value: 0, headerStatus: 'Submitted', submitted: true,
     lines: [line('b-merge', 'ITEM-MERGE', 6, 'Unit'), line('b-uom', 'ITEM-UOM', 3, 'Box')],
   },
@@ -27,7 +27,7 @@ const PRS = [
 // A Draft PR with an Open line — must be gated OUT of the sourcing pool (Bug 2).
 const DRAFT_PR = {
   id: 'pd', code: 'PR-2026-0434', requestor: 'Draft', department: 'Electrical', location: 'B', category: 'Electrical',
-  memo: '', job: 'J', costCentre: 'C', project: null, raisedDate: '', requiredDate: '01/01/2026',
+  memo: '', job: 'J', costCentre: 'C', project: null, raisedDate: '', requiredDate: '2026-01-01',
   status: 'Draft', value: 0, headerStatus: 'Draft', submitted: false,
   lines: [line('d1', 'DRAFT-ITEM', 5, 'Unit')],
 }

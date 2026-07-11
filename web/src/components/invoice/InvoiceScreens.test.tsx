@@ -25,7 +25,7 @@ describe('Invoice screens', () => {
 
   it('shows Resolve (not Approve) for an Exception invoice and per-line match', async () => {
     vi.spyOn(client, 'getInvoice').mockResolvedValue({
-      id: 'i1', code: 'INV-2026-0094', poId: 'p', poCode: 'PO-2026-1193', vendorName: 'MegaTech', invoiceNo: 'MEG-7720', date: '24/06/2026',
+      id: 'i1', code: 'INV-2026-0094', poId: 'p', poCode: 'PO-2026-1193', vendorName: 'MegaTech', invoiceNo: 'MEG-7720', date: '2026-06-24',
       status: 'Exception', matchStatus: 'Variance', exceptionReason: 'Unit price billed above PO.', nsId: null, whtRate: 0,
       subtotal: 139200, sst: 11136, wht: 0, total: 150336, payable: false,
       lines: [{ itemCode: 'ELE-MTR-200', description: 'Motor', qty: 6, receivedQty: 6, unitPrice: 23200, poUnitPrice: 22500, qtyOk: true, priceOk: false, lineTotal: 139200 }],

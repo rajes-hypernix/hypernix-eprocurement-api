@@ -10,8 +10,8 @@ public sealed record PrLineDto(
 
 public sealed record RequisitionDto(
     Guid Id, string Code, string Requestor, string Department, string Location, string Memo,
-    string Job, string Category, string CostCentre, string? Project, string RaisedDate,
-    string RequiredDate, string Status, decimal Value, IReadOnlyList<PrLineDto> Lines,
+    string Job, string Category, string CostCentre, string? Project, DateOnly? RaisedDate,
+    DateOnly? RequiredDate, string Status, decimal Value, IReadOnlyList<PrLineDto> Lines,
     string HeaderStatus, bool Submitted);
 
 // ---- PR create / edit + line-lifecycle requests (Slice B) ----
@@ -20,7 +20,7 @@ public sealed record PrLineInput(
 
 public sealed record SavePrRequest(
     string Requestor, string Department, string Location, string Category, string Job,
-    string Memo, string RequiredDate, IReadOnlyList<PrLineInput> Lines);
+    string Memo, DateOnly? RequiredDate, IReadOnlyList<PrLineInput> Lines);
 
 public sealed record ReasonRequest(string? Reason);
 

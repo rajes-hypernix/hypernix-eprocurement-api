@@ -24,7 +24,7 @@ public sealed class StatementServiceTests
         // A Paid invoice (subtotal 400, SST 32 → total 432) settles the line
         c.Db.Invoices.Add(new Invoice
         {
-            Code = "INV-1", PoId = po.Id, VendorId = vendor.Id, Date = "14/06/2026",
+            Code = "INV-1", PoId = po.Id, VendorId = vendor.Id, Date = new DateOnly(2026, 6, 14),
             Lines = [new InvoiceLine { ItemCode = "X", Description = "X", Qty = 4, Uom = "Unit", UnitPrice = 100 }],
             CreatedUtc = c.Clock.UtcNow, UpdatedUtc = c.Clock.UtcNow,
         }.SeededAs(InvoiceStatus.Paid));

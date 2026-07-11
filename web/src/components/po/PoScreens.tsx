@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getPos, getPo, issuePo, acknowledgePo, getAsns, getInvoices, getPoAudit, type PoListItem } from '../../api/client'
 import { Icon } from '../Icon'
 import { ConfirmModal, EmptyState, Notice, Spinner } from '../ui'
-import { fmt } from '../../lib/format'
+import { fmt, fmtDay } from '../../lib/format'
 import { useIdentity } from '../../identity'
 
 const STATUS_TONE: Record<string, string> = {
@@ -182,7 +182,7 @@ function PoDetailView({ id, onBack, onNavigate }: { id: string; onBack: () => vo
           <tbody>
             {poAsns.map((a) => (
               <tr key={a.id} className="rowlink" onClick={() => a.id && onNavigate(`deliveries/asn/${a.id}`)}>
-                <td style={{ fontWeight: 700, color: 'var(--teal)' }}>{a.code}</td><td>{a.carrier || '—'}</td><td>{a.expectedDate || '—'}</td>
+                <td style={{ fontWeight: 700, color: 'var(--teal)' }}>{a.code}</td><td>{a.carrier || '—'}</td><td>{fmtDay(a.expectedDate)}</td>
                 <td><span className={`badge ${a.status === 'Received' ? 'b-green' : a.status === 'InTransit' ? 'b-blue' : 'b-grey'}`}>{a.status === 'InTransit' ? 'In transit' : a.status}</span></td>
                 <td>{a.grnCode ? <span className="badge b-green">{a.grnCode}</span> : <span className="hint">—</span>}</td>
               </tr>

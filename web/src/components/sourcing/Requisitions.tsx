@@ -8,6 +8,7 @@ import { Icon } from '../Icon'
 import { Modal } from '../ui'
 import { PrForm } from './PrForm'
 import { PrHeaderBadge, LineChip, PR_KANBAN_COLUMNS, isLineSourceable } from '../../lib/prStatus'
+import { fmtDay } from '../../lib/format'
 
 type PrLine = NonNullable<RequisitionDto['lines']>[number]
 const lstat = (l: PrLine) => l.status ?? 'available'
@@ -200,7 +201,7 @@ export function Requisitions({ onOpenRfq, onConsolidate, addTo }: {
                 <div className="kbody">
                   {items.map((pr) => (
                     <div className="kcard" key={pr.id} onClick={() => pr.id && setEditingId(pr.id)}>
-                      <div className="kc-top"><span className="kc-code">{pr.code}</span><span className="hint">{pr.requiredDate}</span></div>
+                      <div className="kc-top"><span className="kc-code">{pr.code}</span><span className="hint">{fmtDay(pr.requiredDate)}</span></div>
                       <div className="kc-title">{pr.memo || '—'}</div>
                       <div className="kc-meta">{pr.requestor} · {pr.department}</div>
                     </div>
@@ -254,7 +255,7 @@ export function Requisitions({ onOpenRfq, onConsolidate, addTo }: {
                       <tr className={`prrow rowlink ${open ? 'open' : ''} ${grouped.has(pr.code!) ? 'grp' : ''}`} onClick={() => toggleExpand(pr.code!)}>
                         <td onClick={(e) => e.stopPropagation()}><input type="checkbox" style={{ width: 'auto' }} disabled={!canGroup} checked={grouped.has(pr.code!)} onChange={(e) => setGroup(pr.code!, e.target.checked)} aria-label={`Group ${pr.code}`} /></td>
                         <td><span className="chev"><Icon name="chev" size={13} /></span> <span style={{ fontWeight: 700, color: 'var(--teal)' }}>{pr.code}</span></td>
-                        <td>{pr.requestor}</td><td>{pr.department}</td><td title={pr.memo ?? ''}>{pr.location}</td><td>{pr.job}</td><td>{pr.category}</td><td>{pr.requiredDate}</td>
+                        <td>{pr.requestor}</td><td>{pr.department}</td><td title={pr.memo ?? ''}>{pr.location}</td><td>{pr.job}</td><td>{pr.category}</td><td>{fmtDay(pr.requiredDate)}</td>
                         {standalone ? (
                           <td><PrHeaderBadge status={pr.headerStatus} /></td>
                         ) : (

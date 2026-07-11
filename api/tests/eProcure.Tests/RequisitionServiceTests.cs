@@ -22,7 +22,7 @@ public class RequisitionServiceTests
 
     private static SavePrRequest Save(params PrLineInput[] lines) => new(
         Requestor: "Aishah Karim", Department: "Maintenance", Location: "Bintulu Plant",
-        Category: "Piping", Job: "JOB-1", Memo: "Test PR", RequiredDate: "2026-08-15",
+        Category: "Piping", Job: "JOB-1", Memo: "Test PR", RequiredDate: new DateOnly(2026, 8, 15),
         Lines: lines.Length == 0 ? [new PrLineInput(null, "ITEM-1", "Widget", 10, "Unit", 100m)] : lines);
 
     /// <summary>Persists a PR with explicit line states (bypassing create) for lifecycle tests.</summary>

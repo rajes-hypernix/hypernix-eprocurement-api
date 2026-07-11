@@ -19,7 +19,7 @@ public class Invoice
     public Guid? GrnId { get; set; }                      // the receipt this invoice matches (3-way-match lineage, Slice H T3)
     public Guid VendorId { get; set; }
     public string InvoiceNo { get; set; } = "";           // supplier's own ref
-    public string Date { get; set; } = "";
+    public DateOnly? Date { get; set; }                   // invoice date (typed — Slice H T4)
     public string Currency { get; set; } = "MYR";
     public decimal WhtRate { get; set; }                  // withholding tax %
     public InvoiceStatus Status { get; private set; } = InvoiceStatus.Draft;

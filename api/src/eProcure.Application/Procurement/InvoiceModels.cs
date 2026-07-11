@@ -14,13 +14,13 @@ public sealed record InvoiceListDto(
     decimal Subtotal, decimal Total, bool Payable);
 
 public sealed record InvoiceDetailDto(
-    Guid Id, string Code, Guid PoId, string PoCode, string VendorName, string InvoiceNo, string Date,
+    Guid Id, string Code, Guid PoId, string PoCode, string VendorName, string InvoiceNo, DateOnly? Date,
     string Status, string MatchStatus, string? ExceptionReason, string? NsId, decimal WhtRate,
     decimal Subtotal, decimal Sst, decimal Wht, decimal Total, bool Payable,
     IReadOnlyList<InvoiceLineDto> Lines);
 
 public sealed record CreateInvoiceLine(string ItemCode, decimal Qty, decimal UnitPrice);
-public sealed record SubmitInvoiceRequest(string InvoiceNo, string Date, decimal WhtRate, IReadOnlyList<CreateInvoiceLine> Lines);
+public sealed record SubmitInvoiceRequest(string InvoiceNo, DateOnly? Date, decimal WhtRate, IReadOnlyList<CreateInvoiceLine> Lines);
 
 public interface IInvoiceService
 {

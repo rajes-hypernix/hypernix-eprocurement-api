@@ -38,6 +38,14 @@ export function todayMY(): string {
   return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`
 }
 
+// Today's local date as ISO yyyy-MM-dd — for "document dated today" fields that POST a typed
+// date to the API (Slice H T4: the wire format is ISO; the display layer localises via fmtDay).
+export function todayIso(): string {
+  const d = new Date()
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
+
 const ROLE_LABELS: Record<string, string> = {
   Buyer: 'Buyer',
   Approver: 'Approver (DoA)',

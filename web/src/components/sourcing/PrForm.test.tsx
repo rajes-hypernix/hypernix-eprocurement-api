@@ -8,7 +8,7 @@ import * as client from '../../api/client'
 const pr = (headerStatus: string) => ({
   id: 'p1', code: 'PR-2026-0434', requestor: 'QA', department: 'Electrical', location: 'Bintulu',
   category: 'Electrical', memo: 'draft', job: 'J', costCentre: 'C', project: null,
-  raisedDate: '01/06/2026', requiredDate: '30/07/2026', status: headerStatus, value: 0,
+  raisedDate: '2026-06-01', requiredDate: '2026-07-30', status: headerStatus, value: 0,
   headerStatus, submitted: headerStatus !== 'Draft',
   lines: [{ id: 'l1', itemCode: 'CBL-1002', description: 'Cable', qty: 300, uom: 'Meter', estUnitPrice: 62, status: 'available', ref: null, lifecycleStatus: 'Open', noQuotes: false, editable: true }],
 })

@@ -39,7 +39,7 @@ public sealed class InvoiceServiceTests
     }
 
     private static SubmitInvoiceRequest Bill(decimal qty, decimal price, decimal wht = 0) =>
-        new("SUP-INV-1", "28/06/2026", wht, [new CreateInvoiceLine("MTR", qty, price)]);
+        new("SUP-INV-1", new DateOnly(2026, 6, 28), wht, [new CreateInvoiceLine("MTR", qty, price)]);
 
     [Fact]
     public async Task Submit_OverBill_IsCappedToBillable()

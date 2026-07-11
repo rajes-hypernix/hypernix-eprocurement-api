@@ -89,21 +89,21 @@ public sealed class StatementService(AppDbContext db, IClock clock, ICurrentUser
 
         public IReadOnlyList<LedgerEntryDto> Ledger(Guid vid)
         {
-            var e = new List<(DateTime? D, string Ds, string Type, string Ref, decimal Credit, decimal Debit, decimal? Memo)>();
+            var e = new List<(DateOnly? D, string Ds, string Type, string Ref, decimal Credit, decimal Debit, decimal? Memo)>();
             foreach (var p in pos.Where(x => x.VendorId == vid && x.Status != PoStatus.Draft))
-                e.Add((Parse(""), "", "PO issued", p.Code, 0, 0, p.Lines.Sum(l => l.Qty * l.UnitPrice)));
+                e.Add((null, "", "PO issued", p.Code, 0, 0, p.Lines.Sum(l => l.Qty * l.UnitPrice)));
             foreach (var g in grns.Where(x => pos.Any(p => p.Id == x.PoId && p.VendorId == vid)))
             {
                 var po = pos.First(p => p.Id == g.PoId);
                 var val = g.Lines.Sum(l => l.ReceivedQty * (po.Lines.FirstOrDefault(pl => pl.ItemCode == l.ItemCode)?.UnitPrice ?? 0));
-                e.Add((Parse(g.ReceivedDate), g.ReceivedDate, "Goods receipt", g.Code, 0, 0, val));
+                e.Add((g.ReceivedDate, Dmy(g.ReceivedDate), "Goods receipt", g.Code, 0, 0, val));
             }
             foreach (var i in Posted(vid))
-                e.Add((Parse(i.Date), i.Date, "Invoice", i.Code, i.Total, 0, null));
+                e.Add((i.Date, Dmy(i.Date), "Invoice", i.Code, i.Total, 0, null));
             foreach (var i in invoices.Where(x => x.VendorId == vid && x.Status == InvoiceStatus.Paid))
-                e.Add((Parse(i.Date), i.Date, "Payment", i.Code, 0, i.Total, null));
+                e.Add((i.Date, Dmy(i.Date), "Payment", i.Code, 0, i.Total, null));
 
-            var ordered = e.OrderBy(x => x.D ?? DateTime.MinValue).ToList();
+            var ordered = e.OrderBy(x => x.D ?? DateOnly.MinValue).ToList();
             var ledger = new List<LedgerEntryDto>();
             decimal bal = 0;
             foreach (var x in ordered)
@@ -114,9 +114,9 @@ public sealed class StatementService(AppDbContext db, IClock clock, ICurrentUser
             return ledger;
         }
 
-        private int DaysAgo(string dmy) => Parse(dmy) is { } d ? (int)Math.Round((asOf.Date - d.Date).TotalDays) : 0;
+        private int DaysAgo(DateOnly? d) => d is { } dd ? (int)Math.Round((asOf.Date - dd.ToDateTime(TimeOnly.MinValue)).TotalDays) : 0;
 
-        private static DateTime? Parse(string dmy) =>
-            DateTime.TryParseExact(dmy, "dd/MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d) ? d : null;
+        // Typed dates render to the app's dd/MM/yyyy display string for the ledger (LedgerEntryDto.Date stays a string).
+        private static string Dmy(DateOnly? d) => d?.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture) ?? "";
     }
 }

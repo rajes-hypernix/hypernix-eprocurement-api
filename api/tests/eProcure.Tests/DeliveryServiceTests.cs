@@ -39,7 +39,7 @@ public sealed class DeliveryServiceTests
     }
 
     private static CreateAsnRequest Ship(string item, decimal qty) =>
-        new("Carrier", "TRK", "28/06/2026", "29/06/2026", [new CreateAsnLine(item, qty, "LOT")]);
+        new("Carrier", "TRK", new DateOnly(2026, 6, 28), new DateOnly(2026, 6, 29), [new CreateAsnLine(item, qty, "LOT")]);
 
     [Fact]
     public async Task CreateAsn_OverShip_IsClampedToRemaining()

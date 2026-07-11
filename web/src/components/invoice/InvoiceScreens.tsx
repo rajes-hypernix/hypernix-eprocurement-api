@@ -5,7 +5,7 @@ import {
 } from '../../api/client'
 import { Icon } from '../Icon'
 import { ConfirmModal, EmptyState, Notice, Spinner } from '../ui'
-import { fmt, todayMY } from '../../lib/format'
+import { fmt, fmtDay, todayIso } from '../../lib/format'
 import { useIdentity } from '../../identity'
 
 const INV_TONE: Record<string, string> = { Draft: 'b-grey', Submitted: 'b-blue', Approved: 'b-green', Exception: 'b-red', Paid: 'b-grey' }
@@ -62,7 +62,7 @@ function InvoiceDetail({ id, onBack }: { id: string; onBack: () => void }) {
     <>
       <div className="crumb"><a onClick={onBack}>Invoices</a> <Icon name="chev" size={13} /> <span>{inv.code}</span></div>
       <div className="pagehead">
-        <div><h1>{inv.code}</h1><p>{inv.poCode} · supplier ref {inv.invoiceNo} · {inv.date}</p></div>
+        <div><h1>{inv.code}</h1><p>{inv.poCode} · supplier ref {inv.invoiceNo} · {fmtDay(inv.date)}</p></div>
         <div className="spacer" />
         {!isVendor && (
           <div className="actbar">
@@ -137,7 +137,7 @@ function InvoiceForm({ poId, onBack }: { poId: string; onBack: () => void }) {
 
   const submit = useMutation({
     mutationFn: () => submitInvoice(poId, {
-      invoiceNo, date: todayMY(), whtRate: wht,
+      invoiceNo, date: todayIso(), whtRate: wht,
       lines: (plan?.lines ?? []).filter((l) => (qty[l.itemCode!] ?? l.billable ?? 0) > 0)
         .map((l) => ({ itemCode: l.itemCode!, qty: qty[l.itemCode!] ?? l.billable ?? 0, unitPrice: price[l.itemCode!] ?? l.poUnitPrice ?? 0 })),
     }),

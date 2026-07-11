@@ -14,7 +14,7 @@ import {
 } from '../../api/client'
 import { Icon } from '../Icon'
 import { ConfirmModal, Modal, Notice, Spinner } from '../ui'
-import { roleLabel } from '../../lib/format'
+import { roleLabel, fmtDay } from '../../lib/format'
 import { fromDto, toDto, type EditItem, type FormSections } from '../../lib/formTypes'
 import { QuestionEditor } from './QuestionEditor'
 import { useSwec } from '../../api/swec'
@@ -283,8 +283,8 @@ export function RfqBuilder({ id, onBack, onNavigate }: { id: string; onBack: () 
                         <div><div className="k">Memo</div><div className="v">{pr.memo || '—'}</div></div>
                         <div><div className="k">Job</div><div className="v">{pr.job || '—'}</div></div>
                         <div><div className="k">Category</div><div className="v">{pr.category || '—'}</div></div>
-                        <div><div className="k">Raised</div><div className="v">{pr.raisedDate || '—'}</div></div>
-                        <div><div className="k">Required by</div><div className="v">{pr.requiredDate || '—'}</div></div>
+                        <div><div className="k">Raised</div><div className="v">{fmtDay(pr.raisedDate)}</div></div>
+                        <div><div className="k">Required by</div><div className="v">{fmtDay(pr.requiredDate)}</div></div>
                         <div><div className="k">Requestor</div><div className="v">{pr.requestor}</div></div>
                       </div>
                       <table>

@@ -6,7 +6,7 @@ import {
 import { Icon } from '../Icon'
 import { ConfirmModal, EmptyState, Notice, Spinner } from '../ui'
 import { useIdentity } from '../../identity'
-import { todayMY } from '../../lib/format'
+import { fmtDay, todayIso } from '../../lib/format'
 
 const ASN_TONE: Record<string, string> = { Draft: 'b-grey', InTransit: 'b-blue', Received: 'b-green' }
 const asnLabel = (s: string | null | undefined) => (s === 'InTransit' ? 'In transit' : s ?? '')
@@ -59,7 +59,7 @@ function DeliveryList({ onNavigate }: { onNavigate: (key: string) => void }) {
                 <td style={{ fontWeight: 700, color: 'var(--teal)' }}>{a.code}</td>
                 <td>{a.poCode}</td>
                 <td>{a.carrier || '—'}</td>
-                <td>{a.expectedDate || '—'}</td>
+                <td>{fmtDay(a.expectedDate)}</td>
                 <td><span className={`badge ${ASN_TONE[a.status ?? ''] ?? 'b-grey'}`}>{asnLabel(a.status)}</span></td>
                 <td className="amt">
                   <div className="rowactions">
@@ -92,7 +92,7 @@ function AsnForm({ poId, onBack }: { poId: string; onBack: () => void }) {
 
   const submit = useMutation({
     mutationFn: () => createAsn(poId, {
-      carrier, trackingNo: '', shippedDate: todayMY(), expectedDate: '',
+      carrier, trackingNo: '', shippedDate: todayIso(), expectedDate: null,
       lines: (plan?.lines ?? []).map((l) => ({ itemCode: l.itemCode!, shippedQty: qty[l.itemCode!] ?? l.remaining ?? 0, lotNo: lots[l.itemCode!] ?? '' })),
     }),
     onSuccess: (asn) => { void qc.invalidateQueries({ queryKey: ['asns'] }); void qc.invalidateQueries({ queryKey: ['pos'] }); setConfirm(false); setDone(asn.code ?? '') },
@@ -208,7 +208,7 @@ function AsnDetail({ asnId, onBack }: { asnId: string; onBack: () => void }) {
   return (
     <>
       <div className="crumb"><a onClick={onBack}>Deliveries</a> <Icon name="chev" size={13} /> <span>{asn.code}</span></div>
-      <div className="pagehead"><div><h1>{asn.code}</h1><p>{asn.poCode} · {asn.vendorName} · expected {asn.expectedDate || '—'}</p></div></div>
+      <div className="pagehead"><div><h1>{asn.code}</h1><p>{asn.poCode} · {asn.vendorName} · expected {fmtDay(asn.expectedDate)}</p></div></div>
       <div className="ribbon">
         <span className={`badge ${ASN_TONE[asn.status ?? ''] ?? 'b-grey'}`}>{asnLabel(asn.status)}</span>
         {asn.grnCode && <span className="badge b-green" style={{ marginLeft: 6 }}><Icon name="check" size={11} /> Received · {asn.grnCode}</span>}

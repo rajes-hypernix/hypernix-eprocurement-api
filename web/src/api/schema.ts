@@ -4309,7 +4309,9 @@ export interface components {
             vendorName?: string | null;
             carrier?: string | null;
             trackingNo?: string | null;
+            /** Format: date */
             shippedDate?: string | null;
+            /** Format: date */
             expectedDate?: string | null;
             status?: string | null;
             grnCode?: string | null;
@@ -4330,6 +4332,7 @@ export interface components {
             poCode?: string | null;
             vendorName?: string | null;
             carrier?: string | null;
+            /** Format: date */
             expectedDate?: string | null;
             status?: string | null;
             grnCode?: string | null;
@@ -4533,7 +4536,9 @@ export interface components {
         CreateAsnRequest: {
             carrier?: string | null;
             trackingNo?: string | null;
+            /** Format: date */
             shippedDate?: string | null;
+            /** Format: date */
             expectedDate?: string | null;
             lines?: components["schemas"]["CreateAsnLine"][] | null;
         };
@@ -4685,6 +4690,7 @@ export interface components {
             asnId?: string;
             asnCode?: string | null;
             poCode?: string | null;
+            /** Format: date */
             receivedDate?: string | null;
             nsId?: string | null;
             lines?: components["schemas"]["GrnLineDto"][] | null;
@@ -4751,6 +4757,7 @@ export interface components {
             poCode?: string | null;
             vendorName?: string | null;
             invoiceNo?: string | null;
+            /** Format: date */
             date?: string | null;
             status?: string | null;
             matchStatus?: string | null;
@@ -5205,7 +5212,9 @@ export interface components {
             category?: string | null;
             costCentre?: string | null;
             project?: string | null;
+            /** Format: date */
             raisedDate?: string | null;
+            /** Format: date */
             requiredDate?: string | null;
             status?: string | null;
             /** Format: double */
@@ -5361,6 +5370,7 @@ export interface components {
             category?: string | null;
             job?: string | null;
             memo?: string | null;
+            /** Format: date */
             requiredDate?: string | null;
             lines?: components["schemas"]["PrLineInput"][] | null;
         };
@@ -5455,6 +5465,7 @@ export interface components {
         };
         SubmitInvoiceRequest: {
             invoiceNo?: string | null;
+            /** Format: date */
             date?: string | null;
             /** Format: double */
             whtRate?: number;

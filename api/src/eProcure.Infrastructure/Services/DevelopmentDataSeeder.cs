@@ -101,6 +101,10 @@ public sealed class DevelopmentDataSeeder(
         logger.LogInformation("Seeded {Count} StoredFiles (one per ownership class).", files.Count);
     }
 
+    // Parse a seed dd/MM/yyyy literal into a typed business date (Slice H T4).
+    private static DateOnly Dmy(string s) =>
+        DateOnly.ParseExact(s, "dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture);
+
     // Align the code sequences with the highest seeded code per (prefix, year) so the
     // first generated code never collides with a seeded one (e.g. FORM-2026-0002).
     private async Task SeedNumberSequencesAsync(CancellationToken ct)
@@ -321,7 +325,6 @@ public sealed class DevelopmentDataSeeder(
     {
         if (await db.PurchaseRequisitions.AnyAsync(p => p.Code == "PR-2026-0430", ct)) return;
         var now = clock.UtcNow;
-        var ci = System.Globalization.CultureInfo.InvariantCulture;
 
         PurchaseRequisition Pr(string code, string memo, string dept, string cat, params PrLine[] lines)
             => PrWith(code, memo, dept, cat, submitted: true, lines);
@@ -336,8 +339,8 @@ public sealed class DevelopmentDataSeeder(
                 Category = cat, CategoryCode = SourcingMapping.DimCode(cat),
                 Location = "Bintulu Plant", LocationCode = SourcingMapping.DimCode("Bintulu Plant"),
                 Job = "JOB-DEMO", JobCode = SourcingMapping.DimCode("JOB-DEMO"),
-                RaisedOn = DateOnly.FromDateTime(now), RaisedDate = now.ToString("dd/MM/yyyy", ci),
-                RequiredOn = DateOnly.FromDateTime(now.AddDays(45)), RequiredDate = now.AddDays(45).ToString("dd/MM/yyyy", ci),
+                RaisedOn = DateOnly.FromDateTime(now),
+                RequiredOn = DateOnly.FromDateTime(now.AddDays(45)),
                 Lines = [.. lines], CreatedUtc = now, UpdatedUtc = now,
             }.SeededAs(submitted ? "Approved" : "Draft");
             pr.RecomputeHeaderStatus();
@@ -540,7 +543,7 @@ public sealed class DevelopmentDataSeeder(
         var asn0508 = new Asn
         {
             Code = "ASN-2026-0508", PoId = po1185.Id, VendorId = po1185.VendorId, Carrier = "Pos Logistics",
-            TrackingNo = "PL-77310", ShippedDate = "12/06/2026", ExpectedDate = "14/06/2026",
+            TrackingNo = "PL-77310", ShippedDate = Dmy("12/06/2026"), ExpectedDate = Dmy("14/06/2026"),
             GrnCode = "GRN-2026-0301", CreatedUtc = now, UpdatedUtc = now,
             Lines =
             [
@@ -552,7 +555,7 @@ public sealed class DevelopmentDataSeeder(
         db.Grns.Add(new Grn
         {
             Code = "GRN-2026-0301", AsnId = asn0508.Id,
-            PoId = po1185.Id, ReceivedDate = "14/06/2026", ReceivedBy = "Procurement", NsId = "NS-IR-30121", CreatedUtc = now,
+            PoId = po1185.Id, ReceivedDate = Dmy("14/06/2026"), ReceivedBy = "Procurement", NsId = "NS-IR-30121", CreatedUtc = now,
             Lines =
             [
                 new GrnLine { ItemCode = "MEP-PUMP-075", Description = "Centrifugal Pump, 75 kW, end-suction", ExpectedQty = 4, ReceivedQty = 4, Condition = "Good" },
@@ -563,7 +566,7 @@ public sealed class DevelopmentDataSeeder(
         db.Asns.Add(new Asn
         {
             Code = "ASN-2026-0511", PoId = po1186.Id, VendorId = po1186.VendorId, Carrier = "Tiong Nam Logistics",
-            TrackingNo = "TN-88421", ShippedDate = "26/06/2026", ExpectedDate = "29/06/2026",
+            TrackingNo = "TN-88421", ShippedDate = Dmy("26/06/2026"), ExpectedDate = Dmy("29/06/2026"),
             CreatedUtc = now, UpdatedUtc = now,   // Status defaults to InTransit
             Lines = [new AsnLine { ItemCode = "VLV-GAT-150", Description = "Gate Valve, DN150, PN16, CS", ShippedQty = 8, Uom = "Unit", LotNo = "LOT-VG-0626" }],
         });
@@ -588,7 +591,7 @@ public sealed class DevelopmentDataSeeder(
         db.Invoices.Add(new Invoice
         {
             Code = "INV-2026-0091", PoId = po1185.Id, GrnId = grn1185?.Id, VendorId = po1185.VendorId, InvoiceNo = "STU-INV-3391",
-            Date = "14/06/2026", NsId = "NS-VB-50121", CreatedUtc = now, UpdatedUtc = now,
+            Date = Dmy("14/06/2026"), NsId = "NS-VB-50121", CreatedUtc = now, UpdatedUtc = now,
             Lines =
             [
                 new InvoiceLine { ItemCode = "MEP-PUMP-075", Description = "Centrifugal Pump, 75 kW, end-suction", Qty = 4, Uom = "Unit", UnitPrice = 48500 },
@@ -599,14 +602,14 @@ public sealed class DevelopmentDataSeeder(
         db.Invoices.Add(new Invoice
         {
             Code = "INV-2026-0093", PoId = po1186.Id, VendorId = po1186.VendorId, InvoiceNo = "PNT-INV-2207",
-            Date = "27/06/2026", CreatedUtc = now, UpdatedUtc = now,
+            Date = Dmy("27/06/2026"), CreatedUtc = now, UpdatedUtc = now,
             Lines = [new InvoiceLine { ItemCode = "VLV-GAT-150", Description = "Gate Valve, DN150, PN16, CS", Qty = 16, Uom = "Unit", UnitPrice = 980 }],
         }.SeededAs(InvoiceStatus.Submitted));
         // INV-0094: megatech, PO-1193, price variance > 2% → Exception (blocked from payment).
         db.Invoices.Add(new Invoice
         {
             Code = "INV-2026-0094", PoId = po1193.Id, VendorId = po1193.VendorId, InvoiceNo = "MEG-INV-7720",
-            Date = "24/06/2026", CreatedUtc = now, UpdatedUtc = now,
+            Date = Dmy("24/06/2026"), CreatedUtc = now, UpdatedUtc = now,
             ExceptionReason = "Unit price billed above PO (RM 23,200 vs RM 22,500).",
             Lines = [new InvoiceLine { ItemCode = "ELE-MTR-200", Description = "Motor, 200 kW, TEFC", Qty = 6, Uom = "Unit", UnitPrice = 23200 }],
         }.SeededAs(InvoiceStatus.Exception));

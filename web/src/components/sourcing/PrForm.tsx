@@ -19,12 +19,6 @@ const toEdit = (l: PrLine): EditLine => ({
 })
 const blankLine = (): EditLine => ({ itemCode: '', description: '', qty: '', uom: '', estUnitPrice: '', lifecycleStatus: 'Open', editable: true })
 
-// ISO (yyyy-MM-dd) <-> dd/MM/yyyy used by the API display string.
-const toIso = (display?: string | null) => {
-  const m = (display ?? '').match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
-  return m ? `${m[3]}-${m[2]}-${m[1]}` : ''
-}
-
 export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }) {
   const qc = useQueryClient()
   const isNew = id === null
@@ -42,7 +36,7 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
     if (pr && !hydrated) {
       setH({
         requestor: pr.requestor ?? '', department: pr.department ?? '', category: pr.category ?? '',
-        location: pr.location ?? '', job: pr.job ?? '', requiredDate: toIso(pr.requiredDate), memo: pr.memo ?? '',
+        location: pr.location ?? '', job: pr.job ?? '', requiredDate: (pr.requiredDate ?? '').slice(0, 10), memo: pr.memo ?? '',
       })
       setLines((pr.lines ?? []).map(toEdit))
       setHydrated(true)
@@ -55,7 +49,7 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
 
   const body = (): SavePrRequest => ({
     requestor: h.requestor, department: h.department, location: h.location, category: h.category,
-    job: h.job, memo: h.memo, requiredDate: h.requiredDate,
+    job: h.job, memo: h.memo, requiredDate: h.requiredDate || null,
     lines: lines.filter((l) => l.itemCode.trim() || l.description.trim()).map((l) => ({
       id: l.id ?? null, itemCode: l.itemCode, description: l.description,
       qty: Number(l.qty) || 0, uom: l.uom || 'Unit', estUnitPrice: Number(l.estUnitPrice) || 0,

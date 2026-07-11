@@ -86,7 +86,7 @@ public static class SourcingSeed
             var pr = new PurchaseRequisition
             {
                 Code = code, Requestor = requestor, Department = dept, Location = loc, Memo = memo, Job = job,
-                Category = cat, RaisedDate = raised, RequiredDate = need, Value = value, Lines = lines,
+                Category = cat, Value = value, Lines = lines,
                 CostCentre = costCentre, Project = project, Submitted = true,
                 Currency = "MYR",
                 DepartmentCode = DimCode(dept), LocationCode = DimCode(loc),

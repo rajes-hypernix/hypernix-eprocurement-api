@@ -49,9 +49,7 @@ public sealed class RequisitionService(
             Currency = "MYR",
             Submitted = submit,
             RaisedOn = DateOnly.FromDateTime(now),
-            RaisedDate = now.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture),
-            RequiredOn = ParseDate(req.RequiredDate),
-            RequiredDate = DisplayDate(req.RequiredDate),
+            RequiredOn = req.RequiredDate,
             Lines = [.. req.Lines.Select(l => PrLine.Create(l.ItemCode, l.Description, l.Qty, l.Uom, l.EstUnitPrice))],
             CreatedUtc = now, UpdatedUtc = now,
         };
@@ -75,8 +73,7 @@ public sealed class RequisitionService(
         pr.Location = req.Location; pr.LocationCode = SourcingMapping.DimCode(req.Location);
         pr.Category = req.Category; pr.CategoryCode = SourcingMapping.DimCode(req.Category);
         pr.Job = req.Job; pr.JobCode = SourcingMapping.DimCode(req.Job);
-        pr.RequiredOn = ParseDate(req.RequiredDate);
-        pr.RequiredDate = DisplayDate(req.RequiredDate);
+        pr.RequiredOn = req.RequiredDate;
 
         // Open lines absent from the request are removed; locked (InRfq/Awarded/Cancelled) lines
         // are always kept and read-only.
@@ -189,18 +186,4 @@ public sealed class RequisitionService(
             .ToHashSet();
     }
 
-    private static DateOnly? ParseDate(string? s)
-    {
-        if (string.IsNullOrWhiteSpace(s)) return null;
-        foreach (var fmt in new[] { "yyyy-MM-dd", "dd/MM/yyyy" })
-            if (DateOnly.TryParseExact(s, fmt, CultureInfo.InvariantCulture, DateTimeStyles.None, out var d))
-                return d;
-        return null;
-    }
-
-    private static string DisplayDate(string? s)
-    {
-        var d = ParseDate(s);
-        return d?.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture) ?? (s ?? "");
-    }
 }

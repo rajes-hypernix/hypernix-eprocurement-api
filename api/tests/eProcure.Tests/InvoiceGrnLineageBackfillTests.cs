@@ -52,7 +52,7 @@ public sealed class InvoiceGrnLineageBackfillTests
         var grnMb = Grn("Mb", poMulti.Id, asnMb.Id);
         db.Grns.AddRange(grnS, grnMa, grnMb);
 
-        Invoice Inv(string tag, Guid poId) => new() { Code = $"INV-IGL-{tag}-{sfx}", PoId = poId, VendorId = vendor.Id, Date = "11/07/2026", CreatedUtc = Now, UpdatedUtc = Now };
+        Invoice Inv(string tag, Guid poId) => new() { Code = $"INV-IGL-{tag}-{sfx}", PoId = poId, VendorId = vendor.Id, Date = new DateOnly(2026, 7, 11), CreatedUtc = Now, UpdatedUtc = Now };
         var invSingle = Inv("S", poSingle.Id);
         var invMulti = Inv("M", poMulti.Id);
         var invNone = Inv("N", poNone.Id);

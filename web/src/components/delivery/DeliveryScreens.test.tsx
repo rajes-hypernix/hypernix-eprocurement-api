@@ -15,7 +15,7 @@ describe('Delivery screens', () => {
 
   it('lists ASNs and offers Receive for an in-transit ASN (buyer)', async () => {
     vi.spyOn(client, 'getAsns').mockResolvedValue([
-      { id: 'a1', code: 'ASN-2026-0511', poCode: 'PO-2026-1186', vendorName: 'Pantai', carrier: 'Tiong Nam', expectedDate: '29/06/2026', status: 'InTransit', grnCode: null },
+      { id: 'a1', code: 'ASN-2026-0511', poCode: 'PO-2026-1186', vendorName: 'Pantai', carrier: 'Tiong Nam', expectedDate: '2026-06-29', status: 'InTransit', grnCode: null },
     ])
     renderWithProviders(<DeliveryPage route="deliveries" onNavigate={() => {}} />)
     await waitFor(() => expect(screen.getByText('ASN-2026-0511')).toBeInTheDocument())
@@ -60,7 +60,7 @@ describe('AsnForm — shipped-date default (Slice K / K7)', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
     vi.useFakeTimers({ shouldAdvanceTime: true })         // keep userEvent / waitFor working
-    vi.setSystemTime(new Date('2026-09-15T08:30:00'))     // local mid-morning → 15/09/2026
+    vi.setSystemTime(new Date('2026-09-15T08:30:00'))     // local mid-morning → 2026-09-15
     vi.spyOn(client, 'getPersonas').mockResolvedValue([
       { code: 'u_faridah', name: 'Faridah', kind: 'internal', roles: ['Buyer'], vendorName: null },
     ])
@@ -82,7 +82,7 @@ describe('AsnForm — shipped-date default (Slice K / K7)', () => {
     await user.click(confirmBtns[confirmBtns.length - 1])
     await waitFor(() => expect(create).toHaveBeenCalled())
 
-    expect(create.mock.calls[0][1]).toMatchObject({ shippedDate: '15/09/2026' })
-    expect(create.mock.calls[0][1].shippedDate).not.toBe('28/06/2026')
+    expect(create.mock.calls[0][1]).toMatchObject({ shippedDate: '2026-09-15' })
+    expect(create.mock.calls[0][1].shippedDate).not.toBe('2026-06-28')
   })
 })

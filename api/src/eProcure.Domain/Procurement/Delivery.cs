@@ -14,8 +14,8 @@ public class Asn
     public Guid VendorId { get; set; }
     public string Carrier { get; set; } = "";
     public string TrackingNo { get; set; } = "";
-    public string ShippedDate { get; set; } = "";
-    public string ExpectedDate { get; set; } = "";
+    public DateOnly? ShippedDate { get; set; }            // typed — Slice H T4
+    public DateOnly? ExpectedDate { get; set; }           // typed — Slice H T4
     public AsnStatus Status { get; private set; } = AsnStatus.InTransit;
     public string? GrnCode { get; set; }
     public List<AsnLine> Lines { get; set; } = [];
@@ -52,7 +52,7 @@ public class Grn
     public string Code { get; set; } = default!;          // GRN-2026-0001
     public Guid AsnId { get; set; }
     public Guid PoId { get; set; }
-    public string ReceivedDate { get; set; } = "";
+    public DateOnly? ReceivedDate { get; set; }           // Malaysia business date — typed (Slice H T4)
     public string ReceivedBy { get; set; } = "";
     public string? NsId { get; set; }
     public List<GrnLine> Lines { get; set; } = [];

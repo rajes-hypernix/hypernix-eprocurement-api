@@ -9,7 +9,7 @@ import * as client from '../../api/client'
 const PR = {
   id: 'p1', code: 'PR-2026-0412', requestor: 'Aishah Karim', department: 'Facilities',
   location: 'Bintulu Plant', memo: 'Pump set', job: 'JOB-1', category: 'Rotating',
-  costCentre: 'CC-1', project: null, raisedDate: '02/06/2026', requiredDate: '30/07/2026',
+  costCentre: 'CC-1', project: null, raisedDate: '2026-06-02', requiredDate: '2026-07-30',
   status: 'Approved', value: 46000, headerStatus: 'PartiallySourced', submitted: true,
   lines: [
     { id: 'l1', itemCode: 'PUMP-1', description: 'Pump', qty: 4, uom: 'Unit', estUnitPrice: 10000, status: 'available', ref: null, lifecycleStatus: 'Open', noQuotes: false, editable: true },
