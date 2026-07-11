@@ -1,4 +1,4 @@
-# eProcure UI Primitives — the FieldSpec pipeline (D1)
+# eProcure UI Primitives — the FieldSpec pipeline (D1) & Archetypes (D2)
 
 Every field in the product renders from a `FieldSpec` object through one
 pipeline (charter rule 3). Built-in fields define their specs in code; D5
@@ -68,9 +68,44 @@ of production builds).
    MessageInput (share one comm component when touched), SwecPicker tree
    (single-sourced already), bulk row-select (D2 List archetype).
 
-## Proof gate
+## Archetypes (D2) — every new screen is an instantiation
 
-PrForm is the reference implementation (D1 Phase 3): header from a FieldSpec
-array, bare-chrome line cells, zero behaviour-test edits, full e2e 42/42.
-The other two rival Field components (ManualVendorForm, OnboardingForm) are
-BACKLOG rows targeted at the D2 window.
+`web/src/ui/archetypes/` — the composition layer. Derived from the D0 pattern
+census + the retrofit targets and their relatives (D2 Step 0c/0d); no
+speculative slots.
+
+| Archetype | Retrofit proof | What it owns |
+|---|---|---|
+| **TransactionPage** | PrForm | crumb, pagehead + status-pill slot, error Notice, top+bottom action bar, sections from FieldSpec arrays via `renderField`, optional subtabs, sublist children, **dirty-navigation guard** (`useDirtyNavigationGuard` — call `markClean()` before intentional navigation) |
+| **EntityPage** | VendorDetail | crumb, master header (inline badge nodes), header actions, controlled/uncontrolled subtabs, per-tab content |
+| **ListPage** | RfqList | pagehead + primary-action + view-toggle slots, search box, faceted multi-select filterbar (values derived from data), columns with OPT-IN sorting (default off), row actions, bulk row-select with indeterminate select-all (census F31), EmptyState (none vs filtered), `alternateBody(filteredRows)` for board views |
+| **SetupPage** | AdminCustomLists | pagehead + primary action, error Notice, rail (label + hint) + detail pane, modal children |
+
+Supporting: `renderField` (the one dataType→primitive dispatch — D5 rides it),
+`QuickView` (hover-intent card over existing GET detail endpoints),
+`ui/display.tsx` (Stat, Kv), `centerTabs.ts` (nav data in center-tab shape;
+the sidebar renders it via `tabsToNavGroups` — a top-tab shell is a deferred
+operator design decision, see BACKLOG).
+
+**Enforcement**: `src/test/archetype-adoption.test.ts` — a NEW page component
+(name matching `*Page/*Screens/*List/*Detail/*Master/*Queue/*Hub/*Builder`)
+must import from `ui/archetypes`; today's 12 non-composing pages are
+grandfathered in `src/test/page-archetypes.grandfather.json`, shrink-only.
+
+## Display gating — the honesty note (D2 Step 0b, operator-recorded)
+
+`<Gated action="…">` (`ui/gating.tsx`) hides affordances by role. **Hidden ≠
+forbidden**: this is DISPLAY gating only. Server-side role-matrix
+authorization is a separate slice (the PERMISSIONS-REGISTER's one remaining
+authorization item), scheduled before D3. Until it lands, every endpoint is
+exactly as protected as it was before D2 — no more, no less. Never cite a
+hidden button as a security control.
+
+## Proof gates
+
+PrForm is the Transaction reference (D1 Phase 3 fields; D2 Phase 1a
+archetype): header from a FieldSpec array, bare-chrome line cells, zero
+behaviour-test edits. VendorDetail/RfqList/AdminCustomLists are the D2
+Phase 3 retrofits (full 42-check e2e after each). **All three rival Field
+components are dead** (PrForm at D1; ManualVendorForm at D2 3a; OnboardingForm
+at D2 3d).

@@ -1,0 +1,14 @@
+[
+  "src/components/award/AwardScreens.tsx",
+  "src/components/delivery/DeliveryScreens.tsx",
+  "src/components/eval/EvalScreens.tsx",
+  "src/components/invoice/InvoiceScreens.tsx",
+  "src/components/onboarding/OnboardingPage.tsx",
+  "src/components/onboarding/OnboardingQueue.tsx",
+  "src/components/po/PoScreens.tsx",
+  "src/components/sourcing/RfqBuilder.tsx",
+  "src/components/sourcing/RfqDetailHub.tsx",
+  "src/components/statement/StatementScreens.tsx",
+  "src/components/vendors/VendorMaster.tsx",
+  "src/components/vendors/VendorsPage.tsx"
+]
