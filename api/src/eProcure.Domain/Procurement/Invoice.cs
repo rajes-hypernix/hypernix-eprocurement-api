@@ -16,6 +16,7 @@ public class Invoice
     public Guid Id { get; private set; } = Guid.NewGuid();
     public string Code { get; set; } = default!;          // INV-2026-0001
     public Guid PoId { get; set; }
+    public Guid? GrnId { get; set; }                      // the receipt this invoice matches (3-way-match lineage, Slice H T3)
     public Guid VendorId { get; set; }
     public string InvoiceNo { get; set; } = "";           // supplier's own ref
     public string Date { get; set; } = "";

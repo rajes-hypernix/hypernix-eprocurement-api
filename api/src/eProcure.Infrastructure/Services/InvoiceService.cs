@@ -82,10 +82,14 @@ public sealed class InvoiceService(
         if (lines.Count == 0)
             throw new DomainRuleException("Enter an invoice quantity on at least one billable line.");
 
+        // 3-way-match lineage (T3): link the receipt when the PO has exactly one GRN. With multiple
+        // partial receipts we can't tell which one this invoice matches, so leave it null (never guess).
+        var grnIds = await db.Grns.Where(g => g.PoId == poId).Select(g => g.Id).ToListAsync(ct);
         var inv = new Invoice
         {
             Code = await codes.NextAsync("INV", ct),
-            PoId = poId, VendorId = po.VendorId, InvoiceNo = req.InvoiceNo, Date = req.Date,
+            PoId = poId, GrnId = grnIds.Count == 1 ? grnIds[0] : null,
+            VendorId = po.VendorId, InvoiceNo = req.InvoiceNo, Date = req.Date,
             WhtRate = req.WhtRate, Lines = lines,
             CreatedUtc = clock.UtcNow, UpdatedUtc = clock.UtcNow,
         };

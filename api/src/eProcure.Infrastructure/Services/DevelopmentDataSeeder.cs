@@ -581,11 +581,13 @@ public sealed class DevelopmentDataSeeder(
         var po1193 = pos.FirstOrDefault(p => p.Code == "PO-2026-1193");
         if (po1185 is null || po1186 is null || po1193 is null) return;
         var now = clock.UtcNow;
+        // PO-1185 has a single receipt (GRN-0301) → coherent 3-way-match lineage (Slice H T3).
+        var grn1185 = await db.Grns.FirstOrDefaultAsync(g => g.PoId == po1185.Id, ct);
 
         // INV-0091: sentausa, PO-1185, fully matched → Paid (settled line for Statements).
         db.Invoices.Add(new Invoice
         {
-            Code = "INV-2026-0091", PoId = po1185.Id, VendorId = po1185.VendorId, InvoiceNo = "STU-INV-3391",
+            Code = "INV-2026-0091", PoId = po1185.Id, GrnId = grn1185?.Id, VendorId = po1185.VendorId, InvoiceNo = "STU-INV-3391",
             Date = "14/06/2026", NsId = "NS-VB-50121", CreatedUtc = now, UpdatedUtc = now,
             Lines =
             [

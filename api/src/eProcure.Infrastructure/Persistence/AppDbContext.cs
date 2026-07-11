@@ -476,7 +476,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.OwnsMany(x => x.Lines, o => { o.ToTable("InvoiceLines"); o.HasKey(l => l.Id); o.Property(l => l.Id).ValueGeneratedNever(); });        // stable grain key (Slice H T1)
             e.HasOne<PurchaseOrder>().WithMany().HasForeignKey(x => x.PoId).OnDelete(DeleteBehavior.Restrict);    // DBA-1
             e.HasOne<Vendor>().WithMany().HasForeignKey(x => x.VendorId).OnDelete(DeleteBehavior.Restrict);       // DBA-1
-            // Invoice->Grn deferred to Slice H: Invoice has no GrnId column (see BACKLOG).
+            e.HasOne<Grn>().WithMany().HasForeignKey(x => x.GrnId).OnDelete(DeleteBehavior.Restrict);             // Slice H T3: 3-way-match lineage (nullable; no nav)
         });
 
         b.Entity<Clarification>(e =>
