@@ -65,10 +65,10 @@ POST api/onboarding/draft/raise-clarification
 
 ## 4. The matrix — endpoint × action × role (AS RULED)
 
-103 authenticated endpoints (102 at ruling + Phase 3's permissions read),
-grouped into 58 actions (A1–A58, one action per row; the RoleMatrix suite
-generates one test case per action). Every endpoint appears exactly once.
-Coverage tally in §4.6.
+110 authenticated endpoints (102 at ruling + Phase 3's permissions read +
+D3's seven /api/views endpoints), grouped into 61 actions (A1–A61, one action
+per row; the RoleMatrix suite generates one test case per action). Every
+endpoint appears exactly once. Coverage tally in §4.6.
 
 ### 4.1 All-principal actions
 
@@ -77,6 +77,9 @@ Coverage tally in §4.6.
 | A1 | ViewDashboard | GET /dashboard | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | SVC: `DashboardService.cs:14-84` branches per role; crawl exercises all 5 persona dashboards |
 | A2 | ViewPersonas | GET /auth/personas | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | REG (Slice F): authenticated-only; powers the persona switcher (`identity.tsx:23`) |
 | A58 | ViewPermissions | GET /auth/permissions | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | Phase 3 (this slice's file plan, as ruled): every principal reads its OWN allowed-action list, from which the web derives display gating. Anonymous → 401 (not on the §3 exemption list) |
+| A59 | UseSavedViews | GET /views · GET /views/fields · GET /views/{id}/run | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | D3 (ruled): the run ADDITIONALLY checks the view's record-type View\* action via `ViewVocabulary.ViewActionFor` — e.g. TechEvaluator × Vendor view → 403 (test-pinned) |
+| A60 | ManageOwnSavedViews | POST /views · PUT /views/{id} · DELETE /views/{id} | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | D3 (ruled): own views only (owner checks in service; foreign private view → 404 existence-hiding); vendor scoping of the executor's sources makes vendor-owned views safe |
+| A61 | ManageSharedViews | POST /views/{id}/share | ✓ | – | – | – | ✓ | – | D3 (ruled): sharing is publication — Buyer, Admin; its own endpoint so the no-orphan drift sweep holds |
 | A3 | Search | GET /search | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | OD-4 (MODIFIED): all roles keep search, but **result-type filtering by the caller's permitted View\* actions lands in THIS slice (Phase 2)** — search must not undo OD-2's vendor-master denial through the side door. Scoping test: TechEvaluator searching a vendor name → zero vendor-type hits. Vendor in-query scoping unchanged (TEST `SearchScopingTests.cs:81-82`) |
 | A4 | DownloadFile | GET /files/{id} | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | SVC: `FileAccessPolicy.cs:15-30` fail-closed vendor scoping; TEST `VendorScopingTests.cs:77-84` pins internal-reads-any + vendor deny-on-uncertainty. Evaluators need bid attachments to score |
 | A5 | UploadFile | POST /files | ✓ | – | – | – | – | ✓ | OD-5: Buyer + Vendor only — narrowest surface matching real affordances. SVC: `FilesController.cs:23` ownership stamping unchanged |
@@ -162,10 +165,11 @@ Coverage tally in §4.6.
 |---|---|
 | [AllowAnonymous] (§3) | 11 |
 | A1–A6 + A58 all-principal | 8 |
+| A59–A61 saved views (D3) | 7 |
 | A7–A23 internal reads | 35 |
 | A24–A48 internal writes | 49 |
 | A49–A57 vendor actions | 11 |
-| **Total** | **114** — matches the ApiExplorer surface (19 controllers; same enumeration as `AnonymousSweepTests.cs:44-51`); 113 at ruling + the Phase 3 permissions read |
+| **Total** | **121** — matches the ApiExplorer surface (20 controllers; same enumeration as `AnonymousSweepTests.cs:44-51`); 113 at ruling + the Phase 3 permissions read + D3's views engine |
 
 ## 5. The Vendor principal's complete action list (as ruled)
 

@@ -25,6 +25,12 @@ public sealed class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionM
         {
             await Write(ctx, StatusCodes.Status403Forbidden, "Forbidden", ex.Message);
         }
+        catch (Application.Views.ViewValidationException ex)
+        {
+            // D3 ruling: an invalid view definition is a 400 — loud on save AND run,
+            // never a silently dropped filter.
+            await Write(ctx, StatusCodes.Status400BadRequest, "Invalid view definition", ex.Message);
+        }
         catch (DomainRuleException ex)
         {
             await Write(ctx, StatusCodes.Status409Conflict, "Rule violation", ex.Message);

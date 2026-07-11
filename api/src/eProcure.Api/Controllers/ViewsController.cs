@@ -1,0 +1,59 @@
+using eProcure.Api.Auth;
+using eProcure.Application.Authorization;
+using eProcure.Application.Views;
+using Microsoft.AspNetCore.Mvc;
+
+namespace eProcure.Api.Controllers;
+
+/// <summary>
+/// Saved views engine (D3) — additive; no list endpoint is replaced. Actions per
+/// AUTHORIZATION-MATRIX A59–A61: using views is all-principal (the run additionally
+/// checks the record type's View* action inside the service — the ruled dynamic gate);
+/// managing shared views is publication, Buyer/Admin only, carried by its own endpoint
+/// so the no-orphan drift sweep holds.
+/// </summary>
+[ApiController]
+[Route("api/views")]
+public sealed class ViewsController(ISavedViewService views) : ControllerBase
+{
+    [HttpGet]
+    [Action(ApiActions.UseSavedViews)]
+    public async Task<ActionResult<IReadOnlyList<SavedViewDto>>> List([FromQuery] string? recordType, CancellationToken ct) =>
+        Ok(await views.ListVisibleAsync(recordType, ct));
+
+    /// <summary>The ViewBuilder's field palette: registry rows + enum options for the record type.</summary>
+    [HttpGet("fields")]
+    [Action(ApiActions.UseSavedViews)]
+    public async Task<ActionResult<IReadOnlyList<ViewFieldDto>>> Fields([FromQuery] string recordType, CancellationToken ct) =>
+        Ok(await views.FieldsAsync(recordType, ct));
+
+    [HttpPost]
+    [Action(ApiActions.ManageOwnSavedViews)]
+    public async Task<ActionResult<SavedViewDto>> Create([FromBody] SaveViewRequest req, CancellationToken ct) =>
+        Ok(await views.CreateAsync(req, ct));
+
+    [HttpPut("{id:guid}")]
+    [Action(ApiActions.ManageOwnSavedViews)]
+    public async Task<ActionResult<SavedViewDto>> Update(Guid id, [FromBody] SaveViewRequest req, CancellationToken ct) =>
+        Ok(await views.UpdateAsync(id, req, ct));
+
+    [HttpDelete("{id:guid}")]
+    [Action(ApiActions.ManageOwnSavedViews)]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+    {
+        await views.DeleteAsync(id, ct);
+        return NoContent();
+    }
+
+    [HttpPost("{id:guid}/share")]
+    [Action(ApiActions.ManageSharedViews)]
+    public async Task<ActionResult<SavedViewDto>> Share(Guid id, [FromBody] ShareViewRequest req, CancellationToken ct) =>
+        Ok(await views.ShareAsync(id, req.IsShared, ct));
+
+    /// <summary>The heart: typed rows shaped by the view's columns, built on the scoped
+    /// sources (D3 Step 0(c)). Rows only — aggregation is D4's seam.</summary>
+    [HttpGet("{id:guid}/run")]
+    [Action(ApiActions.UseSavedViews)]
+    public async Task<ActionResult<ViewRunResult>> Run(Guid id, CancellationToken ct) =>
+        Ok(await views.RunAsync(id, ct));
+}

@@ -67,6 +67,11 @@ public static class ApiActions
     public const string ManageUsers = "ManageUsers";
     public const string SendClarification = "SendClarification";
 
+    // A59–A61 — saved views engine (D3, ruled)
+    public const string UseSavedViews = "UseSavedViews";
+    public const string ManageOwnSavedViews = "ManageOwnSavedViews";
+    public const string ManageSharedViews = "ManageSharedViews";
+
     // A49–A57 — vendor principal
     public const string ViewMyInvitations = "ViewMyInvitations";
     public const string DeclineRfqInvitation = "DeclineRfqInvitation";

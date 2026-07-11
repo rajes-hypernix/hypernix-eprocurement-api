@@ -48,6 +48,7 @@ public static class DependencyInjection
         services.AddScoped<IEmailSender, Email.SmtpEmailSender>();
         services.AddScoped<Application.Onboarding.IOnboardingNotifier, Email.OnboardingNotifier>();
         services.AddScoped<Application.Onboarding.IOnboardingService, OnboardingService>();
+        services.AddScoped<Application.Views.ISavedViewService, SavedViewService>();   // saved-views engine (D3)
 
         return services;
     }

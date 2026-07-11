@@ -81,6 +81,11 @@ public static class ActionCatalog
             [ApiActions.ManageUsers] = [Ad],                              // A47
             [ApiActions.SendClarification] = [B, TE, CE, V],              // A48 (REG row 10; Ap/Ad deny-by-default)
 
+            // ---- A59–A61 saved views engine (D3, ruled) ----
+            [ApiActions.UseSavedViews] = [B, Ap, TE, CE, Ad, V],          // A59: list/fields/run; run ALSO checks the record type's View* (ViewVocabulary.ViewActionFor)
+            [ApiActions.ManageOwnSavedViews] = [B, Ap, TE, CE, Ad, V],    // A60: own views only — the scoped sources make vendor views safe
+            [ApiActions.ManageSharedViews] = [B, Ad],                     // A61: sharing is publication; carried by POST /api/views/{id}/share
+
             // ---- A49–A57 vendor principal ----
             [ApiActions.ViewMyInvitations] = [V],                         // A49
             [ApiActions.DeclineRfqInvitation] = [V],                      // A50 (REG row 5)
