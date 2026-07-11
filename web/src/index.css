@@ -327,6 +327,10 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--t
    idiom (red left border + red bold tag); additive, used only by primitives. */
 .field.f-error { border-left: 3px solid var(--red); padding-left: 10px; }
 .ferr { color: var(--red); font-weight: 600; text-transform: none; letter-spacing: normal; }
+/* Unit / currency affordance on Number/Money/Date primitives (additive). */
+.fwrap { display: flex; align-items: center; gap: 6px; }
+.fwrap input { flex: 1; min-width: 0; }
+.fsuf { font-size: var(--fs-label); color: var(--muted); font-weight: 600; white-space: nowrap; }
 
 /* ---- Ribbon ---- */
 .ribbon {
