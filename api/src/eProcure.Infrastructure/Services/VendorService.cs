@@ -53,7 +53,7 @@ public sealed class VendorService(
     public async Task<VendorDetail?> GetAsync(Guid id, CancellationToken ct = default)
     {
         var v = await db.Vendors.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
-        return v is null ? null : Map(v);
+        return v is null ? null : await MapAsync(v, ct);
     }
 
     public async Task<VendorDetail> CreateAsync(CreateVendorRequest req, CancellationToken ct = default)
@@ -76,12 +76,13 @@ public sealed class VendorService(
         db.Vendors.Add(v);
         await db.SaveChangesAsync(ct);
         await audit.WriteAsync("Vendor", v.Code, "Created", after: v.Name, ct: ct);
-        return Map(v);
+        return await MapAsync(v, ct);
     }
 
     public async Task<ManualVendorResult> CreateManualAsync(CreateManualVendorRequest req, CancellationToken ct = default)
     {
         var now = clock.UtcNow;
+        await EnsureCountryLabelsAsync(ct);   // conform the inbound country to the ISO-2 code (service boundary)
         // Duplicate check (C2) — surface a warning, do not silently create twice.
         var dup = await db.Vendors.AsNoTracking().FirstOrDefaultAsync(v =>
             (req.RegistrationNo != "" && v.RegistrationNo == req.RegistrationNo) || v.Name == req.Name, ct);
@@ -97,8 +98,8 @@ public sealed class VendorService(
             RegistrationNo = string.IsNullOrWhiteSpace(req.RegistrationNo) ? "—" : req.RegistrationNo,
             TaxId = string.IsNullOrWhiteSpace(req.TaxId) ? "—" : req.TaxId!,
             Type = type,
-            // Conformed dimensions stored as seeded lookup CODES (§4).
-            Country = string.IsNullOrWhiteSpace(req.Country) ? "MY" : req.Country!,
+            // Conformed dimensions stored as seeded lookup CODES (§4); a label input is normalized (T6).
+            Country = NormalizeCountryCode(req.Country),
             Region = req.Region ?? "", State = req.State ?? "", City = req.City ?? "",
             PaymentTerms = string.IsNullOrWhiteSpace(req.PaymentTerms) ? "NET30" : req.PaymentTerms!,
             Categories = req.Categories is null ? [] : [.. req.Categories],
@@ -111,12 +112,12 @@ public sealed class VendorService(
         if (!string.IsNullOrWhiteSpace(req.ContactName) || !string.IsNullOrWhiteSpace(req.ContactEmail))
             v.Contacts.Add(new VendorContact { Name = req.ContactName ?? req.Name, Email = req.ContactEmail ?? "", IsPrimary = true });
         if (!string.IsNullOrWhiteSpace(req.AddressLine) || !string.IsNullOrWhiteSpace(req.City))
-            v.Addresses.Add(new VendorAddress { Type = "Registered", Line = req.AddressLine ?? "", City = req.City ?? "", State = req.State ?? "", Country = string.IsNullOrWhiteSpace(req.Country) ? "MY" : req.Country!, IsPrimary = true });
+            v.Addresses.Add(new VendorAddress { Type = "Registered", Line = req.AddressLine ?? "", City = req.City ?? "", State = req.State ?? "", Country = NormalizeCountryCode(req.Country), IsPrimary = true });
         db.Vendors.Add(v);
         await db.SaveChangesAsync(ct);
         // WORKFLOW-SEAM: manual entry runs a 0-step review; a future configurable engine can insert steps.
         await audit.WriteAsync("Vendor", v.Code, "Vendor created (manual entry)", after: v.Name, ct: ct);
-        return new ManualVendorResult(Map(v), warning);
+        return new ManualVendorResult(await MapAsync(v, ct), warning);
     }
 
     public async Task<VendorDetail> UpdateAsync(Guid id, UpdateVendorRequest req, CancellationToken ct = default)
@@ -136,7 +137,7 @@ public sealed class VendorService(
         v.UpdatedUtc = clock.UtcNow;
         await db.SaveChangesAsync(ct);
         await audit.WriteAsync("Vendor", v.Code, "Updated", after: v.Name, ct: ct);
-        return Map(v);
+        return await MapAsync(v, ct);
     }
 
     public async Task<VendorDetail> SetCategoriesAsync(Guid id, SetCategoriesRequest req, CancellationToken ct = default)
@@ -148,7 +149,7 @@ public sealed class VendorService(
         await db.SaveChangesAsync(ct);
         await audit.WriteAsync("Vendor", v.Code, "Categories updated",
             before: before, after: string.Join(", ", v.Categories), ct: ct);
-        return Map(v);
+        return await MapAsync(v, ct);
     }
 
     public async Task<VendorDetail> ToggleStatusAsync(Guid id, CancellationToken ct = default)
@@ -159,24 +160,51 @@ public sealed class VendorService(
         v.UpdatedUtc = clock.UtcNow;
         await db.SaveChangesAsync(ct);
         await audit.WriteAsync("Vendor", v.Code, "Status changed", before: before, after: v.Status.ToString(), ct: ct);
-        return Map(v);
+        return await MapAsync(v, ct);
     }
 
     private async Task<Vendor> Load(Guid id, CancellationToken ct) =>
         await db.Vendors.FirstOrDefaultAsync(x => x.Id == id, ct)
         ?? throw new NotFoundException($"Vendor {id} not found.");
 
-    private VendorDetail Map(Vendor v)
+    // ---- Conformed vocabulary (Slice H T6): Country is STORED as the ISO-2 Custom List code and
+    // RESOLVED to its label for display, so a GROUP BY conforms while the screen is unchanged. ----
+    private Dictionary<string, string>? _countryLabels;                                  // code -> label
+
+    private async Task EnsureCountryLabelsAsync(CancellationToken ct) =>
+        _countryLabels ??= await (from clv in db.CustomListValues
+                                  join cl in db.CustomLists on clv.CustomListId equals cl.Id
+                                  where cl.Code == "COUNTRY"
+                                  select new { clv.Code, clv.Label })
+            .ToDictionaryAsync(x => x.Code, x => x.Label, ct);
+
+    /// <summary>Resolve a stored country CODE to its display label (unknown/legacy values pass through).</summary>
+    private string CountryLabel(string stored) =>
+        _countryLabels is not null && _countryLabels.TryGetValue(stored, out var label) ? label : stored;
+
+    /// <summary>Normalize an inbound country (code OR label) to the canonical ISO-2 code at the service
+    /// boundary. Empty -> "MY" (default); a known label -> its code; anything else passes through.</summary>
+    private string NormalizeCountryCode(string? input)
     {
+        if (string.IsNullOrWhiteSpace(input)) return "MY";
+        var s = input.Trim();
+        if (_countryLabels is not null && _countryLabels.ContainsKey(s)) return s;        // already a code
+        var byLabel = _countryLabels?.FirstOrDefault(kv => string.Equals(kv.Value, s, StringComparison.OrdinalIgnoreCase));
+        return byLabel is { Key: { } code } ? code : s;
+    }
+
+    private async Task<VendorDetail> MapAsync(Vendor v, CancellationToken ct)
+    {
+        await EnsureCountryLabelsAsync(ct);
         var showBank = CanSeeBankDetails;
         return new(
             v.Id, v.Code, v.Name, v.RegisteredName, v.RegistrationNo, v.TaxId,
-            TypeDisplay(v.Type), v.LlrcTier, v.Status.ToString(), v.Region, v.State, v.City, v.Country,
+            TypeDisplay(v.Type), v.LlrcTier, v.Status.ToString(), v.Region, v.State, v.City, CountryLabel(v.Country),
             v.Rating, v.PaymentTerms, v.CreditLimit, v.Categories,
             new PerformanceDto(v.Performance.Otd, v.Performance.Quality, v.Performance.Breaches,
                 v.Performance.Lead, v.Performance.Response, v.Performance.WinRate, v.Performance.SpendYtd, v.Performance.Pos),
             v.Contacts.Select(c => new ContactDto(c.Name, c.Role, c.Email, c.Phone, c.IsPrimary)).ToList(),
-            v.Addresses.Select(a => new AddressDto(a.Type, a.Line, a.City, a.State, a.Country, a.Postcode, a.IsPrimary)).ToList(),
+            v.Addresses.Select(a => new AddressDto(a.Type, a.Line, a.City, a.State, CountryLabel(a.Country), a.Postcode, a.IsPrimary)).ToList(),
             v.BankAccounts.Select(a => new BankAccountDto(
                 a.Bank,
                 showBank ? a.AccountNo : MaskTail(a.AccountNo),

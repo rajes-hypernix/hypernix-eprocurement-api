@@ -24,7 +24,7 @@ public class Vendor
     public string Region { get; set; } = "Peninsular";
     public string State { get; set; } = "—";
     public string City { get; set; } = "—";
-    public string Country { get; set; } = "Malaysia";
+    public string Country { get; set; } = "MY";                  // ISO-2 code (Slice H T6)
     public decimal Rating { get; set; }
     public string PaymentTerms { get; set; } = "30 days nett";
     public decimal CreditLimit { get; set; }
@@ -88,7 +88,7 @@ public class VendorAddress
     public string Line { get; set; } = "";
     public string City { get; set; } = "";
     public string State { get; set; } = "";
-    public string Country { get; set; } = "Malaysia";
+    public string Country { get; set; } = "MY";                  // ISO-2 code (Slice H T6)
     public string Postcode { get; set; } = "";
     public bool IsPrimary { get; set; }
 }

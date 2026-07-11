@@ -72,7 +72,7 @@ public static class VendorSeed
             Region = r.Region,
             State = r.State,
             City = r.City,
-            Country = "Malaysia",
+            Country = "MY",
             Rating = r.Rating,
             PaymentTerms = "30 days nett",
             CreditLimit = r.Type == VendorType.Swec ? 1_000_000m : 500_000m,
@@ -89,9 +89,9 @@ public static class VendorSeed
             ],
             Addresses =
             [
-                new() { Type = "Registered", Line = $"Lot {tail}, Jalan Perusahaan 2", City = r.City, State = r.State, Country = "Malaysia", Postcode = $"4{tail}", IsPrimary = true },
-                new() { Type = "Billing", Line = $"Level 3, Wisma {firstWord}", City = r.City, State = r.State, Country = "Malaysia", Postcode = $"4{tail}", IsPrimary = false },
-                new() { Type = "Shipping", Line = $"Warehouse {tail[^2..]}, Kawasan Perindustrian", City = r.City, State = r.State, Country = "Malaysia", Postcode = $"4{tail}", IsPrimary = false },
+                new() { Type = "Registered", Line = $"Lot {tail}, Jalan Perusahaan 2", City = r.City, State = r.State, Country = "MY", Postcode = $"4{tail}", IsPrimary = true },
+                new() { Type = "Billing", Line = $"Level 3, Wisma {firstWord}", City = r.City, State = r.State, Country = "MY", Postcode = $"4{tail}", IsPrimary = false },
+                new() { Type = "Shipping", Line = $"Warehouse {tail[^2..]}, Kawasan Perindustrian", City = r.City, State = r.State, Country = "MY", Postcode = $"4{tail}", IsPrimary = false },
             ],
             BankAccounts = banking,
             Certifications = certs,
