@@ -1,3 +1,4 @@
+using eProcure.Domain.Configuration;
 using eProcure.Domain.Suppliers;
 using eProcure.Infrastructure.Persistence;
 using FluentAssertions;
@@ -33,6 +34,18 @@ public sealed class ConformedVocabularyBackfillTests
 
         var sfx = Guid.NewGuid().ToString("N")[..8];
         await using var tx = await db.Database.BeginTransactionAsync();
+
+        // Hermetic: the COUNTRY list is app-seeded, absent on a migrations-only CI DB. Ensure the one
+        // value the backfill needs exists (skipped where the real seed already provides it).
+        if (!await db.CustomLists.AnyAsync(l => l.Code == "COUNTRY"))
+        {
+            db.CustomLists.Add(new CustomList
+            {
+                Code = "COUNTRY", Name = "Country", IsSystem = true, CreatedUtc = Now, UpdatedUtc = Now,
+                Values = { new CustomListValue { Code = "MY", Label = "Malaysia", Sort = 0, Active = true } },
+            });
+            await db.SaveChangesAsync();
+        }
 
         var vLabel = new Vendor   // pre-T6 seed shape: free-text label
         {
