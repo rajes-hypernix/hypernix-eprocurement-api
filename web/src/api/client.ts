@@ -109,6 +109,30 @@ export const getPersonas = () => http<PersonaDto[]>('/auth/personas')
 // gating derives from; ui/gating.tsx holds no static role map.
 export const getPermissions = () => http<string[]>('/auth/permissions')
 
+// --- Saved views engine (D3, AUTHORIZATION-MATRIX A59-A61) ---
+export type SavedViewFilterDto = { fieldKey: string; operator: string; value: string; value2?: string | null }
+export type SavedViewColumnDto = { fieldKey: string; label?: string | null; sortDirection?: string | null }
+export type SavedViewDto = {
+  id: string; code: string; name: string; recordType: string; ownerUserId?: string | null
+  isShared: boolean; isSystem: boolean
+  filters: SavedViewFilterDto[]; columns: SavedViewColumnDto[]
+}
+export type ViewFieldDto = { fieldKey: string; label: string; dataType: string; options?: string[] | null }
+export type ViewRunColumn = { fieldKey: string; label: string; dataType: string }
+export type ViewRunResult = {
+  viewId: string; name: string; recordType: string
+  columns: ViewRunColumn[]; rows: Record<string, unknown>[]
+}
+export type SaveViewRequest = { name: string; recordType: string; filters: SavedViewFilterDto[]; columns: SavedViewColumnDto[] }
+
+export const getViews = (recordType: string) => http<SavedViewDto[]>(`/views?recordType=${encodeURIComponent(recordType)}`)
+export const getViewFields = (recordType: string) => http<ViewFieldDto[]>(`/views/fields?recordType=${encodeURIComponent(recordType)}`)
+export const createView = (req: SaveViewRequest) => http<SavedViewDto>('/views', { method: 'POST', body: JSON.stringify(req) })
+export const updateView = (id: string, req: SaveViewRequest) => http<SavedViewDto>(`/views/${id}`, { method: 'PUT', body: JSON.stringify(req) })
+export const deleteView = (id: string) => http<undefined>(`/views/${id}`, { method: 'DELETE' })
+export const shareView = (id: string, isShared: boolean) => http<SavedViewDto>(`/views/${id}/share`, { method: 'POST', body: JSON.stringify({ isShared }) })
+export const runView = (id: string) => http<ViewRunResult>(`/views/${id}/run`)
+
 // --- Vendor portal: invitations + bidding ---
 export const getMyInvitations = () => http<InvitationDto[]>('/my/rfqs')
 export const getMyBid = (rfqId: string) =>

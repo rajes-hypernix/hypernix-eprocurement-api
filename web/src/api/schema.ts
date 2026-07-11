@@ -4330,6 +4330,259 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/views": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    recordType?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SavedViewDto"][];
+                        "application/json": components["schemas"]["SavedViewDto"][];
+                        "text/json": components["schemas"]["SavedViewDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SaveViewRequest"];
+                    "text/json": components["schemas"]["SaveViewRequest"];
+                    "application/*+json": components["schemas"]["SaveViewRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SavedViewDto"];
+                        "application/json": components["schemas"]["SavedViewDto"];
+                        "text/json": components["schemas"]["SavedViewDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/views/fields": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    recordType?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ViewFieldDto"][];
+                        "application/json": components["schemas"]["ViewFieldDto"][];
+                        "text/json": components["schemas"]["ViewFieldDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/views/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SaveViewRequest"];
+                    "text/json": components["schemas"]["SaveViewRequest"];
+                    "application/*+json": components["schemas"]["SaveViewRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SavedViewDto"];
+                        "application/json": components["schemas"]["SavedViewDto"];
+                        "text/json": components["schemas"]["SavedViewDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/views/{id}/share": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ShareViewRequest"];
+                    "text/json": components["schemas"]["ShareViewRequest"];
+                    "application/*+json": components["schemas"]["ShareViewRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SavedViewDto"];
+                        "application/json": components["schemas"]["SavedViewDto"];
+                        "text/json": components["schemas"]["SavedViewDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/views/{id}/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ViewRunResult"];
+                        "application/json": components["schemas"]["ViewRunResult"];
+                        "text/json": components["schemas"]["ViewRunResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -5450,6 +5703,35 @@ export interface components {
             requiredDate?: string | null;
             lines?: components["schemas"]["PrLineInput"][] | null;
         };
+        SaveViewRequest: {
+            name?: string | null;
+            recordType?: string | null;
+            filters?: components["schemas"]["SavedViewFilterDto"][] | null;
+            columns?: components["schemas"]["SavedViewColumnDto"][] | null;
+        };
+        SavedViewColumnDto: {
+            fieldKey?: string | null;
+            label?: string | null;
+            sortDirection?: string | null;
+        };
+        SavedViewDto: {
+            /** Format: uuid */
+            id?: string;
+            code?: string | null;
+            name?: string | null;
+            recordType?: string | null;
+            ownerUserId?: string | null;
+            isShared?: boolean;
+            isSystem?: boolean;
+            filters?: components["schemas"]["SavedViewFilterDto"][] | null;
+            columns?: components["schemas"]["SavedViewColumnDto"][] | null;
+        };
+        SavedViewFilterDto: {
+            fieldKey?: string | null;
+            operator?: string | null;
+            value?: string | null;
+            value2?: string | null;
+        };
         ScoreCellDto: {
             evaluatorId?: string | null;
             criterion?: string | null;
@@ -5487,6 +5769,9 @@ export interface components {
             criterion?: string | null;
             /** Format: int32 */
             score?: number;
+        };
+        ShareViewRequest: {
+            isShared?: boolean;
         };
         ShipPlanDto: {
             /** Format: uuid */
@@ -5696,6 +5981,27 @@ export interface components {
             committee?: number | null;
             pass?: boolean | null;
             answers?: components["schemas"]["QaAnswerDto"][] | null;
+        };
+        ViewFieldDto: {
+            fieldKey?: string | null;
+            label?: string | null;
+            dataType?: string | null;
+            options?: string[] | null;
+        };
+        ViewRunColumn: {
+            fieldKey?: string | null;
+            label?: string | null;
+            dataType?: string | null;
+        };
+        ViewRunResult: {
+            /** Format: uuid */
+            viewId?: string;
+            name?: string | null;
+            recordType?: string | null;
+            columns?: components["schemas"]["ViewRunColumn"][] | null;
+            rows?: {
+                [key: string]: unknown;
+            }[] | null;
         };
     };
     responses: never;

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getRfqs, getRfq, closeRfq, cancelRfq, type RfqListItem } from '../../api/client'
+import { getRfq, closeRfq, cancelRfq, getViews, runView, type RfqListItem, type SavedViewDto } from '../../api/client'
 import { Icon } from '../Icon'
 import { ConfirmModal } from '../ui'
 import { RfqStatusBadge, EnvTag, BidProgressBadge } from '../../lib/rfqStatus'
@@ -8,6 +8,7 @@ import { fmtDay } from '../../lib/format'
 import { ListPage, type ListColumn, type ListFacet } from '../../ui/archetypes/ListPage'
 import { QuickView } from '../../ui/QuickView'
 import { Button } from '../../ui/Button'
+import { ViewPicker, ViewBuilder } from '../views/SavedViewControls'
 
 const BOARD_COLS: { status: string; label: string }[] = [
   { status: 'Draft', label: 'Draft' },
@@ -18,12 +19,38 @@ const BOARD_COLS: { status: string; label: string }[] = [
   { status: 'Cancelled', label: 'Cancelled' },
 ]
 
+/** The seeded system view's columns — the column seed for NEW views built from this screen. */
+const DEFAULT_RFQ_COLUMNS = ['Code', 'Title', 'Envelope', 'InvitedCount', 'BidCount', 'ClosesUtc', 'Status']
+
+/** Run-result row → the typed item this screen renders. Columns a picked view omits map to
+ *  undefined and the cells fall back to "—" — the view controls rows; rendering stays typed. */
+const toItem = (row: Record<string, unknown>): RfqListItem => ({
+  id: row.Id as string,
+  code: (row.Code as string | undefined) ?? null,
+  title: (row.Title as string | undefined) ?? null,
+  envelope: (row.Envelope as string | undefined) ?? null,
+  status: (row.Status as string | undefined) ?? null,
+  closesUtc: (row.ClosesUtc as string | undefined) ?? null,
+  invitedCount: (row.InvitedCount as number | undefined) ?? 0,
+  bidCount: (row.BidCount as number | undefined) ?? 0,
+} as RfqListItem)
+
 export function RfqList({ onOpen, onNew }: { onOpen: (id: string) => void; onNew: () => void }) {
   const qc = useQueryClient()
-  const { data: rfqs = [] } = useQuery({ queryKey: ['rfqs'], queryFn: getRfqs })
+  // Saved-view-driven (D3 proof screen): rows come from the picked view's run — the system
+  // "All RFQs" view by default (reproduces the old getRfqs list exactly). The quick filters
+  // below stay LAYERED on the run's rows, per the ruling (parity of the pinned e2e).
+  const { data: views = [] } = useQuery({ queryKey: ['views', 'Rfq'], queryFn: () => getViews('Rfq') })
+  const [picked, setPicked] = useState<string | null>(null)
+  const viewId = picked ?? views.find((v) => v.isSystem)?.id ?? null
+  const { data: run } = useQuery({
+    queryKey: ['view-run', viewId], queryFn: () => runView(viewId!), enabled: viewId !== null,
+  })
+  const rfqs = (run?.rows ?? []).map(toItem)
+  const [builder, setBuilder] = useState<{ open: boolean; existing: SavedViewDto | null }>({ open: false, existing: null })
   const [confirm, setConfirm] = useState<{ kind: 'close' | 'cancel'; rfq: RfqListItem } | null>(null)
   const [view, setView] = useState<'table' | 'board'>('table')
-  const inval = () => { void qc.invalidateQueries({ queryKey: ['rfqs'] }) }
+  const inval = () => { void qc.invalidateQueries({ queryKey: ['view-run'] }) }
   const close = useMutation({ mutationFn: (id: string) => closeRfq(id), onSuccess: () => { inval(); setConfirm(null) } })
   const cancel = useMutation({ mutationFn: (id: string) => cancelRfq(id), onSuccess: () => { inval(); setConfirm(null) } })
 
@@ -114,9 +141,18 @@ export function RfqList({ onOpen, onNew }: { onOpen: (id: string) => void; onNew
       title="RFQs"
       subtitle="All sourcing events and their stage."
       viewToggle={
-        <div className="viewtoggle">
-          <button type="button" className={view === 'table' ? 'on' : ''} onClick={() => setView('table')} title="Table view"><Icon name="doc" size={14} /> Table</button>
-          <button type="button" className={view === 'board' ? 'on' : ''} onClick={() => setView('board')} title="Board view"><Icon name="dashboard" size={14} /> Board</button>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <ViewPicker
+            views={views}
+            selectedId={viewId}
+            onSelect={(id) => setPicked(id)}
+            onNew={() => setBuilder({ open: true, existing: null })}
+            onEdit={(v) => setBuilder({ open: true, existing: v })}
+          />
+          <div className="viewtoggle">
+            <button type="button" className={view === 'table' ? 'on' : ''} onClick={() => setView('table')} title="Table view"><Icon name="doc" size={14} /> Table</button>
+            <button type="button" className={view === 'board' ? 'on' : ''} onClick={() => setView('board')} title="Board view"><Icon name="dashboard" size={14} /> Board</button>
+          </div>
         </div>
       }
       primaryAction={<Button variant="primary" size="sm" icon="plus" onClick={onNew}>New RFQ</Button>}
@@ -131,6 +167,15 @@ export function RfqList({ onOpen, onNew }: { onOpen: (id: string) => void; onNew
       emptyFiltered="No RFQs match these filters."
       alternateBody={view === 'board' ? board : undefined}
     >
+      {builder.open && (
+        <ViewBuilder
+          recordType="Rfq"
+          existing={builder.existing}
+          defaultColumns={DEFAULT_RFQ_COLUMNS}
+          onClose={() => setBuilder({ open: false, existing: null })}
+          onSaved={(v) => { setBuilder({ open: false, existing: null }); setPicked(v.id); void qc.invalidateQueries({ queryKey: ['view-run'] }) }}
+        />
+      )}
       {confirm?.kind === 'close' && (
         <ConfirmModal
           icon="clock" title={`Close bids for ${confirm.rfq.code}?`}
