@@ -4,14 +4,23 @@ import {
   getCustomLists, createCustomList, addCustomListValue, updateCustomListValue, deleteCustomListValue,
   type CustomList, type CustomListValue,
 } from '../../api/client'
-import { Icon } from '../Icon'
-import { Modal, Notice, Spinner } from '../ui'
+import { Modal, Spinner } from '../ui'
+import { SetupPage } from '../../ui/archetypes/SetupPage'
+import type { FieldOption } from '../../ui/fieldSpec'
+import { TextField } from '../../ui/TextField'
+import { CodeField } from '../../ui/CodeField'
+import { SelectField } from '../../ui/SelectField'
+import { NumberField } from '../../ui/NumberField'
+import { CheckboxField } from '../../ui/CheckboxField'
+import { Button } from '../../ui/Button'
+import { StatusBadge } from '../../ui/badges'
 
 /**
  * Custom Lists admin (NetSuite-style, VENDOR-ONBOARDING / DATA-MODEL §4). A list is a reusable coded
  * value set (COUNTRY, BANK, PAYMENT_TERMS…) that fields are tagged to; values store a CODE (source of
  * truth) and a LABEL (shown). Dependent lists (STATE→COUNTRY, CITY→STATE) scope each value to a parent
  * value. Editable here without a code change — the forms read the same lists live.
+ * D2: the rail + detail shell is the Setup archetype; editor fields are ui/ primitives.
  */
 export function AdminCustomLists() {
   const qc = useQueryClient()
@@ -29,40 +38,25 @@ export function AdminCustomLists() {
   const parentList = selected?.parentListCode ? lists.find((l) => l.code === selected.parentListCode) : undefined
 
   return (
-    <>
-      <div className="pagehead">
-        <div>
-          <h1>Custom Lists</h1>
-          <p>Reusable coded value sets tagged to fields — like NetSuite Custom Lists. Values store a code (kept) and a label (shown). Maintained here, no code change needed.</p>
-        </div>
-        <div className="spacer" />
-        <button type="button" className="btn btn-pri" onClick={() => setNewList(true)}><Icon name="plus" size={15} /> New list</button>
-      </div>
-
-      {err && <Notice tone="error" icon="x">{err}</Notice>}
-
-      <div className="obwrap">
-        <div className="obside" style={{ position: 'static' }}>
-          {lists.map((l) => (
-            <button type="button" key={l.code} className={`obstep ${selected?.code === l.code ? 'on' : ''}`} onClick={() => setSelCode(l.code)}>
-              <span style={{ display: 'flex', flexDirection: 'column', gap: 2, textAlign: 'left' }}>
-                <span>{l.name}</span>
-                <span className="hint" style={{ fontWeight: 400 }}>{l.code}{l.parentListCode ? ` · ↳ ${l.parentListCode}` : ''}</span>
-              </span>
-            </button>
-          ))}
-          {lists.length === 0 && <p className="hint">No lists yet.</p>}
-        </div>
-        <div className="obmain">
-          {selected && <ListValues list={selected} parentList={parentList} onRefresh={refresh} onErr={onErr} clearErr={() => setErr(null)} />}
-        </div>
-      </div>
-
+    <SetupPage
+      title="Custom Lists"
+      subtitle="Reusable coded value sets tagged to fields — like NetSuite Custom Lists. Values store a code (kept) and a label (shown). Maintained here, no code change needed."
+      primaryAction={<Button variant="primary" icon="plus" onClick={() => setNewList(true)}>New list</Button>}
+      error={err}
+      railItems={lists.map((l) => ({ key: l.code, label: l.name, hint: `${l.code}${l.parentListCode ? ` · ↳ ${l.parentListCode}` : ''}` }))}
+      selectedKey={selected?.code ?? null}
+      onSelect={setSelCode}
+      railEmpty="No lists yet."
+      detail={selected && <ListValues list={selected} parentList={parentList} onRefresh={refresh} onErr={onErr} clearErr={() => setErr(null)} />}
+    >
       {newList && <NewListModal lists={lists} onClose={() => setNewList(false)}
         onCreated={(code) => { setNewList(false); setSelCode(code); void refresh() }} onErr={onErr} />}
-    </>
+    </SetupPage>
   )
 }
+
+const parentOptions = (parentList: CustomList): FieldOption[] =>
+  parentList.values.map((p) => ({ code: p.code, label: p.label }))
 
 function ListValues({ list, parentList, onRefresh, onErr, clearErr }: {
   list: CustomList; parentList?: CustomList; onRefresh: () => void; onErr: (e: Error) => void; clearErr: () => void
@@ -103,11 +97,11 @@ function ListValues({ list, parentList, onRefresh, onErr, clearErr }: {
               <td className="mono">{v.code}</td>
               <td style={{ fontWeight: 600 }}>{v.label}</td>
               {parentList && <td className="hint">{parentLabel(v.parentValueCode)}</td>}
-              <td><span className={`badge ${v.active ? 'b-green' : 'b-grey'}`}>{v.active ? 'Active' : 'Hidden'}</span></td>
+              <td><StatusBadge tone={v.active ? 'green' : 'grey'}>{v.active ? 'Active' : 'Hidden'}</StatusBadge></td>
               <td className="amt">
                 <div className="rowactions">
-                  <button type="button" className="btn btn-out btn-sm" onClick={() => setEditing(v)}><Icon name="edit" size={13} /> Edit</button>
-                  <button type="button" className="btn btn-ghost btn-sm" disabled={remove.isPending} onClick={() => remove.mutate(v.id)}><Icon name="x" size={13} /></button>
+                  <Button variant="outline" size="sm" icon="edit" onClick={() => setEditing(v)}>Edit</Button>
+                  <Button variant="ghost" size="sm" icon="x" busy={remove.isPending} onClick={() => remove.mutate(v.id)} ariaLabel={`Delete ${v.code}`} />
                 </div>
               </td>
             </tr>
@@ -119,41 +113,37 @@ function ListValues({ list, parentList, onRefresh, onErr, clearErr }: {
       <div className="cbody" style={{ borderTop: '1px solid var(--line)' }}>
         <div className="hint" style={{ fontWeight: 700, marginBottom: 8 }}>Add a value</div>
         <div className="grid g3">
-          <div className="field" style={{ margin: 0 }}><label>Code (stored)</label>
-            <input value={code} aria-label="Value code" placeholder="e.g. NET30" onChange={(e) => setCode(e.target.value)} /></div>
-          <div className="field" style={{ margin: 0 }}><label>Label (shown)</label>
-            <input value={label} aria-label="Value label" placeholder="e.g. 30 days" onChange={(e) => setLabel(e.target.value)} /></div>
+          <CodeField spec={{ key: 'code', label: 'Code (stored)', dataType: 'code', placeholder: 'e.g. NET30' }} value={code} onChange={setCode} />
+          <TextField spec={{ key: 'label', label: 'Label (shown)', dataType: 'text', placeholder: 'e.g. 30 days' }} value={label} onChange={setLabel} />
           {parentList && (
-            <div className="field" style={{ margin: 0 }}><label>{parentList.name}</label>
-              <select value={parentValue} aria-label="Parent value" onChange={(e) => setParentValue(e.target.value)}>
-                <option value="">Select {parentList.name.toLowerCase()}</option>
-                {parentList.values.map((p) => <option key={p.code} value={p.code}>{p.label}</option>)}
-              </select></div>
+            <SelectField
+              spec={{ key: 'parentValue', label: parentList.name, dataType: 'select', placeholder: `Select ${parentList.name.toLowerCase()}`, options: { kind: 'static', options: parentOptions(parentList) } }}
+              value={parentValue} onChange={setParentValue}
+            />
           )}
         </div>
-        <button type="button" className="btn btn-pri btn-sm" style={{ marginTop: 12 }} disabled={add.isPending} onClick={submitAdd}>
-          <Icon name="plus" size={14} /> Add value
-        </button>
+        <div style={{ marginTop: 12 }}>
+          <Button variant="primary" size="sm" icon="plus" busy={add.isPending} onClick={submitAdd}>Add value</Button>
+        </div>
       </div>
 
       {editing && (
         <Modal title={`Edit — ${editing.code}`} icon="edit"
-          footer={<><button type="button" className="btn btn-out" onClick={() => setEditing(null)}>Cancel</button>
-            <button type="button" className="btn btn-pri" disabled={update.isPending} onClick={() => update.mutate(editing)}><Icon name="check" size={15} /> Save</button></>}>
-          <div className="field"><label>Code</label><input readOnly value={editing.code} aria-label="Code (read only)" /></div>
-          <div className="field"><label>Label</label><input value={editing.label} aria-label="Edit label" onChange={(e) => setEditing({ ...editing, label: e.target.value })} /></div>
+          footer={<>
+            <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
+            <Button variant="primary" icon="check" busy={update.isPending} onClick={() => update.mutate(editing)}>Save</Button>
+          </>}>
+          <CodeField spec={{ key: 'ecode', label: 'Code', dataType: 'code', readOnly: true }} value={editing.code} onChange={() => {}} />
+          <TextField spec={{ key: 'elabel', label: 'Label', dataType: 'text' }} value={editing.label} onChange={(v) => setEditing({ ...editing, label: v })} />
           {parentList && (
-            <div className="field"><label>{parentList.name}</label>
-              <select value={editing.parentValueCode ?? ''} aria-label="Edit parent value" onChange={(e) => setEditing({ ...editing, parentValueCode: e.target.value || null })}>
-                <option value="">Select {parentList.name.toLowerCase()}</option>
-                {parentList.values.map((p) => <option key={p.code} value={p.code}>{p.label}</option>)}
-              </select></div>
+            <SelectField
+              spec={{ key: 'eparent', label: parentList.name, dataType: 'select', placeholder: `Select ${parentList.name.toLowerCase()}`, options: { kind: 'static', options: parentOptions(parentList) } }}
+              value={editing.parentValueCode ?? ''} onChange={(v) => setEditing({ ...editing, parentValueCode: v || null })}
+            />
           )}
           <div className="grid g2">
-            <div className="field" style={{ marginBottom: 0 }}><label>Sort order</label>
-              <input type="number" value={editing.sort} aria-label="Sort order" onChange={(e) => setEditing({ ...editing, sort: Number(e.target.value) || 0 })} /></div>
-            <div className="field" style={{ marginBottom: 0 }}><label>Status</label>
-              <label className="ck" style={{ marginTop: 8 }}><input type="checkbox" checked={editing.active} onChange={(e) => setEditing({ ...editing, active: e.target.checked })} /> Active (offered in dropdowns)</label></div>
+            <NumberField spec={{ key: 'esort', label: 'Sort order', dataType: 'number' }} value={String(editing.sort)} onChange={(v) => setEditing({ ...editing, sort: Number(v) || 0 })} />
+            <CheckboxField spec={{ key: 'eactive', label: 'Active (offered in dropdowns)', dataType: 'boolean' }} value={editing.active} onChange={(v) => setEditing({ ...editing, active: v })} />
           </div>
         </Modal>
       )}
@@ -177,20 +167,23 @@ function NewListModal({ lists, onClose, onCreated, onErr }: {
 
   return (
     <Modal title="New custom list" icon="plus"
-      footer={<><button type="button" className="btn btn-out" onClick={onClose}>Cancel</button>
-        <button type="button" className="btn btn-pri" disabled={create.isPending} onClick={submit}><Icon name="check" size={15} /> Create list</button></>}>
+      footer={<>
+        <Button variant="outline" onClick={onClose}>Cancel</Button>
+        <Button variant="primary" icon="check" busy={create.isPending} onClick={submit}>Create list</Button>
+      </>}>
       <div className="grid g2">
-        <div className="field"><label>Code</label><input value={code} aria-label="List code" placeholder="e.g. INCOTERM" onChange={(e) => setCode(e.target.value)} /></div>
-        <div className="field"><label>Name</label><input value={name} aria-label="List name" placeholder="e.g. Incoterms" onChange={(e) => setName(e.target.value)} /></div>
+        <CodeField spec={{ key: 'lcode', label: 'Code', dataType: 'code', placeholder: 'e.g. INCOTERM' }} value={code} onChange={setCode} />
+        <TextField spec={{ key: 'lname', label: 'Name', dataType: 'text', placeholder: 'e.g. Incoterms' }} value={name} onChange={setName} />
       </div>
-      <div className="field"><label>Description</label><input value={description} aria-label="List description" placeholder="Optional" onChange={(e) => setDescription(e.target.value)} /></div>
-      <div className="field" style={{ marginBottom: 0 }}><label>Depends on (parent list)</label>
-        <select value={parentListCode} aria-label="Parent list" onChange={(e) => setParentListCode(e.target.value)}>
-          <option value="">None — a flat list</option>
-          {lists.map((l) => <option key={l.code} value={l.code}>{l.name}</option>)}
-        </select>
-        <p className="hint" style={{ marginTop: 6 }}>A dependent list scopes each value to a parent value (e.g. City depends on State).</p>
-      </div>
+      <TextField spec={{ key: 'ldesc', label: 'Description', dataType: 'text', placeholder: 'Optional' }} value={description} onChange={setDescription} />
+      <SelectField
+        spec={{
+          key: 'lparent', label: 'Depends on (parent list)', dataType: 'select', placeholder: 'None — a flat list',
+          help: 'A dependent list scopes each value to a parent value (e.g. City depends on State).',
+          options: { kind: 'static', options: lists.map((l) => ({ code: l.code, label: l.name })) },
+        }}
+        value={parentListCode} onChange={setParentListCode}
+      />
     </Modal>
   )
 }
