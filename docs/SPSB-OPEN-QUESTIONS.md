@@ -11,8 +11,13 @@ discovering a default later.
    disappears. (Buyer-side already keeps rescinded rows visible, struck-through, with reason.)
    **Needed before UAT.**
 
-*Raised by: RFQ Lifecycle Slice I/J. These are product stances, not technical constraints — either
-behaviour is a small change; the point is that SPSB decides it, not us.*
+2. **Vendor PO audit visibility** — should vendors see an audit/history view of their own POs
+   (actor names redacted)? Current: no — the PO audit trail is internal-only (it contains internal
+   actor names; AUTHORIZATION-MATRIX ruling OD-10). Defensible default; SPSB may prefer transparency.
+
+*Raised by: RFQ Lifecycle Slice I/J (1); Slice RM role-matrix rulings (2). These are product stances,
+not technical constraints — either behaviour is a small change; the point is that SPSB decides it,
+not us.*
 
 ## B. Integration dependencies — required by Sprint 2 of the delivery roadmap (Master Process & Control Map Rev D, page 7)
 
