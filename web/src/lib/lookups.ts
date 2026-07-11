@@ -28,5 +28,5 @@ export function useLookups() {
   const hasChildren = (listCode: string, parentValueCode: string): boolean =>
     (list(listCode)?.values ?? []).some((v) => v.parentValueCode === parentValueCode)
 
-  return { isPending, of, labelOf, hasCities: (state: string) => hasChildren('CITY', state) }
+  return { isPending, of, labelOf, hasChildren, hasCities: (state: string) => hasChildren('CITY', state) }
 }
