@@ -6,6 +6,7 @@ using eProcure.Domain.Onboarding;
 using eProcure.Domain.Procurement;
 using eProcure.Domain.Sourcing;
 using eProcure.Domain.Suppliers;
+using eProcure.Domain.Views;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
@@ -44,6 +45,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<VendorOnboardingApplication> VendorOnboardingApplications => Set<VendorOnboardingApplication>();
     public DbSet<VendorFinancialAssessment> VendorFinancialAssessments => Set<VendorFinancialAssessment>();
     public DbSet<OnboardingClarificationRound> OnboardingClarificationRounds => Set<OnboardingClarificationRound>();
+
+    // Saved views engine (D3) — the shared query-definition layer.
+    public DbSet<FieldRegistryEntry> FieldRegistry => Set<FieldRegistryEntry>();
+    public DbSet<SavedView> SavedViews => Set<SavedView>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -539,6 +544,53 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             e.HasNoKey();
             e.ToView(VendorPerformanceView.Name);
+        });
+
+        // Saved views engine (D3): typed rows, no filter blobs; registry keyed UQ per
+        // (RecordType, FieldKey); Restrict FKs per the framework data model.
+        b.Entity<FieldRegistryEntry>(e =>
+        {
+            e.ToTable("FieldRegistry");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.RecordType).HasConversion<string>().HasMaxLength(30);
+            e.Property(x => x.FieldKey).HasMaxLength(100).IsRequired();
+            e.Property(x => x.Kind).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.Label).HasMaxLength(100).IsRequired();
+            e.Property(x => x.DataType).HasConversion<string>().HasMaxLength(20);
+            e.HasIndex(x => new { x.RecordType, x.FieldKey }).IsUnique();
+        });
+
+        b.Entity<SavedView>(e =>
+        {
+            e.ToTable("SavedViews");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => x.Code).IsUnique();
+            e.Property(x => x.Code).HasMaxLength(50).IsRequired();
+            e.Property(x => x.Name).HasMaxLength(200).IsRequired();
+            e.Property(x => x.RecordType).HasConversion<string>().HasMaxLength(30);
+            e.Property(x => x.OwnerUserId).HasMaxLength(100);
+            e.HasIndex(x => new { x.RecordType, x.OwnerUserId });
+            e.HasMany(x => x.Filters).WithOne().HasForeignKey(f => f.SavedViewId).OnDelete(DeleteBehavior.Restrict);
+            e.HasMany(x => x.Columns).WithOne().HasForeignKey(c => c.SavedViewId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        b.Entity<SavedViewFilter>(e =>
+        {
+            e.ToTable("SavedViewFilters");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.FieldKey).HasMaxLength(100).IsRequired();
+            e.Property(x => x.Operator).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.Value).HasMaxLength(500).IsRequired();
+            e.Property(x => x.Value2).HasMaxLength(500);
+        });
+
+        b.Entity<SavedViewColumn>(e =>
+        {
+            e.ToTable("SavedViewColumns");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.FieldKey).HasMaxLength(100).IsRequired();
+            e.Property(x => x.Label).HasMaxLength(100);
+            e.Property(x => x.SortDirection).HasConversion<string>().HasMaxLength(10);
         });
 
         // Optimistic concurrency: use PostgreSQL's system column `xmin` as a row-version token on the
