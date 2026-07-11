@@ -1,69 +1,66 @@
 import { useIdentity } from '../identity'
 
 /**
- * DISPLAY GATING ONLY — hidden ≠ forbidden (D2 Step 0b, operator-recorded).
- * Hiding a button here does NOT protect the server action: server-side
- * role-matrix authorization is a separate slice (the PERMISSIONS-REGISTER's
- * "ONE remaining authorization item"), scheduled before D3. Until it lands,
- * every endpoint remains exactly as protected as it is today — no more.
+ * DISPLAY GATING, DERIVED FROM THE SERVER (Slice RM Phase 3). The old static
+ * role map is DEAD: the affordance list comes from GET /api/auth/permissions —
+ * the caller's allowed actions per the server's ActionCatalog, the single
+ * source of truth ruled in docs/AUTHORIZATION-MATRIX.md. Hiding remains a
+ * courtesy; the SERVER enforces every action with a 403 regardless of what
+ * renders here.
  *
- * Each row cites its provenance: docs/PERMISSIONS-REGISTER.md for the ten
- * enumerated actions; the role sidebars/screens for quick-create access.
+ * Each GatedAction maps to its AUTHORIZATION-MATRIX action name (the wire
+ * values of /api/auth/permissions). reInviteVendor shares InviteVendorToRfq —
+ * the T8 re-invite is the same endpoint and matrix row (A27).
  */
 
 export type GatedAction =
-  // RFQ lifecycle — PERMISSIONS-REGISTER "RFQ lifecycle — Slice I"
-  | 'inviteVendorToRfq'        // Buyer (RFQ owner)
-  | 'rescindRfqInvitation'     // Buyer (RFQ owner)
-  | 'extendRfq'                // Buyer (RFQ owner)
-  | 'reInviteVendor'           // Buyer (RFQ owner)
-  | 'declineRfqInvitation'     // Vendor principal
-  | 'declareIntendToBid'       // Vendor principal
-  | 'withdrawBid'              // Vendor principal
-  | 'raiseClarification'       // Vendor principal (register); buyers start threads too (Clarifications screen)
-  // Vendor portal close-out — PERMISSIONS-REGISTER "Slice K"
-  | 'revokeOnboardingInvitation' // Buyer
-  // Quick-create — de-facto access from the role sidebars/screens (no register rows)
-  | 'createPr'                 // Buyer (Requisitions)
-  | 'createRfq'                // Buyer (Consolidate)
-  | 'createVendor'             // Buyer (Vendor Master → New vendor)
-  | 'inviteOnboarding'         // Buyer (Onboarding → Invite)
-  | 'createForm'               // Buyer (Forms)
-  | 'createUser'               // Admin (User Management)
-  | 'createCustomList'         // Admin (Custom Lists)
+  // RFQ lifecycle — AUTHORIZATION-MATRIX A27–A29, A50–A52
+  | 'inviteVendorToRfq'
+  | 'rescindRfqInvitation'
+  | 'extendRfq'
+  | 'reInviteVendor'
+  | 'declineRfqInvitation'
+  | 'declareIntendToBid'
+  | 'withdrawBid'
+  | 'raiseClarification'
+  // Vendor portal close-out — A43
+  | 'revokeOnboardingInvitation'
+  // Quick-create — A24, A25, A40, A42, A45–A47
+  | 'createPr'
+  | 'createRfq'
+  | 'createVendor'
+  | 'inviteOnboarding'
+  | 'createForm'
+  | 'createUser'
+  | 'createCustomList'
 
-type Rule = { roles?: string[]; vendor?: boolean }
-
-const RULES: Record<GatedAction, Rule> = {
-  inviteVendorToRfq: { roles: ['Buyer'] },
-  rescindRfqInvitation: { roles: ['Buyer'] },
-  extendRfq: { roles: ['Buyer'] },
-  reInviteVendor: { roles: ['Buyer'] },
-  declineRfqInvitation: { vendor: true },
-  declareIntendToBid: { vendor: true },
-  withdrawBid: { vendor: true },
-  raiseClarification: { vendor: true, roles: ['Buyer'] },
-  revokeOnboardingInvitation: { roles: ['Buyer'] },
-  createPr: { roles: ['Buyer'] },
-  createRfq: { roles: ['Buyer'] },
-  createVendor: { roles: ['Buyer'] },
-  inviteOnboarding: { roles: ['Buyer'] },
-  createForm: { roles: ['Buyer'] },
-  createUser: { roles: ['Admin'] },
-  createCustomList: { roles: ['Admin'] },
+/** GatedAction → server action name (AUTHORIZATION-MATRIX row). */
+const SERVER_ACTION: Record<GatedAction, string> = {
+  inviteVendorToRfq: 'InviteVendorToRfq',
+  rescindRfqInvitation: 'RescindRfqInvitation',
+  extendRfq: 'ExtendRfq',
+  reInviteVendor: 'InviteVendorToRfq',
+  declineRfqInvitation: 'DeclineRfqInvitation',
+  declareIntendToBid: 'DeclareIntendToBid',
+  withdrawBid: 'WithdrawBid',
+  raiseClarification: 'SendClarification',
+  revokeOnboardingInvitation: 'RevokeOnboardingInvitation',
+  createPr: 'ManageRequisitions',
+  createRfq: 'ManageRfqDraft',
+  createVendor: 'ManageVendors',
+  inviteOnboarding: 'InviteOnboarding',
+  createForm: 'ManageForms',
+  createUser: 'ManageUsers',
+  createCustomList: 'ManageCustomLists',
 }
 
-/** May the current principal SEE the affordance for this action? (Display only.) */
+/** May the current principal SEE the affordance for this action? (Derived from the server list.) */
 export function useGate() {
-  const { isVendor, roles } = useIdentity()
-  return (action: GatedAction): boolean => {
-    const r = RULES[action]
-    if (isVendor) return r.vendor === true
-    return (r.roles ?? []).some((x) => roles.includes(x))
-  }
+  const { permissions } = useIdentity()
+  return (action: GatedAction): boolean => permissions.includes(SERVER_ACTION[action])
 }
 
-/** Renders children only when the display gate allows the action. Hidden ≠ forbidden. */
+/** Renders children only when the server-derived permission list allows the action. */
 export function Gated({ action, children }: { action: GatedAction; children: React.ReactNode }) {
   const gate = useGate()
   return gate(action) ? <>{children}</> : null

@@ -11,6 +11,7 @@ namespace eProcure.Api.Controllers;
 [Route("api/auth")]
 public sealed class AuthController(
     DevUserStore users, JwtTokenService tokens, IUserService userService,
+    eProcure.Application.Abstractions.ICurrentUser currentUser,
     IHostEnvironment env, IOptions<DemoOptions> demo) : ControllerBase
 {
     // dev-login / dev-users are demo-only (they mint fully-roled JWTs with no password). They 404
@@ -46,6 +47,17 @@ public sealed class AuthController(
             .Select(v => new PersonaDto(v.Code, v.Name, "vendor", ["Vendor"], v.VendorName, v.VendorId));
         return Ok(internals.Concat(vendorLogins));
     }
+
+    /// <summary>
+    /// The CALLER's allowed actions, derived from the ActionCatalog and their role claims
+    /// (AUTHORIZATION-MATRIX Phase 3, row A58). The web's display gating is DERIVED from this
+    /// list at runtime — ui/gating.tsx holds no static role map. Anonymous → 401 like
+    /// everything else (NOT on the exemption list).
+    /// </summary>
+    [HttpGet("permissions")]
+    [Action(ApiActions.ViewPermissions)]
+    public ActionResult<IEnumerable<string>> Permissions() =>
+        Ok(ActionCatalog.ActionsFor(currentUser.Roles));
 
     /// <summary>
     /// Dev-only login: issues a JWT (with role claims) for a seeded user by id or

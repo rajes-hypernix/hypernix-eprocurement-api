@@ -10,9 +10,10 @@ namespace eProcure.Application.Authorization;
 /// </summary>
 public static class ApiActions
 {
-    // A1–A6 — all-principal
+    // A1–A6 — all-principal (+ A58, the Phase 3 permissions read)
     public const string ViewDashboard = "ViewDashboard";
     public const string ViewPersonas = "ViewPersonas";
+    public const string ViewPermissions = "ViewPermissions";
     public const string Search = "Search";
     public const string DownloadFile = "DownloadFile";
     public const string UploadFile = "UploadFile";

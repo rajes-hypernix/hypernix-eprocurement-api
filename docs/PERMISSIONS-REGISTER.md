@@ -1,91 +1,41 @@
-# PERMISSIONS REGISTER (deferred auth)
+# PERMISSIONS REGISTER — closed; superseded by AUTHORIZATION-MATRIX.md
 
-Actions that will need authorization enforcement in the deferred auth pass. Slice I records them
-here rather than adding `[Authorize]` (README rule 9); today they follow the existing
-service-layer `ICurrentUser` convention (vendor-scoped where noted) but carry no role gate.
+**The living who-may-do-what document is [AUTHORIZATION-MATRIX.md](AUTHORIZATION-MATRIX.md)**
+(operator-ruled 2026-07-11, Slice RM). Every authenticated endpoint carries an
+`[Action(...)]` resolved against the declarative `ActionCatalog`
+(`api/src/eProcure.Application/Authorization/ActionCatalog.cs`), whose rows mirror the
+matrix one-for-one; the web's display gating is derived at runtime from
+`GET /api/auth/permissions`. Drift is test-guarded in both directions
+(`ActionAssignmentSweepTests`) and the full role × action matrix is asserted by
+`RoleMatrixTests`, generated from the catalog.
 
-## RFQ lifecycle — Slice I
+### The "ONE remaining authorization item" — CLOSED (Slice RM)
 
-| Action | Endpoint | Principal / role (TBD) | Scope | Notes |
-|---|---|---|---|---|
-| InviteVendorToRfq | POST /api/rfqs/{id}/invitations | Buyer (RFQ owner) | RFQ | new invite + T8 re-invite of a rescinded row |
-| RescindRfqInvitation | POST /api/rfqs/{id}/invitations/{vendorId}/rescind | Buyer (RFQ owner) | RFQ | reason code required (G4); blocked if a bid is submitted (G3) |
-| ExtendRfq | POST /api/rfqs/{id}/extend | Buyer (RFQ owner) | RFQ | forward-only, capped (G5) |
-| ReInviteVendor | (same as InviteVendorToRfq) | Buyer (RFQ owner) | RFQ | T8 — returns a Rescinded row to Invited |
-| DeclineRfqInvitation | POST /api/my/rfqs/{id}/decline | Vendor principal | own invitation only | resource-scoped via ICurrentUser.VendorId |
-| ReverseDecline / DeclareIntendToBid | POST /api/my/rfqs/{id}/intend | Vendor principal | own invitation only | T2 and T4 |
-| WithdrawBid | POST /api/my/rfqs/{id}/withdraw-bid | Vendor principal | own invitation + own bid | Open + before close (T6) |
-| MarkInvitationViewed | (side effect of GET /api/rfqs/{id}) | Vendor principal | own invitation only | T1, passive/idempotent |
+Role-matrix authorization is enforced at the server. The 10 actions this register
+enumerated (8 RFQ-lifecycle from Slice I + 2 vendor-portal from Slice K) are matrix
+rows A27–A29, A43, A48, A50–A53 (MarkInvitationViewed rides A8 as the T1 side
+effect). Authentication and the perimeter were closed by Slice F; data integrity and
+status encapsulation by Slice G; **with Slice RM there are no outstanding
+authorization items.**
 
-## Vendor portal close-out — Slice K
+### What remains true (enforced elsewhere, unchanged by Slice RM)
 
-| Action | Endpoint | Principal / role (TBD) | Scope | Notes |
-|---|---|---|---|---|
-| RevokeOnboardingInvitation | POST /api/onboarding/invitations/{id}/revoke | Buyer | invitation | wired into the Onboarding Queue; revokes the magic link (link stops resolving) |
-| RaiseClarification (vendor) | POST /api/clarifications | Vendor principal | own vendor + own invited RFQs | vendor-initiated thread; scope limited client-side to the vendor's invited RFQs |
+- **Deny-anonymous-by-default** — fallback policy + the exact 11-endpoint
+  `[AllowAnonymous]` exemption list, asserted by `AnonymousSweepTests`
+  (matrix §3 quotes it verbatim; Slice RM changed nothing here).
+- **Vendor resource scoping** (Slice F) — RFQ-list invitation scoping, file
+  download `FileAccessPolicy` (deny-on-uncertainty), bank-detail masking; pinned by
+  `VendorScopingTests`, all untouched. The role gate is the coarse layer ABOVE these.
+- **Demo identity** — `X-Demo-User` → `DemoAuthenticationHandler` → ClaimsPrincipal;
+  hard-blocked in Production; dev-login/dev-users 404 outside demo mode.
 
-## Security perimeter — Slice F (Hardening 2)
+### Deferred items raised here or by the RM rulings (tracked in BACKLOG.md)
 
-The perimeter is now enforced in the framework, not just in services (SEC-1/2/3):
-
-- **Deny-anonymous-by-default.** `Program.cs` sets a `FallbackPolicy = RequireAuthenticatedUser`, so
-  every endpoint requires an authenticated principal unless it carries `[AllowAnonymous]`. The
-  **exact** exemption list (asserted by `AnonymousSweepTests`, which fails if anyone adds an
-  un-exempted anonymous endpoint): `GET /api/health`; `GET /api/auth/dev-users` +
-  `POST /api/auth/dev-login` (demo bootstrap, internally demo-gated); and the token-scoped onboarding
-  endpoints (`POST /onboarding/resolve`, `GET|PUT /onboarding/draft`, `POST /onboarding/draft/submit`,
-  `POST|DELETE /onboarding/draft/documents`, `POST /onboarding/draft/resubmit`,
-  `POST /onboarding/draft/raise-clarification`).
-- **Demo identity is a real authentication scheme.** `DemoAuthenticationHandler` turns `X-Demo-User`
-  into a `ClaimsPrincipal` (inert outside demo mode; hard-blocked in Production), so the fallback
-  policy sees an authenticated request. `CurrentUser` is now a pure claims reader.
-- **`GET /api/auth/personas` is authenticated-only** (was ungated after Hardening 1) — NOT on the
-  exemption list; resolves the disposition the register flagged.
-
-## Known scoping gaps (for the auth slice)
-
-- ~~**`GET /api/rfqs` returns ALL RFQs to vendor principals**~~ — **CLOSED (Slice F Phase 3):**
-  `RfqService.ListAsync` now scopes vendor principals to RFQs they hold a live invitation to
-  (buyers/admins unchanged); asserted by `VendorScopingTests`.
-- **CLOSED (Slice F Phase 2/3):** file downloads are resource-scoped (`FileAccessPolicy`,
-  deny-on-uncertainty) + audited; vendor bank `AccountNo`/`Swift` masked (last-4) for any
-  non-Buyer/Admin on `GET /api/vendors/{id}` (list DTOs carry no bank fields at all).
-
-### Still open — the ONE remaining authorization item
-- **Role-matrix authorization** — which role may perform which enumerated action (Buyer vs Approver
-  etc.) beyond the existing service-layer `ICurrentUser` checks. After Slice F (authentication +
-  perimeter scoping) and Slice G (data-integrity + status encapsulation), **this is the only
-  outstanding authorization item.** It must assign a role policy to each of the **10 enumerated
-  actions** in this register (8 RFQ-lifecycle + 2 vendor-portal). Everything else — authentication,
-  the anonymous exemption list, vendor/file/bank scoping, concurrency, the golden status constraint —
-  is now enforced and test-guarded.
-
-### Closed by Slice G (data integrity)
-- **File-ownership schema** — CLOSED (T5): `StoredFile` gained typed `OwnerKind`/`OwnerVendorId`/
-  `OwnerEntityId`; `FileAccessPolicy` reads the column (fail-closed), retiring the answer-value
-  inference. See BACKLOG.
-- **Golden status constraint** — CLOSED (T3/T4): status transitions go through guarded domain methods
-  (private setters), enforced by an executable architecture test.
-
-## Tickets raised by Slice J (next backend slice)
-
-- **Expose `MaxExtensions` in `RfqDetail`** — the RFQ detail returns the extension COUNT but not the
-  cap, so the Slice J UI mirrors the server default in a `MAX_EXTENSIONS = 2` constant
-  (`web/src/components/sourcing/RfqGovernance.tsx`). If an admin changes `RfqGovernanceOptions.MaxExtensions`
-  to 3, buyers would still see "Extension 2 of 2" while the server allows a third. Fix: add `MaxExtensions`
-  (int) to `RfqDetail`, fold into the next backend slice, and delete the client constant.
-
-## Known items for the hardening pass (not fixed in this slice)
-
-- ~~**Extend/close race**~~ — **CLOSED (Slice G T2):** an `xmin` optimistic-concurrency token now
-  guards Rfq (and eight other aggregate roots); a stale extend/close raises
-  `DbUpdateConcurrencyException` → HTTP 409 "Concurrent modification" instead of last-write-wins
-  (RFQ-LIFECYCLE-ADDENDUM E11 closed).
-- **FluentValidation referenced but unused** — the `FluentValidation` package is on
-  `eProcure.Application` but no validators/pipeline exist. Slice I follows the codebase's existing
-  inline `DomainRuleException → 409` convention for reason-code / note-length validation rather than
-  introducing a second validation style. Decision for a future pass: adopt FluentValidation
-  platform-wide or remove the package.
-- **Audit-write-in-separate-save** — `IAuditLog.WriteAsync` does its own `SaveChangesAsync` after the
-  state change (existing convention). The typed `RfqEvent` IS written in the same transaction as its
-  state change (G6); only the generic `AuditEntry` follows separately. Already on the register.
+- Slice F patch: vendor resource scoping on RFQ-detail and GRN-for-ASN reads
+  (matrix Obs-1 + Obs-4) — standalone micro-commit immediately after RM.
+- Onboarding magic-link page depends on authenticated `/swec` + custom-list lookups
+  (matrix Obs-6) — token-scoped/anonymous lookups design needed before staging.
+- `SetScoreAsync` validates the body's `EvaluatorId`, not the caller (matrix Obs-7)
+  — hardening pass.
+- FluentValidation package referenced but unused (decision: adopt platform-wide or
+  remove); audit-write-in-separate-save convention — both pre-RM notes, unchanged.

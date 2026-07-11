@@ -105,6 +105,9 @@ async function http<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const getHealth = () => http<HealthResponse>('/health')
 export const getPersonas = () => http<PersonaDto[]>('/auth/personas')
+// The caller's allowed actions (AUTHORIZATION-MATRIX A58) — the source the display
+// gating derives from; ui/gating.tsx holds no static role map.
+export const getPermissions = () => http<string[]>('/auth/permissions')
 
 // --- Vendor portal: invitations + bidding ---
 export const getMyInvitations = () => http<InvitationDto[]>('/my/rfqs')

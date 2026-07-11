@@ -92,14 +92,15 @@ operator design decision, see BACKLOG).
 must import from `ui/archetypes`; today's 12 non-composing pages are
 grandfathered in `src/test/page-archetypes.grandfather.json`, shrink-only.
 
-## Display gating — the honesty note (D2 Step 0b, operator-recorded)
+## Display gating — the honesty note (D2 Step 0b; updated at Slice RM)
 
-`<Gated action="…">` (`ui/gating.tsx`) hides affordances by role. **Hidden ≠
-forbidden**: this is DISPLAY gating only. Server-side role-matrix
-authorization is a separate slice (the PERMISSIONS-REGISTER's one remaining
-authorization item), scheduled before D3. Until it lands, every endpoint is
-exactly as protected as it was before D2 — no more, no less. Never cite a
-hidden button as a security control.
+`<Gated action="…">` (`ui/gating.tsx`) hides affordances. Since Slice RM the
+list it consults is DERIVED FROM THE SERVER (`GET /api/auth/permissions`, the
+ActionCatalog ruled in docs/AUTHORIZATION-MATRIX.md) — there is no client-side
+role map to drift. Hidden is still not the security control: the SERVER
+enforces every action with a 403 regardless of what renders, and the display
+gate is a courtesy view of that same catalog. Never cite a hidden button as a
+security control — cite the matrix row.
 
 ## Proof gates
 

@@ -12,12 +12,25 @@ const HITS: client.SearchHit[] = [
   { type: 'PurchaseOrder', id: 'p1', code: 'PO-2026-0001', title: 'Acme' },
 ]
 
-const asBuyer = () => vi.spyOn(client, 'getPersonas').mockResolvedValue([
-  { code: 'u_faridah', name: 'Faridah', kind: 'internal', roles: ['Buyer'] } as never,
-])
-const asAdmin = () => vi.spyOn(client, 'getPersonas').mockResolvedValue([
-  { code: 'u_admin', name: 'Admin', kind: 'internal', roles: ['Admin'] } as never,
-])
+// Gating derives from the SERVER's permission list (AUTHORIZATION-MATRIX A58) — the
+// personas alone no longer decide anything; each helper mocks what /auth/permissions returns.
+const asBuyer = () => {
+  vi.spyOn(client, 'getPersonas').mockResolvedValue([
+    { code: 'u_faridah', name: 'Faridah', kind: 'internal', roles: ['Buyer'] } as never,
+  ])
+  vi.spyOn(client, 'getPermissions').mockResolvedValue([
+    'ManageRequisitions', 'ManageRfqDraft', 'ManageVendors', 'InviteOnboarding', 'ManageForms',
+    'InviteVendorToRfq', 'RescindRfqInvitation', 'ExtendRfq', 'SendClarification', 'RevokeOnboardingInvitation',
+  ])
+}
+const asAdmin = () => {
+  vi.spyOn(client, 'getPersonas').mockResolvedValue([
+    { code: 'u_admin', name: 'Admin', kind: 'internal', roles: ['Admin'] } as never,
+  ])
+  vi.spyOn(client, 'getPermissions').mockResolvedValue([
+    'ManageUsers', 'ManageCustomLists', 'ManageForms',
+  ])
+}
 
 beforeEach(() => {
   vi.restoreAllMocks()
