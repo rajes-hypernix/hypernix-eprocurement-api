@@ -74,6 +74,9 @@ export function VendorDetail({ id, onBack }: { id: string; onBack: () => void })
 
   if (isPending || !v) return <Spinner label="Loading vendor…" />
   const perf = v.performance!
+  // Derived metrics (Slice H T7): null = "not yet available" (never a fabricated number).
+  const naPct = (n: number | null | undefined) => (n == null ? 'not yet available' : `${n}%`)
+  const naDays = (n: number | null | undefined) => (n == null ? 'not yet available' : `${n} days`)
   const cats = v.categories ?? []
 
   return (
@@ -111,9 +114,9 @@ export function VendorDetail({ id, onBack }: { id: string; onBack: () => void })
       {tab === 'overview' && (
         <>
           <div className="grid g4" style={{ marginBottom: 16 }}>
-            <Stat label="On-time delivery" value={`${perf.otd}%`} sub="rolling 12 mo" />
-            <Stat label="Quality acceptance" value={`${perf.quality}%`} sub="goods accepted" />
-            <Stat label="Win rate" value={`${perf.winRate}%`} sub="RFQs won" />
+            <Stat label="On-time delivery" value={naPct(perf.otd)} sub="rolling 12 mo" />
+            <Stat label="Quality acceptance" value={naPct(perf.quality)} sub="goods accepted" />
+            <Stat label="Win rate" value={naPct(perf.winRate)} sub="RFQs won" />
             <Stat label="Spend YTD" value={`RM ${fmt(perf.spendYtd)}`} sub={`${perf.pos} POs`} />
           </div>
           <div className="grid g2">
@@ -294,9 +297,9 @@ export function VendorDetail({ id, onBack }: { id: string; onBack: () => void })
       {tab === 'performance' && (
         <>
           <div className="grid g4" style={{ marginBottom: 16 }}>
-            <Stat label="Compliance breaches" value={perf.breaches} sub="rolling 12 mo" />
-            <Stat label="Avg lead time" value={`${perf.lead}w`} sub="quote to deliver" />
-            <Stat label="Response rate" value={`${perf.response}%`} sub="RFQ invites" />
+            <Stat label="Compliance breaches" value={perf.breaches ?? 'not yet available'} sub="rolling 12 mo" />
+            <Stat label="Avg lead time" value={naDays(perf.lead)} sub="order to receipt" />
+            <Stat label="Response rate" value={naPct(perf.response)} sub="RFQ invites" />
             <Stat label="Rating" value={`★ ${v.rating}`} sub="overall" />
           </div>
           <div className="card">
@@ -311,10 +314,10 @@ export function VendorDetail({ id, onBack }: { id: string; onBack: () => void })
                 <div key={label as string} style={{ marginBottom: 10 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
                     <span className="hint">{label}</span>
-                    <span style={{ fontWeight: 700 }}>{pct}%</span>
+                    <span style={{ fontWeight: 700 }}>{pct == null ? 'not yet available' : `${pct}%`}</span>
                   </div>
                   <div className="pbar">
-                    <i style={{ width: `${pct}%` }} />
+                    <i style={{ width: `${pct ?? 0}%` }} />
                   </div>
                 </div>
               ))}

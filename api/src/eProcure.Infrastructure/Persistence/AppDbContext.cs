@@ -37,6 +37,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<StoredFile> StoredFiles => Set<StoredFile>();
     public DbSet<Domain.Configuration.CustomList> CustomLists => Set<Domain.Configuration.CustomList>();
     public DbSet<Domain.Configuration.CustomListValue> CustomListValues => Set<Domain.Configuration.CustomListValue>();
+    public DbSet<VendorPerformanceRow> VendorPerformance => Set<VendorPerformanceRow>();   // derived view (Slice H T7)
 
     // Vendor onboarding (Slice A) — staging is separate from the Vendor master.
     public DbSet<VendorOnboardingInvitation> VendorOnboardingInvitations => Set<VendorOnboardingInvitation>();
@@ -113,7 +114,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
             e.Property(x => x.Categories).HasConversion(listConverter, listComparer);
 
-            e.OwnsOne(x => x.Performance);
+            // VendorPerformance is derived (Slice H T7) — mapped to a keyless view (configured below).
             e.OwnsMany(x => x.Contacts, o => o.ToTable("VendorContacts"));
             e.OwnsMany(x => x.Addresses, o => o.ToTable("VendorAddresses"));
             e.OwnsMany(x => x.BankAccounts, o => o.ToTable("VendorBankAccounts"));
@@ -532,6 +533,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             prop.SetColumnType("numeric(18,2)");
         }
+
+        // Derived vendor performance (Slice H T7): a keyless read-model over the VendorPerformanceView.
+        b.Entity<VendorPerformanceRow>(e =>
+        {
+            e.HasNoKey();
+            e.ToView(VendorPerformanceView.Name);
+        });
 
         // Optimistic concurrency: use PostgreSQL's system column `xmin` as a row-version token on the
         // aggregate roots that carry a lifecycle. A stale write (e.g. two buyers extending one RFQ)

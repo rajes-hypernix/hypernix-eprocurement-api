@@ -112,7 +112,7 @@ export function VendorMaster({ onOpen, onNavigate }: { onOpen: (id: string) => v
                   <div className="hint">{v.state}</div>
                 </td>
                 <td className="amt">★ {v.rating}</td>
-                <td className="amt">{v.otd}%</td>
+                <td className="amt">{v.otd == null ? '—' : `${v.otd}%`}</td>
                 <td>
                   <StatusBadge status={v.status} />
                 </td>

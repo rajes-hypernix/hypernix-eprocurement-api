@@ -32,7 +32,7 @@ public class Vendor
     /// <summary>SWEC category leaf/branch codes the vendor is registered for.</summary>
     public List<string> Categories { get; set; } = [];
 
-    public VendorPerformance Performance { get; set; } = new();
+    // VendorPerformance is no longer stored — it is DERIVED (Slice H T7, VendorPerformanceView).
     public List<VendorContact> Contacts { get; set; } = [];
     public List<VendorAddress> Addresses { get; set; } = [];
     public List<VendorBankAccount> BankAccounts { get; set; } = [];
@@ -59,18 +59,6 @@ public class Vendor
     /// <summary>TEST/SEED ONLY — sets the status directly, bypassing transitions. Never call from
     /// production service code (enforced by the ArchitectureTests source-scan).</summary>
     public Vendor SeededAs(VendorStatus status) { Status = status; return this; }
-}
-
-public class VendorPerformance
-{
-    public int Otd { get; set; }            // on-time delivery %
-    public int Quality { get; set; }        // quality acceptance %
-    public int Breaches { get; set; }
-    public int Lead { get; set; }           // avg lead time (weeks)
-    public int Response { get; set; }       // RFQ response rate %
-    public int WinRate { get; set; }
-    public decimal SpendYtd { get; set; }
-    public int Pos { get; set; }
 }
 
 public class VendorContact

@@ -9,7 +9,7 @@ public sealed record VendorListItem(
     string Region,
     string State,
     decimal Rating,
-    int Otd,
+    int? Otd,                    // derived (Slice H T7); null = not yet available
     string Status);
 
 public sealed record ContactDto(string Name, string Role, string Email, string Phone, bool IsPrimary);
@@ -17,7 +17,10 @@ public sealed record AddressDto(string Type, string Line, string City, string St
 public sealed record BankAccountDto(string Bank, string AccountNo, string Swift, string Currency, bool IsPrimary);
 public sealed record CertificationDto(string Name, string Number, string ValidTo, string Status);
 public sealed record CurrencyDto(string Code, bool IsPrimary);
-public sealed record PerformanceDto(int Otd, int Quality, int Breaches, int Lead, int Response, int WinRate, decimal SpendYtd, int Pos);
+// Derived metrics (Slice H T7). Nullable = "not yet available" (never a stale/fabricated number):
+// Otd/Breaches have no computable source this slice; Quality/Lead/Response/WinRate are null with no
+// underlying facts. Lead is actual DAYS (PO issued -> goods received), not the legacy weeks int.
+public sealed record PerformanceDto(int? Otd, int? Quality, int? Breaches, int? Lead, int? Response, int? WinRate, decimal SpendYtd, int Pos);
 
 public sealed record VendorDetail(
     Guid Id,

@@ -32,6 +32,7 @@ public sealed class VendorService(
     public async Task<IReadOnlyList<VendorListItem>> ListAsync(VendorFilter filter, CancellationToken ct = default)
     {
         var vendors = await db.Vendors.AsNoTracking().OrderBy(v => v.Name).ToListAsync(ct);
+        var otdByVendor = await db.VendorPerformance.AsNoTracking().ToDictionaryAsync(p => p.VendorId, p => p.Otd, ct);  // derived (T7)
 
         IEnumerable<Vendor> q = vendors;
         if (!string.IsNullOrWhiteSpace(filter.Type) && filter.Type != "all")
@@ -47,7 +48,7 @@ public sealed class VendorService(
 
         return q.Select(v => new VendorListItem(
             v.Id, v.Code, v.Name, TypeDisplay(v.Type), v.Categories,
-            v.Region, v.State, v.Rating, v.Performance.Otd, v.Status.ToString())).ToList();
+            v.Region, v.State, v.Rating, otdByVendor.GetValueOrDefault(v.Id), v.Status.ToString())).ToList();
     }
 
     public async Task<VendorDetail?> GetAsync(Guid id, CancellationToken ct = default)
@@ -197,12 +198,14 @@ public sealed class VendorService(
     {
         await EnsureCountryLabelsAsync(ct);
         var showBank = CanSeeBankDetails;
+        // Performance is DERIVED (Slice H T7) — read the view; null metrics mean "not yet available".
+        var perf = await db.VendorPerformance.AsNoTracking().FirstOrDefaultAsync(p => p.VendorId == v.Id, ct);
         return new(
             v.Id, v.Code, v.Name, v.RegisteredName, v.RegistrationNo, v.TaxId,
             TypeDisplay(v.Type), v.LlrcTier, v.Status.ToString(), v.Region, v.State, v.City, CountryLabel(v.Country),
             v.Rating, v.PaymentTerms, v.CreditLimit, v.Categories,
-            new PerformanceDto(v.Performance.Otd, v.Performance.Quality, v.Performance.Breaches,
-                v.Performance.Lead, v.Performance.Response, v.Performance.WinRate, v.Performance.SpendYtd, v.Performance.Pos),
+            new PerformanceDto(perf?.Otd, perf?.Quality, perf?.Breaches,
+                perf?.LeadDays, perf?.Response, perf?.WinRate, perf?.SpendYtd ?? 0, perf?.Pos ?? 0),
             v.Contacts.Select(c => new ContactDto(c.Name, c.Role, c.Email, c.Phone, c.IsPrimary)).ToList(),
             v.Addresses.Select(a => new AddressDto(a.Type, a.Line, a.City, a.State, CountryLabel(a.Country), a.Postcode, a.IsPrimary)).ToList(),
             v.BankAccounts.Select(a => new BankAccountDto(

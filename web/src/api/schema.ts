@@ -5061,17 +5061,17 @@ export interface components {
         };
         PerformanceDto: {
             /** Format: int32 */
-            otd?: number;
+            otd?: number | null;
             /** Format: int32 */
-            quality?: number;
+            quality?: number | null;
             /** Format: int32 */
-            breaches?: number;
+            breaches?: number | null;
             /** Format: int32 */
-            lead?: number;
+            lead?: number | null;
             /** Format: int32 */
-            response?: number;
+            response?: number | null;
             /** Format: int32 */
-            winRate?: number;
+            winRate?: number | null;
             /** Format: double */
             spendYtd?: number;
             /** Format: int32 */
@@ -5590,7 +5590,7 @@ export interface components {
             /** Format: double */
             rating?: number;
             /** Format: int32 */
-            otd?: number;
+            otd?: number | null;
             status?: string | null;
         };
         VendorLoginDto: {

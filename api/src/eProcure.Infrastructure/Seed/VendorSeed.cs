@@ -77,11 +77,7 @@ public static class VendorSeed
             PaymentTerms = "30 days nett",
             CreditLimit = r.Type == VendorType.Swec ? 1_000_000m : 500_000m,
             Categories = [.. r.Swec],
-            Performance = new VendorPerformance
-            {
-                Otd = r.Otd, Quality = r.Quality, Breaches = r.Breaches, Lead = r.Lead,
-                Response = r.Response, WinRate = r.WinRate, SpendYtd = r.SpendYtd, Pos = r.Pos,
-            },
+            // VendorPerformance is derived from facts now (Slice H T7) — no longer seeded as a stored aggregate.
             Contacts =
             [
                 new() { Name = "Sales & Commercial Desk", Role = "Sales / Commercial", Email = $"sales@{r.Slug}.com.my", Phone = $"+60 3-5512 {tail}", IsPrimary = true },
