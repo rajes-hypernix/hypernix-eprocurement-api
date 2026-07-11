@@ -7,11 +7,15 @@ import {
 } from '../../api/client'
 import { AnswerInput } from '../vendor/BidForm'
 import { FIN_ITEMS, blankFin, computeFin, type FinData, type FinKey } from '../../lib/altmanZ'
-import { useLookups } from '../../lib/lookups'
 import { useSwec } from '../../api/swec'
 import { SwecPicker } from '../vendors/SwecPicker'
 import { Icon } from '../Icon'
 import { Notice, Spinner } from '../ui'
+import type { FieldSpec } from '../../ui/fieldSpec'
+import { TextField } from '../../ui/TextField'
+import { SelectField } from '../../ui/SelectField'
+import { DependentSelectField } from '../../ui/DependentSelectField'
+import { Stat } from '../../ui/display'
 
 // Document checklist (SPEC §5) — filtered by registration type.
 const DOCS: { id: string; name: string; req: 'all' | 'opt' | 'swec' | 'nonswec' }[] = [
@@ -56,7 +60,6 @@ export function OnboardingForm({ token, onSubmitted }: { token: string; onSubmit
   const [geoState, setGeoState] = useState('')
   const [stepErr, setStepErr] = useState<string[] | null>(null)
   const [visited, setVisited] = useState<Set<number>>(new Set([0]))
-  const { of, hasCities } = useLookups()               // same conformed-dimension lists as the manual form
   const { data: swec } = useSwec()                     // the real SWEC index — for resolving codes to labels
   const [cats, setCats] = useState<string[]>([])
   const [picking, setPicking] = useState(false)
@@ -187,22 +190,27 @@ export function OnboardingForm({ token, onSubmitted }: { token: string; onSubmit
           {cur.k === 'company' && (
             <Section title="Company & contact">
               <div className="grid g2">
-                <Field label="Registered name" required value={h.name} onChange={(v) => setH({ ...h, name: v })} />
-                <Field label="Reg. no. (SSM)" required value={h.reg} placeholder="1234567-A" onChange={(v) => setH({ ...h, reg: v })} />
+                <TextField spec={fld('name', 'Registered name', { required: true })} value={h.name} onChange={(v) => setH({ ...h, name: v })} />
+                <TextField spec={fld('reg', 'Reg. no. (SSM)', { required: true, placeholder: '1234567-A' })} value={h.reg} onChange={(v) => setH({ ...h, reg: v })} />
               </div>
               <div className="grid g3">
-                <Select label="Country" value={country} onChange={(v) => { setCountry(v); setGeoState(''); setH((p) => ({ ...p, location: '' })) }} options={of('COUNTRY')} />
-                {country === 'MY'
-                  ? <Select label="State / Region" value={geoState} placeholder="Select state" onChange={(v) => { setGeoState(v); setH((p) => ({ ...p, location: '' })) }} options={of('STATE', 'MY')} />
-                  : <Field label="State / Region" value={geoState} onChange={setGeoState} />}
-                {country === 'MY' && geoState && hasCities(geoState)
-                  ? <Select label="City" value={h.location} placeholder="Select city" onChange={(v) => setH({ ...h, location: v })} options={of('CITY', geoState)} />
-                  : <Field label="City" value={h.location} placeholder="City" onChange={(v) => setH({ ...h, location: v })} />}
+                <SelectField
+                  spec={{ key: 'country', label: 'Country', dataType: 'select', options: { kind: 'customList', listCode: 'COUNTRY' } }}
+                  value={country} onChange={(v) => { setCountry(v); setGeoState(''); setH((p) => ({ ...p, location: '' })) }}
+                />
+                <DependentSelectField
+                  spec={{ key: 'state', label: 'State / Region', dataType: 'select', placeholder: 'Select state', options: { kind: 'customList', listCode: 'STATE', parentField: 'country' } }}
+                  value={geoState} onChange={(v) => { setGeoState(v); setH((p) => ({ ...p, location: '' })) }} parentValue={country}
+                />
+                <DependentSelectField
+                  spec={{ key: 'city', label: 'City', dataType: 'select', placeholder: 'Select city', options: { kind: 'customList', listCode: 'CITY', parentField: 'state' } }}
+                  value={h.location} onChange={(v) => setH({ ...h, location: v })} parentValue={geoState}
+                />
               </div>
               <div className="grid g3">
-                <Field label="Primary contact email" value={h.email} onChange={(v) => setH({ ...h, email: v })} />
-                <Field label="Contact name" value={h.contactName} onChange={(v) => setH({ ...h, contactName: v })} />
-                <Field label="Contact phone" value={h.contactPhone} onChange={(v) => setH({ ...h, contactPhone: v })} />
+                <TextField spec={fld('email', 'Primary contact email', { dataType: 'email' })} value={h.email} onChange={(v) => setH({ ...h, email: v })} />
+                <TextField spec={fld('contactName', 'Contact name')} value={h.contactName} onChange={(v) => setH({ ...h, contactName: v })} />
+                <TextField spec={fld('contactPhone', 'Contact phone')} value={h.contactPhone} onChange={(v) => setH({ ...h, contactPhone: v })} />
               </div>
             </Section>
           )}
@@ -210,9 +218,12 @@ export function OnboardingForm({ token, onSubmitted }: { token: string; onSubmit
           {cur.k === 'banking' && (
             <Section title="Banking">
               <div className="grid g3">
-                <Select label="Bank" value={bank.bank} placeholder="Select bank" onChange={(v) => setBank({ ...bank, bank: v })} options={of('BANK')} />
-                <Field label="Account no." value={bank.accountNo} onChange={(v) => setBank({ ...bank, accountNo: v })} />
-                <Field label="SWIFT" value={bank.swift} onChange={(v) => setBank({ ...bank, swift: v })} />
+                <SelectField
+                  spec={{ key: 'bank', label: 'Bank', dataType: 'select', placeholder: 'Select bank', options: { kind: 'customList', listCode: 'BANK' } }}
+                  value={bank.bank} onChange={(v) => setBank({ ...bank, bank: v })}
+                />
+                <TextField spec={fld('accountNo', 'Account no.')} value={bank.accountNo} onChange={(v) => setBank({ ...bank, accountNo: v })} />
+                <TextField spec={fld('swift', 'SWIFT')} value={bank.swift} onChange={(v) => setBank({ ...bank, swift: v })} />
               </div>
             </Section>
           )}
@@ -270,9 +281,9 @@ export function OnboardingForm({ token, onSubmitted }: { token: string; onSubmit
               <div className="card" style={{ marginBottom: 14 }}>
                 <div className="cbody">
                   <div className="grid g3">
-                    <Stat label="Altman Z · weighted" value={isFinite(fc.zW) ? fc.zW.toFixed(2) : '—'} sub={fc.bd.zone} cls={fc.bd.cls} />
+                    <Stat label="Altman Z · weighted" value={isFinite(fc.zW) ? fc.zW.toFixed(2) : '—'} sub={<span className={`badge ${fc.bd.cls}`}>{fc.bd.zone}</span>} />
                     <Stat label="Score" value={isFinite(fc.score) ? `${fc.score} / 100` : '—'} />
-                    <Stat label="Band → Risk" value={`Band ${fc.bd.band}`} sub={`${fc.bd.risk} risk`} cls={fc.bd.cls} />
+                    <Stat label="Band → Risk" value={`Band ${fc.bd.band}`} sub={<span className={`badge ${fc.bd.cls}`}>{fc.bd.risk} risk</span>} />
                   </div>
                 </div>
               </div>
@@ -365,31 +376,5 @@ export function OnboardingForm({ token, onSubmitted }: { token: string; onSubmit
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return <div className="card" style={{ marginBottom: 14 }}><div className="chead"><h3>{title}</h3></div><div className="cbody">{children}</div></div>
 }
-function Field({ label, value, onChange, placeholder, required }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; required?: boolean }) {
-  return (
-    <div className="field">
-      <label>{label} {required && <span className="req">*</span>}</label>
-      <input value={value} placeholder={placeholder} aria-label={label} onChange={(e) => onChange(e.target.value)} />
-    </div>
-  )
-}
-function Select({ label, value, onChange, options, placeholder }: { label: string; value: string; onChange: (v: string) => void; options: { code: string; label: string }[]; placeholder?: string }) {
-  return (
-    <div className="field">
-      <label>{label}</label>
-      <select value={value} aria-label={label} onChange={(e) => onChange(e.target.value)}>
-        {placeholder && <option value="">{placeholder}</option>}
-        {options.map((o) => <option key={o.code} value={o.code}>{o.label}</option>)}
-      </select>
-    </div>
-  )
-}
-function Stat({ label, value, sub, cls }: { label: string; value: string; sub?: string; cls?: string }) {
-  return (
-    <div className="card stat" style={{ margin: 0 }}>
-      <div className="lbl">{label}</div>
-      <div className="num">{value}</div>
-      {sub && (cls ? <div className="sub"><span className={`badge ${cls}`}>{sub}</span></div> : <div className="sub">{sub}</div>)}
-    </div>
-  )
-}
+const fld = (key: string, label: string, over: Partial<FieldSpec> = {}): FieldSpec =>
+  ({ key, label, dataType: 'text', ...over })
