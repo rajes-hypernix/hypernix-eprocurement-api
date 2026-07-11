@@ -13,7 +13,8 @@ public class PurchaseOrder
     public string Code { get; set; } = default!;          // PO-2026-0001
     public Guid VendorId { get; set; }
     public Guid? RfqId { get; set; }
-    public string? AwardCode { get; set; }
+    public string? AwardCode { get; set; }                // display field (kept; removal backlogged — Slice H T2)
+    public Guid? AwardId { get; set; }                    // real lineage to the Award root (AN-2)
     public PoStatus Status { get; private set; } = PoStatus.Draft;
     public string Currency { get; set; } = "MYR";
     public string Incoterm { get; set; } = "DDP Bintulu";
@@ -59,6 +60,7 @@ public class PurchaseOrder
 public class PoLine
 {
     public Guid Id { get; private set; } = Guid.NewGuid();   // stable grain key for facts/lineage (Slice H T1)
+    public Guid? AwardAllocationId { get; set; }             // the AwardAllocation this line was cut from (AN-2)
     public string ItemCode { get; set; } = default!;
     public string Description { get; set; } = "";
     public decimal Qty { get; set; }

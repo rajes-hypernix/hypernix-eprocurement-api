@@ -19,6 +19,21 @@
 - **Naming:** PascalCase types/methods, camelCase locals, `I`-prefixed interfaces,
   `*Command`/`*Query`/`*Service` for use-cases, `*Dto` for DTOs.
 
+### Owned collection keys and ValueGeneratedNever
+
+Owned line collections (`RfqLine`, `BidLine`, `PoLine`, `AwardAllocation`, … — the nine
+keyed in Slice H T1) use a client-assigned `Guid Id` (`= Guid.NewGuid()`) mapped
+**`ValueGeneratedNever`**, not `ValueGeneratedOnAdd`. This is deliberate and must not be
+"normalised" back to match `PrLine` (which is `ValueGeneratedOnAdd`). The services that own
+these collections REPLACE them wholesale on edit (`rfq.Lines = req.Lines.Select(...)`), and
+with a store-generated key EF treats the fresh client Guids as *existing* rows → emits
+`UPDATE` (0 rows affected) → `DbUpdateConcurrencyException`. Slice H T1 hit exactly this: six
+`RfqServiceTests`/`EvaluationServiceTests` failed until the keys were switched to
+`ValueGeneratedNever`. `ValueGeneratedOnAdd` is only safe where the service never replaces the
+collection but edits existing lines in place and appends new ones with an explicit
+`db.Entry(line).State = EntityState.Added` — the `PrLine` pattern (`RequisitionService.cs:102`).
+Pick the mapping by how the service mutates the collection, not by copying `PrLine`.
+
 ## React / web
 
 - **TypeScript strict.** No `any`. API types come from `web/src/api/schema.ts`

@@ -491,6 +491,7 @@ public sealed class DevelopmentDataSeeder(
             VendorId = mutiara.Id,
             RfqId = rfq.Id,
             AwardCode = award.Code,
+            AwardId = award.Id,                          // AN-2 lineage (coherent seed, matches AwardService)
             // Status defaults to Draft.
             NsId = "NS-PO-0074",
             CreatedUtc = now,
@@ -498,7 +499,7 @@ public sealed class DevelopmentDataSeeder(
             Lines = allocations.Select(a =>
             {
                 var line = rfq.Lines.First(l => l.ItemCode == a.RfqLineCode);
-                return new PoLine { ItemCode = a.RfqLineCode, Description = line.Description, Qty = a.Qty, Uom = line.Uom, UnitPrice = a.UnitPrice };
+                return new PoLine { AwardAllocationId = a.Id, ItemCode = a.RfqLineCode, Description = line.Description, Qty = a.Qty, Uom = line.Uom, UnitPrice = a.UnitPrice };
             }).ToList(),
         };
         db.PurchaseOrders.Add(po);

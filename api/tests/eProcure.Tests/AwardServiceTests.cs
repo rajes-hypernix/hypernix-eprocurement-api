@@ -133,6 +133,11 @@ public sealed class AwardServiceTests
         po.VendorId.Should().Be(va);
         po.Lines.Single().Qty.Should().Be(4);
         (await c.Db.Rfqs.FirstAsync(r => r.Id == rfqId)).Status.Should().Be(RfqStatus.Awarded);
+
+        // AN-2: real Award→PO lineage is set at creation (not inferred from AwardCode later).
+        po.AwardId.Should().Be(dto.Id, "the PO carries a real FK to the Award root");
+        var alloc = await c.Db.Awards.AsNoTracking().Where(a => a.Id == dto.Id).SelectMany(a => a.Allocations).SingleAsync();
+        po.Lines.Single().AwardAllocationId.Should().Be(alloc.Id, "each PO line links to the allocation it was cut from");
     }
 
     [Fact]

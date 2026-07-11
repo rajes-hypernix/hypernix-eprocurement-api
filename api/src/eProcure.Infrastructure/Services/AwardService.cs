@@ -161,6 +161,7 @@ public sealed class AwardService(
                 VendorId = grp.Key,
                 RfqId = rfq.Id,
                 AwardCode = award.Code,
+                AwardId = award.Id,                          // AN-2: real lineage to the Award root
                 // Status defaults to Draft (the setter is now private).
                 NsId = $"NS-PO-{code[^4..]}",
                 CreatedUtc = clock.UtcNow,
@@ -168,7 +169,8 @@ public sealed class AwardService(
                 Lines = grp.Select(a =>
                 {
                     var line = rfq.Lines.First(l => l.ItemCode == a.RfqLineCode);
-                    return new PoLine { ItemCode = a.RfqLineCode, Description = line.Description, Qty = a.Qty, Uom = line.Uom, UnitPrice = a.UnitPrice };
+                    // 1:1 by construction — this PO line IS this allocation (Step-0 established, no guesswork).
+                    return new PoLine { AwardAllocationId = a.Id, ItemCode = a.RfqLineCode, Description = line.Description, Qty = a.Qty, Uom = line.Uom, UnitPrice = a.UnitPrice };
                 }).ToList(),
             };
             db.PurchaseOrders.Add(po);

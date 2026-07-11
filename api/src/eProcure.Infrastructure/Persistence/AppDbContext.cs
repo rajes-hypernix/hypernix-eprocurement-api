@@ -427,9 +427,16 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.Code).IsUnique();
             e.Property(x => x.Code).HasMaxLength(50).IsRequired();
             e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
-            e.OwnsMany(x => x.Lines, o => { o.ToTable("PoLines"); o.HasKey(l => l.Id); o.Property(l => l.Id).ValueGeneratedNever(); });            // stable grain key (Slice H T1)
+            e.OwnsMany(x => x.Lines, o =>
+            {
+                o.ToTable("PoLines");
+                o.HasKey(l => l.Id);                        // stable grain key (Slice H T1)
+                o.Property(l => l.Id).ValueGeneratedNever();
+                o.HasIndex(l => l.AwardAllocationId);       // AN-2: line → allocation lineage (owned target, reference-by-id, no FK)
+            });
             e.HasOne<Vendor>().WithMany().HasForeignKey(x => x.VendorId).OnDelete(DeleteBehavior.Restrict);       // DBA-1
             e.HasOne<Rfq>().WithMany().HasForeignKey(x => x.RfqId).OnDelete(DeleteBehavior.Restrict);             // DBA-1 (RfqId nullable)
+            e.HasOne<Award>().WithMany().HasForeignKey(x => x.AwardId).OnDelete(DeleteBehavior.Restrict);         // AN-2: PO → Award root (nullable; no nav)
         });
 
         b.Entity<Asn>(e =>
