@@ -7,11 +7,13 @@ import {
   toggleVendorStatus,
 } from '../../api/client'
 import { useSwec } from '../../api/swec'
-import { Icon } from '../Icon'
 import { Spinner } from '../ui'
 import { fmt, dateMY, initials } from '../../lib/format'
 import { StatusBadge, TypeBadge } from './badges'
 import { SwecPicker } from './SwecPicker'
+import { EntityPage } from '../../ui/archetypes/EntityPage'
+import { Stat, Kv } from '../../ui/display'
+import { Button } from '../../ui/Button'
 
 const TABS: [string, string][] = [
   ['overview', 'Overview'],
@@ -23,25 +25,6 @@ const TABS: [string, string][] = [
   ['performance', 'Performance'],
   ['audit', 'Audit'],
 ]
-
-function Stat({ label, value, sub }: { label: string; value: React.ReactNode; sub?: string }) {
-  return (
-    <div className="card stat">
-      <div className="lbl">{label}</div>
-      <div className="num">{value}</div>
-      {sub && <div className="sub">{sub}</div>}
-    </div>
-  )
-}
-
-function Kv({ k, v }: { k: string; v: React.ReactNode }) {
-  return (
-    <div className="vkv">
-      <span className="hint">{k}</span>
-      <span className="vv">{v}</span>
-    </div>
-  )
-}
 
 export function VendorDetail({ id, onBack }: { id: string; onBack: () => void }) {
   const qc = useQueryClient()
@@ -79,39 +62,8 @@ export function VendorDetail({ id, onBack }: { id: string; onBack: () => void })
   const naDays = (n: number | null | undefined) => (n == null ? 'not yet available' : `${n} days`)
   const cats = v.categories ?? []
 
-  return (
-    <>
-      <div className="crumb">
-        <a onClick={onBack}>Vendor Master</a> <Icon name="chev" size={13} />{' '}
-        <span>{v.registeredName}</span>
-      </div>
-      <div className="pagehead">
-        <div>
-          <h1 style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            {v.registeredName} <TypeBadge type={v.type} />
-          </h1>
-          <p style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {v.code} · {v.region} · {v.state} · <StatusBadge status={v.status} />
-          </p>
-        </div>
-        <div className="spacer" />
-        <button type="button" className="btn btn-out btn-sm" onClick={() => setPicking(true)}>
-          <Icon name="edit" size={14} /> Categories
-        </button>
-        <button type="button" className="btn btn-out btn-sm" onClick={() => toggle.mutate()}>
-          {v.status === 'Inactive' ? 'Reactivate' : 'Deactivate'}
-        </button>
-      </div>
-
-      <div className="vtabs">
-        {TABS.map(([k, l]) => (
-          <button key={k} type="button" className={`vtab${tab === k ? ' on' : ''}`} onClick={() => setTab(k)}>
-            {l}
-          </button>
-        ))}
-      </div>
-
-      {tab === 'overview' && (
+  const content: Record<string, React.ReactNode> = {
+    overview: (
         <>
           <div className="grid g4" style={{ marginBottom: 16 }}>
             <Stat label="On-time delivery" value={naPct(perf.otd)} sub="rolling 12 mo" />
@@ -146,16 +98,13 @@ export function VendorDetail({ id, onBack }: { id: string; onBack: () => void })
             </div>
           </div>
         </>
-      )}
-
-      {tab === 'categories' && (
+    ),
+    categories: (
         <div className="card">
           <div className="chead">
             <h3>SWEC Categories</h3>
             <div className="spacer" />
-            <button type="button" className="btn btn-out btn-sm" onClick={() => setPicking(true)}>
-              <Icon name="edit" size={14} /> Edit categories
-            </button>
+            <Button variant="outline" size="sm" icon="edit" onClick={() => setPicking(true)}>Edit categories</Button>
           </div>
           <div className="cbody">
             {cats.length === 0 && <p className="hint">No categories tagged yet.</p>}
@@ -167,9 +116,8 @@ export function VendorDetail({ id, onBack }: { id: string; onBack: () => void })
             ))}
           </div>
         </div>
-      )}
-
-      {tab === 'contacts' && (
+    ),
+    contacts: (
         <div className="card">
           <div className="chead">
             <h3>Contacts</h3>
@@ -194,9 +142,8 @@ export function VendorDetail({ id, onBack }: { id: string; onBack: () => void })
             ))}
           </div>
         </div>
-      )}
-
-      {tab === 'addresses' && (
+    ),
+    addresses: (
         <div className="card">
           <div className="chead">
             <h3>Addresses</h3>
@@ -221,9 +168,8 @@ export function VendorDetail({ id, onBack }: { id: string; onBack: () => void })
             ))}
           </div>
         </div>
-      )}
-
-      {tab === 'banking' && (
+    ),
+    banking: (
         <>
           <div className="card" style={{ marginBottom: 14 }}>
             <div className="chead"><h3>Transacting Currencies</h3></div>
@@ -266,9 +212,8 @@ export function VendorDetail({ id, onBack }: { id: string; onBack: () => void })
             </table>
           </div>
         </>
-      )}
-
-      {tab === 'compliance' && (
+    ),
+    compliance: (
         <div className="card">
           <div className="chead"><h3>Certifications &amp; Compliance</h3></div>
           <table>
@@ -292,9 +237,8 @@ export function VendorDetail({ id, onBack }: { id: string; onBack: () => void })
             </tbody>
           </table>
         </div>
-      )}
-
-      {tab === 'performance' && (
+    ),
+    performance: (
         <>
           <div className="grid g4" style={{ marginBottom: 16 }}>
             <Stat label="Compliance breaches" value={perf.breaches ?? 'not yet available'} sub="rolling 12 mo" />
@@ -324,9 +268,8 @@ export function VendorDetail({ id, onBack }: { id: string; onBack: () => void })
             </div>
           </div>
         </>
-      )}
-
-      {tab === 'audit' && (
+    ),
+    audit: (
         <div className="card">
           <div className="chead">
             <h3>Change History</h3>
@@ -350,8 +293,26 @@ export function VendorDetail({ id, onBack }: { id: string; onBack: () => void })
             ))}
           </div>
         </div>
-      )}
+    ),
+  }
 
+  return (
+    <EntityPage
+      crumbParent="Vendor Master"
+      onCrumbParent={onBack}
+      crumbCurrent={v.registeredName ?? ''}
+      title={<>{v.registeredName} <TypeBadge type={v.type} /></>}
+      subtitle={<>{v.code} · {v.region} · {v.state} · <StatusBadge status={v.status} /></>}
+      actions={
+        <>
+          <Button variant="outline" size="sm" icon="edit" onClick={() => setPicking(true)}>Categories</Button>
+          <Button variant="outline" size="sm" onClick={() => toggle.mutate()}>{v.status === 'Inactive' ? 'Reactivate' : 'Deactivate'}</Button>
+        </>
+      }
+      tabs={TABS.map(([k, l]) => ({ key: k, label: l, content: content[k] }))}
+      tab={tab}
+      onTabChange={setTab}
+    >
       {picking && (
         <SwecPicker
           initial={cats}
@@ -360,6 +321,6 @@ export function VendorDetail({ id, onBack }: { id: string; onBack: () => void })
           onSave={(codes) => saveCats.mutate(codes)}
         />
       )}
-    </>
+    </EntityPage>
   )
 }

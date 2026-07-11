@@ -6,16 +6,27 @@ import { useSwec } from '../../api/swec'
 import { Icon } from '../Icon'
 import { Notice, Spinner } from '../ui'
 import { SwecPicker } from './SwecPicker'
+import type { FieldSpec } from '../../ui/fieldSpec'
+import { TextField } from '../../ui/TextField'
+import { SelectField } from '../../ui/SelectField'
+import { DependentSelectField } from '../../ui/DependentSelectField'
+import { Button } from '../../ui/Button'
+import { Chip } from '../../ui/badges'
 
 /**
  * Manual New-Vendor entry (VENDOR-ONBOARDING-SPEC §1) — fully editable, straight to the master, no
  * approval. Conformed-dimension fields (country/state/city/currency/payment terms/bank/type) are
  * dropdowns backed by the seeded reference lookups (DATA-MODEL-ANALYTICS §4); the selected CODE is
  * stored and the label is shown. Free-form fields (name, reg. no., address, contact) stay text.
+ * D2: renders through the ui/ primitives — the local rival Field/Select died here.
  */
+
+const text = (key: string, label: string, over: Partial<FieldSpec> = {}): FieldSpec =>
+  ({ key, label, dataType: 'text', ...over })
+
 export function ManualVendorForm({ onSaved, onBack }: { onSaved: (id: string) => void; onBack: () => void }) {
   const qc = useQueryClient()
-  const { isPending, of, hasCities } = useLookups()
+  const { isPending } = useLookups()
   const { data: swec } = useSwec()
 
   const [f, setF] = useState<CreateManualVendor>({
@@ -45,15 +56,13 @@ export function ManualVendorForm({ onSaved, onBack }: { onSaved: (id: string) =>
   }
 
   if (isPending) return <Spinner label="Loading reference data…" />
-  const isMy = f.country === 'MY'
-  const showCityList = isMy && !!f.state && hasCities(f.state)
 
   // One action row, rendered at the top AND bottom of the form (kept in one place so they can't drift).
   const actions = (
     <div className="actionbar">
       <div className="spacer" style={{ flex: 1 }} />
-      <button type="button" className="btn btn-out" onClick={onBack}>Cancel</button>
-      <button type="button" className="btn btn-pri" disabled={save.isPending} onClick={submit}><Icon name="check" size={15} /> Add to master</button>
+      <Button variant="outline" onClick={onBack}>Cancel</Button>
+      <Button variant="primary" icon="check" busy={save.isPending} onClick={submit}>Add to master</Button>
     </div>
   )
 
@@ -68,7 +77,7 @@ export function ManualVendorForm({ onSaved, onBack }: { onSaved: (id: string) =>
 
       {err && <Notice tone="error" icon="x">{err}</Notice>}
       {warn && <Notice tone="warn" icon="flag">{warn} — you can still proceed by saving again, or go back and check.
-        <button type="button" className="btn btn-out btn-sm" style={{ marginLeft: 10 }} disabled={save.isPending} onClick={() => save.mutate()}>Save anyway</button>
+        <Button variant="outline" size="sm" busy={save.isPending} onClick={() => save.mutate()}>Save anyway</Button>
       </Notice>}
 
       {actions}
@@ -77,13 +86,16 @@ export function ManualVendorForm({ onSaved, onBack }: { onSaved: (id: string) =>
         <div className="chead"><h3>Company</h3></div>
         <div className="cbody">
           <div className="grid g2">
-            <Field label="Company name" required value={f.name} onChange={(v) => set('name', v)} />
-            <Field label="Registered name" value={f.registeredName ?? ''} placeholder="If different from company name" onChange={(v) => set('registeredName', v)} />
+            <TextField spec={text('name', 'Company name', { required: true })} value={f.name} onChange={(v) => set('name', v)} />
+            <TextField spec={text('registeredName', 'Registered name', { placeholder: 'If different from company name' })} value={f.registeredName ?? ''} onChange={(v) => set('registeredName', v)} />
           </div>
           <div className="grid g3">
-            <Field label="Reg. no. (SSM)" value={f.registrationNo} placeholder="1234567-A" onChange={(v) => set('registrationNo', v)} />
-            <Field label="Tax ID" value={f.taxId ?? ''} onChange={(v) => set('taxId', v)} />
-            <Select label="Registration type" value={f.type} onChange={(v) => set('type', v)} options={[{ code: 'Non-SWEC', label: 'Non-SWEC' }, { code: 'SWEC', label: 'PETRONAS SWEC' }]} />
+            <TextField spec={text('registrationNo', 'Reg. no. (SSM)', { placeholder: '1234567-A' })} value={f.registrationNo} onChange={(v) => set('registrationNo', v)} />
+            <TextField spec={text('taxId', 'Tax ID')} value={f.taxId ?? ''} onChange={(v) => set('taxId', v)} />
+            <SelectField
+              spec={{ key: 'type', label: 'Registration type', dataType: 'select', options: { kind: 'static', options: [{ code: 'Non-SWEC', label: 'Non-SWEC' }, { code: 'SWEC', label: 'PETRONAS SWEC' }] } }}
+              value={f.type ?? 'Non-SWEC'} onChange={(v) => set('type', v)}
+            />
           </div>
         </div>
       </div>
@@ -92,15 +104,20 @@ export function ManualVendorForm({ onSaved, onBack }: { onSaved: (id: string) =>
         <div className="chead"><h3>Location</h3></div>
         <div className="cbody">
           <div className="grid g3">
-            <Select label="Country" value={f.country ?? 'MY'} onChange={(v) => { set('country', v); set('state', ''); set('city', '') }} options={of('COUNTRY')} />
-            {isMy
-              ? <Select label="State / Region" value={f.state ?? ''} onChange={(v) => { set('state', v); set('city', '') }} options={of('STATE', 'MY')} placeholder="Select state" />
-              : <Field label="State / Region" value={f.state ?? ''} onChange={(v) => set('state', v)} />}
-            {showCityList
-              ? <Select label="City" value={f.city ?? ''} onChange={(v) => set('city', v)} options={of('CITY', f.state)} placeholder="Select city" />
-              : <Field label="City" value={f.city ?? ''} onChange={(v) => set('city', v)} />}
+            <SelectField
+              spec={{ key: 'country', label: 'Country', dataType: 'select', options: { kind: 'customList', listCode: 'COUNTRY' } }}
+              value={f.country ?? 'MY'} onChange={(v) => { set('country', v); set('state', ''); set('city', '') }}
+            />
+            <DependentSelectField
+              spec={{ key: 'state', label: 'State / Region', dataType: 'select', placeholder: 'Select state', options: { kind: 'customList', listCode: 'STATE', parentField: 'country' } }}
+              value={f.state ?? ''} onChange={(v) => { set('state', v); set('city', '') }} parentValue={f.country ?? ''}
+            />
+            <DependentSelectField
+              spec={{ key: 'city', label: 'City', dataType: 'select', placeholder: 'Select city', options: { kind: 'customList', listCode: 'CITY', parentField: 'state' } }}
+              value={f.city ?? ''} onChange={(v) => set('city', v)} parentValue={f.state ?? ''}
+            />
           </div>
-          <Field label="Address line" value={f.addressLine ?? ''} onChange={(v) => set('addressLine', v)} />
+          <TextField spec={text('addressLine', 'Address line')} value={f.addressLine ?? ''} onChange={(v) => set('addressLine', v)} />
         </div>
       </div>
 
@@ -108,13 +125,13 @@ export function ManualVendorForm({ onSaved, onBack }: { onSaved: (id: string) =>
         <div className="chead"><h3>Commercial &amp; banking</h3></div>
         <div className="cbody">
           <div className="grid g2">
-            <Select label="Currency" value={f.currency ?? 'MYR'} onChange={(v) => set('currency', v)} options={of('CURRENCY')} />
-            <Select label="Payment terms" value={f.paymentTerms ?? 'NET30'} onChange={(v) => set('paymentTerms', v)} options={of('PAYMENT_TERMS')} />
+            <SelectField spec={{ key: 'currency', label: 'Currency', dataType: 'select', options: { kind: 'customList', listCode: 'CURRENCY' } }} value={f.currency ?? 'MYR'} onChange={(v) => set('currency', v)} />
+            <SelectField spec={{ key: 'paymentTerms', label: 'Payment terms', dataType: 'select', options: { kind: 'customList', listCode: 'PAYMENT_TERMS' } }} value={f.paymentTerms ?? 'NET30'} onChange={(v) => set('paymentTerms', v)} />
           </div>
           <div className="grid g3">
-            <Select label="Bank" value={f.bank ?? ''} onChange={(v) => set('bank', v)} options={of('BANK')} placeholder="Select bank" />
-            <Field label="Account no." value={f.accountNo ?? ''} onChange={(v) => set('accountNo', v)} />
-            <Field label="SWIFT" value={f.swift ?? ''} onChange={(v) => set('swift', v)} />
+            <SelectField spec={{ key: 'bank', label: 'Bank', dataType: 'select', placeholder: 'Select bank', options: { kind: 'customList', listCode: 'BANK' } }} value={f.bank ?? ''} onChange={(v) => set('bank', v)} />
+            <TextField spec={text('accountNo', 'Account no.')} value={f.accountNo ?? ''} onChange={(v) => set('accountNo', v)} />
+            <TextField spec={text('swift', 'SWIFT')} value={f.swift ?? ''} onChange={(v) => set('swift', v)} />
           </div>
         </div>
       </div>
@@ -123,16 +140,16 @@ export function ManualVendorForm({ onSaved, onBack }: { onSaved: (id: string) =>
         <div className="chead"><h3>Contact &amp; categories</h3></div>
         <div className="cbody">
           <div className="grid g2">
-            <Field label="Contact name" value={f.contactName ?? ''} onChange={(v) => set('contactName', v)} />
-            <Field label="Contact email" value={f.contactEmail ?? ''} onChange={(v) => set('contactEmail', v)} />
+            <TextField spec={text('contactName', 'Contact name')} value={f.contactName ?? ''} onChange={(v) => set('contactName', v)} />
+            <TextField spec={text('contactEmail', 'Contact email', { dataType: 'email' })} value={f.contactEmail ?? ''} onChange={(v) => set('contactEmail', v)} />
           </div>
           <div className="field" style={{ marginBottom: 0 }}>
             <label>SWEC categories</label>
             <div>
               {(f.categories ?? []).length === 0
                 ? <span className="hint">None selected. </span>
-                : (f.categories ?? []).map((c) => <span key={c} className="swchip" title={swec?.path(c)} style={{ marginRight: 6 }}>{swec?.label(c) ?? c}</span>)}
-              <button type="button" className="btn btn-out btn-sm" style={{ marginLeft: 6 }} onClick={() => setPicking(true)}><Icon name="edit" size={13} /> Select categories</button>
+                : (f.categories ?? []).map((c) => <Chip key={c} title={swec?.path(c)}>{swec?.label(c) ?? c}</Chip>)}
+              <Button variant="outline" size="sm" icon="edit" onClick={() => setPicking(true)}>Select categories</Button>
             </div>
           </div>
         </div>
@@ -145,25 +162,5 @@ export function ManualVendorForm({ onSaved, onBack }: { onSaved: (id: string) =>
           onCancel={() => setPicking(false)} onSave={(codes) => { set('categories', codes); setPicking(false) }} />
       )}
     </>
-  )
-}
-
-function Field({ label, value, onChange, placeholder, required }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; required?: boolean }) {
-  return (
-    <div className="field">
-      <label>{label} {required && <span className="req">*</span>}</label>
-      <input value={value} placeholder={placeholder} aria-label={label} onChange={(e) => onChange(e.target.value)} />
-    </div>
-  )
-}
-function Select({ label, value, onChange, options, placeholder }: { label: string; value: string; onChange: (v: string) => void; options: { code: string; label: string }[]; placeholder?: string }) {
-  return (
-    <div className="field">
-      <label>{label}</label>
-      <select value={value} aria-label={label} onChange={(e) => onChange(e.target.value)}>
-        {placeholder && <option value="">{placeholder}</option>}
-        {options.map((o) => <option key={o.code} value={o.code}>{o.label}</option>)}
-      </select>
-    </div>
   )
 }

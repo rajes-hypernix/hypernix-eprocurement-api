@@ -21,7 +21,6 @@
   "src/components/sourcing/RfqGovernance.tsx": 9,
   "src/components/sourcing/RfqList.tsx": 2,
   "src/components/vendor/BidForm.tsx": 16,
-  "src/components/vendors/ManualVendorForm.tsx": 2,
   "src/components/vendors/SwecPicker.tsx": 2,
   "src/components/vendors/VendorMaster.tsx": 3
 }
