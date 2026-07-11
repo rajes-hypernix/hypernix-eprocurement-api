@@ -1,3 +1,5 @@
+using eProcure.Api.Auth;
+using eProcure.Application.Authorization;
 using eProcure.Application.Search;
 using Microsoft.AspNetCore.Mvc;
 
@@ -13,6 +15,7 @@ namespace eProcure.Api.Controllers;
 public sealed class SearchController(ISearchService search) : ControllerBase
 {
     [HttpGet]
+    [Action(ApiActions.Search)]
     public async Task<ActionResult<IReadOnlyList<SearchHit>>> Search([FromQuery] string? q, CancellationToken ct) =>
         Ok(await search.SearchAsync(q ?? "", ct));
 }

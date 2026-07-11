@@ -1,5 +1,7 @@
+using eProcure.Api.Auth;
 using eProcure.Application;
 using eProcure.Application.Audit;
+using eProcure.Application.Authorization;
 using eProcure.Application.Suppliers;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,11 +12,13 @@ namespace eProcure.Api.Controllers;
 public sealed class VendorsController(IVendorService vendors, IAuditQuery audit) : ControllerBase
 {
     [HttpGet]
+    [Action(ApiActions.ViewVendors)]
     public async Task<ActionResult<IReadOnlyList<VendorListItem>>> List(
         [FromQuery] string? q, [FromQuery] string? type, [FromQuery] string? region, CancellationToken ct) =>
         Ok(await vendors.ListAsync(new VendorFilter(q, type, region), ct));
 
     [HttpGet("{id:guid}")]
+    [Action(ApiActions.ViewVendors)]
     public async Task<ActionResult<VendorDetail>> Get(Guid id, CancellationToken ct)
     {
         var v = await vendors.GetAsync(id, ct);
@@ -22,6 +26,7 @@ public sealed class VendorsController(IVendorService vendors, IAuditQuery audit)
     }
 
     [HttpPost]
+    [Action(ApiActions.ManageVendors)]
     public async Task<ActionResult<VendorDetail>> Create([FromBody] CreateVendorRequest req, CancellationToken ct)
     {
         var v = await vendors.CreateAsync(req, ct);
@@ -30,22 +35,27 @@ public sealed class VendorsController(IVendorService vendors, IAuditQuery audit)
 
     /// <summary>Manual New-Vendor entry — straight to the master, no onboarding approval (C1/C2).</summary>
     [HttpPost("manual")]
+    [Action(ApiActions.ManageVendors)]
     public async Task<ActionResult<ManualVendorResult>> CreateManual([FromBody] CreateManualVendorRequest req, CancellationToken ct) =>
         Ok(await vendors.CreateManualAsync(req, ct));
 
     [HttpPut("{id:guid}")]
+    [Action(ApiActions.ManageVendors)]
     public async Task<ActionResult<VendorDetail>> Update(Guid id, [FromBody] UpdateVendorRequest req, CancellationToken ct) =>
         Ok(await vendors.UpdateAsync(id, req, ct));
 
     [HttpPut("{id:guid}/categories")]
+    [Action(ApiActions.ManageVendors)]
     public async Task<ActionResult<VendorDetail>> SetCategories(Guid id, [FromBody] SetCategoriesRequest req, CancellationToken ct) =>
         Ok(await vendors.SetCategoriesAsync(id, req, ct));
 
     [HttpPost("{id:guid}/toggle-status")]
+    [Action(ApiActions.ToggleVendorStatus)]
     public async Task<ActionResult<VendorDetail>> ToggleStatus(Guid id, CancellationToken ct) =>
         Ok(await vendors.ToggleStatusAsync(id, ct));
 
     [HttpGet("{id:guid}/audit")]
+    [Action(ApiActions.ViewAuditTrail)]
     public async Task<ActionResult<IReadOnlyList<AuditEntryDto>>> Audit(Guid id, CancellationToken ct)
     {
         var v = await vendors.GetAsync(id, ct);

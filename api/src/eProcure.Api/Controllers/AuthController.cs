@@ -1,4 +1,5 @@
 using eProcure.Api.Auth;
+using eProcure.Application.Authorization;
 using eProcure.Application.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -37,6 +38,7 @@ public sealed class AuthController(
     /// from it, so masking and access scoping cannot be defeated client-side.
     /// </summary>
     [HttpGet("personas")]
+    [Action(ApiActions.ViewPersonas)]
     public async Task<ActionResult<IEnumerable<PersonaDto>>> Personas(CancellationToken ct)
     {
         var internals = users.Users.Select(u => new PersonaDto(u.Id, u.Name, "internal", u.Roles, null, null));

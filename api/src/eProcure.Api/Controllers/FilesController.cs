@@ -1,4 +1,6 @@
+using eProcure.Api.Auth;
 using eProcure.Application.Abstractions;
+using eProcure.Application.Authorization;
 using eProcure.Application.Files;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Net.Http.Headers;
@@ -12,6 +14,7 @@ namespace eProcure.Api.Controllers;
 public sealed class FilesController(IFileStore files, IFileAccessPolicy access, IAuditLog audit, ICurrentUser user) : ControllerBase
 {
     [HttpPost]
+    [Action(ApiActions.UploadFile)]
     [RequestSizeLimit(20_000_000)]   // 20 MB cap for demo uploads
     public async Task<ActionResult<StoredFileInfo>> Upload(IFormFile file, CancellationToken ct)
     {
@@ -25,6 +28,7 @@ public sealed class FilesController(IFileStore files, IFileAccessPolicy access, 
     }
 
     [HttpGet("{id:guid}")]
+    [Action(ApiActions.DownloadFile)]
     public async Task<IActionResult> Download(Guid id, CancellationToken ct)
     {
         // Resource scoping: a vendor may download only their own files; internal reviewers, any

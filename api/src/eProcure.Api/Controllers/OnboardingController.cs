@@ -1,3 +1,5 @@
+using eProcure.Api.Auth;
+using eProcure.Application.Authorization;
 using eProcure.Application.Onboarding;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -14,22 +16,27 @@ namespace eProcure.Api.Controllers;
 public sealed class OnboardingController(IOnboardingService onboarding) : ControllerBase
 {
     [HttpGet("templates")]
+    [Action(ApiActions.ViewOnboarding)]
     public async Task<ActionResult<IReadOnlyList<OnboardingTemplateDto>>> Templates(CancellationToken ct) =>
         Ok(await onboarding.ListOnboardingTemplatesAsync(ct));
 
     [HttpGet("invitations")]
+    [Action(ApiActions.ViewOnboarding)]
     public async Task<ActionResult<IReadOnlyList<OnboardingInvitationDto>>> Invitations(CancellationToken ct) =>
         Ok(await onboarding.ListInvitationsAsync(ct));
 
     [HttpPost("invitations")]
+    [Action(ApiActions.InviteOnboarding)]
     public async Task<ActionResult<OnboardingInvitationDto>> Create(SendOnboardingInvitationRequest req, CancellationToken ct) =>
         Ok(await onboarding.CreateInvitationAsync(req, ct));
 
     [HttpPost("invitations/{id:guid}/resend")]
+    [Action(ApiActions.InviteOnboarding)]
     public async Task<ActionResult<OnboardingInvitationDto>> Resend(Guid id, CancellationToken ct) =>
         Ok(await onboarding.ResendInvitationAsync(id, ct));
 
     [HttpPost("invitations/{id:guid}/revoke")]
+    [Action(ApiActions.RevokeOnboardingInvitation)]
     public async Task<IActionResult> Revoke(Guid id, CancellationToken ct)
     {
         await onboarding.RevokeInvitationAsync(id, ct);
@@ -81,26 +88,32 @@ public sealed class OnboardingController(IOnboardingService onboarding) : Contro
     // ---- Slice D: buyer review + clarification + approve/reject/promote ----
 
     [HttpGet("applications")]
+    [Action(ApiActions.ViewOnboarding)]
     public async Task<ActionResult<IReadOnlyList<OnboardingQueueItemDto>>> Applications(CancellationToken ct) =>
         Ok(await onboarding.ListApplicationsAsync(ct));
 
     [HttpGet("applications/{id:guid}")]
+    [Action(ApiActions.ViewOnboarding)]
     public async Task<ActionResult<OnboardingReviewDto>> Application(Guid id, CancellationToken ct) =>
         Ok(await onboarding.GetApplicationAsync(id, ct));
 
     [HttpPost("applications/{id:guid}/start-review")]
+    [Action(ApiActions.ReviewOnboardingApplication)]
     public async Task<ActionResult<OnboardingReviewDto>> StartReview(Guid id, CancellationToken ct) =>
         Ok(await onboarding.StartReviewAsync(id, ct));
 
     [HttpPost("applications/{id:guid}/clarify")]
+    [Action(ApiActions.ReviewOnboardingApplication)]
     public async Task<ActionResult<OnboardingReviewDto>> Clarify(Guid id, RequestClarificationRequest req, CancellationToken ct) =>
         Ok(await onboarding.RequestClarificationAsync(id, req, ct));
 
     [HttpPost("applications/{id:guid}/approve")]
+    [Action(ApiActions.ReviewOnboardingApplication)]
     public async Task<ActionResult<OnboardingApproveResultDto>> Approve(Guid id, CancellationToken ct) =>
         Ok(await onboarding.ApproveAsync(id, ct));
 
     [HttpPost("applications/{id:guid}/reject")]
+    [Action(ApiActions.ReviewOnboardingApplication)]
     public async Task<ActionResult<OnboardingReviewDto>> Reject(Guid id, RejectOnboardingRequest req, CancellationToken ct) =>
         Ok(await onboarding.RejectAsync(id, req.Reason, ct));
 

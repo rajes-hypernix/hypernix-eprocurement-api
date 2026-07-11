@@ -1,3 +1,5 @@
+using eProcure.Api.Auth;
+using eProcure.Application.Authorization;
 using eProcure.Application.Sourcing;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,6 +14,7 @@ namespace eProcure.Api.Controllers;
 public sealed class MyInvitationsController(IBidService bids) : ControllerBase
 {
     [HttpGet]
+    [Action(ApiActions.ViewMyInvitations)]
     public async Task<ActionResult<IReadOnlyList<InvitationDto>>> List(CancellationToken ct) =>
         Ok(await bids.ListMyInvitationsAsync(ct));
 }
@@ -21,6 +24,7 @@ public sealed class MyInvitationsController(IBidService bids) : ControllerBase
 public sealed class BidsController(IBidService bids) : ControllerBase
 {
     [HttpGet]
+    [Action(ApiActions.SubmitBid)]
     public async Task<ActionResult<BidDto>> Get(Guid rfqId, CancellationToken ct)
     {
         var bid = await bids.GetMyBidAsync(rfqId, ct);
@@ -28,10 +32,12 @@ public sealed class BidsController(IBidService bids) : ControllerBase
     }
 
     [HttpPut]
+    [Action(ApiActions.SubmitBid)]
     public async Task<ActionResult<BidDto>> SaveDraft(Guid rfqId, [FromBody] SaveBidRequest req, CancellationToken ct) =>
         Ok(await bids.SaveDraftAsync(rfqId, req, ct));
 
     [HttpPost("submit")]
+    [Action(ApiActions.SubmitBid)]
     public async Task<ActionResult<BidDto>> Submit(Guid rfqId, [FromBody] SaveBidRequest req, CancellationToken ct) =>
         Ok(await bids.SubmitAsync(rfqId, req, ct));
 }

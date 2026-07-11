@@ -1,4 +1,6 @@
+using eProcure.Api.Auth;
 using eProcure.Application.Audit;
+using eProcure.Application.Authorization;
 using eProcure.Application.Procurement;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,10 +11,12 @@ namespace eProcure.Api.Controllers;
 public sealed class PurchaseOrdersController(IPoService pos, IAuditQuery audit) : ControllerBase
 {
     [HttpGet]
+    [Action(ApiActions.ViewPos)]
     public async Task<ActionResult<IReadOnlyList<PoListItem>>> List(CancellationToken ct) =>
         Ok(await pos.ListAsync(ct));
 
     [HttpGet("{id:guid}")]
+    [Action(ApiActions.ViewPos)]
     public async Task<ActionResult<PoDetail>> Get(Guid id, CancellationToken ct)
     {
         var po = await pos.GetAsync(id, ct);
@@ -20,6 +24,7 @@ public sealed class PurchaseOrdersController(IPoService pos, IAuditQuery audit) 
     }
 
     [HttpGet("{id:guid}/audit")]
+    [Action(ApiActions.ViewAuditTrail)]
     public async Task<ActionResult<IReadOnlyList<AuditEntryDto>>> Audit(Guid id, CancellationToken ct)
     {
         var po = await pos.GetAsync(id, ct);
@@ -27,10 +32,12 @@ public sealed class PurchaseOrdersController(IPoService pos, IAuditQuery audit) 
     }
 
     [HttpPost("{id:guid}/issue")]
+    [Action(ApiActions.IssuePo)]
     public async Task<ActionResult<PoDetail>> Issue(Guid id, CancellationToken ct) =>
         Ok(await pos.IssueAsync(id, ct));
 
     [HttpPost("{id:guid}/acknowledge")]
+    [Action(ApiActions.AcknowledgePo)]
     public async Task<ActionResult<PoDetail>> Acknowledge(Guid id, CancellationToken ct) =>
         Ok(await pos.AcknowledgeAsync(id, ct));
 }

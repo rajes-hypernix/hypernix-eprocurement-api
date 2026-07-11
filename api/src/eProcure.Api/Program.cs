@@ -82,6 +82,12 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy("Admin", p => p.RequireRole("Admin"))
     .AddPolicy("Vendor", p => p.RequireRole("Vendor"));
 
+// Role-matrix authorization (Slice RM): "action:*" policies resolve from the declarative
+// ActionCatalog (docs/AUTHORIZATION-MATRIX.md); authenticated-but-denied renders the existing
+// 403 problem-details shape. The fallback deny-anonymous policy above is untouched.
+builder.Services.AddSingleton<IAuthorizationPolicyProvider, ActionPolicyProvider>();
+builder.Services.AddSingleton<IAuthorizationMiddlewareResultHandler, ForbiddenProblemHandler>();
+
 // --- MVC + Swagger ---
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

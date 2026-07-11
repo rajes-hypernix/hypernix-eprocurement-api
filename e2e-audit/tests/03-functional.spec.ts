@@ -33,7 +33,9 @@ test('Manual vendor form blocks submit without company name (validation)', async
 
 test('Admin Custom Lists: add a value round-trips', async ({ page }) => {
   const w = watch(page)
-  await goAs(page, BUYER, 'lists')
+  // Custom-list writes are Admin-only (AUTHORIZATION-MATRIX A46); this ran as the buyer
+  // persona before the role matrix was enforced — a crawl bug, not a role widening.
+  await goAs(page, 'u_admin', 'lists')
   await page.waitForTimeout(1000)
   // select PAYMENT_TERMS list
   const payBtn = page.getByRole('button', { name: /Payment terms/i }).first()
