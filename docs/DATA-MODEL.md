@@ -1,78 +1,195 @@
-# DATA-MODEL.md
+# DATA-MODEL.md — the analytics contract
 
-All entities have: `Guid Id` (PK), `string Code` (human-readable, sequence-generated
-where applicable), `DateTime CreatedUtc`, `DateTime UpdatedUtc`. Money is `decimal`.
-Statuses are C# enums. Relationships below are the minimum; add fields as slices need.
+**This document is a contract, not internal notes.** As of Slice H the data model is an
+analytics substrate, and three readers depend on what this file says being true:
 
-## Identity & supplier
+1. **The analytics / reporting layer** (D3 Saved Views, D4 metrics) — validates FieldKeys
+   and builds aggregations against the grain, keys and dimension/fact split declared here.
+2. **The NetSuite integration slices** (S3–S6) — map portal entities to NetSuite records
+   along the lineage chain below; the named FKs are the join contract.
+3. **The partner's engineering team** — inherits this as the description of record.
 
-**User** (internal) — `Name`, `Email`, `Roles` (Buyer/TechEvaluator/CommEvaluator/Admin
-flags), `IsActive`. *Internal users cannot be vendors (SoD).*
+If you change a table's grain, key, an FK name, or a column's nullability, update this
+file in the same commit. A report or integration built on a stale contract ships wrong
+numbers silently.
 
-**Vendor** — `Name`, `Status` (Active/Suspended/Pending), `Categories` (SWEC codes),
-`RiskClass`, profile/banking/cert fields. A **VendorUser** (separate principal) logs
-into the supplier portal and is linked to exactly one Vendor.
+## Conventions
 
-**AuditEntry** (append-only) — `EntityType`, `EntityId`, `EntityCode`, `Action`,
-`ActorId`, `ActorName`, `ActorRole`, `BeforeJson`, `AfterJson`, `Utc`. Never updated or
-deleted.
+- Every top-level entity has `Guid Id` (server-generated PK) and a human-readable `Code`
+  from a gap-free server sequence. Money is `decimal` → Postgres `numeric(18,2)`.
+- **Owned line collections carry their own stable `Guid Id`** (Slice H T1) — they are
+  fact grain, not ordinal children. Their key is client-assigned (`ValueGeneratedNever`);
+  see `docs/CONVENTIONS.md` → "Owned collection keys and ValueGeneratedNever".
+- **Dates**: a business *date* is `DateOnly` (Postgres `date`); an *instant* is `DateTime`
+  kind=UTC (`timestamptz`). Display localises (Malaysia = Asia/Kuching, UTC+8, no DST).
+- Nine aggregate roots carry an `xmin` optimistic-concurrency token (Slice G T2):
+  Rfq, PurchaseRequisition, Award, PurchaseOrder, Invoice, Asn, Grn, Vendor,
+  VendorOnboardingApplication. A stale write → HTTP 409.
+- "Reference-by-id, no nav" = a real FK column across an aggregate boundary with no EF
+  navigation property, so aggregate boundaries stay clean.
 
-## Sourcing
+---
 
-**PurchaseRequisition (PR)** — `Status`, `CostCentre`, `Project`, `MaintenanceRef`,
-`RequiredDate`, lines: **PrLine** (`ItemCode`, `Description`, `Qty`, `Uom`,
-`EstUnitPrice`).
+## The lineage chain (canonical — drawn once)
 
-**Rfq** — `Title`, `Envelope` (Single/Dual), `Status` (Draft/Open/Closed/Evaluation/
-Awarded), `ClosesUtc` (the real deadline), `InvitedVendorIds`, `TechnicalEvaluatorIds`,
-`CommercialEvaluatorId`, `TechFinalized` (bool), `CommercialOpened` (bool). Children:
-- **RfqLine** (`ItemCode`, `Description`, `Qty`, `Uom`) — sourced from PR lines.
-- **RfqForm** — the question form: **FormItem** (`Kind`: Question/Terms/Instruction;
-  `Type`: short_text/long_text/number/money/percent/list/multi/yesno/date/attachment/
-  table/group; `Group`: Technical/Commercial; `Section`; `Label`; `Required`; `Config`
-  JSON for options/columns/rows/fields). Reusable forms live in a **FormLibrary**.
-
-**Bid** — one per (Rfq, Vendor). `Submitted` (bool), `SubmittedUtc`, `SavedDraft`.
-Children: **BidLine** (`RfqLineCode`, `Price`, `Qty`, `Partial`, `AltItem`),
-**BidAnswer** (`FormItemId`, value), attachments.
-
-**TechnicalScore** — (`RfqId`, `VendorId`, `EvaluatorId`, `Criterion`, `Score` 0–100).
-Derived: per-evaluator weighted score, committee average, pass/fail vs `TechThreshold`.
-
-**Award** — (`RfqId`), children **AwardAllocation** (`RfqLineCode`, `VendorId`, `Qty`,
-`UnitPrice`). `Status` (Draft/PendingApproval/Approved). An **Approval** record
-(approver, decision, utc) gates it (DoA).
-
-## Procure-to-Pay
-
-**PurchaseOrder (PO)** — `VendorId`, `RfqId`, `PrRefs`, `Status` (Draft/Issued/
-Acknowledged/PartiallyReceived/Received/Matched/Closed/Discrepancy), `NsId`,
-`Incoterm`, `Currency`. Lines: **PoLine** (`ItemCode`, `Qty`, `Uom`, `UnitPrice`,
-`ReceivedQty`, `InvoicedQty`).
-
-**Asn** — `PoId`, `VendorId`, `Carrier`, `TrackingNo`, `ShippedDate`, `ExpectedDate`,
-`Status` (Draft/InTransit/Received). Lines: **AsnLine** (`PoLineCode`, `ShippedQty`,
-`LotNo`).
-
-**Grn** (Goods Receipt) — `AsnId`, `PoId`. Lines: **GrnLine** (`PoLineCode`,
-`ExpectedQty`, `ReceivedQty`, `Condition`).
-
-**Invoice** — `PoId`, `VendorId`, `SupplierRef`, `Status` (Draft/Submitted/Approved/
-Exception/Paid), `MatchStatus`, `Subtotal`, `Sst`, `Wht`, `Total`, `NsId`. Lines:
-**InvoiceLine** (`PoLineCode`, `Qty`, `UnitPrice`). Match computed vs PO + GRN.
-
-**PaymentVoucher** — `VendorId`, `Status` (Draft/PendingApproval/Paid), invoice refs,
-`Gross`, deductions (`Retention`, `Ld`, `Contra`), `Net`, `NsId`, an **Approval** gate.
-
-**Statement / SOA** — derived (not stored): per-vendor running ledger from POs, GRNs,
-invoices, payments; aging buckets; GRNI accrual. Supplier reconciliation upload is a
-transient compare.
-
-## Key relationships
+The procurement spine, each hop with its FK column and nullability. This is the join path
+for the three-way match (Sprint 5) and the SuiteAnalytics story.
 
 ```
-PR.lines ──sourced──> RFQ.lines ──awarded──> Award.allocations ──generates──> PO(one per vendor)
-PO ──> ASN(s) ──> GRN(s) ;  PO + GRN + Invoice = 3-way match ;  Invoice ──> PaymentVoucher
-Vendor ──> Bid, PO, ASN, Invoice, Voucher (vendor sees ONLY its own)
-Every state change ──> AuditEntry
+PurchaseRequisition
+  └─ PrLine (owned; stable Id since T1)
+        ▲ PrLineSourcing.PrLineId  ──FK→ PrLines.Id            (T8; DEFERRABLE; NOT NULL)
+PrLineSourcing  ──FK→ Rfq.Id  (RfqId, NOT NULL)                 ── the PR→RFQ demand link
+Rfq
+  └─ RfqLine (owned; stable Id)
+Bid            ──FK→ Rfq.Id (RfqId), Vendor.Id (VendorId)       (one per (Rfq,Vendor))
+Award          ──FK→ Rfq.Id (RfqId, unique: one award/RFQ)
+  └─ AwardAllocation (owned; stable Id)  ──FK→ Vendor.Id (VendorId)
+PurchaseOrder  ──FK→ Award.Id (AwardId, NULLABLE), Vendor.Id, Rfq.Id (RfqId NULLABLE)
+  └─ PoLine (owned; stable Id).AwardAllocationId → AwardAllocation.Id   (T2; ref-by-id, NULLABLE)
+Asn            ──FK→ PurchaseOrder.Id (PoId), Vendor.Id
+  └─ AsnLine (owned; stable Id)
+Grn            ──FK→ Asn.Id (AsnId, NOT NULL), PurchaseOrder.Id (PoId)
+  └─ GrnLine (owned; stable Id)
+Invoice        ──FK→ PurchaseOrder.Id (PoId), Grn.Id (GrnId NULLABLE), Vendor.Id
+  └─ InvoiceLine (owned; stable Id)
 ```
+
+**Legitimately-null hops (do not treat null as a data defect):**
+
+- `PurchaseOrder.AwardId` — null for a PO not generated from an award (direct/legacy).
+  `AwardCode` string retained for display (removal backlogged).
+- `PoLine.AwardAllocationId` — null where the PO line predates T2 or wasn't cut 1:1 from
+  an allocation.
+- `PurchaseOrder.RfqId` — null for a non-RFQ PO.
+- `Invoice.GrnId` — null when the invoice's PO has **zero or more than one** GRN
+  (ambiguous receipt; T3 never guesses which).
+- `RfqLine` has no FK back to a PR line — RFQ lines can be created directly, not only
+  sourced; the PR→RFQ link is `PrLineSourcing`, not every RfqLine.
+
+---
+
+## Per-table reference — grain · key · dimensions · facts
+
+Grain = what one row is. **Dim** = descriptive/grouping columns. **Fact** = measures.
+
+### Suppliers
+
+**Vendor** — grain: one vendor. Key: `Id` / `Code`.
+- Dim: `Type` (SWEC/Non-SWEC), `Status`, `Region`, `State`, `City`, **`Country` (ISO-2
+  code, Slice H T6 — conformed; label resolved for display)**, `Categories`, `LlrcTier`.
+- Fact: `Rating`, `CreditLimit`. **Performance is NOT stored** — see VendorPerformanceView.
+- `VendorAddress` (owned): `Country` also ISO-2 (T6).
+- `VendorCertification` (owned): `ValidTo` is **free-text string, NOT a date** — bare
+  years/placeholders ("2027", "—"). Excluded from T4 typing; not a reliable date
+  dimension until remodelled (backlogged with the capture-form fix).
+
+**VendorPerformanceView** (derived, Slice H T7 — keyless SQL view over facts, never stored):
+- Grain: one vendor. Read-only.
+- `Otd` — **always NULL** this slice: no promised-delivery date exists to measure against.
+- `Breaches` — **always NULL**: a short receipt is not a modelled compliance breach.
+- `LeadDays` — actual avg **days** `PurchaseOrder.IssuedUtc → Grn.ReceivedDate`; NULL with
+  no qualifying pairs. Not the vendor's self-reported `Bid.Lead`.
+- `Quality` / `Response` / `WinRate` — %, NULL when the denominator (receipts / invitations)
+  is zero.
+- `SpendYtd` — net (pre-tax) value of Paid invoices this calendar year. `Pos` — count of
+  non-Draft POs.
+
+### Sourcing
+
+**PurchaseRequisition** — grain: one requisition. Key: `Id` / `Code`.
+- Dim: `Department`/`DepartmentCode`, `Location`/`LocationCode`, `Category`/`CategoryCode`,
+  `Job`/`JobCode` (free-text label + controlled code; the code columns have **no backing
+  Custom List yet** — candidates for conformance, backlogged), `CostCentre`, `Project`.
+- Date: `RaisedOn`, `RequiredOn` (`DateOnly`, T4 — the display strings were retired).
+- Fact/instant: `SubmittedUtc` (T5).
+- `PrLine` (owned): dim `ItemCode`; fact `Qty`, `EstUnitPrice`; `LifecycleStatus`.
+
+**PrLineSourcing** — grain: one PR-line→RFQ sourcing link (append-only, never deleted).
+Key: `Id`. FKs: `PrLineId`→PrLine (T8), `RfqId`→Rfq. `LinkStatus`, `QtySourced`,
+`CreatedUtc`/`ClosedUtc`.
+
+**Rfq** — grain: one RFQ. Key: `Id` / `Code`.
+- Dim: `Envelope`, `Status`, `OwnerUserId`.
+- Planned instant: `ClosesUtc` (planned deadline), `OriginalClosesUtc` (baseline at
+  release; extension analytics). **Actual instants (T5):** `ReleasedUtc`, `ClosedUtc`
+  (early close — never overwrites the planned `ClosesUtc`), `AwardedUtc`.
+- `RfqLine`, `RfqInvitation` (`InvitedUtc`/`RespondedUtc`, `Status`), `RfqEvent`
+  (append-only typed lifecycle log: `EventType`, `OccurredUtc`).
+
+**Bid** — grain: one (Rfq,Vendor). `Submitted`, `SubmittedUtc`. Owned: `BidLine`,
+`BidAnswer`, `BidAttachment` (all stable Id).
+
+**Award** — grain: one award (unique per RFQ). Instant: `ApprovedUtc`. `TotalValue` is
+**derived** from allocations, not stored (DBA-10). Owned: `AwardAllocation`.
+
+### Procure-to-Pay
+
+**PurchaseOrder** — grain: one PO. Dim: `Status`, `Incoterm`, `Currency`. Lineage:
+`AwardId` (T2), `AwardCode` (display). Instants (T5): `IssuedUtc`, `AcknowledgedUtc`.
+Owned: `PoLine` (`AwardAllocationId` lineage; `ReceivedQty`/`InvoicedQty` facts).
+
+**Asn** — grain: one shipment. Dates (T4): `ShippedDate`, `ExpectedDate` (`DateOnly`).
+Instant (T5): `ReceivedUtc`. Owned: `AsnLine`.
+
+**Grn** — grain: one goods receipt. Date (T4): `ReceivedDate` (`DateOnly`, Malaysia
+business day). Owned: `GrnLine` (`Condition` Good/Short — the Quality/Breaches source).
+
+**Invoice** — grain: one invoice. Date (T4): `Date` (`DateOnly`). Instants (T5):
+`SubmittedUtc`, `ApprovedUtc`. Lineage: `GrnId` (T3). `Total`/`Subtotal`/`Sst`/`Wht`
+are **derived**, not stored. Owned: `InvoiceLine`.
+
+**PaymentVoucher** — grain: one voucher (NetSuite-side, placeholder this build). Not yet
+a fact source.
+
+**StoredFile** — typed ownership (Slice G T5): `OwnerKind` (Bid/OnboardingDocument/
+OnboardingAnswer/Internal), `OwnerVendorId`, `OwnerEntityId` — download scoping reads
+the column, not inference.
+
+**AuditEntry** (append-only) — `EntityType`, `EntityId` (the Code), `Action`, typed
+`FromState`/`ToState` (via `WriteTransitionAsync`) or generic `Before`/`After`,
+`UtcTimestamp`. Never updated or deleted.
+
+**Statement / SOA** — derived (not stored): per-vendor running ledger over POs, GRNs and
+invoices, aging buckets, GRNI accrual.
+
+---
+
+## Known-null ranges & trust boundaries (read before writing a report)
+
+The substrate is **trustworthy going forward, honest about the past.** A report that
+ignores this section will silently drop or misstate history.
+
+**Transition timestamps (T5)** — stamped inside the domain methods from the Slice H
+deployment (2026-07) onward. Backfilled onto historical rows ONLY from clean sources:
+- Populated on history: `Rfq.ReleasedUtc` / `ClosedUtc` (from `RfqEvent`),
+  `PurchaseRequisition.SubmittedUtc` (from the typed `AuditEntry`), `Award.ApprovedUtc`
+  (pre-existing).
+- **NULL on pre-slice history** (no clean source; not fabricated): `Rfq.AwardedUtc`,
+  `PurchaseOrder.IssuedUtc` / `AcknowledgedUtc`, `Invoice.SubmittedUtc` / `ApprovedUtc`,
+  `Asn.ReceivedUtc`. These become reliable for transitions occurring **after the Slice H
+  deploy**. A cycle-time chart (e.g. PR→PO days) must filter to post-deploy records or
+  annotate the gap — it cannot assume these are populated before 2026-07.
+
+**Derived performance (T7)** — `VendorPerformanceView`:
+- `Otd`, `Breaches` — null pending unblockers (a promised-delivery date; a real breach
+  register). Backlogged.
+- `LeadDays` — null until POs carry `IssuedUtc` (i.e. issued after the T5 deploy); it
+  **self-activates** as real POs flow. Do not read "no lead data" as "instant delivery".
+- `Quality` / `Response` / `WinRate` — null (not 0) when a vendor has no receipts /
+  invitations in the window (rolling 12 months / current year, `CURRENT_DATE`-relative).
+
+**Excluded from typing** — `VendorCertification.ValidTo` (see Suppliers): free-text,
+not a date dimension.
+
+---
+
+## Enforcement
+
+The contract is defended by executable tests, not just prose:
+- Foreign keys (incl. PrLineSourcing→PrLine, T8) — Postgres-backed integrity tests.
+- Owned-line stable keys — `StableLineKeysTests`.
+- The golden status constraint (transitions only via guarded domain methods) —
+  `ArchitectureTests` source-scan.
+- Each backfill (Award→PO, Invoice→GRN, transition timestamps, country conformance) —
+  a Postgres-backed test over the shared statements the migration runs.
