@@ -14,7 +14,7 @@ const TEMPLATES = [
   { id: 't2', code: 'FORM-2026-0004', name: 'Quality & Certification', questionCount: 3 },
 ]
 const INVITE = {
-  id: 'i1', email: 'vieshall@hypernix.net', type: 'Non-SWEC', status: 'Sent', invitedByName: 'Faridah',
+  id: 'i1', email: 'vendor-invites@hypernix.test', type: 'Non-SWEC', status: 'Sent', invitedByName: 'Faridah',
   createdUtc: '', expiresUtc: '', applicationId: 'a1', applicationCode: 'VOB-2026-0001',
   magicLink: 'http://localhost:5173/?t=tok-abc#onboard',
 }
@@ -25,10 +25,10 @@ describe('Onboarding — invite (Slice B)', () => {
     vi.spyOn(client, 'getOnboardingTemplates').mockResolvedValue(TEMPLATES)
   })
 
-  it('E2 — the vendor email input defaults to vieshall@hypernix.net', async () => {
+  it('E2 — the vendor email input defaults to vendor-invites@hypernix.test', async () => {
     renderWithQuery(<OnboardingInvite onBack={() => {}} />)
     const email = (await screen.findByLabelText('Vendor email')) as HTMLInputElement
-    expect(email.value).toBe('vieshall@hypernix.net')
+    expect(email.value).toBe('vendor-invites@hypernix.test')
   })
 
   it('sends the invite with the email, type and selected packs, then shows the magic link', async () => {
@@ -40,7 +40,7 @@ describe('Onboarding — invite (Slice B)', () => {
 
     await waitFor(() => expect(send).toHaveBeenCalled())
     expect(send.mock.calls[0][0]).toMatchObject({
-      email: 'vieshall@hypernix.net', type: 'Non-SWEC', selectedTemplateIds: ['t1', 't2'],
+      email: 'vendor-invites@hypernix.test', type: 'Non-SWEC', selectedTemplateIds: ['t1', 't2'],
     })
     // Confirmation modal surfaces the emailed magic link.
     expect(await screen.findByText('Invitation sent')).toBeInTheDocument()
@@ -85,7 +85,7 @@ describe('Onboarding — magic-link landing (Slice B)', () => {
     window.history.pushState({}, '', '/?t=tok-xyz#onboard')
     const resolve = vi.spyOn(client, 'resolveOnboardingLink').mockResolvedValue({
       id: 'a1', code: 'VOB-2026-0001', status: 'InProgress', type: 'Non-SWEC', name: 'Acme',
-      email: 'vieshall@hypernix.net', rounds: [], packs: [{ id: 'p', code: 'FORM-2026-0003', name: 'HSE', questionCount: 3 }],
+      email: 'vendor-invites@hypernix.test', rounds: [], packs: [{ id: 'p', code: 'FORM-2026-0003', name: 'HSE', questionCount: 3 }],
       createdUtc: '', submittedUtc: null,
     })
 

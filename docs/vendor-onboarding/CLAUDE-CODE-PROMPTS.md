@@ -63,15 +63,15 @@ Do:
   in code), a fake for tests, and a NON-PRODUCTION recipient override
   (Onboarding:TestRecipientOverride) that routes ALL onboarding emails to one address.
 - API: create invitation (registration type, selected Onboarding FormTemplate ids, vendor email
-  DEFAULTING to vieshall@hypernix.net) -> send invite email with the magic link; token-resolve
+  DEFAULTING to vendor-invites@hypernix.test) -> send invite email with the magic link; token-resolve
   endpoint that opens/creates the scoped application; resend; revoke; expiry handling.
 - Buyer UI: Vendor Master -> New Vendor CHOOSER (Enter manually | Invite vendor); the Invite
   screen (type toggle, pack selection from Onboarding templates, document checklist, vendor
-  email input PRE-FILLED with vieshall@hypernix.net).
+  email input PRE-FILLED with vendor-invites@hypernix.test).
 - Vendor UI: magic-link LANDING page (limited onboarding scope, no login).
 
 Test in detail: EDGE-CASES E1-E5 (fake IEmailSender asserts recipient/subject/link; override
-routes to vieshall@hypernix.net; default input value), A1-A2, A9-A10, F1-F2. Run lint, typecheck,
+routes to vendor-invites@hypernix.test; default input value), A1-A2, A9-A10, F1-F2. Run lint, typecheck,
 full suite. STOP and report.
 ```
 
@@ -129,7 +129,7 @@ Do:
   engine).
 
 Test in detail: EDGE-CASES A4-A8, C1-C2, E4, F3; the full E2E G3 (invite email to
-vieshall@hypernix.net -> fill -> submit -> clarify 2 items one email -> resubmit -> approve ->
+vendor-invites@hypernix.test -> fill -> submit -> clarify 2 items one email -> resubmit -> approve ->
 master + VendorUser + assessment copied, with audit + snapshots asserted); confirm G1-G2. Run
 lint, typecheck, full suite. STOP and report full green.
 ```

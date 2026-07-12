@@ -33,8 +33,8 @@ public class OnboardingReviewTests
         private readonly string _db = $"onboarding-{Guid.NewGuid()}";
         private readonly IOptions<OnboardingOptions> _opt = Options.Create(new OnboardingOptions
         {
-            PortalBaseUrl = "http://localhost:5173/", TestRecipientOverride = "vieshall@hypernix.net",
-            LinkExpiryDays = 14, DefaultVendorEmail = "vieshall@hypernix.net",
+            PortalBaseUrl = "http://localhost:5173/", TestRecipientOverride = "vendor-invites@hypernix.test",
+            LinkExpiryDays = 14, DefaultVendorEmail = "vendor-invites@hypernix.test",
         });
         public readonly CapturingEmail Email = new();
         public readonly FakeClock Clock = new(new DateTime(2026, 7, 1, 9, 0, 0, DateTimeKind.Utc));
@@ -122,7 +122,7 @@ public class OnboardingReviewTests
         review.Rounds.Should().ContainSingle();
         review.Rounds[0].Items.Should().HaveCount(2);
         h.Email.Sent.Should().ContainSingle(m => m.Subject.Contains("Clarification"));   // one email
-        h.Email.Sent.Last().To.Should().Be("vieshall@hypernix.net");                     // override (E3)
+        h.Email.Sent.Last().To.Should().Be("vendor-invites@hypernix.test");                     // override (E3)
     }
 
     // ---- A8: vendor sees only the flagged items, resubmits all → back under review ----
@@ -320,10 +320,10 @@ public class OnboardingReviewTests
         }
         var packs = (await h.Do(s => s.ListOnboardingTemplatesAsync())).Take(2).Select(t => t.Id).ToArray();
 
-        // 1. invite (email to vieshall@hypernix.net via override)
+        // 1. invite (email to vendor-invites@hypernix.test via override)
         var inv = await h.Do(s => s.CreateInvitationAsync(new SendOnboardingInvitationRequest("realvendor@acme.my", "Non-SWEC", "Sarawak Flow Controls", packs)));
         var token = Uri.UnescapeDataString(inv.MagicLink.Split("?t=")[1].Split('#')[0]);
-        h.Email.Sent.Last().To.Should().Be("vieshall@hypernix.net");
+        h.Email.Sent.Last().To.Should().Be("vendor-invites@hypernix.test");
         var appId = inv.ApplicationId!.Value;
 
         // 2. open + fill (Non-SWEC, live financials) + submit
@@ -364,7 +364,7 @@ public class OnboardingReviewTests
         // audit trail across the lifecycle + every email routed to the test address
         (await db.AuditEntries.CountAsync(a => a.EntityType == "VendorOnboardingApplication")).Should().BeGreaterThanOrEqualTo(4);
         (await db.AuditEntries.AnyAsync(a => a.EntityType == "Vendor" && a.Action.Contains("promoted"))).Should().BeTrue();
-        h.Email.Sent.Should().OnlyContain(m => m.To == "vieshall@hypernix.net");
+        h.Email.Sent.Should().OnlyContain(m => m.To == "vendor-invites@hypernix.test");
         h.Email.Sent.Select(m => m.Subject).Should().Contain(s => s.Contains("onboarding"))       // invitation
             .And.Contain(s => s.Contains("Clarification")).And.Contain(s => s.Contains("approved"));
     }

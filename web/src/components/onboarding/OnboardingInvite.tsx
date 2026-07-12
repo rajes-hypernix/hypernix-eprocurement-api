@@ -9,7 +9,7 @@ import { Modal, Notice, Spinner } from '../ui'
 
 // The invite form pre-fills the vendor email with the test address (E2) so the whole flow is
 // exercisable without a real vendor inbox.
-const DEFAULT_EMAIL = 'vieshall@hypernix.net'
+const DEFAULT_EMAIL = 'vendor-invites@hypernix.test'
 
 // Document checklist (SPEC §5, prototype DOC_LIST) — shown at invite; enforced when the vendor uploads.
 const DOCS: { name: string; req: string; tone: string }[] = [

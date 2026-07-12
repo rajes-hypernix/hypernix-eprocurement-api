@@ -52,7 +52,7 @@ test('B3: Invite page loads under 3s and generates a working magic link', async 
 
   // Fill + send
   const email = page.getByLabel('Vendor email')
-  await email.fill('vieshall@hypernix.net')
+  await email.fill('vendor-invites@hypernix.test')
   const sendBtn = page.getByRole('button', { name: /Generate .* send link/i })
   let genMs = -1, linkOk = false, magicLink = ''
   if (await sendBtn.isVisible().catch(() => false)) {

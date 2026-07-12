@@ -79,7 +79,7 @@ the prototype is the **same** one already in the colleague's first prototype —
 7. **Hold the CTO bar** — follow `ENGINEERING-STANDARDS.md`.
 
 8. **Email is real and testable.** Onboarding emails go through an `IEmailSender` abstraction.
-   The invite form's vendor-email input **defaults to `vieshall@hypernix.net`**, and in
+   The invite form's vendor-email input **defaults to `vendor-invites@hypernix.test`**, and in
    non-production a config override routes ALL onboarding emails to that address so the flow can
    be tested end-to-end without real vendor inboxes. No SMTP secrets in code — config only.
 

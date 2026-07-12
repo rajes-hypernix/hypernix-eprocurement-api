@@ -28,10 +28,10 @@ master; reuse the Forms engine.
 
 ## Slice B — Invitation + email + magic-link entry
 - API: create invitation (type, selected onboarding templates, email **default
-  `vieshall@hypernix.net`**), send via `IEmailSender`; token-resolve endpoint (opens/creates the
+  `vendor-invites@hypernix.test`**), send via `IEmailSender`; token-resolve endpoint (opens/creates the
   application, scoped); resend / revoke; expiry.
 - `IEmailSender` abstraction + config-driven transport + **non-prod `TestRecipientOverride`**
-  routing all onboarding email to `vieshall@hypernix.net`. No secrets in code.
+  routing all onboarding email to `vendor-invites@hypernix.test`. No secrets in code.
 - Buyer UI: Vendor Master → **New Vendor chooser** (manual / invite); the **Invite** screen
   (type toggle, pack selection from Onboarding templates, doc checklist; email input defaulted).
 - Vendor UI: magic-link **landing** (limited scope, no login).

@@ -38,7 +38,7 @@ public static class OnboardingTestData
 
     public static VendorOnboardingInvitation Invitation(VendorType type = VendorType.NonSwec,
         IEnumerable<Guid>? templateIds = null, string rawToken = "raw-token-abc123") =>
-        VendorOnboardingInvitation.Create("vieshall@hypernix.net", type, templateIds ?? [], rawToken,
+        VendorOnboardingInvitation.Create("vendor-invites@hypernix.test", type, templateIds ?? [], rawToken,
             "u_faridah", "Faridah Yusof", T);
 
     /// <summary>An invited application (optionally with a FIN_C financial assessment attached).</summary>

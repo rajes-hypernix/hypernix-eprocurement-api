@@ -51,7 +51,7 @@ Each row is a test. Behaviour mirrors `prototype/vendor-onboarding-mockup.html`.
 | # | Scenario | Expected |
 |---|---|---|
 | E1 | Invite email | Sent via `IEmailSender`; contains the magic link; link resolves to the application |
-| E2 | Default recipient | Invite vendor-email input defaults to `vieshall@hypernix.net` |
+| E2 | Default recipient | Invite vendor-email input defaults to `vendor-invites@hypernix.test` |
 | E3 | Non-prod override | With `Onboarding:TestRecipientOverride` set, ALL onboarding emails route to that address |
 | E4 | Clarification / approve / reject emails | Each transition sends the right template to the vendor |
 | E5 | No secrets in code | SMTP config comes from configuration, not source |
@@ -71,4 +71,4 @@ Each row is a test. Behaviour mirrors `prototype/vendor-onboarding-mockup.html`.
 |---|---|
 | G1 | Existing Vendor Master, RFQ, Forms, bid, award, PO, GRN, invoice flows unchanged |
 | G2 | All pre-existing tests stay green |
-| G3 | **E2E:** invite (email to vieshall@hypernix.net) → open link → fill (Non-SWEC, live Z) → submit → buyer review → request clarification (2 items, one email) → vendor resubmits both → approve → vendor in master + `VendorUser` provisioned + assessment copied. Assert audit + snapshots at each step. |
+| G3 | **E2E:** invite (email to vendor-invites@hypernix.test) → open link → fill (Non-SWEC, live Z) → submit → buyer review → request clarification (2 items, one email) → vendor resubmits both → approve → vendor in master + `VendorUser` provisioned + assessment copied. Assert audit + snapshots at each step. |

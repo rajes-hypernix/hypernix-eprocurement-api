@@ -17,7 +17,7 @@ public sealed class OnboardingOptions
     public int LinkExpiryDays { get; set; } = 14;
 
     /// <summary>The default vendor email the invite form pre-fills (E2).</summary>
-    public string DefaultVendorEmail { get; set; } = "vieshall@hypernix.net";
+    public string DefaultVendorEmail { get; set; } = "vendor-invites@hypernix.test";
 }
 
 // ---- DTOs ----

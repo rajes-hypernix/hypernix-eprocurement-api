@@ -28,7 +28,7 @@ public class OnboardingInvitationTests
     }
 
     private static (OnboardingService Svc, FakeEmailSender Email, TestContext Ctx) NewService(
-        string? testRecipientOverride = "vieshall@hypernix.net")
+        string? testRecipientOverride = "vendor-invites@hypernix.test")
     {
         var ctx = TestContext.New();
         ctx.Db.FormTemplates.AddRange(OnboardingSeed.FormTemplates(ctx.Clock.UtcNow));
@@ -40,7 +40,7 @@ public class OnboardingInvitationTests
             PortalBaseUrl = "http://localhost:5173/",
             TestRecipientOverride = testRecipientOverride,
             LinkExpiryDays = 14,
-            DefaultVendorEmail = "vieshall@hypernix.net",
+            DefaultVendorEmail = "vendor-invites@hypernix.test",
         });
         var notifier = new OnboardingNotifier(email, opt);
         var fileStore = new FileStore(ctx.Db, ctx.Clock);
@@ -97,23 +97,23 @@ public class OnboardingInvitationTests
         app.Code.Should().Be(dto.ApplicationCode);
     }
 
-    // ---- E2: server defaults a blank vendor email to vieshall@hypernix.net ----
+    // ---- E2: server defaults a blank vendor email to vendor-invites@hypernix.test ----
     [Fact]
     public async Task CreateInvitation_BlankEmail_DefaultsToTestAddress()
     {
         var (svc, _, ctx) = NewService(testRecipientOverride: null);
         await svc.CreateInvitationAsync(new SendOnboardingInvitationRequest(null, "Non-SWEC", null, []));
 
-        (await ctx.Db.VendorOnboardingApplications.FirstAsync()).Email.Should().Be("vieshall@hypernix.net");
+        (await ctx.Db.VendorOnboardingApplications.FirstAsync()).Email.Should().Be("vendor-invites@hypernix.test");
     }
 
     // ---- E3: the override routes ALL onboarding email to the test address; without it, the real one ----
     [Fact]
     public async Task Override_RoutesEmailToTestAddress()
     {
-        var (svc, email, _) = NewService(testRecipientOverride: "vieshall@hypernix.net");
+        var (svc, email, _) = NewService(testRecipientOverride: "vendor-invites@hypernix.test");
         await svc.CreateInvitationAsync(new SendOnboardingInvitationRequest("realvendor@acme.my", "Non-SWEC", null, []));
-        email.Last.To.Should().Be("vieshall@hypernix.net");
+        email.Last.To.Should().Be("vendor-invites@hypernix.test");
     }
 
     [Fact]

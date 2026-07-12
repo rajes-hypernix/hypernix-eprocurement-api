@@ -12,7 +12,7 @@
    - **Enter manually** — buyer keys the supplier in; written **straight to the master, no
      approval** (v1). Simple. (Workflow seam left for later — see §9.)
    - **Invite vendor** — buyer composes an onboarding pack and sends a secure link.
-2. **Invite** — buyer sets vendor email (**defaults to `vieshall@hypernix.net`**), registration
+2. **Invite** — buyer sets vendor email (**defaults to `vendor-invites@hypernix.test`**), registration
    type (SWEC / Non-SWEC), and selects which **question packs** (Form Templates) to include on
    top of the always-on core details. Sends a **magic link** (signed, 14-day expiry, no
    password). Email delivered via `IEmailSender`.
@@ -103,7 +103,7 @@ config only). Messages:
 - **Approved** — to the vendor, with a set-password link (provisions `VendorUser`).
 - **Rejected** — to the vendor, with the reason.
 
-**Testability:** the invite form's vendor-email input **defaults to `vieshall@hypernix.net`**.
+**Testability:** the invite form's vendor-email input **defaults to `vendor-invites@hypernix.test`**.
 In non-production, a config override (`Onboarding:TestRecipientOverride`) routes **every**
 onboarding email to that address, so the full flow is testable without real vendor inboxes.
 Tests use a fake `IEmailSender` asserting recipient, subject, and that the magic link resolves.
