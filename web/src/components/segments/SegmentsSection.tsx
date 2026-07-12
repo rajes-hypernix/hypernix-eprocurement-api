@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getSegmentAssignments, saveSegmentAssignments, type SegmentAssignmentDto } from '../../api/client'
 import { useIdentity } from '../../identity'
@@ -25,16 +25,22 @@ const toSpec = (a: SegmentAssignmentDto): FieldSpec => ({
   options: { kind: 'static', options: a.options.map((o) => ({ code: o.code, label: o.label })) },
 })
 
-export function SegmentsSection({ recordType, recordId, lineId, title = 'Segments' }: {
+export function SegmentsSection({ recordType, recordId, lineId, title = 'Segments', excludeKeys = [] }: {
   recordType: string; recordId: string; lineId?: string; title?: string
+  /** D7: keys the resolved entry form PLACED inline — the residual section owns the rest. */
+  excludeKeys?: string[]
 }) {
   const qc = useQueryClient()
   const { permissions } = useIdentity()
   const canEdit = permissions.includes('EditCustomValues')
-  const { data: assignments } = useQuery({
+  const { data: allAssignments } = useQuery({
     queryKey: ['segment-assignments', recordType, recordId, lineId ?? null],
     queryFn: () => getSegmentAssignments(recordType, recordId, lineId),
   })
+  const assignments = useMemo(
+    () => allAssignments?.filter((a) => !excludeKeys.includes(a.segmentCode)),
+    [allAssignments, excludeKeys.join('|')],   // eslint-disable-line react-hooks/exhaustive-deps
+  )
   const [draft, setDraft] = useState<Record<string, string>>({})
   const [error, setError] = useState<string | null>(null)
   useEffect(() => {

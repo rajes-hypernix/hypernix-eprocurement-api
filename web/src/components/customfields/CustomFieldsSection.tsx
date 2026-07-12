@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getCustomValues, saveCustomValues, type CustomValueDto } from '../../api/client'
 import { useIdentity } from '../../identity'
@@ -31,14 +31,22 @@ const toSpec = (v: CustomValueDto): FieldSpec => ({
     : {}),
 })
 
-export function CustomFieldsSection({ recordType, recordId }: { recordType: string; recordId: string }) {
+export function CustomFieldsSection({ recordType, recordId, excludeKeys = [] }: {
+  recordType: string; recordId: string
+  /** D7: keys the resolved entry form PLACED inline — the residual section owns the rest. */
+  excludeKeys?: string[]
+}) {
   const qc = useQueryClient()
   const { permissions } = useIdentity()
   const canEdit = permissions.includes('EditCustomValues')
-  const { data: values } = useQuery({
+  const { data: allValues } = useQuery({
     queryKey: ['custom-values', recordType, recordId],
     queryFn: () => getCustomValues(recordType, recordId),
   })
+  const values = useMemo(
+    () => allValues?.filter((v) => !excludeKeys.includes(v.code)),
+    [allValues, excludeKeys.join('|')],   // eslint-disable-line react-hooks/exhaustive-deps
+  )
   const [draft, setDraft] = useState<Record<string, string>>({})
   const [error, setError] = useState<string | null>(null)
   useEffect(() => {

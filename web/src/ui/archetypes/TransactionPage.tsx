@@ -50,7 +50,14 @@ export function useDirtyNavigationGuard(dirty: boolean, message = 'Discard unsav
   return { markClean }
 }
 
-export interface TransactionTab { key: string; label: string; content: ReactNode }
+export interface TransactionTab {
+  key: string
+  label: string
+  content?: ReactNode
+  /** D7: definition-driven subtab bodies — FieldSpec sections rendered through the SAME
+   * pipeline as the main body (fields only; sublists keep their built-in homes). */
+  sections?: TransactionSection[]
+}
 
 export function TransactionPage({
   crumbParent, onCrumbParent, crumbCurrent,
@@ -87,6 +94,17 @@ export function TransactionPage({
   onGuardReady?.(markClean)
   const [tab, setTab] = useState(tabs?.[0]?.key)
   const actionBar = <div className="pr-actions">{actions}</div>
+  const renderSection = (s: TransactionSection) => (
+    <div className="card" style={{ padding: 18, marginBottom: 16 }} key={s.title}>
+      <h3 style={{ marginTop: 0 }}>{s.title}</h3>
+      {s.rows.map((row, ri) => (
+        <div className="frow" key={ri}>
+          {row.map((spec) => renderField(spec, values[spec.key] ?? '', (v) => onFieldChange(spec.key, v), { error: fieldErrors?.[spec.key] }))}
+        </div>
+      ))}
+      {s.fullWidth?.map((spec) => renderField(spec, values[spec.key] ?? '', (v) => onFieldChange(spec.key, v), { error: fieldErrors?.[spec.key] }))}
+    </div>
+  )
 
   return (
     <>
@@ -107,17 +125,7 @@ export function TransactionPage({
 
       {actionBar}
 
-      {sections.map((s) => (
-        <div className="card" style={{ padding: 18, marginBottom: 16 }} key={s.title}>
-          <h3 style={{ marginTop: 0 }}>{s.title}</h3>
-          {s.rows.map((row, ri) => (
-            <div className="frow" key={ri}>
-              {row.map((spec) => renderField(spec, values[spec.key] ?? '', (v) => onFieldChange(spec.key, v), { error: fieldErrors?.[spec.key] }))}
-            </div>
-          ))}
-          {s.fullWidth?.map((spec) => renderField(spec, values[spec.key] ?? '', (v) => onFieldChange(spec.key, v), { error: fieldErrors?.[spec.key] }))}
-        </div>
-      ))}
+      {sections.map((s) => renderSection(s))}
 
       {tabs && tabs.length > 0 && (
         <>
@@ -126,7 +134,12 @@ export function TransactionPage({
               <button type="button" key={t.key} className={`vtab ${tab === t.key ? 'on' : ''}`} onClick={() => setTab(t.key)}>{t.label}</button>
             ))}
           </div>
-          {tabs.find((t) => t.key === tab)?.content}
+          {tabs.filter((t) => t.key === tab).map((t) => (
+            <div key={t.key}>
+              {t.sections?.map((s) => renderSection(s))}
+              {t.content}
+            </div>
+          ))}
         </>
       )}
 

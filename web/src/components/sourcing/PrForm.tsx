@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  getRequisition, createPr, updatePr, cancelPr, submitPr,
+  getRequisition, createPr, updatePr, cancelPr, submitPr, resolveEntryForm,
+  getCustomValues, saveCustomValues, getSegmentAssignments, saveSegmentAssignments,
   type RequisitionDto, type SavePrRequest,
 } from '../../api/client'
+import { buildSections, splitSubtabs, nativeDefaults, missingRequired, stateKey } from '../entryforms/resolvedForm'
 import { Icon } from '../Icon'
 import { Modal, Spinner } from '../ui'
 import { PrHeaderBadge } from '../../lib/prStatus'
@@ -13,7 +15,7 @@ import { TextAreaField } from '../../ui/TextAreaField'
 import { NumberField } from '../../ui/NumberField'
 import { MoneyField } from '../../ui/MoneyField'
 import { Button } from '../../ui/Button'
-import { TransactionPage, type TransactionSection } from '../../ui/archetypes/TransactionPage'
+import { TransactionPage } from '../../ui/archetypes/TransactionPage'
 import { CustomFieldsSection } from '../customfields/CustomFieldsSection'
 import { SegmentsSection } from '../segments/SegmentsSection'
 
@@ -28,26 +30,11 @@ const toEdit = (l: PrLine): EditLine => ({
 })
 const blankLine = (): EditLine => ({ itemCode: '', description: '', qty: '', uom: '', estUnitPrice: '', lifecycleStatus: 'Open', editable: true })
 
-// The header AS DATA: one TransactionSection consumed by the archetype.
-type HeaderKey = 'requestor' | 'department' | 'category' | 'location' | 'job' | 'requiredDate' | 'memo'
-const HEADER_SECTION: TransactionSection = {
-  title: 'Header',
-  rows: [
-    [
-      { key: 'requestor', label: 'Requestor', dataType: 'text', placeholder: 'Name' },
-      { key: 'department', label: 'Department', dataType: 'text', placeholder: 'e.g. Maintenance' },
-      { key: 'category', label: 'Category', dataType: 'text', placeholder: 'e.g. Piping' },
-    ],
-    [
-      { key: 'location', label: 'Location', dataType: 'text', placeholder: 'e.g. Bintulu Plant' },
-      { key: 'job', label: 'Job / Cost ref', dataType: 'text', placeholder: 'JOB-…' },
-      { key: 'requiredDate', label: 'Required by', dataType: 'date' },
-    ],
-  ],
-  fullWidth: [
-    { key: 'memo', label: 'Memo / Justification', dataType: 'text', placeholder: 'Short description of the requirement' },
-  ],
-}
+// D7: the header is no longer hardcoded — it renders from the caller's RESOLVED entry
+// form (role-preferred → Standard; the seeded Standard reproduces the old HEADER_SECTION
+// byte-identically — parity-pinned). Placed cf_/seg_ fields render inline on EDIT (their
+// values ride their own A66/A67 endpoints and need a record id); the residual auto-
+// sections keep showing whatever the form did NOT place (D5's zero-deploy promise).
 
 // Line-cell specs: bare chrome, so spec.label becomes the aria-label —
 // preserving today's `Line N …` accessible names exactly.
@@ -58,16 +45,40 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
   const qc = useQueryClient()
   const isNew = id === null
   const { data: pr, isPending } = useQuery({ queryKey: ['requisition', id], queryFn: () => getRequisition(id!), enabled: !isNew })
+  const { data: form } = useQuery({ queryKey: ['entry-form', 'Requisition'], queryFn: () => resolveEntryForm('Requisition') })
 
-  const [h, setH] = useState<Record<HeaderKey, string>>({ requestor: '', department: '', category: '', location: '', job: '', requiredDate: '', memo: '' })
+  const [h, setH] = useState<Record<string, string>>({ requestor: '', department: '', category: '', location: '', job: '', requiredDate: '', memo: '' })
   const [lines, setLines] = useState<EditLine[]>([blankLine()])
   const [err, setErr] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [confirmCancel, setConfirmCancel] = useState(false)
   const [cancelReason, setCancelReason] = useState('')
   const [dirty, setDirty] = useState(false)
   const markClean = useRef<() => void>(() => {})
 
-  // Hydrate from the loaded PR once (guard in-progress edits from a background refetch).
+  // Placed cf_/seg_ keys render inline (edit only — their value endpoints need a record id).
+  const placedCustom = (form?.fields ?? []).filter((f) => f.kind === 'Custom').map((f) => f.fieldKey)
+  const placedSegment = (form?.fields ?? []).filter((f) => f.kind === 'Segment').map((f) => f.fieldKey)
+  const { data: customValues } = useQuery({
+    queryKey: ['custom-values', 'Requisition', id],
+    queryFn: () => getCustomValues('Requisition', id!),
+    enabled: !isNew && placedCustom.length > 0,
+  })
+  const { data: segmentAssignments } = useQuery({
+    queryKey: ['segment-assignments', 'Requisition', id, null],
+    queryFn: () => getSegmentAssignments('Requisition', id!),
+    enabled: !isNew && placedSegment.length > 0,
+  })
+  const [extras, setExtras] = useState<Record<string, string>>({})
+  useEffect(() => {
+    const next: Record<string, string> = {}
+    for (const v of customValues ?? []) next[v.code] = v.value ?? ''
+    for (const a of segmentAssignments ?? []) next[a.segmentCode] = a.valueCode ?? ''
+    setExtras((cur) => ({ ...next, ...cur }))   // in-progress edits win over refetches
+  }, [customValues, segmentAssignments])
+
+  // Hydrate from the loaded PR once (guard in-progress edits from a background refetch);
+  // NEW records take the resolved form's defaults instead (never applied to edits).
   const [hydrated, setHydrated] = useState(false)
   useEffect(() => {
     if (pr && !hydrated) {
@@ -78,7 +89,11 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
       setLines((pr.lines ?? []).map(toEdit))
       setHydrated(true)
     }
-  }, [pr, hydrated])
+    if (isNew && form && !hydrated) {
+      setH((cur) => ({ ...cur, ...nativeDefaults(form.fields) }))
+      setHydrated(true)
+    }
+  }, [pr, form, isNew, hydrated])
 
   const total = lines.reduce((s, l) => s + (Number(l.qty) || 0) * (Number(l.estUnitPrice) || 0), 0)
   const hasLiveLine = lines.some((l) => l.lifecycleStatus === 'InRfq' || l.lifecycleStatus === 'Awarded')
@@ -96,11 +111,38 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
   const inval = () => { void qc.invalidateQueries({ queryKey: ['requisitions'] }); if (id) void qc.invalidateQueries({ queryKey: ['requisition', id] }) }
   // Intentional navigation must not trip the dirty guard.
   const leave = () => { markClean.current(); onBack() }
+
+  // Form-placed cf_/seg_ values save alongside the header (their own endpoints, only the
+  // keys this form placed — the residual sections keep owning everything else).
+  const saveExtras = async () => {
+    if (isNew || !form) return
+    const cf = Object.fromEntries(placedCustom.filter((k) => k in extras).map((k) => [k, extras[k] === '' ? null : extras[k]]))
+    if (Object.keys(cf).length > 0) await saveCustomValues('Requisition', id!, cf)
+    const seg = Object.fromEntries(placedSegment.filter((k) => k in extras).map((k) => [k, extras[k] === '' ? null : extras[k]]))
+    if (Object.keys(seg).length > 0) await saveSegmentAssignments('Requisition', id!, seg)
+  }
+
+  // The client-side face of the (c) boundary: required-on-form blocks SUBMIT, not drafts.
+  // The server re-resolves and enforces the same rule regardless (OD-D7-2).
+  const requiredGate = (): boolean => {
+    const missing = form ? missingRequired(form.fields, h) : []
+    if (missing.length === 0) { setFieldErrors({}); return true }
+    setFieldErrors(Object.fromEntries(form!.fields
+      .filter((f) => missing.includes(f.label))
+      .map((f) => [stateKey(f.fieldKey), 'Required before submit'])))
+    setErr(`Required on your form before submit: ${missing.join(', ')}.`)
+    return false
+  }
+
   const save = useMutation({
-    mutationFn: (mode: 'draft' | 'submit' | 'keep') =>
-      isNew ? createPr(body(), mode === 'submit') : updatePr(id!, body()),
+    mutationFn: async (mode: 'draft' | 'submit' | 'keep') => {
+      if (mode === 'submit' && !requiredGate()) throw new Error('__handled__')
+      const result = isNew ? await createPr(body(), mode === 'submit') : await updatePr(id!, body())
+      await saveExtras()
+      return result
+    },
     onSuccess: () => { inval(); leave() },
-    onError: (e: Error) => setErr(e.message),
+    onError: (e: Error) => { if (e.message !== '__handled__') setErr(e.message) },
   })
   const cancel = useMutation({
     mutationFn: () => cancelPr(id!, cancelReason),
@@ -109,14 +151,30 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
   })
   // Draft → Submitted (Bug 3). Saves in-progress header edits first so nothing is lost.
   const submit = useMutation({
-    mutationFn: async () => { await updatePr(id!, body()); return submitPr(id!) },
+    mutationFn: async () => {
+      if (!requiredGate()) throw new Error('__handled__')
+      await updatePr(id!, body())
+      await saveExtras()
+      return submitPr(id!)
+    },
     onSuccess: () => { inval(); leave() },
-    onError: (e: Error) => setErr(e.message),
+    onError: (e: Error) => { if (e.message !== '__handled__') setErr(e.message) },
   })
 
-  if (!isNew && isPending) return <Spinner />
+  if ((!isNew && isPending) || !form) return <Spinner />
 
-  const setHeader = (k: string, v: string) => { setDirty(true); setH((p) => ({ ...p, [k]: v })) }
+  // Layout from the RESOLVED definition. On CREATE, cf_/seg_ placements drop out (their
+  // value endpoints need a record id); they appear the moment the record exists.
+  const renderable = form.fields.filter((f) => !isNew || f.kind === 'Native')
+  const { main, tabs: subtabFields } = splitSubtabs(renderable)
+  const sections = buildSections(main)
+  const formTabs = subtabFields.map(([name, fields]) => ({ key: name, label: name, sections: buildSections(fields) }))
+
+  const setHeader = (k: string, v: string) => {
+    setDirty(true)
+    if (k.startsWith('cf_') || k.startsWith('seg_')) setExtras((p) => ({ ...p, [k]: v }))
+    else setH((p) => ({ ...p, [k]: v }))
+  }
   const setLine = (i: number, k: keyof EditLine, v: string) => {
     setDirty(true)
     setLines((ls) => ls.map((l, x) => (x === i ? { ...l, [k]: v } : l)))
@@ -156,9 +214,11 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
       statusBadge={!isNew ? <PrHeaderBadge status={headerStatus} /> : undefined}
       error={err ? `Could not save: ${err}` : null}
       actions={actions}
-      sections={[HEADER_SECTION]}
-      values={h}
+      sections={sections}
+      values={{ ...h, ...extras }}
       onFieldChange={setHeader}
+      fieldErrors={fieldErrors}
+      tabs={formTabs.length > 0 ? formTabs : undefined}
       dirty={dirty}
       onGuardReady={(fn) => { markClean.current = fn }}
     >
@@ -205,8 +265,8 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
           />
         </Modal>
       )}
-      {id && <CustomFieldsSection recordType="Requisition" recordId={id} />}
-      {id && <SegmentsSection recordType="Requisition" recordId={id} />}
+      {id && <CustomFieldsSection recordType="Requisition" recordId={id} excludeKeys={placedCustom} />}
+      {id && <SegmentsSection recordType="Requisition" recordId={id} excludeKeys={placedSegment} />}
     </TransactionPage>
   )
 }

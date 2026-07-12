@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithProviders } from '../../test/utils'
+import { renderWithProviders, STANDARD_PR_FORM } from '../../test/utils'
 import { Requisitions } from './Requisitions'
 import * as client from '../../api/client'
 
@@ -21,6 +21,7 @@ describe('PR management (Slice B)', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
     vi.spyOn(client, 'getPersonas').mockResolvedValue([])
+    vi.spyOn(client, 'resolveEntryForm').mockResolvedValue(STANDARD_PR_FORM as never)
     vi.spyOn(client, 'getRequisitions').mockResolvedValue([PR] as never)
   })
 

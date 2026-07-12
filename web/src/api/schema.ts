@@ -1422,6 +1422,220 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/entry-forms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    recordType?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["EntryFormDefDto"][];
+                        "application/json": components["schemas"]["EntryFormDefDto"][];
+                        "text/json": components["schemas"]["EntryFormDefDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SaveEntryFormRequest"];
+                    "text/json": components["schemas"]["SaveEntryFormRequest"];
+                    "application/*+json": components["schemas"]["SaveEntryFormRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["EntryFormDefDto"];
+                        "application/json": components["schemas"]["EntryFormDefDto"];
+                        "text/json": components["schemas"]["EntryFormDefDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/entry-forms/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SaveEntryFormRequest"];
+                    "text/json": components["schemas"]["SaveEntryFormRequest"];
+                    "application/*+json": components["schemas"]["SaveEntryFormRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["EntryFormDefDto"];
+                        "application/json": components["schemas"]["EntryFormDefDto"];
+                        "text/json": components["schemas"]["EntryFormDefDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/entry-forms/{id}/roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["AssignRolesRequest"];
+                    "text/json": components["schemas"]["AssignRolesRequest"];
+                    "application/*+json": components["schemas"]["AssignRolesRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["EntryFormDefDto"];
+                        "application/json": components["schemas"]["EntryFormDefDto"];
+                        "text/json": components["schemas"]["EntryFormDefDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/entry-forms/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    recordType?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ResolvedFormDto"];
+                        "application/json": components["schemas"]["ResolvedFormDto"];
+                        "text/json": components["schemas"]["ResolvedFormDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/rfqs/{rfqId}/opening": {
         parameters: {
             query?: never;
@@ -2426,6 +2640,88 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/numbering": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["NumberingSchemeDto"][];
+                        "application/json": components["schemas"]["NumberingSchemeDto"][];
+                        "text/json": components["schemas"]["NumberingSchemeDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/numbering/{recordType}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    recordType: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SaveNumberingSchemeRequest"];
+                    "text/json": components["schemas"]["SaveNumberingSchemeRequest"];
+                    "application/*+json": components["schemas"]["SaveNumberingSchemeRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["NumberingSchemeDto"];
+                        "application/json": components["schemas"]["NumberingSchemeDto"];
+                        "text/json": components["schemas"]["NumberingSchemeDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -5557,6 +5853,9 @@ export interface components {
             status?: string | null;
             grnCode?: string | null;
         };
+        AssignRolesRequest: {
+            roles?: string[] | null;
+        };
         AuditEntryDto: {
             entityType?: string | null;
             entityId?: string | null;
@@ -5880,6 +6179,31 @@ export interface components {
             email?: string | null;
             roles?: string[] | null;
         };
+        EntryFormDefDto: {
+            /** Format: uuid */
+            id?: string;
+            code?: string | null;
+            name?: string | null;
+            recordType?: string | null;
+            isSystem?: boolean;
+            active?: boolean;
+            fields?: components["schemas"]["EntryFormFieldDto"][] | null;
+            roles?: string[] | null;
+        };
+        EntryFormFieldDto: {
+            fieldKey?: string | null;
+            subtab?: string | null;
+            fieldGroup?: string | null;
+            /** Format: int32 */
+            sort?: number;
+            displayType?: string | null;
+            requiredOnForm?: boolean;
+            defaultValue?: string | null;
+            sourceFieldKey?: string | null;
+            fullWidth?: boolean;
+            label?: string | null;
+            placeholder?: string | null;
+        };
         EvaluatorDto: {
             code?: string | null;
             name?: string | null;
@@ -6088,6 +6412,14 @@ export interface components {
             notYetAvailable?: boolean;
             /** Format: int32 */
             excludedNullCount?: number;
+        };
+        NumberingSchemeDto: {
+            recordType?: string | null;
+            prefix?: string | null;
+            yearSegment?: boolean;
+            /** Format: int32 */
+            digits?: number;
+            nextPreview?: string | null;
         };
         OnboardingAnswerDto: {
             /** Format: uuid */
@@ -6521,6 +6853,32 @@ export interface components {
         ResolveOnboardingLinkRequest: {
             token?: string | null;
         };
+        ResolvedFormDto: {
+            /** Format: uuid */
+            formId?: string;
+            formCode?: string | null;
+            formName?: string | null;
+            recordType?: string | null;
+            fields?: components["schemas"]["ResolvedFormFieldDto"][] | null;
+        };
+        ResolvedFormFieldDto: {
+            fieldKey?: string | null;
+            label?: string | null;
+            dataType?: string | null;
+            kind?: string | null;
+            subtab?: string | null;
+            fieldGroup?: string | null;
+            /** Format: int32 */
+            sort?: number;
+            displayType?: string | null;
+            requiredOnForm?: boolean;
+            defaultValue?: string | null;
+            sourceFieldKey?: string | null;
+            fullWidth?: boolean;
+            placeholder?: string | null;
+            customListCode?: string | null;
+            options?: components["schemas"]["SegmentOptionDto"][] | null;
+        };
         ResubmitOnboardingRequest: {
             token?: string | null;
             responses?: string[] | null;
@@ -6648,12 +7006,23 @@ export interface components {
                 [key: string]: string | null;
             } | null;
         };
+        SaveEntryFormRequest: {
+            name?: string | null;
+            recordType?: string | null;
+            fields?: components["schemas"]["EntryFormFieldDto"][] | null;
+        };
         SaveFormTemplateRequest: {
             name?: string | null;
             items?: components["schemas"]["FormItemDto"][] | null;
             technicalSections?: string[] | null;
             commercialSections?: string[] | null;
             purpose?: string | null;
+        };
+        SaveNumberingSchemeRequest: {
+            prefix?: string | null;
+            yearSegment?: boolean;
+            /** Format: int32 */
+            digits?: number;
         };
         SaveOnboardingDraftRequest: {
             token?: string | null;
@@ -6765,6 +7134,10 @@ export interface components {
             isSystem?: boolean;
             values?: components["schemas"]["SegmentValueDto"][] | null;
             applications?: components["schemas"]["SegmentApplicationDto"][] | null;
+        };
+        SegmentOptionDto: {
+            code?: string | null;
+            label?: string | null;
         };
         SegmentValueDto: {
             /** Format: uuid */

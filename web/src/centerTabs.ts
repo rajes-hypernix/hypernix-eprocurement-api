@@ -63,6 +63,8 @@ export const BUYER_CENTER_TABS: CenterTab[] = [
       { key: 'lists', icon: 'clip', label: 'Custom Lists', action: 'ManageCustomLists' },
       { key: 'customfields', icon: 'edit', label: 'Custom Fields', action: 'ManageCustomFields' },
       { key: 'segments', icon: 'chart', label: 'Segments', action: 'ManageSegments' },
+      { key: 'entryforms', icon: 'clip', label: 'Entry Forms', action: 'ManageEntryForms' },
+      { key: 'numbering', icon: 'edit', label: 'Numbering', action: 'ManageNumbering' },
     ],
   },
 ]

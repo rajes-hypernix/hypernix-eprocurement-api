@@ -219,6 +219,42 @@ export const getSegmentAssignments = (recordType: string, recordId: string, line
 export const saveSegmentAssignments = (recordType: string, recordId: string, assignments: Record<string, string | null>, lineId?: string | null) =>
   http<SegmentAssignmentDto[]>(`/segment-assignments/${recordType}/${recordId}`, { method: 'PUT', body: JSON.stringify({ assignments, lineId: lineId ?? null }) })
 
+// --- Entry forms + numbering (D7, AUTHORIZATION-MATRIX A69-A71) ---
+export type EntryFormFieldDto = {
+  fieldKey: string; subtab?: string | null; fieldGroup: string; sort: number; displayType: string
+  requiredOnForm: boolean; defaultValue?: string | null; sourceFieldKey?: string | null
+  fullWidth: boolean; label?: string | null; placeholder?: string | null
+}
+export type EntryFormDefDto = {
+  id: string; code: string; name: string; recordType: string; isSystem: boolean; active: boolean
+  fields: EntryFormFieldDto[]; roles: string[]
+}
+export type SaveEntryFormRequest = { name: string; recordType: string; fields: EntryFormFieldDto[] }
+export type ResolvedFormFieldDto = {
+  fieldKey: string; label: string; dataType: string; kind: string; subtab?: string | null
+  fieldGroup: string; sort: number; displayType: string; requiredOnForm: boolean
+  defaultValue?: string | null; sourceFieldKey?: string | null; fullWidth: boolean
+  placeholder?: string | null; customListCode?: string | null
+  options?: { code: string; label: string }[] | null
+}
+export type ResolvedFormDto = { formId: string; formCode: string; formName: string; recordType: string; fields: ResolvedFormFieldDto[] }
+export type NumberingSchemeDto = { recordType: string; prefix: string; yearSegment: boolean; digits: number; nextPreview: string }
+
+export const getEntryForms = (recordType?: string) =>
+  http<EntryFormDefDto[]>(`/entry-forms${recordType ? `?recordType=${recordType}` : ''}`)
+export const createEntryForm = (req: SaveEntryFormRequest) =>
+  http<EntryFormDefDto>('/entry-forms', { method: 'POST', body: JSON.stringify(req) })
+export const updateEntryForm = (id: string, req: SaveEntryFormRequest) =>
+  http<EntryFormDefDto>(`/entry-forms/${id}`, { method: 'PUT', body: JSON.stringify(req) })
+export const deleteEntryForm = (id: string) => http<undefined>(`/entry-forms/${id}`, { method: 'DELETE' })
+export const assignEntryFormRoles = (id: string, roles: string[]) =>
+  http<EntryFormDefDto>(`/entry-forms/${id}/roles`, { method: 'PUT', body: JSON.stringify({ roles }) })
+export const resolveEntryForm = (recordType: string) =>
+  http<ResolvedFormDto>(`/entry-forms/resolve?recordType=${encodeURIComponent(recordType)}`)
+export const getNumberingSchemes = () => http<NumberingSchemeDto[]>('/numbering')
+export const updateNumberingScheme = (recordType: string, req: { prefix: string; yearSegment: boolean; digits: number }) =>
+  http<NumberingSchemeDto>(`/numbering/${recordType}`, { method: 'PUT', body: JSON.stringify(req) })
+
 // --- Vendor portal: invitations + bidding ---
 export const getMyInvitations = () => http<InvitationDto[]>('/my/rfqs')
 export const getMyBid = (rfqId: string) =>
