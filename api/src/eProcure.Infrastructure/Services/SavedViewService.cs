@@ -52,9 +52,25 @@ public sealed class SavedViewService(
         var type = ParseRecordType(recordType);
         var rows = await db.FieldRegistry.AsNoTracking()
             .Where(f => f.RecordType == type).OrderBy(f => f.FieldKey).ToListAsync(ct);
-        return rows.Select(f => new ViewFieldDto(
-            f.FieldKey, f.Label, f.DataType.ToString(),
-            ViewVocabulary.EnumOptions.TryGetValue((type, f.FieldKey), out var opts) ? opts : null)).ToList();
+
+        // D5: deactivated custom defs hide from the builder palette (values persist; a view
+        // still referencing one fails loudly at run). ListValue options come from the bound list.
+        var defs = await db.CustomFieldDefs.AsNoTracking().Where(d => d.RecordType == type).ToListAsync(ct);
+        var defByKey = defs.ToDictionary(d => d.Code, StringComparer.OrdinalIgnoreCase);
+        var listIds = defs.Where(d => d.CustomListId is not null).Select(d => d.CustomListId!.Value).ToList();
+        var listOptions = (await db.CustomListValues.AsNoTracking()
+                .Where(v => listIds.Contains(v.CustomListId)).ToListAsync(ct))
+            .GroupBy(v => v.CustomListId)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<string>)g.OrderBy(v => v.Sort).Select(v => v.Code).ToList());
+
+        return rows
+            .Where(f => f.Kind != FieldKind.Custom || (defByKey.TryGetValue(f.FieldKey, out var d) && d.Active))
+            .Select(f => new ViewFieldDto(
+                f.FieldKey, f.Label, f.DataType.ToString(), f.Kind.ToString(),
+                f.Kind == FieldKind.Custom
+                    ? (defByKey.TryGetValue(f.FieldKey, out var d) && d.CustomListId is { } lid ? listOptions.GetValueOrDefault(lid) : null)
+                    : (ViewVocabulary.EnumOptions.TryGetValue((type, f.FieldKey), out var opts) ? opts : null)))
+            .ToList();
     }
 
     public async Task<SavedViewDto> CreateAsync(SaveViewRequest req, CancellationToken ct = default)
@@ -161,6 +177,11 @@ public sealed class SavedViewService(
             if (!registry.ContainsKey(key))
                 throw new ViewValidationException($"View '{view.Name}' references unknown field '{key}' — the registry has no such {view.RecordType} field.");
 
+        await LoadCustomStateAsync(view.RecordType, ct);
+        foreach (var key in view.Filters.Select(f => f.FieldKey).Concat(view.Columns.Select(c => c.FieldKey)))
+            if (_inactiveCustomKeys.Contains(key))
+                throw new ViewValidationException($"Custom field '{key}' is deactivated — fix or remove it from the view (D5 lifecycle rule).");
+
         var rows = await SourceRowsAsync(view.RecordType, ct);     // THE scoped sources — see class doc
         var filtered = ApplyFilters(rows.Cast<object>().ToList(), view.Filters, registry);
         return (view, registry, filtered);
@@ -178,7 +199,7 @@ public sealed class SavedViewService(
         var shaped = filtered.Select(row =>
         {
             var d = new Dictionary<string, object?> { ["Id"] = Prop(row, "Id") };
-            foreach (var c in columns) d[c.FieldKey] = Prop(row, c.FieldKey);
+            foreach (var c in columns) d[c.FieldKey] = Val(row, c.FieldKey);
             return d;
         }).ToList();
 
@@ -199,8 +220,10 @@ public sealed class SavedViewService(
         if (fn == "count")
             return new(view.Id, fn, null, rows.Count, 0);
 
+        if (fieldKey is not null && _inactiveCustomKeys.Contains(fieldKey))
+            throw new ViewValidationException($"Custom field '{fieldKey}' is deactivated.");
         var entry = RequireNumericField(fn, fieldKey, registry);
-        var values = rows.Select(r => Prop(r, entry.FieldKey)).ToList();
+        var values = rows.Select(r => Val(r, entry.FieldKey)).ToList();
         var excluded = values.Count(v => v is null);
         var nums = values.Where(v => v is not null).Select(v => ToDecimal(v!)).ToList();
 
@@ -217,6 +240,8 @@ public sealed class SavedViewService(
     {
         var (view, registry, rows) = await PrepareAsync(id, ct);
         fn = fn.ToLowerInvariant();
+        if (_inactiveCustomKeys.Contains(bucketField) || (fieldKey is not null && _inactiveCustomKeys.Contains(fieldKey)))
+            throw new ViewValidationException("A deactivated custom field cannot drive a series.");
         if (!registry.TryGetValue(bucketField, out var bucket) ||
             bucket.DataType is not (FieldDataType.Date or FieldDataType.Instant))
             throw new ViewValidationException($"Series bucket field must be a Date/Instant registry key; '{bucketField}' is not.");
@@ -227,7 +252,7 @@ public sealed class SavedViewService(
         var first = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(-(months - 1));
         var keys = Enumerable.Range(0, months).Select(i => first.AddMonths(i).ToString("yyyy-MM")).ToList();
 
-        string? BucketOf(object row) => Prop(row, bucketField) switch
+        string? BucketOf(object row) => Val(row, bucketField) switch
         {
             DateOnly d => $"{d.Year:d4}-{d.Month:d2}",
             DateTime t => t.ToString("yyyy-MM"),
@@ -242,7 +267,7 @@ public sealed class SavedViewService(
         {
             if (bucketRows is null || bucketRows.Count == 0) return 0m;
             if (fn == "count") return bucketRows.Count;
-            var nums = bucketRows.Select(r => Prop(r, entry!.FieldKey)).Where(v => v is not null).Select(v => ToDecimal(v!)).ToList();
+            var nums = bucketRows.Select(r => Val(r, entry!.FieldKey)).Where(v => v is not null).Select(v => ToDecimal(v!)).ToList();
             return nums.Count == 0 ? 0m : fn == "sum" ? nums.Sum() : Math.Round(nums.Average(), 2);
         }
 
@@ -257,6 +282,34 @@ public sealed class SavedViewService(
         if (entry.DataType is not (FieldDataType.Money or FieldDataType.Number))
             throw new ViewValidationException($"fn={fn} needs a Money/Number field; '{fieldKey}' is {entry.DataType}.");
         return entry;
+    }
+
+    /// <summary>D5: load the record type's custom defs + values once per run — typed objects
+    /// so every operator/comparison path works unchanged on custom keys.</summary>
+    private async Task LoadCustomStateAsync(RecordType type, CancellationToken ct)
+    {
+        var defs = await db.CustomFieldDefs.AsNoTracking().Where(d => d.RecordType == type).ToListAsync(ct);
+        _inactiveCustomKeys = defs.Where(d => !d.Active).Select(d => d.Code).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (defs.Count == 0) { _customValues = []; return; }
+
+        var byId = defs.ToDictionary(d => d.Id, d => d.Code);
+        var values = await db.CustomFieldValues.AsNoTracking().Where(v => v.RecordType == type).ToListAsync(ct);
+        _customValues = defs.ToDictionary(d => d.Code, _ => new Dictionary<Guid, object?>(), StringComparer.OrdinalIgnoreCase);
+        foreach (var v in values)
+        {
+            if (!byId.TryGetValue(v.FieldDefId, out var code)) continue;
+            object? typed = v switch
+            {
+                { ValueText: { } s } => s,
+                { ValueNumber: { } n } => n,
+                { ValueMoney: { } m } => m,
+                { ValueDate: { } dt } => dt,
+                { ValueBool: { } bl } => bl,
+                { ValueListCode: { } c } => c,
+                _ => null,
+            };
+            _customValues[code][v.RecordId] = typed;
+        }
     }
 
     /// <summary>The (c) table: record type → the existing scoped list the executor builds on.</summary>
@@ -294,7 +347,7 @@ public sealed class SavedViewService(
 
     private bool Matches(object row, SavedViewFilter f, FieldRegistryEntry entry)
     {
-        var value = Prop(row, f.FieldKey);
+        var value = Val(row, f.FieldKey);
         switch (f.Operator)
         {
             case ViewOperator.Eq:
@@ -362,21 +415,24 @@ public sealed class SavedViewService(
             "@endOfMonth" => new DateTime(now.Year, now.Month, DateTime.DaysInMonth(now.Year, now.Month), 0, 0, 0, DateTimeKind.Utc),
             _ => null,
         };
+        // D5 (ruled): the @today±Nd token FORM — a parser extension, no new token names.
+        if (day is null && System.Text.RegularExpressions.Regex.Match(raw, @"^@today([+-]\d{1,4})d$") is { Success: true } offset)
+            day = now.Date.AddDays(int.Parse(offset.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture));
         if (day is { } d)
             return asEnd && raw != "@startOfMonth" ? d.AddDays(1).AddTicks(-1) : d;
         if (raw.StartsWith('@'))
-            throw new ViewValidationException($"Unknown date token '{raw}' — supported: {string.Join(", ", ViewVocabulary.DateTokens)}.");
+            throw new ViewValidationException($"Unknown date token '{raw}' — supported: {string.Join(", ", ViewVocabulary.DateTokens)} and the @today±Nd form.");
         return DateTime.Parse(raw, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal);
     }
 
-    private static List<object> ApplySort(List<object> rows, IEnumerable<SavedViewColumn> columns, IReadOnlyDictionary<string, FieldRegistryEntry> registry)
+    private List<object> ApplySort(List<object> rows, IEnumerable<SavedViewColumn> columns, IReadOnlyDictionary<string, FieldRegistryEntry> registry)
     {
         var sorted = columns.OrderBy(c => c.Sort).FirstOrDefault(c => c.SortDirection is not null);
         if (sorted is null) return rows;
         var asc = sorted.SortDirection == ViewSortDirection.Asc;
         return asc
-            ? rows.OrderBy(r => Prop(r, sorted.FieldKey)).ToList()
-            : rows.OrderByDescending(r => Prop(r, sorted.FieldKey)).ToList();
+            ? rows.OrderBy(r => Val(r, sorted.FieldKey)).ToList()
+            : rows.OrderByDescending(r => Val(r, sorted.FieldKey)).ToList();
     }
 
     // ---------- validation ----------
@@ -461,6 +517,21 @@ public sealed class SavedViewService(
         v.Id, v.Code, v.Name, v.RecordType.ToString(), v.OwnerUserId, v.IsShared, v.IsSystem,
         v.Filters.OrderBy(f => f.Sort).Select(f => new SavedViewFilterDto(f.FieldKey, f.Operator.ToString(), f.Value, f.Value2)).ToList(),
         v.Columns.OrderBy(c => c.Sort).Select(c => new SavedViewColumnDto(c.FieldKey, c.Label, c.SortDirection?.ToString())).ToList());
+
+    // ---- D5: custom-field resolution ----
+    // Per-run map: custom FieldKey -> (RecordId -> typed value). Populated in PrepareAsync;
+    // scoped service = one run per instance. Native keys fall through to reflection.
+    private Dictionary<string, Dictionary<Guid, object?>> _customValues = [];
+    private HashSet<string> _inactiveCustomKeys = [];
+
+    /// <summary>Field resolution: Custom-kind keys read the value map (absent row = null —
+    /// the honest null the aggregate/series null semantics count); native keys read the DTO.</summary>
+    private object? Val(object row, string key)
+    {
+        if (_customValues.TryGetValue(key, out var map))
+            return Prop(row, "Id") is Guid id ? map.GetValueOrDefault(id) : null;
+        return Prop(row, key);
+    }
 
     private static readonly Dictionary<(Type, string), PropertyInfo?> PropCache = [];
     private static object? Prop(object row, string key)

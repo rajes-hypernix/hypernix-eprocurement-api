@@ -90,6 +90,11 @@ public static class ActionCatalog
             [ApiActions.ManageOwnDashboard] = [B, Ap, TE, CE, Ad, V],     // A63: personalize/arrange/reset own copy (copy-on-write)
             [ApiActions.ManageRoleDashboards] = [Ad],                     // A64: role defaults are platform configuration (OD-3 posture), not publication
 
+            // ---- A65–A67 custom fields (D5, ruled) ----
+            [ApiActions.ManageCustomFields] = [Ad],                       // A65: defs are platform configuration (OD-3 posture)
+            [ApiActions.ReadCustomValues] = [B, Ap, TE, CE, Ad, V],       // A66: + dynamic View* + the record's scoped fetch (vendors read only records they can reach)
+            [ApiActions.EditCustomValues] = [B],                          // A67: Buyer only (ruled deny-by-default: Admin per OD-3, vendors pending a concrete need)
+
             // ---- A49–A57 vendor principal ----
             [ApiActions.ViewMyInvitations] = [V],                         // A49
             [ApiActions.DeclineRfqInvitation] = [V],                      // A50 (REG row 5)

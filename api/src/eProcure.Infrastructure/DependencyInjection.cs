@@ -50,6 +50,7 @@ public static class DependencyInjection
         services.AddScoped<Application.Views.ISavedViewService, SavedViewService>();   // saved-views engine (D3)
         services.AddScoped<Application.Dashboards.ISystemMetricService, SystemMetricService>();   // metric layer (D4)
         services.AddScoped<Application.Dashboards.IDashboardStore, DashboardStoreService>();      // dashboards (D4)
+        services.AddScoped<Application.CustomFields.ICustomFieldService, CustomFieldService>();   // custom fields (D5)
 
         return services;
     }

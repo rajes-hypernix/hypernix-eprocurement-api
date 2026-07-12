@@ -86,6 +86,9 @@ record-type check).
 | A62 | UseDashboards | GET /dashboards/mine · GET /metrics · GET /metrics/{id}/value · GET /metrics/{id}/series | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | D4 (ruled): metric reads ADDITIONALLY check the metric's RequiredAction (SystemMetricService catalog) — e.g. evaluator × spend metric → 403, vendor metrics vendor-only (test-pinned) |
 | A63 | ManageOwnDashboard | POST /dashboards/personalize · PUT /dashboards/mine · DELETE /dashboards/mine | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | D4 (ruled): copy-on-write personalization; reset falls back to the role-default union |
 | A64 | ManageRoleDashboards | PUT /dashboards/role-defaults/{role} | – | – | – | – | ✓ | – | D4 (ruled): role defaults are platform configuration (OD-3 posture), Admin only |
+| A65 | ManageCustomFields | GET/POST /custom-fields · PUT /custom-fields/{id} · POST /custom-fields/{id}/active · DELETE /custom-fields/{id} | – | – | – | – | ✓ | – | D5 (ruled): defs are platform configuration; zero-value hard-delete only, valued defs deactivate-only forever |
+| A66 | ReadCustomValues | GET /custom-values/{type}/{id} | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | D5 (ruled; the "no new rows" prior withdrawn): + dynamic record-type View\* + the record's EXISTING scoped detail fetch — vendors read only records they can reach (test-pinned) |
+| A67 | EditCustomValues | PUT /custom-values/{type}/{id} | ✓ | – | – | – | – | – | D5 (ruled): Buyer only, deny-by-default (Admin per OD-3; vendors pending a concrete need); + dynamic View\* + scoped fetch |
 | A3 | Search | GET /search | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | OD-4 (MODIFIED): all roles keep search, but **result-type filtering by the caller's permitted View\* actions lands in THIS slice (Phase 2)** — search must not undo OD-2's vendor-master denial through the side door. Scoping test: TechEvaluator searching a vendor name → zero vendor-type hits. Vendor in-query scoping unchanged (TEST `SearchScopingTests.cs:81-82`) |
 | A4 | DownloadFile | GET /files/{id} | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | SVC: `FileAccessPolicy.cs:15-30` fail-closed vendor scoping; TEST `VendorScopingTests.cs:77-84` pins internal-reads-any + vendor deny-on-uncertainty. Evaluators need bid attachments to score |
 | A5 | UploadFile | POST /files | ✓ | – | – | – | – | ✓ | OD-5: Buyer + Vendor only — narrowest surface matching real affordances. SVC: `FilesController.cs:23` ownership stamping unchanged |
@@ -173,10 +176,11 @@ record-type check).
 | A1–A6 + A58 all-principal | 8 |
 | A59–A61 saved views (D3, + D4's aggregate/series) | 9 |
 | A62–A64 dashboards + metrics (D4) | 8 |
+| A65–A67 custom fields (D5) | 7 |
 | A7–A23 internal reads | 35 |
 | A24–A48 internal writes | 49 |
 | A49–A57 vendor actions | 11 |
-| **Total** | **130 live** (131 before the sanctioned A1 retirement) — matches the ApiExplorer surface (21 controllers; same enumeration as `AnonymousSweepTests.cs:44-51`); 113 at ruling + RM Phase 3's permissions read + D3's views engine + D4's dashboards/metrics. (A1 ViewDashboard retires with the legacy GET /api/dashboard at D4 Phase 4 — sanctioned.) |
+| **Total** | **137 live** (Slice RM's 113 + permissions + D3 views + D4 dashboards/metrics + D5 custom fields − the retired A1) — matches the ApiExplorer surface (21 controllers; same enumeration as `AnonymousSweepTests.cs:44-51`); 113 at ruling + RM Phase 3's permissions read + D3's views engine + D4's dashboards/metrics. (A1 ViewDashboard retires with the legacy GET /api/dashboard at D4 Phase 4 — sanctioned.) |
 
 ## 5. The Vendor principal's complete action list (as ruled)
 

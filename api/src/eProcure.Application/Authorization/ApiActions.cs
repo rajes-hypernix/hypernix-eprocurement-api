@@ -78,6 +78,11 @@ public static class ApiActions
     public const string ManageOwnDashboard = "ManageOwnDashboard";
     public const string ManageRoleDashboards = "ManageRoleDashboards";
 
+    // A65–A67 — custom fields (D5, ruled; the "no new rows" prior withdrawn)
+    public const string ManageCustomFields = "ManageCustomFields";
+    public const string ReadCustomValues = "ReadCustomValues";
+    public const string EditCustomValues = "EditCustomValues";
+
     // A49–A57 — vendor principal
     public const string ViewMyInvitations = "ViewMyInvitations";
     public const string DeclineRfqInvitation = "DeclineRfqInvitation";

@@ -36,6 +36,11 @@ public sealed class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionM
             // D4: same loud-validation posture for portlet configs and dashboard edits.
             await Write(ctx, StatusCodes.Status400BadRequest, "Invalid dashboard definition", ex.Message);
         }
+        catch (Application.CustomFields.CustomFieldValidationException ex)
+        {
+            // D5: same loud posture for custom field defs and values.
+            await Write(ctx, StatusCodes.Status400BadRequest, "Invalid custom field data", ex.Message);
+        }
         catch (DomainRuleException ex)
         {
             await Write(ctx, StatusCodes.Status409Conflict, "Rule violation", ex.Message);

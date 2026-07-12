@@ -19,8 +19,10 @@ public sealed record SaveViewRequest(
 public sealed record ShareViewRequest(bool IsShared);
 
 /// <summary>A registry field as the ViewBuilder consumes it: DataType picks the D1 value
-/// primitive; Options populate the select for Enum fields (from ViewVocabulary, code not blobs).</summary>
-public sealed record ViewFieldDto(string FieldKey, string Label, string DataType, IReadOnlyList<string>? Options);
+/// primitive; Options populate the select for Enum fields (built-ins from ViewVocabulary;
+/// D5 Custom ListValue fields from their bound custom list). Kind lets the builder group
+/// custom fields under their own label.</summary>
+public sealed record ViewFieldDto(string FieldKey, string Label, string DataType, string Kind, IReadOnlyList<string>? Options);
 
 public sealed record ViewRunColumn(string FieldKey, string Label, string DataType);
 
