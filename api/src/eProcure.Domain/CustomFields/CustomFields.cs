@@ -31,6 +31,12 @@ public class CustomFieldDef
     public string HelpText { get; set; } = "";
     public bool Active { get; set; } = true;
     public int Sort { get; set; }
+    // CF4-T12 authoring parity: display type is DEF-level default rendering everywhere the
+    // field appears (Normal = editable; Disabled = greyed input; Inline = plain text). Non-
+    // Normal fields are NOT user-editable — the service enforces it, not just the UI.
+    public string DisplayType { get; set; } = "Normal";  // Normal | Disabled | Inline
+    // CF4-T12: surfaces the field as a column on the record type's SYSTEM view runs.
+    public bool ShowInList { get; set; }
     public DateTime CreatedUtc { get; set; }
     public DateTime UpdatedUtc { get; set; }
 }

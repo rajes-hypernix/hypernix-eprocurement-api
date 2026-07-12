@@ -22,6 +22,7 @@ import type { FieldSpec } from '../../ui/fieldSpec'
 
 const RECORD_TYPES = ['Requisition', 'Rfq', 'PurchaseOrder', 'Invoice', 'Asn', 'Vendor', 'Onboarding']
 const DATA_TYPES = ['Text', 'LongText', 'Int', 'Decimal', 'Money', 'Date', 'Bool', 'ListValue']
+const DISPLAY_TYPES = ['Normal', 'Disabled', 'Inline']   // CF4-T12: def-level display (Inline = plain text, not user-editable)
 
 const spec = (key: string, label: string, dataType: FieldSpec['dataType'], options?: string[]): FieldSpec => ({
   key, label, dataType,
@@ -85,7 +86,7 @@ export function AdminCustomFields() {
       }
     >
       {editing && (
-        <DefModal recordType={recordType} def={editing.def}
+        <DefModal recordType={recordType} def={editing.def} siblings={defs}
           onClose={() => setEditing(null)}
           onSaved={() => { setEditing(null); refresh() }} />
       )}
@@ -93,14 +94,19 @@ export function AdminCustomFields() {
   )
 }
 
-function DefModal({ recordType, def, onClose, onSaved }: {
-  recordType: string; def: CustomFieldDefDto | null; onClose: () => void; onSaved: () => void
+function DefModal({ recordType, def, siblings, onClose, onSaved }: {
+  recordType: string; def: CustomFieldDefDto | null; siblings: CustomFieldDefDto[]
+  onClose: () => void; onSaved: () => void
 }) {
   const [label, setLabel] = useState(def?.label ?? '')
   const [dataType, setDataType] = useState(def?.dataType ?? 'Text')
   const [listId, setListId] = useState(def?.customListId ?? '')
   const [required, setRequired] = useState(def?.required ?? false)
   const [help, setHelp] = useState(def?.helpText ?? '')
+  const [displayType, setDisplayType] = useState(def?.displayType ?? 'Normal')
+  const [showInList, setShowInList] = useState(def?.showInList ?? false)
+  const [insertBefore, setInsertBefore] = useState('')
+  const placeTargets = siblings.filter((s) => s.id !== def?.id)
   const [error, setError] = useState<string | null>(null)
   const { data: lists = [] } = useQuery({ queryKey: ['custom-lists'], queryFn: getCustomLists })
 
@@ -110,6 +116,7 @@ function DefModal({ recordType, def, onClose, onSaved }: {
         label, recordType, dataType,
         customListId: dataType === 'ListValue' ? (listId || null) : null,
         required, helpText: help, sort: def?.sort ?? 0,
+        displayType, showInList, insertBeforeId: insertBefore || null,
       }
       return def ? updateCustomFieldDef(def.id, req) : createCustomFieldDef(req)
     },
@@ -143,6 +150,15 @@ function DefModal({ recordType, def, onClose, onSaved }: {
             )}
           </>
         )}
+      <SelectField spec={spec('cf-display', 'Display type', 'select', DISPLAY_TYPES)} value={displayType} onChange={(v) => setDisplayType(String(v ?? 'Normal'))} />
+      {displayType !== 'Normal' && <p className="hint">Disabled and Inline fields render read-only and reject user edits — values arrive via defaults or imports.</p>}
+      {placeTargets.length > 0 && (
+        <SelectField
+          spec={{ key: 'cf-before', label: 'Insert before', dataType: 'select', placeholder: '(at the end)',
+            options: { kind: 'static', options: placeTargets.map((s) => ({ code: s.id, label: s.label })) } }}
+          value={insertBefore} onChange={(v) => setInsertBefore(String(v ?? ''))} />
+      )}
+      <CheckboxField spec={spec('cf-showinlist', 'Show in list (column on the default list view)', 'boolean')} value={showInList} onChange={(v) => setShowInList(v === true)} />
       <CheckboxField spec={spec('cf-required', 'Required (at value-save only)', 'boolean')} value={required} onChange={(v) => setRequired(v === true)} />
       <TextAreaField spec={spec('cf-help', 'Help text', 'longText')} value={help} onChange={(v) => setHelp(String(v ?? ''))} />
       {error && <Notice tone="error">{error}</Notice>}

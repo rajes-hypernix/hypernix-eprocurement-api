@@ -5,17 +5,20 @@ public sealed class CustomFieldValidationException(string message) : Exception(m
 
 public sealed record CustomFieldDefDto(
     Guid Id, string Code, string Label, string RecordType, string DataType, Guid? CustomListId,
-    bool Required, string HelpText, bool Active, int Sort, int ValueCount);
+    bool Required, string HelpText, bool Active, int Sort, int ValueCount,
+    string DisplayType = "Normal", bool ShowInList = false);
 
 public sealed record SaveCustomFieldDefRequest(
-    string Label, string RecordType, string DataType, Guid? CustomListId, bool Required, string HelpText, int Sort);
+    string Label, string RecordType, string DataType, Guid? CustomListId, bool Required, string HelpText, int Sort,
+    string DisplayType = "Normal", bool ShowInList = false,
+    Guid? InsertBeforeId = null);   // CF4-T12: named-field placement over the raw integer sort
 
 /// <summary>One field on one record, def metadata + the value as a STRING in the stored
 /// formats the FieldSpec pipeline already uses (ISO dates, raw numerics, 'true'/'false',
 /// list-value codes). Null value = no row = the honest null.</summary>
 public sealed record CustomValueDto(
     string Code, string Label, string DataType, bool Required, string HelpText,
-    string? CustomListCode, string? Value);
+    string? CustomListCode, string? Value, string DisplayType = "Normal");
 
 public sealed record SaveCustomValuesRequest(Dictionary<string, string?> Values);
 

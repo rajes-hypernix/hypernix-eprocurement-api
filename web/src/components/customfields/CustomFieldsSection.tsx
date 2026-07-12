@@ -26,6 +26,7 @@ const toSpec = (v: CustomValueDto): FieldSpec => ({
   dataType: SPEC_TYPE[v.dataType] ?? 'text',
   required: v.required,
   help: v.helpText || undefined,
+  ...(v.displayType === 'Disabled' ? { displayType: 'disabled' } : {}),
   ...(v.dataType === 'ListValue' && v.customListCode
     ? { options: { kind: 'customList', listCode: v.customListCode } }
     : {}),
@@ -53,16 +54,19 @@ export function CustomFieldsSection({ recordType, recordId, excludeKeys = [] }: 
     if (values) setDraft(Object.fromEntries(values.map((v) => [v.code, v.value ?? ''])))
   }, [values])
 
+  // CF4-T12: Disabled/Inline fields are display-only — never in the save payload
+  // (the server rejects changes to them anyway; this keeps whole-form saves clean).
+  const editableCodes = new Set((values ?? []).filter((v) => (v.displayType ?? 'Normal') === 'Normal').map((v) => v.code))
   const save = useMutation({
     mutationFn: () => saveCustomValues(recordType, recordId,
-      Object.fromEntries(Object.entries(draft).map(([k, v]) => [k, v === '' ? null : v]))),
+      Object.fromEntries(Object.entries(draft).filter(([k]) => editableCodes.has(k)).map(([k, v]) => [k, v === '' ? null : v]))),
     onSuccess: () => { setError(null); void qc.invalidateQueries({ queryKey: ['custom-values', recordType, recordId] }) },
     onError: (e) => setError(e instanceof Error ? e.message : 'Could not save custom fields.'),
   })
 
   if (!values || values.length === 0) return null   // no active defs → no section, no noise
 
-  const dirty = values.some((v) => (v.value ?? '') !== (draft[v.code] ?? ''))
+  const dirty = values.some((v) => editableCodes.has(v.code) && (v.value ?? '') !== (draft[v.code] ?? ''))
   return (
     <div className="card" style={{ padding: 14, marginTop: 14 }} aria-label="Custom fields">
       <div className="chead">
@@ -77,11 +81,18 @@ export function CustomFieldsSection({ recordType, recordId, excludeKeys = [] }: 
       {error && <Notice tone="error">{error}</Notice>}
       <div className="grid g2">
         {values.map((v) =>
-          renderField(
-            toSpec(v),
-            draft[v.code] ?? '',
-            (next) => canEdit && setDraft((d) => ({ ...d, [v.code]: next })),
-          ))}
+          v.displayType === 'Inline'
+            ? (
+              <div key={v.code} className="field">
+                <label>{v.label}</label>
+                <p style={{ margin: '4px 0 0' }} aria-label={v.label}>{v.value ?? '—'}</p>
+              </div>
+            )
+            : renderField(
+              toSpec(v),
+              draft[v.code] ?? '',
+              (next) => canEdit && setDraft((d) => ({ ...d, [v.code]: next })),
+            ))}
       </div>
     </div>
   )

@@ -68,8 +68,10 @@ public sealed class CustomFieldService(
             Code = code, Label = req.Label.Trim(), RecordType = type, DataType = dataType,
             CustomListId = req.CustomListId, Required = req.Required,
             HelpText = req.HelpText ?? "", Sort = req.Sort,
+            DisplayType = ParseDisplayType(req.DisplayType), ShowInList = req.ShowInList,
             CreatedUtc = clock.UtcNow, UpdatedUtc = clock.UtcNow,
         };
+        await ApplyInsertBeforeAsync(def, req.InsertBeforeId, req.Sort, ct);
         db.CustomFieldDefs.Add(def);
         // The registry row IS the D3/D4 integration — same transaction, no drift window.
         db.FieldRegistry.Add(new FieldRegistryEntry
@@ -92,7 +94,9 @@ public sealed class CustomFieldService(
         def.Label = req.Label.Trim();
         def.Required = req.Required;
         def.HelpText = req.HelpText ?? "";
-        def.Sort = req.Sort;
+        def.DisplayType = ParseDisplayType(req.DisplayType);
+        def.ShowInList = req.ShowInList;
+        await ApplyInsertBeforeAsync(def, req.InsertBeforeId, req.Sort, ct);
         def.UpdatedUtc = clock.UtcNow;
         var reg = await db.FieldRegistry.FirstAsync(r => r.CustomFieldDefId == def.Id, ct);
         reg.Label = def.Label;
@@ -149,6 +153,17 @@ public sealed class CustomFieldService(
             var supplied = req.Values.TryGetValue(def.Code, out var raw);
             var value = supplied ? raw?.Trim() : null;
             var row = existing.FirstOrDefault(v => v.FieldDefId == def.Id);
+
+            // CF4-T12: Disabled/Inline fields are display-only — the server rejects any CHANGE
+            // (an unchanged echo is tolerated so whole-form submitters don't break). Required
+            // is not enforced on them either: the user cannot supply what they cannot edit.
+            if (def.DisplayType != "Normal")
+            {
+                if (supplied && !string.Equals(value ?? "", Render(row) ?? "", StringComparison.Ordinal))
+                    throw new CustomFieldValidationException(
+                        $"'{def.Label}' is {def.DisplayType.ToLowerInvariant()} — not user-editable.");
+                continue;
+            }
 
             if (supplied && string.IsNullOrEmpty(value))
             {
@@ -238,7 +253,7 @@ public sealed class CustomFieldService(
         {
             var v = values.FirstOrDefault(x => x.FieldDefId == d.Id);
             return new CustomValueDto(d.Code, d.Label, d.DataType.ToString(), d.Required, d.HelpText,
-                d.CustomListId is { } lid ? listCodes.GetValueOrDefault(lid) : null, Render(v));
+                d.CustomListId is { } lid ? listCodes.GetValueOrDefault(lid) : null, Render(v), d.DisplayType);
         }).ToList();
     }
 
@@ -263,7 +278,32 @@ public sealed class CustomFieldService(
 
     private static CustomFieldDefDto ToDto(CustomFieldDef d, int valueCount) => new(
         d.Id, d.Code, d.Label, d.RecordType.ToString(), d.DataType.ToString(), d.CustomListId,
-        d.Required, d.HelpText, d.Active, d.Sort, valueCount);
+        d.Required, d.HelpText, d.Active, d.Sort, valueCount, d.DisplayType, d.ShowInList);
+
+    private static readonly string[] DisplayTypes = ["Normal", "Disabled", "Inline"];
+
+    private static string ParseDisplayType(string raw) =>
+        DisplayTypes.FirstOrDefault(x => string.Equals(x, raw, StringComparison.OrdinalIgnoreCase))
+            ?? throw new CustomFieldValidationException($"Display type must be one of: {string.Join(", ", DisplayTypes)}.");
+
+    /// <summary>CF4-T12 insert-before: the def takes the target's slot; the target and every
+    /// def at/after it shift down one. Null target = the raw integer sort, as before.</summary>
+    private async Task ApplyInsertBeforeAsync(CustomFieldDef def, Guid? insertBeforeId, int fallbackSort, CancellationToken ct)
+    {
+        if (insertBeforeId is not { } beforeId) { def.Sort = fallbackSort; return; }
+        if (beforeId == def.Id)
+            throw new CustomFieldValidationException("A field cannot be inserted before itself.");
+        // Normalize the WHOLE sibling order (the display order: Sort then Label) with the def
+        // wedged in at the target's index — integer ties are resolved once, deterministically.
+        var siblings = await db.CustomFieldDefs
+            .Where(d => d.RecordType == def.RecordType && d.Id != def.Id)
+            .OrderBy(d => d.Sort).ThenBy(d => d.Label).ToListAsync(ct);
+        var idx = siblings.FindIndex(d => d.Id == beforeId);
+        if (idx < 0)
+            throw new CustomFieldValidationException("The insert-before field does not exist on this record type.");
+        siblings.Insert(idx, def);
+        for (var i = 0; i < siblings.Count; i++) siblings[i].Sort = i;
+    }
 
     private static RecordType Parse(string raw) =>
         Enum.TryParse<RecordType>(raw, ignoreCase: true, out var t)

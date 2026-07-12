@@ -198,4 +198,84 @@ public sealed class CustomFieldsTests(CustomFieldsFixture fx) : IClassFixture<Cu
         run!.Rows.Should().HaveCount(1);
         run.Rows[0]["Code"]!.ToString().Should().Be("PO-2026-7501");
     }
+
+    // ---- CF4-T12: authoring parity — display type, insert-before, show-in-list ----
+
+    [Fact]
+    public async Task Insert_before_places_the_def_in_the_target_slot_and_shifts_the_rest()
+    {
+        var admin = fx.ClientAs("u_admin");
+        var first = await fx.CreateDef("CF4 Order First", "Text", "Invoice");
+        var second = await fx.CreateDef("CF4 Order Second", "Text", "Invoice");
+
+        var resp = await admin.PostAsJsonAsync("/api/custom-fields", new SaveCustomFieldDefRequest(
+            "CF4 Order Wedge", "Invoice", "Text", null, false, "", 99, InsertBeforeId: second.Id));
+        resp.StatusCode.Should().Be(HttpStatusCode.OK, await resp.Content.ReadAsStringAsync());
+
+        var defs = (await admin.GetFromJsonAsync<List<CustomFieldDefDto>>("/api/custom-fields?recordType=Invoice"))!
+            .Where(d => d.Label.StartsWith("CF4 Order")).OrderBy(d => d.Sort).ThenBy(d => d.Label).Select(d => d.Label).ToList();
+        defs.Should().ContainInOrder("CF4 Order First", "CF4 Order Wedge", "CF4 Order Second");
+    }
+
+    [Fact]
+    public async Task Non_normal_display_fields_reject_user_edits_but_tolerate_unchanged_echoes()
+    {
+        var admin = fx.ClientAs("u_admin");
+        var def = await fx.CreateDef("CF4 Inline Ref", "Text");
+        await fx.SetValue("u_faridah", fx.PoCId, def.Code, "stamped-by-system");
+
+        // flip to Inline (display type IS mutable — unlike code/type)
+        (await admin.PutAsJsonAsync($"/api/custom-fields/{def.Id}", new SaveCustomFieldDefRequest(
+            def.Label, "PurchaseOrder", "Text", null, false, "", def.Sort, DisplayType: "Inline")))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var buyer = fx.ClientAs("u_faridah");
+        (await buyer.PutAsJsonAsync($"/api/custom-values/PurchaseOrder/{fx.PoCId}",
+            new SaveCustomValuesRequest(new() { [def.Code] = "user-tamper" })))
+            .StatusCode.Should().Be(HttpStatusCode.BadRequest, "an Inline field is display-only — the SERVER refuses the change");
+        (await buyer.PutAsJsonAsync($"/api/custom-values/PurchaseOrder/{fx.PoCId}",
+            new SaveCustomValuesRequest(new() { [def.Code] = "stamped-by-system" })))
+            .StatusCode.Should().Be(HttpStatusCode.OK, "an unchanged echo is tolerated so whole-form saves don't break");
+
+        var read = await buyer.GetFromJsonAsync<List<CustomValueDto>>($"/api/custom-values/PurchaseOrder/{fx.PoCId}");
+        read!.Single(v => v.Code == def.Code).Value.Should().Be("stamped-by-system");
+        read.Single(v => v.Code == def.Code).DisplayType.Should().Be("Inline");
+    }
+
+    [Fact]
+    public async Task Show_in_list_appends_the_column_to_SYSTEM_view_runs_only()
+    {
+        var admin = fx.ClientAs("u_admin");
+        var resp = await admin.PostAsJsonAsync("/api/custom-fields", new SaveCustomFieldDefRequest(
+            "CF4 List Col", "PurchaseOrder", "Text", null, false, "", 50, ShowInList: true));
+        resp.StatusCode.Should().Be(HttpStatusCode.OK, await resp.Content.ReadAsStringAsync());
+        var def = (await resp.Content.ReadFromJsonAsync<CustomFieldDefDto>())!;
+        await fx.SetValue("u_faridah", fx.PoAId, def.Code, "col-value");
+
+        Guid systemViewId = default;
+        await fx.Factory.SeedAsync(db =>
+        {
+            var view = new Domain.Views.SavedView
+            {
+                Code = "SYS-CF4-PO", Name = "CF4 System POs", RecordType = Domain.Views.RecordType.PurchaseOrder,
+                IsSystem = true, IsShared = true, CreatedUtc = DateTime.UtcNow, UpdatedUtc = DateTime.UtcNow,
+            };
+            view.Columns.Add(new Domain.Views.SavedViewColumn { FieldKey = "Code", Sort = 0 });
+            db.SavedViews.Add(view);
+            systemViewId = view.Id;
+            return Task.CompletedTask;
+        });
+
+        var buyer = fx.ClientAs("u_faridah");
+        var run = await buyer.GetFromJsonAsync<ViewRunResult>($"/api/views/{systemViewId}/run");
+        run!.Columns.Select(c => c.FieldKey).Should().Contain(def.Code, "show-in-list surfaces on the system view");
+        run.Rows.Single(r => r["Code"]!.ToString() == "PO-2026-7501")[def.Code]!.ToString().Should().Be("col-value");
+
+        // A USER-authored view keeps exactly its author's columns — no append.
+        var mine = await (await buyer.PostAsJsonAsync("/api/views", new SaveViewRequest(
+            "cf4-own", "PurchaseOrder", [], [new SavedViewColumnDto("Code", null, null)])))
+            .Content.ReadFromJsonAsync<SavedViewDto>();
+        var ownRun = await buyer.GetFromJsonAsync<ViewRunResult>($"/api/views/{mine!.Id}/run");
+        ownRun!.Columns.Select(c => c.FieldKey).Should().NotContain(def.Code);
+    }
 }

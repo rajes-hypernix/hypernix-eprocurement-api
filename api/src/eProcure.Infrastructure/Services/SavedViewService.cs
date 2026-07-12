@@ -206,6 +206,20 @@ public sealed class SavedViewService(
             .Select(c => new ViewRunColumn(c.FieldKey, c.Label ?? registry[c.FieldKey].Label, registry[c.FieldKey].DataType.ToString()))
             .ToList();
 
+        // CF4-T12 show-in-list: on SYSTEM views (the record type's default list), flagged
+        // custom fields surface as appended columns — user-authored views keep exactly the
+        // columns their author chose. Values ride the existing _customValues hydration.
+        if (view.IsSystem)
+        {
+            var showKeys = await db.CustomFieldDefs.AsNoTracking()
+                .Where(d => d.RecordType == view.RecordType && d.Active && d.ShowInList)
+                .OrderBy(d => d.Sort).ThenBy(d => d.Label).Select(d => d.Code).ToListAsync(ct);
+            foreach (var key in showKeys)
+                if (!columns.Any(c => string.Equals(c.FieldKey, key, StringComparison.OrdinalIgnoreCase))
+                    && registry.TryGetValue(key, out var entry))
+                    columns.Add(new ViewRunColumn(key, entry.Label, entry.DataType.ToString()));
+        }
+
         // D7.5 paging: slice AFTER filter+sort — the scoped, filtered, ordered set is the
         // single truth, so every page is a window onto the SAME rows the caller may see
         // (scoping across pages holds by construction, and the pin test proves it anyway).

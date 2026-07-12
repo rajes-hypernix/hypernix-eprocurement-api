@@ -390,3 +390,79 @@ test('CF3-T11: reminder/KPI pickers are populated by seeded example views; an em
   if (stamped) expect((await request.delete(`${API}/api/views/${stamped.id}`, { headers: LIM })).ok()).toBeTruthy()
   await resetDash(request)
 })
+
+// ── CF4 — Custom-field authoring parity ──────────────────────────────────────
+
+test('CF4-T12: field authoring — display=Inline renders as text, insert-before places it, show-in-list surfaces a system-view column', async ({ page, request }) => {
+  const ANCHOR = `CF4 Anchor ${STAMP}`
+  const STAR = `CF4 Star ${STAMP}`
+
+  // Author BOTH fields on screen through the def modal (the CF4 authoring surface).
+  await goAs(page, 'u_admin', 'customfields')
+  await page.getByRole('button', { name: 'PurchaseOrder' }).click()
+  await page.getByRole('button', { name: 'New field' }).click()
+  await page.getByLabel('Label', { exact: true }).fill(ANCHOR)
+  await page.getByRole('button', { name: 'Create field' }).click()
+  await page.waitForTimeout(600)
+
+  await page.getByRole('button', { name: 'New field' }).click()
+  await page.getByLabel('Label', { exact: true }).fill(STAR)
+  await page.getByLabel('Insert before', { exact: true }).selectOption({ label: ANCHOR })
+  await page.getByLabel('Show in list (column on the default list view)', { exact: true }).check()
+  await page.getByRole('button', { name: 'Create field' }).click()
+  await page.waitForTimeout(600)
+
+  // Value while display=Normal (Inline fields are not user-writable — by design).
+  const pos = await (await request.get(`${API}/api/pos`, { headers: BUYER })).json()
+  const po = pos[0]
+  const defs = await (await request.get(`${API}/api/custom-fields?recordType=PurchaseOrder`, { headers: ADMIN })).json()
+  const star = defs.find((d: { label: string }) => d.label === STAR)
+  const anchor = defs.find((d: { label: string }) => d.label === ANCHOR)
+  expect(star.sort, 'insert-before placed Star in Anchor\'s slot').toBeLessThan(anchor.sort)
+  await request.put(`${API}/api/custom-values/PurchaseOrder/${po.id}`, {
+    headers: { ...BUYER, ...JSON_H }, data: { values: { [star.code]: `starval${STAMP}` } } })
+
+  // Flip Star to Inline ON SCREEN via Edit (display type is def-mutable, unlike code/type).
+  await page.reload({ waitUntil: 'networkidle' })
+  await page.getByRole('row', { name: new RegExp(STAR) }).getByRole('button', { name: 'Edit' }).click()
+  await page.getByLabel('Display type', { exact: true }).selectOption('Inline')
+  await page.getByRole('button', { name: 'Save changes' }).click()
+  await page.waitForTimeout(600)
+
+  // Record surface: Star renders INLINE (plain text, no input) and IN POSITION (before Anchor).
+  await goAs(page, 'u_faridah', `pos/${po.id}`)
+  await page.waitForTimeout(1500)
+  const section = page.locator('[aria-label="Custom fields"]')
+  await expect(section.locator(`p[aria-label="${STAR}"]`)).toHaveText(`starval${STAMP}`)   // inline TEXT
+  await expect(section.locator(`input[aria-label="${STAR}"]`)).toHaveCount(0)              // no input
+  await expect(section.getByLabel(ANCHOR)).toBeVisible()                                   // Anchor still a field
+  const labels = await section.locator('label').allTextContents()
+  expect(labels.findIndex((l) => l.includes(STAR))).toBeLessThan(labels.findIndex((l) => l.includes(ANCHOR)))
+
+  // The server (not just the UI) refuses edits to an Inline field.
+  const tamper = await request.put(`${API}/api/custom-values/PurchaseOrder/${po.id}`, {
+    headers: { ...BUYER, ...JSON_H }, data: { values: { [star.code]: 'tamper' } } })
+  expect(tamper.status()).toBe(400)
+
+  // List column: a SavedViewList portlet bound to the SYSTEM PO view shows the Star column.
+  await request.delete(`${API}/api/dashboards/mine`, { headers: LIM })
+  await goAs(page, 'u_lim', 'dashboard')
+  await page.getByRole('button', { name: 'Add portlet' }).click()
+  await page.getByLabel('Portlet type', { exact: true }).selectOption({ label: 'Saved-view list (top-N rows)' })
+  await page.getByLabel('Record type', { exact: true }).selectOption('PurchaseOrder')
+  await page.getByLabel('Saved view', { exact: true }).selectOption({ label: 'All Purchase Orders' })
+  await page.getByRole('button', { name: 'Add portlet' }).last().click()
+  await page.waitForTimeout(1000)
+  const portlet = page.locator('section.card[aria-label="All Purchase Orders"]')
+  await expect(portlet.locator('th', { hasText: STAR })).toBeVisible()          // the flagged column
+  await expect(portlet.locator('td', { hasText: `starval${STAMP}` })).toBeVisible()   // with its value
+  await request.delete(`${API}/api/dashboards/mine`, { headers: LIM })
+
+  // Cleanup: back to Normal, clear the value, delete both defs (zero-value rule).
+  await request.put(`${API}/api/custom-fields/${star.id}`, { headers: { ...ADMIN, ...JSON_H },
+    data: { label: STAR, recordType: 'PurchaseOrder', dataType: 'Text', customListId: null, required: false, helpText: '', sort: star.sort, displayType: 'Normal', showInList: false } })
+  await request.put(`${API}/api/custom-values/PurchaseOrder/${po.id}`, {
+    headers: { ...BUYER, ...JSON_H }, data: { values: { [star.code]: null } } })
+  expect((await request.delete(`${API}/api/custom-fields/${star.id}`, { headers: ADMIN })).status()).toBe(204)
+  expect((await request.delete(`${API}/api/custom-fields/${anchor.id}`, { headers: ADMIN })).status()).toBe(204)
+})
