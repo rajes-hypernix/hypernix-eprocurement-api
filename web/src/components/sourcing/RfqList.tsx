@@ -9,6 +9,7 @@ import { ListPage, type ListColumn, type ListFacet } from '../../ui/archetypes/L
 import { QuickView } from '../../ui/QuickView'
 import { Button } from '../../ui/Button'
 import { ViewPicker, ViewBuilder } from '../views/SavedViewControls'
+import { Pager } from '../views/Pager'
 
 const BOARD_COLS: { status: string; label: string }[] = [
   { status: 'Draft', label: 'Draft' },
@@ -42,9 +43,10 @@ export function RfqList({ onOpen, onNew, initialViewId }: { onOpen: (id: string)
   // below stay LAYERED on the run's rows, per the ruling (parity of the pinned e2e).
   const { data: views = [] } = useQuery({ queryKey: ['views', 'Rfq'], queryFn: () => getViews('Rfq') })
   const [picked, setPicked] = useState<string | null>(initialViewId ?? null)
+  const [page, setPage] = useState(1)
   const viewId = picked ?? views.find((v) => v.isSystem)?.id ?? null
   const { data: run } = useQuery({
-    queryKey: ['view-run', viewId], queryFn: () => runView(viewId!), enabled: viewId !== null,
+    queryKey: ['view-run', viewId, page], queryFn: () => runView(viewId!, page), enabled: viewId !== null,
   })
   const rfqs = (run?.rows ?? []).map(toItem)
   const [builder, setBuilder] = useState<{ open: boolean; existing: SavedViewDto | null }>({ open: false, existing: null })
@@ -145,7 +147,7 @@ export function RfqList({ onOpen, onNew, initialViewId }: { onOpen: (id: string)
           <ViewPicker
             views={views}
             selectedId={viewId}
-            onSelect={(id) => setPicked(id)}
+            onSelect={(id) => { setPicked(id); setPage(1) }}
             onNew={() => setBuilder({ open: true, existing: null })}
             onEdit={(v) => setBuilder({ open: true, existing: v })}
           />
@@ -163,6 +165,7 @@ export function RfqList({ onOpen, onNew, initialViewId }: { onOpen: (id: string)
       rowKey={(r) => r.id ?? ''}
       columns={columns}
       rowActions={rowActions}
+      footer={run && <Pager page={run.page} size={run.size} total={run.total} onPage={setPage} />}
       emptyNone="No RFQs yet — create one from Requisitions."
       emptyFiltered="No RFQs match these filters."
       alternateBody={view === 'board' ? board : undefined}

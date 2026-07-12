@@ -197,7 +197,7 @@ public sealed class SavedViewService(
         return (view, registry, filtered);
     }
 
-    public async Task<ViewRunResult> RunAsync(Guid id, CancellationToken ct = default)
+    public async Task<ViewRunResult> RunAsync(Guid id, int page = 1, int size = 50, CancellationToken ct = default)
     {
         var (view, registry, filtered) = await PrepareAsync(id, ct);
         filtered = ApplySort(filtered, view.Columns, registry);
@@ -206,14 +206,20 @@ public sealed class SavedViewService(
             .Select(c => new ViewRunColumn(c.FieldKey, c.Label ?? registry[c.FieldKey].Label, registry[c.FieldKey].DataType.ToString()))
             .ToList();
 
-        var shaped = filtered.Select(row =>
+        // D7.5 paging: slice AFTER filter+sort — the scoped, filtered, ordered set is the
+        // single truth, so every page is a window onto the SAME rows the caller may see
+        // (scoping across pages holds by construction, and the pin test proves it anyway).
+        var total = filtered.Count;
+        page = Math.Max(1, page);
+        size = Math.Clamp(size, 1, 200);
+        var shaped = filtered.Skip((page - 1) * size).Take(size).Select(row =>
         {
             var d = new Dictionary<string, object?> { ["Id"] = Prop(row, "Id") };
             foreach (var c in columns) d[c.FieldKey] = Val(row, c.FieldKey);
             return d;
         }).ToList();
 
-        return new ViewRunResult(view.Id, view.Name, view.RecordType.ToString(), columns, shaped);
+        return new ViewRunResult(view.Id, view.Name, view.RecordType.ToString(), columns, shaped, page, size, total);
     }
 
     // ---- D4 aggregation seam: same pipeline, folded instead of shaped. Null semantics as

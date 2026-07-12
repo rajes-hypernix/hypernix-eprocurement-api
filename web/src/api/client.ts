@@ -122,6 +122,7 @@ export type ViewRunColumn = { fieldKey: string; label: string; dataType: string 
 export type ViewRunResult = {
   viewId: string; name: string; recordType: string
   columns: ViewRunColumn[]; rows: Record<string, unknown>[]
+  page: number; size: number; total: number
 }
 export type SaveViewRequest = { name: string; recordType: string; filters: SavedViewFilterDto[]; columns: SavedViewColumnDto[] }
 
@@ -131,7 +132,8 @@ export const createView = (req: SaveViewRequest) => http<SavedViewDto>('/views',
 export const updateView = (id: string, req: SaveViewRequest) => http<SavedViewDto>(`/views/${id}`, { method: 'PUT', body: JSON.stringify(req) })
 export const deleteView = (id: string) => http<undefined>(`/views/${id}`, { method: 'DELETE' })
 export const shareView = (id: string, isShared: boolean) => http<SavedViewDto>(`/views/${id}/share`, { method: 'POST', body: JSON.stringify({ isShared }) })
-export const runView = (id: string) => http<ViewRunResult>(`/views/${id}/run`)
+export const runView = (id: string, page = 1, size = 50) =>
+  http<ViewRunResult>(`/views/${id}/run?page=${page}&size=${size}`)
 
 // --- Dashboards + metric layer (D4, AUTHORIZATION-MATRIX A62-A64) ---
 export type PortletDto = {

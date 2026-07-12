@@ -27,10 +27,13 @@ public sealed record ViewFieldDto(string FieldKey, string Label, string DataType
 public sealed record ViewRunColumn(string FieldKey, string Label, string DataType);
 
 /// <summary>Typed rows shaped by the view's columns (+ implicit Id for navigation/actions).
-/// Rows only — aggregation is D4's documented seam; nothing built here.</summary>
+/// Rows only — aggregation is D4's documented seam. D7.5: paged — Rows is ONE page
+/// (default 50, cap 200), Total is the full filtered count; the slice happens AFTER
+/// filter+sort in the executor, so scoping holds across pages by construction.</summary>
 public sealed record ViewRunResult(
     Guid ViewId, string Name, string RecordType,
-    IReadOnlyList<ViewRunColumn> Columns, IReadOnlyList<Dictionary<string, object?>> Rows);
+    IReadOnlyList<ViewRunColumn> Columns, IReadOnlyList<Dictionary<string, object?>> Rows,
+    int Page = 1, int Size = 50, int Total = 0);
 
 public interface ISavedViewService
 {
@@ -40,7 +43,7 @@ public interface ISavedViewService
     Task<SavedViewDto> UpdateAsync(Guid id, SaveViewRequest req, CancellationToken ct = default);
     Task DeleteAsync(Guid id, CancellationToken ct = default);
     Task<SavedViewDto> ShareAsync(Guid id, bool isShared, CancellationToken ct = default);
-    Task<ViewRunResult> RunAsync(Guid id, CancellationToken ct = default);
+    Task<ViewRunResult> RunAsync(Guid id, int page = 1, int size = 50, CancellationToken ct = default);
     // D4 aggregation seam — same visibility, same View* check, same scoped sources as the run.
     Task<Dashboards.ViewAggregateResult> AggregateAsync(Guid id, string fn, string? fieldKey, string? groupBy = null, CancellationToken ct = default);
     Task<Dashboards.ViewSeriesResult> SeriesAsync(Guid id, string fn, string? fieldKey, string bucketField, int months, string? groupBy = null, CancellationToken ct = default);

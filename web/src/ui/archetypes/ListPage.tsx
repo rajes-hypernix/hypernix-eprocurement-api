@@ -44,7 +44,7 @@ export function ListPage<T>({
   title, subtitle, primaryAction, viewToggle,
   searchLabel, searchPlaceholder, searchAriaLabel, searchMatch,
   facets = [], rows, rowKey, columns, rowActions, bulkSelect,
-  emptyNone, emptyFiltered, alternateBody, children,
+  emptyNone, emptyFiltered, alternateBody, footer, children,
 }: {
   title: string
   subtitle?: string
@@ -70,6 +70,8 @@ export function ListPage<T>({
   emptyFiltered: ReactNode
   /** when provided, replaces the table (board view); receives the FILTERED rows */
   alternateBody?: (filtered: T[]) => ReactNode
+  /** rendered directly under the table — the D7.5 Pager's slot */
+  footer?: ReactNode
   /** modals etc. */
   children?: ReactNode
 }) {
@@ -224,6 +226,7 @@ export function ListPage<T>({
         </div>
       )}
 
+      {footer}
       {children}
     </>
   )

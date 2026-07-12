@@ -51,11 +51,12 @@ public sealed class ViewsController(ISavedViewService views) : ControllerBase
         Ok(await views.ShareAsync(id, req.IsShared, ct));
 
     /// <summary>The heart: typed rows shaped by the view's columns, built on the scoped
-    /// sources (D3 Step 0(c)).</summary>
+    /// sources (D3 Step 0(c)). D7.5: paged (default 50, cap 200) — like D6's groupBy,
+    /// query params on an existing A59 read add no endpoint and no action.</summary>
     [HttpGet("{id:guid}/run")]
     [Action(ApiActions.UseSavedViews)]
-    public async Task<ActionResult<ViewRunResult>> Run(Guid id, CancellationToken ct) =>
-        Ok(await views.RunAsync(id, ct));
+    public async Task<ActionResult<ViewRunResult>> Run(Guid id, [FromQuery] int page = 1, [FromQuery] int size = 50, CancellationToken ct = default) =>
+        Ok(await views.RunAsync(id, page, size, ct));
 
     /// <summary>D4 aggregation seam: count|sum|avg over the SAME pipeline as the run —
     /// same visibility, same record-type View* check, same scoped sources.</summary>
