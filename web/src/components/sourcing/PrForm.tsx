@@ -3,8 +3,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   getRequisition, createPr, updatePr, cancelPr, submitPr, resolveEntryForm,
   getCustomValues, saveCustomValues, getSegmentAssignments, saveSegmentAssignments,
+  getLineCustomDefs, getLineCustomValues, saveLineCustomValues,
   type RequisitionDto, type SavePrRequest,
 } from '../../api/client'
+import { renderField } from '../../ui/renderField'
 import { buildSections, splitSubtabs, nativeDefaults, missingRequired, stateKey } from '../entryforms/resolvedForm'
 import { Icon } from '../Icon'
 import { Modal, Spinner } from '../ui'
@@ -18,6 +20,11 @@ import { Button } from '../../ui/Button'
 import { TransactionPage } from '../../ui/archetypes/TransactionPage'
 import { CustomFieldsSection } from '../customfields/CustomFieldsSection'
 import { SegmentsSection } from '../segments/SegmentsSection'
+
+const LINE_SPEC_TYPE: Record<string, FieldSpec['dataType']> = {
+  Text: 'text', LongText: 'text', Int: 'number', Decimal: 'number',
+  Money: 'money', Date: 'date', Bool: 'yesNo', ListValue: 'select',
+}
 
 type PrLine = NonNullable<RequisitionDto['lines']>[number]
 // A line being edited: carries the server id (existing) or undefined (new).
@@ -49,6 +56,8 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
 
   const [h, setH] = useState<Record<string, string>>({ requestor: '', department: '', category: '', location: '', job: '', requiredDate: '', memo: '' })
   const [lines, setLines] = useState<EditLine[]>([blankLine()])
+  // CF6: line-scoped custom fields — extra editable columns keyed by REAL line id.
+  const [lineVals, setLineVals] = useState<Record<string, Record<string, string>>>({})
   const [err, setErr] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [confirmCancel, setConfirmCancel] = useState(false)
@@ -98,6 +107,15 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
   const total = lines.reduce((s, l) => s + (Number(l.qty) || 0) * (Number(l.estUnitPrice) || 0), 0)
   const hasLiveLine = lines.some((l) => l.lifecycleStatus === 'InRfq' || l.lifecycleStatus === 'Awarded')
   const headerStatus = pr?.headerStatus
+  const { data: lineDefs = [] } = useQuery({ queryKey: ['line-defs', 'Requisition'], queryFn: () => getLineCustomDefs('Requisition'), staleTime: 60_000 })
+  const { data: lineValues } = useQuery({
+    queryKey: ['line-values', 'Requisition', id], queryFn: () => getLineCustomValues('Requisition', id!), enabled: !isNew && !!id,
+  })
+  // Line values arrive on their OWN query — initialize when THEY land, not when pr does.
+  useEffect(() => {
+    if (lineValues) setLineVals(Object.fromEntries(Object.entries(lineValues).map(
+      ([lid, vs]) => [lid, Object.fromEntries(vs.map((v) => [v.code, v.value ?? '']))])))
+  }, [lineValues])
 
   const body = (): SavePrRequest => ({
     requestor: h.requestor, department: h.department, location: h.location, category: h.category,
@@ -120,6 +138,11 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
     if (Object.keys(cf).length > 0) await saveCustomValues('Requisition', id!, cf)
     const seg = Object.fromEntries(placedSegment.filter((k) => k in extras).map((k) => [k, extras[k] === '' ? null : extras[k]]))
     if (Object.keys(seg).length > 0) await saveSegmentAssignments('Requisition', id!, seg)
+    // CF6: per-line custom values ride the same save (server verifies line ownership).
+    if (lineDefs.length > 0 && Object.keys(lineVals).length > 0)
+      await saveLineCustomValues('Requisition', id!,
+        Object.fromEntries(Object.entries(lineVals).map(([lid, vs]) =>
+          [lid, Object.fromEntries(Object.entries(vs).map(([k, v]) => [k, v === '' ? null : v]))])))
   }
 
   // The client-side face of the (c) boundary: required-on-form blocks SUBMIT, not drafts.
@@ -225,7 +248,7 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
       <div className="card" style={{ padding: 18, marginBottom: 16 }}>
         <h3 style={{ marginTop: 0 }}>Lines</h3>
         <table>
-          <thead><tr><th style={{ width: '18%' }}>Item code</th><th>Description</th><th className="amt" style={{ width: '10%' }}>Qty</th><th style={{ width: '10%' }}>UoM</th><th className="amt" style={{ width: '12%' }}>Est. rate</th><th style={{ width: '14%' }} /></tr></thead>
+          <thead><tr><th style={{ width: '18%' }}>Item code</th><th>Description</th><th className="amt" style={{ width: '10%' }}>Qty</th><th style={{ width: '10%' }}>UoM</th><th className="amt" style={{ width: '12%' }}>Est. rate</th>{lineDefs.map((d) => <th key={d.code}>{d.label}</th>)}<th style={{ width: '14%' }} /></tr></thead>
           <tbody>
             {lines.map((l, i) => {
               const ro = !isNew && !l.editable
@@ -236,6 +259,19 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
                   <td><NumberField chrome="bare" spec={lineSpec(i, 'qty', { dataType: 'number', placeholder: '0', readOnly: ro, validation: { min: 0 } })} value={l.qty} onChange={(v) => setLine(i, 'qty', v)} /></td>
                   <td><TextField chrome="bare" spec={lineSpec(i, 'uom', { placeholder: 'Unit', readOnly: ro })} value={l.uom} onChange={(v) => setLine(i, 'uom', v)} /></td>
                   <td><MoneyField chrome="bare" spec={lineSpec(i, 'rate', { dataType: 'money', placeholder: '0', readOnly: ro })} value={l.estUnitPrice} onChange={(v) => setLine(i, 'estUnitPrice', v)} /></td>
+                  {lineDefs.map((d) => (
+                    <td key={d.code}>
+                      {l.id
+                        ? renderField(
+                            { key: `line-${i}-${d.code}`, label: `${d.label} line ${i + 1}`, dataType: LINE_SPEC_TYPE[d.dataType] ?? 'text',
+                              ...(d.displayType === 'Disabled' || ro ? { displayType: 'disabled' as const } : {}),
+                              ...(d.dataType === 'ListValue' && d.customListCode ? { options: { kind: 'customList' as const, listCode: d.customListCode } } : {}) },
+                            lineVals[l.id]?.[d.code] ?? '',
+                            (v) => { setDirty(true); setLineVals((m) => ({ ...m, [l.id!]: { ...m[l.id!], [d.code]: String(v ?? '') } })) },
+                            { chrome: 'bare' })
+                        : <span className="hint" title="Save the PR first — new lines get their id on save">—</span>}
+                    </td>
+                  ))}
                   <td>
                     {ro
                       ? <span className="lockchip"><Icon name="lock" size={12} /> {l.lifecycleStatus === 'InRfq' ? 'In RFQ' : l.lifecycleStatus}</span>

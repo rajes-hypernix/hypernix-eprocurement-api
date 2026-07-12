@@ -605,3 +605,53 @@ test('CF5-T5: guards — required-on-hidden warns (allow), populated containers 
 
   expect((await request.delete(`${API}/api/entry-forms/${form.id}`, { headers: ADMIN })).status()).toBe(204)
 })
+
+// ── CF6 — Custom LINE fields ─────────────────────────────────────────────────
+
+test('CF6: line field end-to-end — admin authors a Line-scope field on screen, buyer enters a per-line value on a draft PR, it persists', async ({ page, request }) => {
+  const LABEL = `Batch Ref ${STAMP}`
+
+  // Admin authors the LINE field through the def modal (Scope select).
+  await goAs(page, 'u_admin', 'customfields')
+  await page.getByRole('button', { name: 'Requisition', exact: true }).click()   // the rail item (not the Requisitions nav)
+  await page.getByRole('button', { name: 'New field' }).click()
+  await page.getByLabel('Label', { exact: true }).fill(LABEL)
+  await page.getByLabel('Scope (header field or line column)', { exact: true }).selectOption('Line')
+  await page.getByRole('button', { name: 'Create field' }).click()
+  await page.waitForTimeout(600)
+  await expect(page.getByRole('row', { name: new RegExp(LABEL) }).getByText('line', { exact: true })).toBeVisible()
+
+  // Buyer opens a DRAFT PR — the new column renders on the lines table; enter a value on line 1.
+  const prs = await (await request.get(`${API}/api/requisitions`, { headers: BUYER })).json()
+  const draft = prs.find((r: { headerStatus: string; lines?: unknown[] }) => r.headerStatus === 'Draft' && (r.lines?.length ?? 0) > 0)
+  expect(draft, 'a seeded draft PR with lines').toBeTruthy()
+  await goAs(page, 'u_faridah', `reqs/open/${draft.id}`)
+  await page.waitForTimeout(1500)
+  await expect(page.locator('th', { hasText: LABEL })).toBeVisible()
+  await page.getByLabel(`${LABEL} line 1`, { exact: true }).fill(`LOT-${STAMP}`)
+  await page.getByRole('button', { name: 'Save changes' }).first().click()
+  // Saving navigates back to the list (leave()) — wait for THAT before re-opening, or the
+  // late navigation yanks the reopened form back to the list.
+  await expect(page.getByRole('button', { name: 'Build RFQ' })).toBeVisible()
+  await page.waitForTimeout(400)
+
+  // Reload — the per-line value persisted (LineId grain, not header). Fresh document:
+  // a hash-only goto after leave() proved flaky (same-document navigation).
+  await page.goto('about:blank')
+  await goAs(page, 'u_faridah', `reqs/open/${draft.id}`)
+  await page.waitForTimeout(1500)
+  await expect(page.getByLabel(`${LABEL} line 1`, { exact: true })).toHaveValue(`LOT-${STAMP}`)
+  await expect(page.getByLabel(`${LABEL} line 2`, { exact: true })).toHaveValue('')   // line grain — no bleed
+
+  // The header custom-fields section does NOT show the line field.
+  await expect(page.locator('[aria-label="Custom fields"]').getByText(LABEL)).toHaveCount(0)
+
+  // Cleanup: clear the value, delete the def (zero-value hard delete).
+  const defs = await (await request.get(`${API}/api/custom-fields?recordType=Requisition`, { headers: ADMIN })).json()
+  const def = defs.find((d: { label: string }) => d.label === LABEL)
+  const lineVals = await (await request.get(`${API}/api/custom-values/Requisition/${draft.id}/lines`, { headers: BUYER })).json()
+  const lineId = Object.keys(lineVals)[0]
+  await request.put(`${API}/api/custom-values/Requisition/${draft.id}`, { headers: { ...BUYER, ...JSON_H },
+    data: { values: {}, lines: { [lineId]: { [def.code]: null } } } })
+  expect((await request.delete(`${API}/api/custom-fields/${def.id}`, { headers: ADMIN })).status()).toBe(204)
+})

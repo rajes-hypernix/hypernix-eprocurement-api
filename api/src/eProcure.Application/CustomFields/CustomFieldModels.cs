@@ -42,4 +42,6 @@ public interface ICustomFieldService
     Task<IReadOnlyList<CustomValueDto>> SaveValuesAsync(string recordType, Guid recordId, SaveCustomValuesRequest req, CancellationToken ct = default);
     // CF6-T1: line-grain reads — lineId → the record's Line-scope values on that line.
     Task<IReadOnlyDictionary<Guid, IReadOnlyList<CustomValueDto>>> GetLineValuesAsync(string recordType, Guid recordId, CancellationToken ct = default);
+    // CF6-T3: the record type's LINE defs (no record, no values) — entry surfaces build columns from this.
+    Task<IReadOnlyList<CustomValueDto>> GetLineDefsAsync(string recordType, CancellationToken ct = default);
 }

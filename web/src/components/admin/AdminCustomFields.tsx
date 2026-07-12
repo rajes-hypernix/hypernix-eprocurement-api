@@ -59,7 +59,7 @@ export function AdminCustomFields() {
                 <tr key={d.id}>
                   <td>{d.label}{d.required && <span title="Required at value-save"> *</span>}</td>
                   <td className="mono">{d.code}</td>
-                  <td>{d.dataType}</td>
+                  <td>{d.dataType}{d.scope === 'Line' && <span className="badge b-grey" style={{ marginLeft: 6 }}>line</span>}</td>
                   <td className="amt">{d.valueCount}</td>
                   <td><span className={`badge ${d.active ? 'b-green' : 'b-grey'}`}>{d.active ? 'Active' : 'Deactivated'}</span></td>
                   <td className="amt">
@@ -104,6 +104,7 @@ function DefModal({ recordType, def, siblings, onClose, onSaved }: {
   const [required, setRequired] = useState(def?.required ?? false)
   const [help, setHelp] = useState(def?.helpText ?? '')
   const [displayType, setDisplayType] = useState(def?.displayType ?? 'Normal')
+  const [scope, setScope] = useState(def?.scope ?? 'Header')
   const [showInList, setShowInList] = useState(def?.showInList ?? false)
   const [insertBefore, setInsertBefore] = useState('')
   const placeTargets = siblings.filter((s) => s.id !== def?.id)
@@ -116,7 +117,7 @@ function DefModal({ recordType, def, siblings, onClose, onSaved }: {
         label, recordType, dataType,
         customListId: dataType === 'ListValue' ? (listId || null) : null,
         required, helpText: help, sort: def?.sort ?? 0,
-        displayType, showInList, insertBeforeId: insertBefore || null,
+        displayType, showInList, insertBeforeId: insertBefore || null, scope,
       }
       return def ? updateCustomFieldDef(def.id, req) : createCustomFieldDef(req)
     },
@@ -148,6 +149,9 @@ function DefModal({ recordType, def, siblings, onClose, onSaved }: {
                 spec={{ key: 'cf-list', label: 'Custom list', dataType: 'select', options: { kind: 'static', options: lists.map((l) => ({ code: l.id ?? '', label: l.name ?? l.code ?? '' })) } }}
                 value={listId} onChange={(v) => setListId(String(v ?? ''))} />
             )}
+            <SelectField spec={spec('cf-scope', 'Scope (header field or line column)', 'select', ['Header', 'Line'])}
+              value={scope} onChange={(v) => setScope(String(v ?? 'Header'))} />
+            {scope === 'Line' && <p className="hint">A line column on the record’s lines table (PR/PO/RFQ). Values live per line; not searchable in views yet.</p>}
           </>
         )}
       <SelectField spec={spec('cf-display', 'Display type', 'select', DISPLAY_TYPES)} value={displayType} onChange={(v) => setDisplayType(String(v ?? 'Normal'))} />

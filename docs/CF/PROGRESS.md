@@ -26,3 +26,6 @@
 2026-07-13 07:13 CF5-T2+T3 656821f — layout-object CRUD (subtab hide warn-but-allow per locked D2; guards 409 on populated containers); resolve excludes hidden subtabs; column break exposed.
 2026-07-13 07:13 CF5-T4+T5 07ede4b — composer panel (chips, drag placement, warnings) + two-column canvas (locked D3); guardrails caught raw inputs → rebuilt on FieldSpec primitives. Proofs CF5-T2..T5.
 2026-07-13 07:13 CF5 SLICE GATE — Step 0 T1–T5 all shipped+proven; parity STOP gate passed (byte-identical ×3 roles); full e2e 69/69; AD-1/AD-2 recorded. Tagging v1.3-cf5.
+2026-07-13 07:37 CF6-T1 c89afcd — line-scope model landed with locked partial-index uniqueness; STOP-gate held (480/480, CHECKs untouched).
+2026-07-13 07:37 CF6-T3 — PR lines table renders Line-scope custom columns (editable, saved with the form, ownership-verified); admin Scope authoring; browser journey CF6 green (author→enter→persist at line grain, no header bleed).
+2026-07-13 07:37 CF6 partial-close — sublist objects deferred to BLOCKERS B4 (complete CF7 chosen over a half-built sublist UI); tagging v1.4-cf6-line-fields.

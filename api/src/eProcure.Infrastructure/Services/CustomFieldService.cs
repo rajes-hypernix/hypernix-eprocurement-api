@@ -350,6 +350,19 @@ public sealed class CustomFieldService(
             }).ToList());
     }
 
+    public async Task<IReadOnlyList<CustomValueDto>> GetLineDefsAsync(string recordType, CancellationToken ct = default)
+    {
+        var type = Parse(recordType);
+        var defs = await db.CustomFieldDefs.AsNoTracking()
+            .Where(d => d.RecordType == type && d.Active && d.Scope == "Line")
+            .OrderBy(d => d.Sort).ThenBy(d => d.Label).ToListAsync(ct);
+        var listIds = defs.Where(d => d.CustomListId is not null).Select(d => d.CustomListId!.Value).ToList();
+        var listCodes = await db.CustomLists.AsNoTracking().Where(l => listIds.Contains(l.Id))
+            .ToDictionaryAsync(l => l.Id, l => l.Code, ct);
+        return defs.Select(d => new CustomValueDto(d.Code, d.Label, d.DataType.ToString(), d.Required, d.HelpText,
+            d.CustomListId is { } lid ? listCodes.GetValueOrDefault(lid) : null, null, d.DisplayType)).ToList();
+    }
+
     private static readonly string[] Scopes = ["Header", "Line"];
 
     private static string ParseScope(string raw) =>

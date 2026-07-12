@@ -28,3 +28,13 @@ awaits the Payments module.
 Postgres version (Azure Malaysia West) — CF6 shipped with version-independent
 partial-index uniqueness precisely because this is unverified; if prod is PG15+,
 the NULLS NOT DISTINCT form becomes an option.
+
+**B4 — CF6 sublist-objects (T2 designer surface): DEFERRED, not half-built.** The coupled
+slice's load-bearing half — LINE-SCOPED CUSTOM FIELDS — shipped end-to-end (model with the
+locked partial-index uniqueness, server ownership checks, admin Scope authoring, per-line
+entry on the PR lines table, browser-proven persistence at the line grain). The remaining
+half — EntryFormSublist objects with per-column show/hide/reorder and subtab placement —
+needs its own designer surface; with the run's remaining budget it was a choice between a
+half-built sublist UI and a COMPLETE CF7. Chose complete CF7. No sublist schema was created
+(nothing half-shipped to revert); the CF5 designer + line-field model are the foundation it
+plugs into. Estimated one focused slice.

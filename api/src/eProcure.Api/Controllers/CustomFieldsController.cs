@@ -56,6 +56,12 @@ public sealed class CustomValuesController(ICustomFieldService fields) : Control
     public async Task<ActionResult<IReadOnlyList<CustomValueDto>>> Get(string recordType, Guid recordId, CancellationToken ct) =>
         Ok(await fields.GetValuesAsync(recordType, recordId, ct));
 
+    // CF6-T3: the record type's line DEFS — entry surfaces build their line columns from this.
+    [HttpGet("{recordType}/line-defs")]
+    [Action(ApiActions.ReadCustomValues)]
+    public async Task<ActionResult<IReadOnlyList<CustomValueDto>>> GetLineDefs(string recordType, CancellationToken ct) =>
+        Ok(await fields.GetLineDefsAsync(recordType, ct));
+
     // CF6-T1: line-grain reads — { lineId: CustomValueDto[] } for the record's Line-scope defs.
     [HttpGet("{recordType}/{recordId:guid}/lines")]
     [Action(ApiActions.ReadCustomValues)]

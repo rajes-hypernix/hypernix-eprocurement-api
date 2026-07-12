@@ -172,12 +172,12 @@ export const aggregateView = (id: string, fn: string, field?: string | null, gro
 export type CustomFieldDefDto = {
   id: string; code: string; label: string; recordType: string; dataType: string
   customListId?: string | null; required: boolean; helpText: string; active: boolean; sort: number; valueCount: number
-  displayType?: string; showInList?: boolean
+  displayType?: string; showInList?: boolean; scope?: string
 }
 export type SaveCustomFieldDefRequest = {
   label: string; recordType: string; dataType: string; customListId?: string | null
   required: boolean; helpText: string; sort: number
-  displayType?: string; showInList?: boolean; insertBeforeId?: string | null
+  displayType?: string; showInList?: boolean; insertBeforeId?: string | null; scope?: string
 }
 export type CustomValueDto = {
   code: string; label: string; dataType: string; required: boolean; helpText: string
@@ -194,6 +194,12 @@ export const setCustomFieldActive = (id: string, active: boolean) =>
 export const deleteCustomFieldDef = (id: string) => http<undefined>(`/custom-fields/${id}`, { method: 'DELETE' })
 export const getCustomValues = (recordType: string, recordId: string) =>
   http<CustomValueDto[]>(`/custom-values/${recordType}/${recordId}`)
+export const getLineCustomDefs = (recordType: string) =>
+  http<CustomValueDto[]>(`/custom-values/${recordType}/line-defs`)
+export const getLineCustomValues = (recordType: string, recordId: string) =>
+  http<Record<string, CustomValueDto[]>>(`/custom-values/${recordType}/${recordId}/lines`)
+export const saveLineCustomValues = (recordType: string, recordId: string, lines: Record<string, Record<string, string | null>>) =>
+  http<CustomValueDto[]>(`/custom-values/${recordType}/${recordId}`, { method: 'PUT', body: JSON.stringify({ values: {}, lines }) })
 export const saveCustomValues = (recordType: string, recordId: string, values: Record<string, string | null>) =>
   http<CustomValueDto[]>(`/custom-values/${recordType}/${recordId}`, { method: 'PUT', body: JSON.stringify({ values }) })
 
