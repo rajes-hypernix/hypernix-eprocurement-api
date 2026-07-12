@@ -116,6 +116,35 @@ body {
   height: calc(100vh - 58px);
   overflow-y: auto;
 }
+/* CF1-T4: slim icon-only rail; the flex main widens automatically. */
+.side.collapsed {
+  width: 58px;
+  padding: 16px 6px;
+}
+.side.collapsed .nav {
+  justify-content: center;
+  padding: 10px 0;
+  gap: 0;
+}
+.side.collapsed .grp {
+  margin: 14px 0 6px;
+  height: 10px;
+}
+.side-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 6px 0;
+  margin-bottom: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: none;
+  color: #54606a;
+  cursor: pointer;
+}
+.side-toggle:hover { background: var(--greige, #f6f4ef); }
+
 .side .grp {
   font-size: 10.5px;
   text-transform: uppercase;

@@ -106,3 +106,23 @@ test('CF1-T3: every Administration nav item renders a DISTINCT icon', async ({ p
     expect(paths, `glyph ${n} draws`).toBeGreaterThan(0)
   }
 })
+
+test('CF1-T4: sidebar collapses to a slim rail, persists across reload, expands back', async ({ page }) => {
+  await goAs(page, 'u_faridah', 'dashboard')
+  await page.waitForTimeout(1200)
+  const side = page.locator('aside.side')
+  const wide = (await side.boundingBox())!.width
+  await page.getByRole('button', { name: 'Collapse sidebar' }).click()
+  await page.waitForTimeout(400)
+  const slim = (await side.boundingBox())!.width
+  expect(slim).toBeLessThan(wide / 2)                                   // slim icon-only rail
+  await expect(page.locator('aside .nav', { hasText: 'Requisitions' })).toHaveCount(0)  // labels hidden
+  await expect(page.locator('aside [aria-label="Requisitions"]')).toBeVisible()          // icon remains, accessible
+
+  await page.reload({ waitUntil: 'networkidle' })
+  await page.waitForTimeout(800)
+  expect((await side.boundingBox())!.width).toBeLessThan(wide / 2)      // persisted
+  await page.getByRole('button', { name: 'Expand sidebar' }).click()
+  await page.waitForTimeout(400)
+  expect((await side.boundingBox())!.width).toBeGreaterThan(wide / 2)   // and back
+})

@@ -47,7 +47,7 @@ Columns: `[ ]`→`[x]` when complete · **Audit** = current-state finding from P
 - [x] Browser assertion: no two Administration items share an icon name · Audit:no such test · Build:CF1-T3 commit · Test:CF1-T3 (pairwise-distinct + draws assertion)
 
 ### T4 — Sidebar collapse
-- [ ] Collapse toggle + persisted width state + slim icon-only rail; main content widens · Audit:missing (0 controls) · Build:___ · Test:___
+- [x] Collapse toggle + persisted width state + slim icon-only rail; main content widens · Audit:missing (0 controls) · Build:CF1-T4 commit · Test:CF1-T4 sidebar collapses
 
 ### T5 — Global-search routing (the PR-goes-to-list complaint)
 - [ ] Requisition search hit deep-links to that PR's detail (not the list) · Audit:misroutes to #reqs (probe) · Build:___ · Test:___
