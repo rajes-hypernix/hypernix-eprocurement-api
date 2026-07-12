@@ -16,6 +16,8 @@ import { RecentRecordsPortlet } from './portlets/RecentRecordsPortlet'
 import { ChartPortlet } from './portlets/ChartPortlet'
 import { MyInvitationsPortlet } from './portlets/MyInvitationsPortlet'
 import { AddKpiModal } from './portlets/AddKpiModal'
+import { AddReminderModal } from './portlets/AddReminderModal'
+import { parseConfig, type RemindersConfig, type ReminderItem } from './portlets/portletConfig'
 
 /**
  * D4: the dashboard renderer. Reads the caller's resolved dashboard (personalized copy or
@@ -64,6 +66,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (key: string) => void })
   const [arrange, setArrange] = useState(false)
   const [draft, setDraft] = useState<PortletUpsert[] | null>(null)
   const [addKpi, setAddKpi] = useState(false)
+  const [addReminder, setAddReminder] = useState(false)
   const invalidate = () => { void qc.invalidateQueries({ queryKey: ['my-dashboard'] }) }
 
   const save = useMutation({
@@ -81,6 +84,28 @@ export function Dashboard({ onNavigate }: { onNavigate: (key: string) => void })
       return updateMyDashboard({ name: null, portlets: pack([...current.portlets.map(toUpsert), p]) })
     },
     onSuccess: () => { setAddKpi(false); invalidate() },
+  })
+  // D7.5 task 5: append a reminder item — into the EXISTING Reminders portlet when one
+  // is on the dashboard, else a new Reminders portlet carries it. Same copy-on-write.
+  const addReminderItem = useMutation({
+    mutationFn: async (item: ReminderItem) => {
+      const current = dash!.isPersonalized ? dash! : await personalizeDashboard()
+      const ups = current.portlets.map(toUpsert)
+      const existing = ups.find((p) => p.portletType === 'Reminders')
+      if (existing) {
+        const cfg = parseConfig<RemindersConfig>(existing.configJson, { items: [] })
+        existing.configJson = JSON.stringify({ items: [...cfg.items, item] })
+        return updateMyDashboard({ name: null, portlets: pack(ups) })
+      }
+      return updateMyDashboard({
+        name: null,
+        portlets: pack([...ups, {
+          id: null, portletType: 'Reminders', title: 'Reminders', col: 0, row: 99, width: 1,
+          savedViewId: null, configJson: JSON.stringify({ items: [item] }),
+        }]),
+      })
+    },
+    onSuccess: () => { setAddReminder(false); invalidate() },
   })
 
   if (isPending || !dash) return <Spinner />
@@ -110,6 +135,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (key: string) => void })
         toolbar={
           <>
             <Button variant="ghost" size="sm" icon="plus" onClick={() => setAddKpi(true)} ariaLabel="Add KPI">Add KPI</Button>
+            <Button variant="ghost" size="sm" icon="clock" onClick={() => setAddReminder(true)} ariaLabel="Add reminder">Add reminder</Button>
             {dash.isPersonalized ? (
               <>
                 <Button variant={arrange ? 'primary' : 'outline'} size="sm" icon="grip"
@@ -132,6 +158,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (key: string) => void })
         onRemove={remove}
       />
       {addKpi && <AddKpiModal onClose={() => setAddKpi(false)} onAdd={(p) => addKpiPortlet.mutate(p)} />}
+      {addReminder && <AddReminderModal onClose={() => setAddReminder(false)} onAdd={(i) => addReminderItem.mutate(i)} />}
     </>
   )
 }

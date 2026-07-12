@@ -12,13 +12,7 @@ import { AdminSegments } from './components/admin/AdminSegments'
 import { AdminEntryForms } from './components/admin/AdminEntryForms'
 import { AdminNumbering } from './components/admin/AdminNumbering'
 import { SavedViewsHome } from './components/views/SavedViewsHome'
-
-// Record type → its list screen's route base (the D7.5 rollout targets; the reminder
-// and View-all click-throughs ride the same map).
-export const LIST_ROUTE: Record<string, string> = {
-  Requisition: 'reqs', Rfq: 'rfqs', PurchaseOrder: 'pos', Invoice: 'invoices',
-  Asn: 'deliveries', Vendor: 'vendors', Onboarding: 'onboarding',
-}
+import { LIST_ROUTE } from './lib/listRoutes'
 import { Requisitions } from './components/sourcing/Requisitions'
 import { Consolidate } from './components/sourcing/Consolidate'
 import { RfqList } from './components/sourcing/RfqList'

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  getAsns, getAsn, getGrnForAsn, receiveAsn, getShipPlan, createAsn, getPos,
+  getAsn, getGrnForAsn, receiveAsn, getShipPlan, createAsn, getPos,
 } from '../../api/client'
 import { Icon } from '../Icon'
 import { ConfirmModal, EmptyState, Notice, Spinner } from '../ui'
