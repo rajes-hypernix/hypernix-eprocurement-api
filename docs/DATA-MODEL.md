@@ -247,3 +247,30 @@ documented seam — deliberately not built.
   available", never zero — the Slice H posture). View aggregation
   (`/aggregate`, `/series`) rides the D3 executor's scoped pipeline; the
   IQueryable escape hatch remains the documented seam in SavedViewService.
+
+## Custom fields (D5)
+
+- **CustomFieldDef** — grain: one row per definition. `Code` (`cf_*`, UQ) doubles
+  as the FieldRegistry FieldKey and the FieldSpec key — one identity across
+  storage, filtering and rendering. Code/RecordType/DataType are IMMUTABLE;
+  def creation inserts the Kind=Custom registry row in the same transaction.
+  Lifecycle (ruled): values ever written → deactivate-only forever (values
+  persist; entry surfaces and the builder palette hide it; referencing views
+  fail loudly); zero values → hard-delete removes the registry row.
+- **CustomFieldValue** — grain: one row per (def, record); UQ(FieldDefId,
+  RecordId); **an absent row IS the honest null** (aggregates count it as
+  ExcludedNullCount, never zero). **Sparse-column deviation, ruled:** SIX typed
+  columns serve the EIGHT DataTypes — Text+LongText share `ValueText` (length
+  is UI semantics, not storage) and Int+Decimal share `ValueNumber
+  numeric(18,4)` (wholeness is a save-time rule); plus `ValueMoney
+  numeric(18,2)`, `ValueDate date`, `ValueBool`, `ValueListCode` (the
+  CustomListValue CODE, like built-in selects). Type-safety is preserved
+  entirely by two CHECKs: exactly-one-column-populated AND
+  populated-column-matches-the-DataType (denormalized from the immutable def).
+  No JSON values anywhere.
+- **Polymorphic (RecordType, RecordId)** — the accepted cost: no owning
+  aggregate hard-deletes today, so the orphan integrity probe
+  (`CustomFieldOrphanTests`) is the standing guard; any future delete flow
+  that strands values turns it red and inherits the cleanup obligation.
+- Deferred (BACKLOG): RecordRef (first honest consumer is L4 custom records),
+  DateTime (every user-entered business date is DateOnly per Slice H).

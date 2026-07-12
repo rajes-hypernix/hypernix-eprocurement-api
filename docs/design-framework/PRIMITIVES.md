@@ -139,3 +139,18 @@ honest empty state), MyInvitations (vendor work surface, OD-D4-2).
 **web/src/mock/ is DELETED — nothing on any dashboard is illustrative.** New
 portlet types add a config record in PortletConfigs.cs, a renderer here, and
 seed rows; no schema change.
+
+## Custom fields — the identical pipeline (D5)
+
+`components/customfields/CustomFieldsSection.tsx` renders a record's custom
+fields: defs+values arrive in one call, become a FieldSpec array and go
+through `renderField` — **the same pipeline as every built-in field; there is
+no second path** (the charter-rule-3 ruling, cashed in). Wired on PO detail,
+VendorDetail (tab) and PrForm; other record surfaces adopt the section at
+their own gates. Defs are Admin Setup (`AdminCustomFields`, SetupPage
+archetype, A65); values save via A67 (Buyer). Custom fields appear in the
+view-builder palette grouped "Custom fields", filter/aggregate/KPI through
+the untouched D3/D4 chain, and date criteria may use the ruled `@today±Nd`
+token form. **Required is enforced at value-save ONLY — it does not gate
+record lifecycle transitions.** A PO with an empty required custom field
+still issues; transition gating is D7 form-engine territory, by design.
