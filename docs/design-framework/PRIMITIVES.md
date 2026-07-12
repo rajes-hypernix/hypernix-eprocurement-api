@@ -124,3 +124,18 @@ ruling — the Requisitions migration designs facets AS criteria from the
 start, see BACKLOG). Sharing is publication: the Shared toggle appears only
 for holders of ManageSharedViews (A61), derived from /api/auth/permissions
 like every other gate.
+
+## Dashboard archetype + portlet catalogue (D4)
+
+`ui/archetypes/DashboardPage` is the FIFTH archetype: a 2-column grid of
+portlet instances read from `GET /api/dashboards/mine`, with arrow-based
+arrange chrome (ruled: testable beats flashy). `components/Dashboard.tsx` is
+its instantiation; the eight portlet types (`components/portlets/`) are ALL
+live-data — KpiMeter (metric- or view-aggregate-backed; honest "not yet
+available"), KpiScorecard, Reminders (live counts; click-through opens the
+list WITH the view picked), SavedViewList, Shortcuts (server-permission
+gated), RecentRecords, Chart (hand-rolled SVG, actuals only, minimum-data
+honest empty state), MyInvitations (vendor work surface, OD-D4-2).
+**web/src/mock/ is DELETED — nothing on any dashboard is illustrative.** New
+portlet types add a config record in PortletConfigs.cs, a renderer here, and
+seed rows; no schema change.

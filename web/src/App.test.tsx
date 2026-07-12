@@ -13,7 +13,7 @@ describe('App shell', () => {
     ])
     // RM-P1: the sidebar derives from the server permission list — the nav item the test
     // clicks exists only when /auth/permissions grants its action.
-    vi.spyOn(client, 'getPermissions').mockResolvedValue(['ViewDashboard', 'ViewVendors', 'ViewRequisitions', 'ViewRfqs'])
+    vi.spyOn(client, 'getPermissions').mockResolvedValue(['UseDashboards', 'ViewVendors', 'ViewRequisitions', 'ViewRfqs'])
     vi.spyOn(client, 'getRequisitions').mockResolvedValue([])
     // D4: the dashboard renders from the resolved portlet list + live metric values.
     vi.spyOn(client, 'getMyDashboard').mockResolvedValue({

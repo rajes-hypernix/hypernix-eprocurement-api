@@ -8,12 +8,12 @@ import { BUYER_NAV, gateNav } from './nav'
  */
 
 const BUYER_PERMISSIONS = [
-  'ViewDashboard', 'ViewRequisitions', 'ViewRfqs', 'ViewAwards', 'ViewPos', 'ViewAsns',
+  'UseDashboards', 'ViewRequisitions', 'ViewRfqs', 'ViewAwards', 'ViewPos', 'ViewAsns',
   'ViewInvoices', 'ViewStatements', 'ViewBidOpenings', 'ViewVendors', 'ViewOnboarding',
   'ViewForms', 'ViewClarifications', 'ViewUsers',
 ]
 const ADMIN_PERMISSIONS = [...BUYER_PERMISSIONS, 'ManageUsers', 'ManageCustomLists']
-const EVALUATOR_PERMISSIONS = ['ViewDashboard', 'ViewRfqs', 'ViewBidOpenings', 'ViewClarifications', 'ViewUsers']
+const EVALUATOR_PERMISSIONS = ['UseDashboards', 'ViewRfqs', 'ViewBidOpenings', 'ViewClarifications', 'ViewUsers']
 
 const keys = (groups: ReturnType<typeof gateNav>) => groups.flatMap((g) => g.items.map((i) => i.key))
 const titles = (groups: ReturnType<typeof gateNav>) => groups.map((g) => g.title)

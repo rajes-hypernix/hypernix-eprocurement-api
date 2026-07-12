@@ -77,7 +77,7 @@ record-type check).
 
 | # | Action | Endpoints | B | Ap | TE | CE | Ad | V | Evidence |
 |---|---|---|---|---|---|---|---|---|---|
-| A1 | ViewDashboard | GET /dashboard | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | SVC: `DashboardService.cs:14-84` branches per role; crawl exercises all 5 persona dashboards |
+| ~~A1~~ | ~~ViewDashboard~~ | ~~GET /dashboard~~ | | | | | | | **RETIRED at D4 Phase 4 (sanctioned):** the legacy endpoint + DashboardService are deleted; A62 UseDashboards is the successor. The per-principal derivations it owned (Approver creator≠me SoD, evaluators' assigned-to-me, vendor scoping) migrated to SystemMetricService with their semantics test-pinned BEFORE deletion (the ruled condition) |
 | A2 | ViewPersonas | GET /auth/personas | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | REG (Slice F): authenticated-only; powers the persona switcher (`identity.tsx:23`) |
 | A58 | ViewPermissions | GET /auth/permissions | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | Phase 3 (this slice's file plan, as ruled): every principal reads its OWN allowed-action list, from which the web derives display gating. Anonymous → 401 (not on the §3 exemption list) |
 | A59 | UseSavedViews | GET /views · GET /views/fields · GET /views/{id}/run | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | D3 (ruled): the run ADDITIONALLY checks the view's record-type View\* action via `ViewVocabulary.ViewActionFor` — e.g. TechEvaluator × Vendor view → 403 (test-pinned) |
@@ -176,7 +176,7 @@ record-type check).
 | A7–A23 internal reads | 35 |
 | A24–A48 internal writes | 49 |
 | A49–A57 vendor actions | 11 |
-| **Total** | **131** — matches the ApiExplorer surface (21 controllers; same enumeration as `AnonymousSweepTests.cs:44-51`); 113 at ruling + RM Phase 3's permissions read + D3's views engine + D4's dashboards/metrics. (A1 ViewDashboard retires with the legacy GET /api/dashboard at D4 Phase 4 — sanctioned.) |
+| **Total** | **130 live** (131 before the sanctioned A1 retirement) — matches the ApiExplorer surface (21 controllers; same enumeration as `AnonymousSweepTests.cs:44-51`); 113 at ruling + RM Phase 3's permissions read + D3's views engine + D4's dashboards/metrics. (A1 ViewDashboard retires with the legacy GET /api/dashboard at D4 Phase 4 — sanctioned.) |
 
 ## 5. The Vendor principal's complete action list (as ruled)
 

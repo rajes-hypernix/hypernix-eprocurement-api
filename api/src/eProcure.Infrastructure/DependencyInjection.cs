@@ -42,7 +42,6 @@ public static class DependencyInjection
         services.AddScoped<Application.Communication.IClarificationService, ClarificationService>();
         services.AddScoped<Application.Files.IFileStore, FileStore>();
         services.AddScoped<Application.Files.IFileAccessPolicy, FileAccessPolicy>();
-        services.AddScoped<Application.Dashboard.IDashboardService, DashboardService>();
 
         // Vendor onboarding (Slice B): email transport + notifier + invitation/magic-link service.
         services.AddScoped<IEmailSender, Email.SmtpEmailSender>();

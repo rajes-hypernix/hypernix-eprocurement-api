@@ -108,21 +108,19 @@ public sealed class DashboardMetricsFixture : IAsyncLifetime
 
 public sealed class DashboardMetricsTests(DashboardMetricsFixture fx) : IClassFixture<DashboardMetricsFixture>
 {
-    // ---- (1) PARITY: the metric layer == the retiring DashboardService, pinned BEFORE A1 dies ----
+    // ---- (1) PARITY: pinned against the legacy /api/dashboard cards BEFORE A1 retired
+    // (CI-recorded at d4 phase 2, run 29152084168-era). The legacy endpoint is now deleted
+    // (sanctioned A1 retirement), so the same values are pinned explicitly from the fixture:
+    // the queries are byte-identical by construction (OD-D4-1: openRequisitions counts ALL PRs). ----
 
     [Fact]
-    public async Task Metric_layer_reproduces_the_legacy_dashboard_cards_byte_identically()
+    public async Task Migrated_stat_card_metrics_hold_their_pre_retirement_values()
     {
-        var legacy = await fx.ClientAs("u_faridah").GetFromJsonAsync<LegacyDashboard>("/api/dashboard");
-        var byLabel = legacy!.Cards.ToDictionary(c => c.Label, c => c.Value);
-
-        (await fx.Metric("u_faridah", MetricIds.OpenRequisitions)).Value.Should().Be(decimal.Parse(byLabel["Open requisitions"]));
-        (await fx.Metric("u_faridah", MetricIds.RfqsAwaitingBids)).Value.Should().Be(decimal.Parse(byLabel["RFQs awaiting bids"]));
-        (await fx.Metric("u_faridah", MetricIds.RfqsReadyToOpen)).Value.Should().Be(decimal.Parse(byLabel["Ready to open"]));
-        (await fx.Metric("u_faridah", MetricIds.RfqsUnderEvaluation)).Value.Should().Be(decimal.Parse(byLabel["Under evaluation"]));
+        (await fx.Metric("u_faridah", MetricIds.OpenRequisitions)).Value.Should().Be(0, "the fixture seeds no PRs (count-ALL query per OD-D4-1)");
+        (await fx.Metric("u_faridah", MetricIds.RfqsAwaitingBids)).Value.Should().Be(1, "one Open RFQ");
+        (await fx.Metric("u_faridah", MetricIds.RfqsReadyToOpen)).Value.Should().Be(1, "one Closed RFQ");
+        (await fx.Metric("u_faridah", MetricIds.RfqsUnderEvaluation)).Value.Should().Be(1, "one Evaluation RFQ");
     }
-    private sealed record LegacyCard(string Label, string Value);
-    private sealed record LegacyDashboard(string Title, string Subtitle, List<LegacyCard> Cards);
 
     // ---- (2) the migrated SoD / scoping semantics (the A1-retirement condition) ----
 

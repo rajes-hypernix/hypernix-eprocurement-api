@@ -221,8 +221,6 @@ export const cancelPr = (id: string, reason: string) =>
   http<RequisitionDto>(`/requisitions/${id}/cancel`, { method: 'POST', body: JSON.stringify({ reason }) })
 
 // --- RFQs ---
-export type DashboardDto = S['DashboardDto']
-export const getDashboard = () => http<DashboardDto>('/dashboard')
 
 export const getRfqs = () => http<RfqListItem[]>('/rfqs')
 export const getRfq = (id: string) => http<RfqDetail>(`/rfqs/${id}`)

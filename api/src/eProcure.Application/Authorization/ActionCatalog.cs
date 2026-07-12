@@ -25,7 +25,6 @@ public static class ActionCatalog
         new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)
         {
             // ---- A1–A6 all-principal ----
-            [ApiActions.ViewDashboard] = [B, Ap, TE, CE, Ad, V],          // A1
             [ApiActions.ViewPersonas] = [B, Ap, TE, CE, Ad, V],           // A2
             [ApiActions.ViewPermissions] = [B, Ap, TE, CE, Ad, V],        // A58 (Phase 3: every principal reads its own action list)
             [ApiActions.Search] = [B, Ap, TE, CE, Ad, V],                 // A3 (OD-4: result-type filter in SearchService)

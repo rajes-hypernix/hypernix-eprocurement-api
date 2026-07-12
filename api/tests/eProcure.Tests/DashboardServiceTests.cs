@@ -1,3 +1,4 @@
+using eProcure.Application.Dashboards;
 using eProcure.Domain.Sourcing;
 using eProcure.Domain.Suppliers;
 using eProcure.Infrastructure.Services;
@@ -6,7 +7,12 @@ using Xunit;
 
 namespace eProcure.Tests;
 
-public sealed class DashboardServiceTests
+/// <summary>
+/// The K6a semantic pinned on the METRIC LAYER (D4 Phase 4: the legacy DashboardService is
+/// deleted; its per-principal semantics migrated to SystemMetricService — this file keeps
+/// the original pin alive against the successor).
+/// </summary>
+public sealed class VendorRfqsToBidMetricTests
 {
     private static Rfq OpenRfq(string code, DateTime now) => new Rfq
     {
@@ -15,9 +21,9 @@ public sealed class DashboardServiceTests
     }.SeededAs(RfqStatus.Open);
 
     // BACKLOG / K6a: a declined invitation is not an outstanding action and must not inflate the
-    // vendor's "RFQs to bid" tile.
+    // vendor's "RFQs to bid" number.
     [Fact]
-    public async Task RFQs_to_bid_excludes_declined_invitations()
+    public async Task RFQs_to_bid_metric_excludes_declined_invitations()
     {
         var c = TestContext.New();
         var now = c.Clock.UtcNow;
@@ -33,11 +39,10 @@ public sealed class DashboardServiceTests
         c.Db.Rfqs.AddRange(live, declined);
         await c.Db.SaveChangesAsync();
 
-        var svc = new DashboardService(c.Db, new FakeCurrentUser("VU-x", "Xylo", ["Vendor"], vendor.Id));
-        var dash = await svc.GetAsync();
+        var metrics = new SystemMetricService(c.Db, c.Clock, new FakeCurrentUser("VU-x", "Xylo", ["Vendor"], vendor.Id));
+        var m = await metrics.ValueAsync(MetricIds.VendorRfqsToBid);
 
-        var toBid = dash.Cards.Single(card => card.Label == "RFQs to bid");
         // Only the live invitation counts — the declined RFQ is excluded.
-        toBid.Value.Should().Be("1");
+        m.Value.Should().Be(1);
     }
 }

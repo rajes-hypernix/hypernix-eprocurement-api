@@ -224,3 +224,26 @@ referencing a dead key fails loudly (400), never silently drops the filter.
 The executor decorates the SAME scoped service list methods the screens use
 (vendor scoping/masking inherited by construction); aggregation is D4's
 documented seam — deliberately not built.
+
+## Dashboards + portlets (D4)
+
+- **Dashboard** — grain: one row per dashboard. Exactly ONE owner axis, enforced
+  by a DB check constraint: a ROLE DEFAULT (`OwnerRole` set + `IsRoleDefault`,
+  Admin-managed via A64) XOR a user's personalized copy (`OwnerUserId` set —
+  copy-on-write from the resolved role-default union; multi-role principals get
+  the deduplicated union of their roles' defaults, stacked). Six role defaults
+  seeded from `Application/Dashboards/DashboardSeed.cs` (single source shared
+  with tests; deterministic ids).
+- **PortletInstance** — grain: one row per placement. `PortletType` ∈ {KpiMeter,
+  KpiScorecard, Reminders, SavedViewList, Shortcuts, RecentRecords, Chart,
+  MyInvitations (OD-D4-2)}; `Col/Row/Width` = the 2-column arrange grid;
+  `SavedViewId` nullable FK for view-backed portlets. **`ConfigJson` is the
+  framework's ONE sanctioned JSON** — its schema per portlet type is typed in
+  `Application/Dashboards/PortletConfigs.cs` and validated on every save (and by
+  the seed drift-test); nothing else on any business entity stores JSON.
+- **Metric layer** — no tables: `SystemMetricService` computes from existing
+  facts, IClock-driven (never DB CURRENT_DATE), each metric carrying a
+  RequiredAction and its null behaviour (backfill-null inputs → "not yet
+  available", never zero — the Slice H posture). View aggregation
+  (`/aggregate`, `/series`) rides the D3 executor's scoped pipeline; the
+  IQueryable escape hatch remains the documented seam in SavedViewService.

@@ -15,9 +15,19 @@ discovering a default later.
    (actor names redacted)? Current: no — the PO audit trail is internal-only (it contains internal
    actor names; AUTHORIZATION-MATRIX ruling OD-10). Defensible default; SPSB may prefer transparency.
 
-*Raised by: RFQ Lifecycle Slice I/J (1); Slice RM role-matrix rulings (2). These are product stances,
-not technical constraints — either behaviour is a small change; the point is that SPSB decides it,
-not us.*
+3. **Spend category dimension** — the demo dashboard mocked a Materials/Services/MRO spend split,
+   but no category dimension exists on PO/Invoice lines, so D4's spend chart is single-series
+   (honest). Should P2P lines carry a spend category? Note: **D6's custom segments may be the
+   delivery vehicle** — a "Spend Category" segment applied to PO/Invoice lines is exactly what D6
+   builds.
+
+4. **Vendor segmentation for onboarding analytics** — the mock split onboarded vendors by
+   Manufacturer/Distributor/Service-provider; the data model only carries SWEC/Non-SWEC. Should
+   vendors carry a business-type dimension? Same note: a D6 custom segment on Vendor may deliver it.
+
+*Raised by: RFQ Lifecycle Slice I/J (1); Slice RM role-matrix rulings (2); D4 dashboard honesty
+census (3, 4). These are product stances, not technical constraints — either behaviour is a small
+change; the point is that SPSB decides it, not us.*
 
 ## B. Integration dependencies — required by Sprint 2 of the delivery roadmap (Master Process & Control Map Rev D, page 7)
 

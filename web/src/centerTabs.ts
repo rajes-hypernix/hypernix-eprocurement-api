@@ -22,7 +22,7 @@ export const BUYER_CENTER_TABS: CenterTab[] = [
   {
     key: 'sourcing', label: 'Sourcing',
     items: [
-      { key: 'dashboard', icon: 'dashboard', label: 'Dashboard', action: 'ViewDashboard' },
+      { key: 'dashboard', icon: 'dashboard', label: 'Dashboard', action: 'UseDashboards' },
       { key: 'reqs', icon: 'doc', label: 'Requisitions', action: 'ViewRequisitions' },
       { key: 'rfqs', icon: 'rfq', label: 'RFQs', action: 'ViewRfqs' },
       { key: 'awards', icon: 'award', label: 'Awards & POs', action: 'ViewAwards' },

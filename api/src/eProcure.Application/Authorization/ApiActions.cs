@@ -10,8 +10,9 @@ namespace eProcure.Application.Authorization;
 /// </summary>
 public static class ApiActions
 {
-    // A1–A6 — all-principal (+ A58, the Phase 3 permissions read)
-    public const string ViewDashboard = "ViewDashboard";
+    // A2–A6 — all-principal (+ A58 permissions read; A62–A64 dashboards). A1 ViewDashboard
+    // RETIRED at D4 Phase 4 with the legacy GET /api/dashboard (sanctioned) — UseDashboards
+    // is its successor.
     public const string ViewPersonas = "ViewPersonas";
     public const string ViewPermissions = "ViewPermissions";
     public const string Search = "Search";
