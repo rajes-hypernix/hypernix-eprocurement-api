@@ -20,7 +20,9 @@ const spec = (key: string, label: string, dataType: FieldSpec['dataType'], optio
  * The D4 gate's flow: build a KPI from a saved view — pick view, fn (sum/avg need a
  * Money/Number field), optional target — end-to-end without code.
  */
-export function AddKpiModal({ onClose, onAdd }: { onClose: () => void; onAdd: (p: PortletUpsert) => void }) {
+export function AddKpiModal({ onClose, onAdd, onGoCreateViews }: {
+  onClose: () => void; onAdd: (p: PortletUpsert) => void; onGoCreateViews?: () => void
+}) {
   const [recordType, setRecordType] = useState('Rfq')
   const [viewId, setViewId] = useState('')
   const [fn, setFn] = useState('count')
@@ -79,6 +81,12 @@ export function AddKpiModal({ onClose, onAdd }: { onClose: () => void; onAdd: (p
           value={groupBy} onChange={(v) => setGroupBy(String(v ?? ''))} />
       )}
       <NumberField spec={spec('kpi-target', 'Target (optional)', 'number')} value={target} onChange={(v) => setTarget(String(v ?? ''))} />
+      {views.length === 0 && onGoCreateViews && (
+        <p className="hint">
+          No saved views for {recordType} yet —{' '}
+          <button type="button" className="lnk" onClick={() => { onClose(); onGoCreateViews() }}>create one in Saved Views</button>.
+        </p>
+      )}
     </Modal>
   )
 }

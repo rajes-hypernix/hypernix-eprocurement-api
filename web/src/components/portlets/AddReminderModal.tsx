@@ -21,7 +21,11 @@ const spec = (key: string, label: string, dataType: FieldSpec['dataType'], optio
  * click-through opens the list with the view selected (route from the ONE map). No new
  * engine: this writes an item into the existing RemindersConfig shape.
  */
-export function AddReminderModal({ onClose, onAdd }: { onClose: () => void; onAdd: (item: ReminderItem) => void }) {
+export function AddReminderModal({ onClose, onAdd, onGoCreateViews }: {
+  onClose: () => void; onAdd: (item: ReminderItem) => void
+  /** CF3-T11: the create-view→bind loop, discoverable from an empty picker. */
+  onGoCreateViews?: () => void
+}) {
   const [recordType, setRecordType] = useState('Requisition')
   const [viewId, setViewId] = useState('')
   const [label, setLabel] = useState('')
@@ -55,6 +59,13 @@ export function AddReminderModal({ onClose, onAdd }: { onClose: () => void; onAd
         spec={{ key: 'rem-view', label: 'Saved view', dataType: 'select', options: { kind: 'static', options: views.map((v) => ({ code: v.id, label: v.name })) } }}
         value={viewId} onChange={(v) => setViewId(String(v ?? ''))} />
       <TextField spec={{ ...spec('rem-label', 'Label', 'text'), placeholder: 'defaults to the view name' }} value={label} onChange={(v) => setLabel(String(v ?? ''))} />
+      {views.length === 0 && onGoCreateViews && (
+        <p className="hint">
+          No saved views for {recordType} yet —{' '}
+          <button type="button" className="lnk" onClick={() => { onClose(); onGoCreateViews() }}>create one in Saved Views</button>{' '}
+          and it appears here.
+        </p>
+      )}
       <p className="hint">The count stays live; clicking it opens the list with this view selected.</p>
     </Modal>
   )

@@ -57,12 +57,56 @@ public sealed class DevelopmentDataSeeder(
         await SeedFilesAsync(ct);
         await SeedPrLineageDemoAsync(ct);
         await SeedNumberSequencesAsync(ct);
+        await SeedExampleViewsAsync(ct);
         await ProjectPrSegmentsAsync(ct);
         logger.LogInformation("DataSeeder complete (Slice 1–8 master + sourcing + full P2P + clarifications).");
     }
 
     /// <summary>D6 (iii-a): seeder-created PRs bypass RequisitionService, so the seeder is the
     /// THIRD projection call site (create/update/seed) — the Postgres probe keeps all honest.</summary>
+    /// <summary>CF3-T11: example SHARED saved views per record type, so the reminder/KPI
+    /// view-pickers aren't near-empty (the operator's "reminders don't work" root cause).
+    /// Idempotent by literal code; shared, unowned — demo starting points, not system rows.</summary>
+    private async Task SeedExampleViewsAsync(CancellationToken ct)
+    {
+        if (await db.SavedViews.AnyAsync(v => v.Code == "VIEW-DEMO-0001", ct)) return;
+        var now = clock.UtcNow;
+        var seeds = new (string Code, string Name, Domain.Views.RecordType Type, (string K, string Op, string V)[] Filters, string[] Cols)[]
+        {
+            ("VIEW-DEMO-0001", "PRs pending approval", Domain.Views.RecordType.Requisition,
+                [("HeaderStatus", "Eq", "Submitted")], ["Code", "Requestor", "Department", "HeaderStatus", "Value"]),
+            ("VIEW-DEMO-0002", "Draft requisitions", Domain.Views.RecordType.Requisition,
+                [("HeaderStatus", "Eq", "Draft")], ["Code", "Requestor", "Department", "Value"]),
+            ("VIEW-DEMO-0003", "RFQs closing this month", Domain.Views.RecordType.Rfq,
+                [("Status", "Eq", "Open"), ("ClosesUtc", "Between", "@startOfMonth")], ["Code", "Title", "ClosesUtc", "Status"]),
+            ("VIEW-DEMO-0004", "POs awaiting acknowledgement", Domain.Views.RecordType.PurchaseOrder,
+                [("Acknowledged", "Eq", "false"), ("Status", "Eq", "Issued")], ["Code", "VendorName", "Total", "Status"]),
+            ("VIEW-DEMO-0005", "Invoices in exception", Domain.Views.RecordType.Invoice,
+                [("Status", "Eq", "Exception")], ["Code", "PoCode", "Total", "MatchStatus"]),
+        };
+        foreach (var s in seeds)
+        {
+            var view = new Domain.Views.SavedView
+            {
+                Code = s.Code, Name = s.Name, RecordType = s.Type,
+                OwnerUserId = null, IsShared = true, IsSystem = false,
+                CreatedUtc = now, UpdatedUtc = now,
+            };
+            var sort = 0;
+            foreach (var (k, op, v) in s.Filters)
+                view.Filters.Add(new Domain.Views.SavedViewFilter
+                {
+                    FieldKey = k, Operator = Enum.Parse<Domain.Views.ViewOperator>(op), Value = v,
+                    Value2 = op == "Between" ? "@endOfMonth" : null, Sort = sort++,
+                });
+            sort = 0;
+            foreach (var c in s.Cols)
+                view.Columns.Add(new Domain.Views.SavedViewColumn { FieldKey = c, Sort = sort++ });
+            db.SavedViews.Add(view);
+        }
+        await db.SaveChangesAsync(ct);
+    }
+
     private async Task ProjectPrSegmentsAsync(CancellationToken ct)
     {
         var projection = new SegmentProjection(db, clock);
