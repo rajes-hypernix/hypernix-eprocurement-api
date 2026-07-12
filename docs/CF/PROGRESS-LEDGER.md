@@ -115,11 +115,11 @@ Columns: `[ ]`→`[x]` when complete · **Audit** = current-state finding from P
 ---
 
 ## AUTONOMOUS BAND COMPLETE CHECK
-- [ ] EVERY CF1–CF4 box above is `[x]` OR has a `BLOCKERS.md` entry with a reason. Zero silent gaps.
-- [ ] Full browser suite green (all e2e specs incl. every new CF test). Pass count: ___
-- [ ] Full API + web suites green. API ___ · web ___
-- [ ] Hold-or-raise vs starting baselines confirmed.
-- [ ] `e2e-audit/results.json` regenerated. Tag `v1.0-cf-autonomous-band`.
+- [x] EVERY CF1–CF4 box above is `[x]` OR has a `BLOCKERS.md` entry with a reason. Zero silent gaps. — walked 39/39 ticked, BLOCKERS.md empty.
+- [x] Full browser suite green (all e2e specs incl. every new CF test). Pass count: 65/65 (was 53 at A0; +12 CF proofs). Band walk caught + repaired a CF1-T4 aria collision (4 pre-CF specs) app-side.
+- [x] Full API + web suites green. API 470/470 · web 233/233 · tsc clean · oxlint 0 errors
+- [x] Hold-or-raise vs starting baselines confirmed. dotnet 462→470, vitest 232→233, e2e 53→65 — all raised, none weakened.
+- [x] `e2e-audit/results.json` regenerated (65/65). Tag `v1.0-cf-autonomous-band`.
 
 ---
 
