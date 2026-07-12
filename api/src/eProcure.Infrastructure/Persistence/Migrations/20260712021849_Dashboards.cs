@@ -91,19 +91,22 @@ namespace eProcure.Infrastructure.Persistence.Migrations
 
             // Role-default dashboards (D4 Step 0(a)/(d), ruled) — DashboardSeed is THE single
             // source shared with tests; ids deterministic per (role, index).
+            // Idempotent (ON CONFLICT DO NOTHING): DashboardSeed.Rows GROWS in later slices
+            // (DashboardSeedRefresh appended buyer portlets) — a fresh-DB replay of this
+            // migration inserts the grown list and the refresh must then no-op, not collide.
             foreach (var row in DashboardSeed.Rows)
             {
-                migrationBuilder.InsertData(
-                    table: "Dashboards",
-                    columns: ["Id", "Code", "Name", "OwnerRole", "OwnerUserId", "IsRoleDefault", "CreatedUtc", "UpdatedUtc"],
-                    values: [DashboardSeed.DashboardId(row.OwnerRole), row.Code, row.Name, row.OwnerRole, null, true, seeded, seeded]);
+                migrationBuilder.Sql(SeedSql.InsertDoNothing(
+                    "Dashboards",
+                    ["Id", "Code", "Name", "OwnerRole", "OwnerUserId", "IsRoleDefault", "CreatedUtc", "UpdatedUtc"],
+                    [DashboardSeed.DashboardId(row.OwnerRole), row.Code, row.Name, row.OwnerRole, null, true, seeded, seeded]));
                 for (var i = 0; i < row.Portlets.Count; i++)
                 {
                     var p = row.Portlets[i];
-                    migrationBuilder.InsertData(
-                        table: "PortletInstances",
-                        columns: ["Id", "DashboardId", "PortletType", "Title", "Col", "Row", "Width", "SavedViewId", "ConfigJson"],
-                        values: [DashboardSeed.PortletId(row.OwnerRole, i), DashboardSeed.DashboardId(row.OwnerRole), p.Type.ToString(), p.Title, p.Col, p.Row, p.Width, p.SavedViewId, p.ConfigJson]);
+                    migrationBuilder.Sql(SeedSql.InsertDoNothing(
+                        "PortletInstances",
+                        ["Id", "DashboardId", "PortletType", "Title", "Col", "Row", "Width", "SavedViewId", "ConfigJson"],
+                        [DashboardSeed.PortletId(row.OwnerRole, i), DashboardSeed.DashboardId(row.OwnerRole), p.Type.ToString(), p.Title, p.Col, p.Row, p.Width, p.SavedViewId, p.ConfigJson]));
                 }
             }
         }

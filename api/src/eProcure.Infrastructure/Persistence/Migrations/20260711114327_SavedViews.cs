@@ -124,12 +124,14 @@ namespace eProcure.Infrastructure.Persistence.Migrations
             // ---- Registry seed (D3 Step 0(b), as ruled) — FieldRegistrySeed is THE single
             // source: this loop, the test seeders, and the reflection drift-test all read it.
             // Ids are deterministic per (RecordType, FieldKey), so re-derivation is stable.
+            // Idempotent (ON CONFLICT DO NOTHING): FieldRegistrySeed GROWS in later slices, and a
+            // fresh-DB replay of this migration must not collide with the slice that appended rows.
             foreach (var row in FieldRegistrySeed.Rows)
             {
-                migrationBuilder.InsertData(
-                    table: "FieldRegistry",
-                    columns: ["Id", "RecordType", "FieldKey", "Kind", "Label", "DataType", "CustomFieldDefId", "SegmentDefId"],
-                    values: [FieldRegistrySeed.StableId(row.RecordType, row.FieldKey), row.RecordType.ToString(), row.FieldKey, "Native", row.Label, row.DataType.ToString(), null, null]);
+                migrationBuilder.Sql(SeedSql.InsertDoNothing(
+                    "FieldRegistry",
+                    ["Id", "RecordType", "FieldKey", "Kind", "Label", "DataType", "CustomFieldDefId", "SegmentDefId"],
+                    [FieldRegistrySeed.StableId(row.RecordType, row.FieldKey), row.RecordType.ToString(), row.FieldKey, "Native", row.Label, row.DataType.ToString(), null, null]));
             }
 
             // ---- System view seed: "All RFQs" reproduces today's default RfqList exactly
