@@ -36,10 +36,10 @@ Columns: `[ ]`→`[x]` when complete · **Audit** = current-state finding from P
 - [x] Grouped value parses back to raw numeric on edit (round-trip) · Audit:ALREADY by construction; untested · Build:(pin-only, see commit) · Test:CF1-T1 (round-trip half)
 
 ### T2 — Custom-list edit (the "can't edit a list" complaint)
-- [ ] `PUT /custom-lists/{code}` — rename + edit description · Audit:missing (confirmed) · Build:___ · Test:___
-- [ ] Order-mode flag (Entered | Alphabetical) — migration `CustomListOrderMode`, applied in option resolver · Audit:missing (confirmed) · Build:___ · Test:___
-- [ ] Inactivate / delete list (guarded: block/deactivate if referenced) · Audit:missing (confirmed) · Build:___ · Test:___
-- [ ] AdminCustomLists UI: edit-list modal + order-mode control + delete · Audit:missing (0 controls in browser) · Build:___ · Test:___
+- [x] `PUT /custom-lists/{code}` — rename + edit description · Audit:missing (confirmed) · Build:CF1-T2 commit · Test:CF1-T2 edit a custom list
+- [x] Order-mode flag (Entered | Alphabetical) — migration `CustomListOrderMode`, applied in option resolver · Audit:missing (confirmed) · Build:CF1-T2 commit · Test:CF1-T2 (alphabetical picker half)
+- [x] Inactivate / delete list (guarded: block/deactivate if referenced) · Audit:missing (confirmed) · Build:CF1-T2 commit · Test:CF1-T2 (guarded-delete half) + CustomListSelfLifecycleTests
+- [x] AdminCustomLists UI: edit-list modal + order-mode control + delete · Audit:missing (0 controls in browser) · Build:CF1-T2 commit · Test:CF1-T2 (drives the modal on screen)
 
 ### T3 — Icon uniqueness (no shared glyphs)
 - [ ] Each Administration nav item has a DISTINCT icon (today clip×5, edit×3, doc×3, box×3) · Audit:confirmed shared (clip×5 edit×3 doc×3 box×3) · Build:___ · Test:___

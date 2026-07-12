@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  getCustomLists, createCustomList, addCustomListValue, updateCustomListValue, deleteCustomListValue,
+  getCustomLists, createCustomList, addCustomListValue, updateCustomListValue, updateCustomList, setCustomListActive, deleteCustomList, deleteCustomListValue,
   type CustomList, type CustomListValue,
 } from '../../api/client'
 import { Modal, Spinner } from '../ui'
 import { SetupPage } from '../../ui/archetypes/SetupPage'
 import type { FieldOption } from '../../ui/fieldSpec'
 import { TextField } from '../../ui/TextField'
+import { TextAreaField } from '../../ui/TextAreaField'
 import { CodeField } from '../../ui/CodeField'
 import { SelectField } from '../../ui/SelectField'
 import { NumberField } from '../../ui/NumberField'
@@ -27,10 +28,20 @@ export function AdminCustomLists() {
   const { data: lists = [], isPending } = useQuery({ queryKey: ['custom-lists'], queryFn: getCustomLists })
   const [selCode, setSelCode] = useState<string | null>(null)
   const [newList, setNewList] = useState(false)
+  const [editList, setEditList] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
   const refresh = () => { void qc.invalidateQueries({ queryKey: ['custom-lists'] }) }
   const onErr = (e: Error) => setErr(e.message)
+
+  const setListActive = useMutation({
+    mutationFn: (v: { code: string; active: boolean }) => setCustomListActive(v.code, v.active),
+    onSuccess: refresh, onError: onErr,
+  })
+  const removeList = useMutation({
+    mutationFn: (code: string) => deleteCustomList(code),
+    onSuccess: () => { setSelCode(null); refresh() }, onError: onErr,
+  })
 
   if (isPending) return <Spinner label="Loading custom lists…" />
 
@@ -47,10 +58,35 @@ export function AdminCustomLists() {
       selectedKey={selected?.code ?? null}
       onSelect={setSelCode}
       railEmpty="No lists yet."
-      detail={selected && <ListValues list={selected} parentList={parentList} onRefresh={refresh} onErr={onErr} clearErr={() => setErr(null)} />}
+      detail={selected && (
+        <div>
+          {/* CF1-T2: the list-SELF verbs the operator's complaint named. */}
+          <div className="chead" style={{ paddingLeft: 0 }}>
+            <h3>{selected.name} <span className="mono hint" style={{ fontWeight: 400 }}>{selected.code}</span>
+              {selected.active === false && <span className="badge b-grey" style={{ marginLeft: 8 }}>Inactive</span>}
+              {selected.orderMode === 'Alphabetical' && <span className="badge b-blue" style={{ marginLeft: 8 }}>A→Z</span>}
+            </h3>
+            <div className="spacer" />
+            <Button variant="ghost" size="sm" icon="edit" onClick={() => setEditList(true)} ariaLabel="Edit list">Edit list</Button>
+            {!selected.isSystem && (
+              <>
+                <Button variant="ghost" size="sm"
+                  onClick={() => setListActive.mutate({ code: selected.code, active: !(selected.active ?? true) })}
+                  ariaLabel={selected.active === false ? 'Reactivate list' : 'Deactivate list'}>
+                  {selected.active === false ? 'Reactivate' : 'Deactivate'}
+                </Button>
+                <Button variant="ghost" size="sm" red onClick={() => removeList.mutate(selected.code)} ariaLabel="Delete list">Delete</Button>
+              </>
+            )}
+          </div>
+          <ListValues list={selected} parentList={parentList} onRefresh={refresh} onErr={onErr} clearErr={() => setErr(null)} />
+        </div>
+      )}
     >
       {newList && <NewListModal lists={lists} onClose={() => setNewList(false)}
         onCreated={(code) => { setNewList(false); setSelCode(code); void refresh() }} onErr={onErr} />}
+      {editList && selected && <EditListModal list={selected} onClose={() => setEditList(false)}
+        onSaved={() => { setEditList(false); void refresh() }} onErr={onErr} />}
     </SetupPage>
   )
 }
@@ -184,6 +220,36 @@ function NewListModal({ lists, onClose, onCreated, onErr }: {
         }}
         value={parentListCode} onChange={setParentListCode}
       />
+    </Modal>
+  )
+}
+
+function EditListModal({ list, onClose, onSaved, onErr }: {
+  list: CustomList; onClose: () => void; onSaved: () => void; onErr: (e: Error) => void
+}) {
+  const [name, setName] = useState(list.name)
+  const [desc, setDesc] = useState(list.description ?? '')
+  const [orderMode, setOrderMode] = useState(list.orderMode ?? 'Entered')
+  const save = useMutation({
+    mutationFn: () => updateCustomList(list.code, { name, description: desc || null, orderMode }),
+    onSuccess: onSaved, onError: onErr,
+  })
+  return (
+    <Modal
+      title={`Edit list — ${list.name}`} icon="edit"
+      footer={<>
+        <button type="button" className="btn btn-out" onClick={onClose}>Cancel</button>
+        <button type="button" className="btn btn-pri" disabled={!name.trim() || save.isPending} onClick={() => save.mutate()}>Save list</button>
+      </>}
+    >
+      <TextField spec={{ key: 'el-name', label: 'Name', dataType: 'text' }} value={name} onChange={(v) => setName(String(v ?? ''))} />
+      <TextAreaField spec={{ key: 'el-desc', label: 'Description', dataType: 'longText' }} value={desc} onChange={(v) => setDesc(String(v ?? ''))} />
+      <SelectField
+        spec={{ key: 'el-order', label: 'Show options in', dataType: 'select', options: { kind: 'static', options: [
+          { code: 'Entered', label: 'The order entered' }, { code: 'Alphabetical', label: 'Alphabetical order' },
+        ] } }}
+        value={orderMode} onChange={(v) => setOrderMode(String(v ?? 'Entered'))} />
+      <p className="hint">The code (<span className="mono">{list.code}</span>) is immutable — fields are tagged to it.</p>
     </Modal>
   )
 }

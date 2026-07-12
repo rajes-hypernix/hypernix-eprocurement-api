@@ -551,7 +551,14 @@ export const createManualVendor = (body: CreateManualVendor) =>
 
 // --- Custom Lists (NetSuite-style conformed dimensions: country/state/city/currency/payment/bank) ---
 export type CustomListValue = { id: string; code: string; label: string; parentValueCode: string | null; sort: number; active: boolean }
-export type CustomList = { id: string; code: string; name: string; description: string | null; parentListCode: string | null; isSystem: boolean; values: CustomListValue[] }
+export type CustomList = { id: string; code: string; name: string; description: string | null; parentListCode: string | null; isSystem: boolean; values: CustomListValue[]; orderMode?: string; active?: boolean }
+// CF1-T2: list-self lifecycle — rename/description/order-mode, activate toggle, guarded delete.
+export const updateCustomList = (code: string, body: { name: string; description?: string | null; orderMode: string }) =>
+  http<CustomList>(`/custom-lists/${code}`, { method: 'PUT', body: JSON.stringify(body) })
+export const setCustomListActive = (code: string, active: boolean) =>
+  http<CustomList>(`/custom-lists/${code}/active`, { method: 'POST', body: JSON.stringify(active) })
+export const deleteCustomList = (code: string) =>
+  http<CustomList | undefined>(`/custom-lists/${code}`, { method: 'DELETE' })
 export const getCustomLists = () => http<CustomList[]>('/custom-lists')
 export const createCustomList = (body: { code: string; name: string; description?: string | null; parentListCode?: string | null }) =>
   http<CustomList>('/custom-lists', { method: 'POST', body: JSON.stringify(body) })

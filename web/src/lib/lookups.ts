@@ -16,11 +16,15 @@ export function useLookups() {
 
   const list = (code: string): CustomList | undefined => data.find((l) => l.code === code)
 
-  const of = (listCode: string, parentValueCode?: string): Option[] =>
-    (list(listCode)?.values ?? [])
+  const of = (listCode: string, parentValueCode?: string): Option[] => {
+    const l = list(listCode)
+    if (!l || l.active === false) return []   // CF1-T2: an inactive LIST offers nothing (labels below still resolve)
+    return l.values
       .filter((v) => v.active && (parentValueCode === undefined || v.parentValueCode === parentValueCode))
-      .sort((a, b) => a.sort - b.sort)
+      // CF1-T2 (NetSuite order option): Alphabetical sorts by label; Entered keeps the Sort integers.
+      .sort((a, b) => (l.orderMode === 'Alphabetical' ? a.label.localeCompare(b.label) : a.sort - b.sort))
       .map((v) => ({ code: v.code, label: v.label }))
+  }
 
   const labelOf = (listCode: string, code: string): string =>
     list(listCode)?.values.find((v) => v.code === code)?.label ?? code

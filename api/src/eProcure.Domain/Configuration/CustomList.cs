@@ -24,6 +24,14 @@ public class CustomList
     /// <summary>Seeded system list — protected from deletion in the admin UI.</summary>
     public bool IsSystem { get; set; }
 
+    /// <summary>CF1-T2 (NetSuite order option): how option pickers order the values —
+    /// "Entered" (the Sort integers, today's behaviour) or "Alphabetical" (by label).</summary>
+    public string OrderMode { get; set; } = "Entered";
+
+    /// <summary>CF1-T2: an inactive LIST is hidden from pickers wholesale (values keep
+    /// resolving for display of stored codes — the A2F-T3 value discipline, list-level).</summary>
+    public bool Active { get; set; } = true;
+
     /// <summary>The list's values (a separate entity so they insert/update cleanly and are admin-editable).</summary>
     public List<CustomListValue> Values { get; set; } = [];
 

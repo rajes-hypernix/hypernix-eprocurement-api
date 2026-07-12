@@ -25,6 +25,25 @@ public sealed class CustomListsController(ICustomListService lists) : Controller
     public async Task<ActionResult<CustomListDto>> Create(CreateCustomListRequest req, CancellationToken ct) =>
         Ok(await lists.CreateListAsync(req, ct));
 
+    [HttpPut("{code}")]
+    [Action(ApiActions.ManageCustomLists)]
+    public async Task<ActionResult<CustomListDto>> UpdateList(string code, [FromBody] UpdateCustomListRequest req, CancellationToken ct) =>
+        Ok(await lists.UpdateListAsync(code, req, ct));
+
+    [HttpPost("{code}/active")]
+    [Action(ApiActions.ManageCustomLists)]
+    public async Task<ActionResult<CustomListDto>> SetListActive(string code, [FromBody] bool active, CancellationToken ct) =>
+        Ok(await lists.SetListActiveAsync(code, active, ct));
+
+    /// <summary>CF1-T2: 200 + the deactivated list when the guard blocked removal; 204 when gone.</summary>
+    [HttpDelete("{code}")]
+    [Action(ApiActions.ManageCustomLists)]
+    public async Task<IActionResult> DeleteList(string code, CancellationToken ct)
+    {
+        if (await lists.DeleteListAsync(code, ct) is { } deactivated) return Ok(deactivated);
+        return NoContent();
+    }
+
     [HttpPost("{code}/values")]
     [Action(ApiActions.ManageCustomLists)]
     public async Task<ActionResult<CustomListValueDto>> AddValue(string code, AddCustomListValueRequest req, CancellationToken ct) =>

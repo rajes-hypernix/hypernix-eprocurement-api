@@ -38,6 +38,59 @@ public sealed class CustomListService(AppDbContext db, IClock clock) : ICustomLi
         return ToDto(list);
     }
 
+    public async Task<CustomListDto> UpdateListAsync(string code, UpdateCustomListRequest req, CancellationToken ct = default)
+    {
+        var list = await LoadList(code, ct);
+        if (string.IsNullOrWhiteSpace(req.Name))
+            throw new DomainRuleException("A list needs a name.");
+        if (req.OrderMode is not ("Entered" or "Alphabetical"))
+            throw new DomainRuleException("OrderMode must be Entered or Alphabetical.");
+        list.Name = req.Name.Trim();
+        list.Description = string.IsNullOrWhiteSpace(req.Description) ? null : req.Description.Trim();
+        list.OrderMode = req.OrderMode;
+        list.UpdatedUtc = clock.UtcNow;
+        await db.SaveChangesAsync(ct);
+        return ToDto(list);
+    }
+
+    public async Task<CustomListDto> SetListActiveAsync(string code, bool active, CancellationToken ct = default)
+    {
+        var list = await LoadList(code, ct);
+        if (list.IsSystem && !active)
+            throw new DomainRuleException($"'{list.Name}' is a system list — native fields source it; it cannot be deactivated.");
+        list.Active = active;
+        list.UpdatedUtc = clock.UtcNow;
+        await db.SaveChangesAsync(ct);
+        return ToDto(list);
+    }
+
+    /// <summary>CF1-T2: guarded list delete, the A2F-T3 discipline at list grain — a
+    /// referenced list DEACTIVATES (a stored code never degrades), a clean one hard-deletes.</summary>
+    public async Task<CustomListDto?> DeleteListAsync(string code, CancellationToken ct = default)
+    {
+        var list = await LoadList(code, ct);
+        if (list.IsSystem)
+            throw new DomainRuleException($"'{list.Name}' is a system list — native fields source it; it cannot be deleted.");
+
+        var bound = await db.CustomFieldDefs.AsNoTracking().AnyAsync(d => d.CustomListId == list.Id, ct);
+        var anyValueReferenced = false;
+        foreach (var v in list.Values)
+            if (await IsReferencedAsync(list.Code, v.Code, ct)) { anyValueReferenced = true; break; }
+
+        if (bound || anyValueReferenced)
+        {
+            list.Active = false;
+            list.UpdatedUtc = clock.UtcNow;
+            await db.SaveChangesAsync(ct);
+            return ToDto(list);
+        }
+
+        db.CustomListValues.RemoveRange(list.Values);
+        db.CustomLists.Remove(list);
+        await db.SaveChangesAsync(ct);
+        return null;
+    }
+
     public async Task<CustomListValueDto> AddValueAsync(string listCode, AddCustomListValueRequest req, CancellationToken ct = default)
     {
         var list = await LoadList(listCode, ct);
@@ -129,6 +182,6 @@ public sealed class CustomListService(AppDbContext db, IClock clock) : ICustomLi
         ?? throw new NotFoundException($"Custom list '{code}' not found.");
 
     private static CustomListDto ToDto(CustomList l) => new(l.Id, l.Code, l.Name, l.Description, l.ParentListCode, l.IsSystem,
-        [.. l.Values.OrderBy(v => v.Sort).Select(ToDto)]);
+        [.. l.Values.OrderBy(v => v.Sort).Select(ToDto)], l.OrderMode, l.Active);
     private static CustomListValueDto ToDto(CustomListValue v) => new(v.Id, v.Code, v.Label, v.ParentValueCode, v.Sort, v.Active);
 }
