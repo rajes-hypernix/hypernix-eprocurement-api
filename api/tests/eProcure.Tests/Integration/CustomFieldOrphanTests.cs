@@ -21,7 +21,8 @@ public sealed class CustomFieldOrphanTests
     private static async Task<int> OrphanCount(AppDbContext db)
     {
         var orphans = 0;
-        foreach (var group in await db.CustomFieldValues.AsNoTracking().GroupBy(v => v.RecordType).ToListAsync())
+        var values = await db.CustomFieldValues.AsNoTracking().ToListAsync();
+        foreach (var group in values.GroupBy(v => v.RecordType))
         {
             var ids = group.Select(v => v.RecordId).ToHashSet();
             HashSet<Guid> live = group.Key switch
