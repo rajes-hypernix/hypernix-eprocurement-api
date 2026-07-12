@@ -1,6 +1,6 @@
-import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { resolveOnboardingLink } from '../../api/client'
+import { useEffect, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { resolveOnboardingLink, getOnboardingLookups } from '../../api/client'
 import { OnboardingLanding, tokenFromUrl } from './OnboardingLanding'
 import { OnboardingForm } from './OnboardingForm'
 import { OnboardingResubmit } from './OnboardingResubmit'
@@ -20,6 +20,23 @@ export function OnboardingPortal() {
     queryFn: () => resolveOnboardingLink(token),
     enabled: token.length > 0, retry: false,
   })
+
+  // A2F-T2 (Obs-6): a real anonymous applicant has NO principal, so the authenticated
+  // /custom-lists and /swec calls that useLookups/useSwec make would 401. The token
+  // endpoint returns the form's reference data, and we seed it into the EXACT cache keys
+  // those hooks read (both staleTime: Infinity) — the form's field machinery is untouched
+  // and never issues the authenticated calls here.
+  const qc = useQueryClient()
+  const { data: lookups } = useQuery({
+    queryKey: ['onboarding-lookups', token],
+    queryFn: () => getOnboardingLookups(token),
+    enabled: token.length > 0, retry: false, staleTime: Infinity,
+  })
+  useEffect(() => {
+    if (!lookups) return
+    qc.setQueryData(['swec'], lookups.swec)
+    qc.setQueryData(['custom-lists'], lookups.customLists)
+  }, [lookups, qc])
 
   if (screen === 'done') return <OnboardingSubmitted />
   if (screen === 'form') return <OnboardingForm token={token} onSubmitted={() => setScreen('done')} />

@@ -45,15 +45,18 @@ the OD reference in the Evidence column. Endpoint routes omit the `/api` prefix.
 
 ## 3. The [AllowAnonymous] set — UNCHANGED from Slice F
 
-Verbatim from `AnonymousSweepTests.cs:20-33`; the sweep test must pass unchanged
-(README-FIRST constraint 2). These 11 endpoints get **no action assignment**; the
-drift-proof test treats this exact list as the only exemption set.
+Verbatim from `AnonymousSweepTests.cs`; the sweep test must pass unchanged
+(README-FIRST constraint 2). These 12 endpoints get **no action assignment**; the
+drift-proof test treats this exact list as the only exemption set. Obs-6 is CLOSED
+by A2F-T2: the magic-link form's reference lookups ride a token-verified endpoint,
+not a blanket anonymous opening of /custom-lists or /swec.
 
 ```
 GET  api/health
 GET  api/auth/dev-users            (404 outside demo mode — preserved, AuthController.cs:30)
 POST api/auth/dev-login            (404 outside demo mode — preserved, AuthController.cs:57)
 POST api/onboarding/resolve
+POST api/onboarding/lookups   (A2F-T2, Obs-6: form reference data — token-gated in the service, payload capped to the 4 lists + SWEC)
 GET  api/onboarding/draft
 PUT  api/onboarding/draft
 POST api/onboarding/draft/submit

@@ -443,6 +443,11 @@ export const revokeOnboardingInvitation = (id: string) =>
   http<void>(`/onboarding/invitations/${id}/revoke`, { method: 'POST' })
 export const resolveOnboardingLink = (token: string) =>
   http<OnboardingApplication>('/onboarding/resolve', { method: 'POST', body: JSON.stringify({ token }) })
+// A2F-T2 (Obs-6): the anonymous form's reference data, authorized by the magic-link token —
+// the general /custom-lists and /swec endpoints stay authenticated.
+export type OnboardingLookups = { swec: SwecCategoryDto[]; customLists: CustomList[] }
+export const getOnboardingLookups = (token: string) =>
+  http<OnboardingLookups>('/onboarding/lookups', { method: 'POST', body: JSON.stringify({ token }) })
 
 // --- Vendor onboarding form (Slice C): token-scoped draft / save / submit / documents ---
 export type OnboardingFormItem = {

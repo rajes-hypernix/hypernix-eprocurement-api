@@ -39,6 +39,13 @@ public sealed record OnboardingApplicationDto(
     IReadOnlyList<OnboardingTemplateDto> Packs, IReadOnlyList<OnboardingRoundDto> Rounds,
     DateTime CreatedUtc, DateTime? SubmittedUtc);
 
+/// <summary>A2F-T2 (Obs-6/GAP-6): the reference data the ANONYMOUS onboarding form renders —
+/// exactly the four custom lists OnboardingForm.tsx consumes plus the SWEC taxonomy, nothing
+/// more. Served only against a live magic-link token (the token IS the scope, F2).</summary>
+public sealed record OnboardingLookupsDto(
+    IReadOnlyList<Suppliers.SwecCategoryDto> Swec,
+    IReadOnlyList<Configuration.CustomListDto> CustomLists);
+
 /// <summary>Buyer request to send an invitation (SPEC §1.2). Email defaults server-side to
 /// <see cref="OnboardingOptions.DefaultVendorEmail"/> if blank; type is "SWEC" or "Non-SWEC".</summary>
 public sealed record SendOnboardingInvitationRequest(
@@ -141,6 +148,7 @@ public interface IOnboardingService
     /// <summary>Resolves a magic-link token to its scoped application (Invited → InProgress on first
     /// open — A2). Throws on an invalid / expired / revoked token.</summary>
     Task<OnboardingApplicationDto> ResolveTokenAsync(string rawToken, CancellationToken ct = default);
+    Task<OnboardingLookupsDto> GetLookupsAsync(string rawToken, CancellationToken ct = default);
 
     // ---- Slice C: the onboarding form (all token-scoped — the token is the access scope, F2) ----
 

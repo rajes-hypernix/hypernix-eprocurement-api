@@ -23,6 +23,7 @@ public sealed class AnonymousSweepTests(ITestOutputHelper output)
         "GET api/auth/dev-users",                            // demo bootstrap (internally demo-gated)
         "POST api/auth/dev-login",                           // demo bootstrap (internally demo-gated)
         "POST api/onboarding/resolve",                       // magic-link: token IS the scope (F2)
+        "POST api/onboarding/lookups",                       // A2F-T2 (Obs-6): form reference data; token-gated in the service (revoked/expired refused), payload capped to the 4 lists + SWEC
         "GET api/onboarding/draft",                          // token-scoped, no login
         "PUT api/onboarding/draft",                          // token-scoped, no login
         "POST api/onboarding/draft/submit",                  // token-scoped, no login

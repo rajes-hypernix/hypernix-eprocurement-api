@@ -49,6 +49,13 @@ public sealed class OnboardingController(IOnboardingService onboarding) : Contro
     public async Task<ActionResult<OnboardingApplicationDto>> Resolve(ResolveOnboardingLinkRequest req, CancellationToken ct) =>
         Ok(await onboarding.ResolveTokenAsync(req.Token, ct));
 
+    /// <summary>A2F-T2 (Obs-6): the reference lookups the anonymous form renders. POST with
+    /// the token in the BODY (the /resolve precedent — tokens stay out of URLs and logs).</summary>
+    [AllowAnonymous]
+    [HttpPost("lookups")]
+    public async Task<ActionResult<OnboardingLookupsDto>> Lookups(ResolveOnboardingLinkRequest req, CancellationToken ct) =>
+        Ok(await onboarding.GetLookupsAsync(req.Token, ct));
+
     // ---- Slice C: the vendor onboarding form (token-scoped, no login) ----
 
     [AllowAnonymous]

@@ -23,6 +23,7 @@ public sealed class ActionAssignmentSweepTests
         "GET api/auth/dev-users",
         "POST api/auth/dev-login",
         "POST api/onboarding/resolve",
+        "POST api/onboarding/lookups",                       // A2F-T2 (Obs-6): form reference data; token-gated in the service (revoked/expired refused), payload capped to the 4 lists + SWEC
         "GET api/onboarding/draft",
         "PUT api/onboarding/draft",
         "POST api/onboarding/draft/submit",

@@ -108,6 +108,31 @@ public sealed class OnboardingService(
             await audit.WriteTransitionAsync("VendorOnboardingApplication", app.Code, at.Action, at.From.ToString(), at.To.ToString(), ct: ct);
     }
 
+    // A2F-T2: the four lists the onboarding form renders (OnboardingForm.tsx customList
+    // specs) — the STRICT surface of the anonymous lookups endpoint; widening it is a ruling.
+    private static readonly string[] OnboardingListCodes = ["COUNTRY", "STATE", "CITY", "BANK"];
+
+    /// <summary>A2F-T2 (Obs-6): reference lookups for the ANONYMOUS magic-link form. The token
+    /// is verified with the SAME rules as every other token-scoped call (revoked/expired
+    /// refused via ResolveAppByToken); the payload is capped to the form's needs. The tiny
+    /// projections mirror SwecService/CustomListService deliberately — injecting those two
+    /// services here would widen OnboardingService's ctor across three test harnesses for
+    /// six lines of mapping.</summary>
+    public async Task<OnboardingLookupsDto> GetLookupsAsync(string rawToken, CancellationToken ct = default)
+    {
+        await ResolveAppByToken(rawToken, ct, includeFinancial: false);   // throws on invalid/revoked/expired
+
+        var swec = (await db.SwecCategories.AsNoTracking().OrderBy(c => c.Code).ToListAsync(ct))
+            .Select(c => new Application.Suppliers.SwecCategoryDto(c.Code, c.Name, c.ParentCode, c.Level, c.IsLeaf, c.PathText))
+            .ToList();
+        var lists = (await db.CustomLists.AsNoTracking().Include(l => l.Values)
+                .Where(l => OnboardingListCodes.Contains(l.Code)).ToListAsync(ct))
+            .Select(l => new Application.Configuration.CustomListDto(l.Id, l.Code, l.Name, l.Description, l.ParentListCode, l.IsSystem,
+                [.. l.Values.OrderBy(v => v.Sort).Select(v => new Application.Configuration.CustomListValueDto(v.Id, v.Code, v.Label, v.ParentValueCode, v.Sort, v.Active))]))
+            .ToList();
+        return new OnboardingLookupsDto(swec, lists);
+    }
+
     public async Task<OnboardingApplicationDto> ResolveTokenAsync(string rawToken, CancellationToken ct = default)
     {
         var hash = VendorOnboardingInvitation.HashToken(rawToken);
