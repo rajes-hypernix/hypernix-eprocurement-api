@@ -21,7 +21,7 @@ public static class PortletConfigs
     public sealed record ReminderItem(Guid SavedViewId, string Label, string Route);
     public sealed record RemindersConfig(List<ReminderItem> Items);
     public sealed record SavedViewListConfig(int TopN, string? Route);
-    public sealed record ShortcutItem(string Label, string Route, string? Action);
+    public sealed record ShortcutItem(string Label, string Route, string? Action, string? Color = null);   // CF3-T10: tile colour (hex), optional
     public sealed record ShortcutsConfig(List<ShortcutItem> Items);
     public sealed record ChartConfig(List<string> SeriesIds, int Months, int MinMonths);
     // RecentRecords and MyInvitations carry no config ({}).

@@ -7,7 +7,7 @@ export interface KpiScorecardConfig { items: ScorecardItem[] }
 export interface ReminderItem { savedViewId: string; label: string; route: string }
 export interface RemindersConfig { items: ReminderItem[] }
 export interface SavedViewListConfig { topN: number; route?: string | null }
-export interface ShortcutItem { label: string; route: string; action?: string | null }
+export interface ShortcutItem { label: string; route: string; action?: string | null; color?: string | null }
 export interface ShortcutsConfig { items: ShortcutItem[] }
 export interface ChartConfig { seriesIds: string[]; months: number; minMonths: number }
 
