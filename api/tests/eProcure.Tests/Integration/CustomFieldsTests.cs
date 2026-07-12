@@ -37,8 +37,10 @@ public sealed class CustomFieldsFixture : IAsyncLifetime
                 new VendorUser("VU-D5A", a.Id, "Alpha User", "d5a@vendor.test"),
                 new VendorUser("VU-D5B", b.Id, "Beta User", "d5b@vendor.test"));
 
-            var poA = new PurchaseOrder { Code = "PO-2026-7501", VendorId = a.Id, CreatedUtc = now, UpdatedUtc = now };
-            var poB = new PurchaseOrder { Code = "PO-2026-7502", VendorId = b.Id, CreatedUtc = now, UpdatedUtc = now };
+            var poA = new PurchaseOrder { Code = "PO-2026-7501", VendorId = a.Id, CreatedUtc = now, UpdatedUtc = now,
+                Lines = { new PoLine { ItemCode = "X1", Description = "x", Qty = 1, UnitPrice = 10, Uom = "Unit" } } };
+            var poB = new PurchaseOrder { Code = "PO-2026-7502", VendorId = b.Id, CreatedUtc = now, UpdatedUtc = now,
+                Lines = { new PoLine { ItemCode = "X2", Description = "x", Qty = 1, UnitPrice = 10, Uom = "Unit" } } };
             var poC = new PurchaseOrder { Code = "PO-2026-7503", VendorId = a.Id, CreatedUtc = now, UpdatedUtc = now };
             db.PurchaseOrders.AddRange(poA, poB, poC);
             PoAId = poA.Id; PoBId = poB.Id; PoCId = poC.Id;
@@ -300,5 +302,70 @@ public sealed class CustomFieldsTests(CustomFieldsFixture fx) : IClassFixture<Cu
             fields!.Should().Contain(x => x.FieldKey == def.Code && x.Kind == "Custom",
                 $"the {type} def registers in the D3 palette in the same transaction");
         }
+    }
+
+    // ---- CF6-T1: line-scoped custom fields (locked model: nullable LineId discriminator) ----
+
+    [Fact]
+    public async Task Line_values_round_trip_per_line_and_never_bleed_into_the_header_grain()
+    {
+        var admin = fx.ClientAs("u_admin");
+        var resp = await admin.PostAsJsonAsync("/api/custom-fields", new SaveCustomFieldDefRequest(
+            "CF6 Batch No", "PurchaseOrder", "Text", null, false, "", 0, Scope: "Line"));
+        resp.StatusCode.Should().Be(HttpStatusCode.OK, await resp.Content.ReadAsStringAsync());
+        var def = (await resp.Content.ReadFromJsonAsync<CustomFieldDefDto>())!;
+        def.Scope.Should().Be("Line");
+
+        var lineId = await fx.Factory.LineIdOf(fx.PoAId);
+        var buyer = fx.ClientAs("u_faridah");
+        (await buyer.PutAsJsonAsync($"/api/custom-values/PurchaseOrder/{fx.PoAId}",
+            new SaveCustomValuesRequest(new(), new() { [lineId] = new() { [def.Code] = "LOT-77" } })))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var lines = (await buyer.GetFromJsonAsync<Dictionary<Guid, List<CustomValueDto>>>(
+            $"/api/custom-values/PurchaseOrder/{fx.PoAId}/lines"))!;
+        lines[lineId].Single(v => v.Code == def.Code).Value.Should().Be("LOT-77");
+
+        // The header read must NOT show the line def (it has no header grain).
+        var header = (await buyer.GetFromJsonAsync<List<CustomValueDto>>($"/api/custom-values/PurchaseOrder/{fx.PoAId}"))!;
+        header.Should().NotContain(v => v.Code == def.Code);
+
+        // Grain discipline both ways: a line def refuses header writes, and vice versa.
+        (await buyer.PutAsJsonAsync($"/api/custom-values/PurchaseOrder/{fx.PoAId}",
+            new SaveCustomValuesRequest(new() { [def.Code] = "nope" })))
+            .StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var headerDef = await fx.CreateDef("CF6 Header Twin", "Text");
+        (await buyer.PutAsJsonAsync($"/api/custom-values/PurchaseOrder/{fx.PoAId}",
+            new SaveCustomValuesRequest(new(), new() { [lineId] = new() { [headerDef.Code] = "nope" } })))
+            .StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Line_writes_verify_line_ownership_and_line_defs_stay_out_of_the_view_palette()
+    {
+        var admin = fx.ClientAs("u_admin");
+        var def = (await (await admin.PostAsJsonAsync("/api/custom-fields", new SaveCustomFieldDefRequest(
+            "CF6 Ownership", "PurchaseOrder", "Text", null, false, "", 0, Scope: "Line")))
+            .Content.ReadFromJsonAsync<CustomFieldDefDto>())!;
+
+        // A line id from ANOTHER record is refused — ownership is server-checked.
+        var foreignLine = await fx.Factory.LineIdOf(fx.PoBId);
+        (await fx.ClientAs("u_faridah").PutAsJsonAsync($"/api/custom-values/PurchaseOrder/{fx.PoAId}",
+            new SaveCustomValuesRequest(new(), new() { [foreignLine] = new() { [def.Code] = "x" } })))
+            .StatusCode.Should().Be(HttpStatusCode.BadRequest, "the line does not belong to the record");
+
+        // Locked deferral: the view runner stays header-grain — no registry row, no palette entry.
+        var fields = await fx.ClientAs("u_faridah").GetFromJsonAsync<List<ViewFieldDto>>("/api/views/fields?recordType=PurchaseOrder");
+        fields!.Should().NotContain(x => x.FieldKey == def.Code);
+
+        // And show-in-list (a header-list concept) is refused on line defs.
+        (await admin.PostAsJsonAsync("/api/custom-fields", new SaveCustomFieldDefRequest(
+            "CF6 Bad Flag", "PurchaseOrder", "Text", null, false, "", 0, ShowInList: true, Scope: "Line")))
+            .StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        // Scope is immutable after creation.
+        (await admin.PutAsJsonAsync($"/api/custom-fields/{def.Id}", new SaveCustomFieldDefRequest(
+            def.Label, "PurchaseOrder", "Text", null, false, "", def.Sort, Scope: "Header")))
+            .StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 }

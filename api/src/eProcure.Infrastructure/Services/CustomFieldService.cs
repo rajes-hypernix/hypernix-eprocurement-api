@@ -63,23 +63,33 @@ public sealed class CustomFieldService(
         if (FieldRegistrySeed.Rows.Any(r => r.RecordType == type && string.Equals(r.FieldKey, code, StringComparison.OrdinalIgnoreCase)))
             throw new CustomFieldValidationException($"'{code}' collides with a native field key.");
 
+        var scope = ParseScope(req.Scope);
+        if (scope == "Line" && req.ShowInList)
+            throw new CustomFieldValidationException("Show-in-list is a header-list concept — a LINE field has no header-list row. (Line-level search is deferred.)");
+        if (scope == "Line" && !LineOwnership.SupportedTypes.Contains(type))
+            throw new CustomFieldValidationException($"Line fields aren't supported on {type} yet — first delivery is Requisition/PurchaseOrder/Rfq lines.");
+
         var def = new CustomFieldDef
         {
             Code = code, Label = req.Label.Trim(), RecordType = type, DataType = dataType,
             CustomListId = req.CustomListId, Required = req.Required,
             HelpText = req.HelpText ?? "", Sort = req.Sort,
             DisplayType = ParseDisplayType(req.DisplayType), ShowInList = req.ShowInList,
+            Scope = scope,
             CreatedUtc = clock.UtcNow, UpdatedUtc = clock.UtcNow,
         };
         await ApplyInsertBeforeAsync(def, req.InsertBeforeId, req.Sort, ct);
         db.CustomFieldDefs.Add(def);
         // The registry row IS the D3/D4 integration — same transaction, no drift window.
-        db.FieldRegistry.Add(new FieldRegistryEntry
-        {
-            Id = def.Id,                                   // def id doubles as the registry id for Custom rows
-            RecordType = type, FieldKey = code, Kind = FieldKind.Custom,
-            Label = def.Label, DataType = RegistryTypeOf(dataType), CustomFieldDefId = def.Id,
-        });
+        // CF6-T1: LINE defs stay OUT of the registry — the view runner is header-grain (a
+        // locked deferral); a registry row would put the field in the builder palette and lie.
+        if (scope == "Header")
+            db.FieldRegistry.Add(new FieldRegistryEntry
+            {
+                Id = def.Id,                               // def id doubles as the registry id for Custom rows
+                RecordType = type, FieldKey = code, Kind = FieldKind.Custom,
+                Label = def.Label, DataType = RegistryTypeOf(dataType), CustomFieldDefId = def.Id,
+            });
         await db.SaveChangesAsync(ct);
         return ToDto(def, 0);
     }
@@ -89,6 +99,10 @@ public sealed class CustomFieldService(
         var def = await Load(id, ct);
         if (Parse(req.RecordType) != def.RecordType || ParseDataType(req.DataType) != def.DataType)
             throw new CustomFieldValidationException("Code, record type and data type are immutable — create a new field instead.");
+        if (ParseScope(req.Scope) != def.Scope)
+            throw new CustomFieldValidationException("Scope (header vs line) is immutable — values already live at that grain; create a new field instead.");
+        if (def.Scope == "Line" && req.ShowInList)
+            throw new CustomFieldValidationException("Show-in-list is a header-list concept — a LINE field cannot use it.");
         if (string.IsNullOrWhiteSpace(req.Label))
             throw new CustomFieldValidationException("A custom field needs a label.");
         def.Label = req.Label.Trim();
@@ -98,8 +112,8 @@ public sealed class CustomFieldService(
         def.ShowInList = req.ShowInList;
         await ApplyInsertBeforeAsync(def, req.InsertBeforeId, req.Sort, ct);
         def.UpdatedUtc = clock.UtcNow;
-        var reg = await db.FieldRegistry.FirstAsync(r => r.CustomFieldDefId == def.Id, ct);
-        reg.Label = def.Label;
+        var reg = await db.FieldRegistry.FirstOrDefaultAsync(r => r.CustomFieldDefId == def.Id, ct);
+        if (reg is not null) reg.Label = def.Label;   // line defs carry no registry row (CF6-T1)
         await db.SaveChangesAsync(ct);
         return ToDto(def, await db.CustomFieldValues.CountAsync(v => v.FieldDefId == def.Id, ct));
     }
@@ -142,13 +156,54 @@ public sealed class CustomFieldService(
         var defs = await db.CustomFieldDefs.Where(d => d.RecordType == type && d.Active).ToListAsync(ct);
         var byCode = defs.ToDictionary(d => d.Code, StringComparer.OrdinalIgnoreCase);
         foreach (var key in req.Values.Keys)
-            if (!byCode.ContainsKey(key))
+        {
+            if (!byCode.TryGetValue(key, out var d))
                 throw new CustomFieldValidationException($"Unknown or inactive custom field '{key}' for {type}.");
+            if (d.Scope == "Line")
+                throw new CustomFieldValidationException($"'{d.Label}' is a LINE field — its values live per line, not on the header.");
+        }
+
+        // CF6-T1: line-grain writes — every line must BELONG to this record (server-checked),
+        // every key must be a Line-scope def; same typed validation as headers.
+        if (req.Lines is { Count: > 0 } lines)
+        {
+            var lineIds = await LineOwnership.LineIdsOfAsync(db, type, recordId, ct);
+            var lineExisting = await db.CustomFieldValues
+                .Where(v => v.RecordType == type && v.RecordId == recordId && v.LineId != null).ToListAsync(ct);
+            foreach (var (lineId, lineValues) in lines)
+            {
+                if (!lineIds.Contains(lineId))
+                    throw new CustomFieldValidationException("That line does not belong to this record.");
+                foreach (var (key, raw) in lineValues)
+                {
+                    if (!byCode.TryGetValue(key, out var def))
+                        throw new CustomFieldValidationException($"Unknown or inactive custom field '{key}' for {type}.");
+                    if (def.Scope != "Line")
+                        throw new CustomFieldValidationException($"'{def.Label}' is a HEADER field — it has no line grain.");
+                    var value = raw?.Trim();
+                    var row = lineExisting.FirstOrDefault(v => v.FieldDefId == def.Id && v.LineId == lineId);
+                    if (string.IsNullOrEmpty(value))
+                    {
+                        if (row is not null) db.CustomFieldValues.Remove(row);
+                        continue;
+                    }
+                    if (def.DisplayType != "Normal" && !string.Equals(value, Render(row) ?? "", StringComparison.Ordinal))
+                        throw new CustomFieldValidationException($"'{def.Label}' is {def.DisplayType.ToLowerInvariant()} — not user-editable.");
+                    row ??= db.CustomFieldValues.Add(new CustomFieldValue
+                    {
+                        FieldDefId = def.Id, RecordType = type, RecordId = recordId,
+                        DataType = def.DataType, LineId = lineId,
+                    }).Entity;
+                    await WriteTypedAsync(row, def, value, ct);
+                    row.UpdatedUtc = clock.UtcNow;
+                }
+            }
+        }
 
         var existing = await db.CustomFieldValues
-            .Where(v => v.RecordType == type && v.RecordId == recordId).ToListAsync(ct);
+            .Where(v => v.RecordType == type && v.RecordId == recordId && v.LineId == null).ToListAsync(ct);
 
-        foreach (var def in defs)
+        foreach (var def in defs.Where(d => d.Scope == "Header"))
         {
             var supplied = req.Values.TryGetValue(def.Code, out var raw);
             var value = supplied ? raw?.Trim() : null;
@@ -242,10 +297,10 @@ public sealed class CustomFieldService(
     private async Task<IReadOnlyList<CustomValueDto>> MergedAsync(RecordType type, Guid recordId, CancellationToken ct)
     {
         var defs = await db.CustomFieldDefs.AsNoTracking()
-            .Where(d => d.RecordType == type && d.Active)
+            .Where(d => d.RecordType == type && d.Active && d.Scope == "Header")
             .OrderBy(d => d.Sort).ThenBy(d => d.Label).ToListAsync(ct);
         var values = await db.CustomFieldValues.AsNoTracking()
-            .Where(v => v.RecordType == type && v.RecordId == recordId).ToListAsync(ct);
+            .Where(v => v.RecordType == type && v.RecordId == recordId && v.LineId == null).ToListAsync(ct);
         var listIds = defs.Where(d => d.CustomListId is not null).Select(d => d.CustomListId!.Value).ToList();
         var listCodes = await db.CustomLists.AsNoTracking().Where(l => listIds.Contains(l.Id))
             .ToDictionaryAsync(l => l.Id, l => l.Code, ct);
@@ -272,13 +327,42 @@ public sealed class CustomFieldService(
     };
 
 
+    public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<CustomValueDto>>> GetLineValuesAsync(string recordType, Guid recordId, CancellationToken ct = default)
+    {
+        var type = Parse(recordType);
+        await reachability.RequireReachableAsync(type, recordId, ct);
+        var defs = await db.CustomFieldDefs.AsNoTracking()
+            .Where(d => d.RecordType == type && d.Active && d.Scope == "Line")
+            .OrderBy(d => d.Sort).ThenBy(d => d.Label).ToListAsync(ct);
+        if (defs.Count == 0) return new Dictionary<Guid, IReadOnlyList<CustomValueDto>>();
+        var values = await db.CustomFieldValues.AsNoTracking()
+            .Where(v => v.RecordType == type && v.RecordId == recordId && v.LineId != null).ToListAsync(ct);
+        var listIds = defs.Where(d => d.CustomListId is not null).Select(d => d.CustomListId!.Value).ToList();
+        var listCodes = await db.CustomLists.AsNoTracking().Where(l => listIds.Contains(l.Id))
+            .ToDictionaryAsync(l => l.Id, l => l.Code, ct);
+        return values.GroupBy(v => v.LineId!.Value).ToDictionary(
+            g => g.Key,
+            g => (IReadOnlyList<CustomValueDto>)defs.Select(d =>
+            {
+                var v = g.FirstOrDefault(x => x.FieldDefId == d.Id);
+                return new CustomValueDto(d.Code, d.Label, d.DataType.ToString(), d.Required, d.HelpText,
+                    d.CustomListId is { } lid ? listCodes.GetValueOrDefault(lid) : null, Render(v), d.DisplayType);
+            }).ToList());
+    }
+
+    private static readonly string[] Scopes = ["Header", "Line"];
+
+    private static string ParseScope(string raw) =>
+        Scopes.FirstOrDefault(x => string.Equals(x, raw, StringComparison.OrdinalIgnoreCase))
+            ?? throw new CustomFieldValidationException("Scope must be Header or Line.");
+
     private async Task<CustomFieldDef> Load(Guid id, CancellationToken ct) =>
         await db.CustomFieldDefs.FirstOrDefaultAsync(d => d.Id == id, ct)
             ?? throw new NotFoundException($"Custom field {id} not found.");
 
     private static CustomFieldDefDto ToDto(CustomFieldDef d, int valueCount) => new(
         d.Id, d.Code, d.Label, d.RecordType.ToString(), d.DataType.ToString(), d.CustomListId,
-        d.Required, d.HelpText, d.Active, d.Sort, valueCount, d.DisplayType, d.ShowInList);
+        d.Required, d.HelpText, d.Active, d.Sort, valueCount, d.DisplayType, d.ShowInList, d.Scope);
 
     private static readonly string[] DisplayTypes = ["Normal", "Disabled", "Inline"];
 

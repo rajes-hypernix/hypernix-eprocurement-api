@@ -677,7 +677,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                     "(\"DataType\" = 'ListValue' AND \"ValueListCode\" IS NOT NULL)");
             });
             e.HasKey(x => x.Id);
-            e.HasIndex(x => new { x.FieldDefId, x.RecordId }).IsUnique();
+            // CF6-T1 (locked): partial-index uniqueness, NOT NULLS NOT DISTINCT — identical
+            // behaviour on every supported PG version. One header value per (def, record);
+            // one line value per (def, record, line).
+            e.HasIndex(x => new { x.FieldDefId, x.RecordId }).IsUnique().HasFilter("\"LineId\" IS NULL");
+            e.HasIndex(x => new { x.FieldDefId, x.RecordId, x.LineId }).IsUnique().HasFilter("\"LineId\" IS NOT NULL");
             e.HasIndex(x => new { x.RecordType, x.RecordId });
             e.Property(x => x.RecordType).HasConversion<string>().HasMaxLength(30);
             e.Property(x => x.DataType).HasConversion<string>().HasMaxLength(20);

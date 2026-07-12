@@ -37,6 +37,9 @@ public class CustomFieldDef
     public string DisplayType { get; set; } = "Normal";  // Normal | Disabled | Inline
     // CF4-T12: surfaces the field as a column on the record type's SYSTEM view runs.
     public bool ShowInList { get; set; }
+    // CF6-T1: Header = body field (today's grain); Line = transaction-line column field.
+    // IMMUTABLE after creation (like Code/RecordType/DataType, same corruption reason).
+    public string Scope { get; set; } = "Header";         // Header | Line
     public DateTime CreatedUtc { get; set; }
     public DateTime UpdatedUtc { get; set; }
 }
@@ -59,6 +62,11 @@ public class CustomFieldValue
     public RecordType RecordType { get; set; }
     public Guid RecordId { get; set; }
     public CustomFieldDataType DataType { get; set; }     // denormalized from the (immutable) def for the CHECK
+    // CF6-T1: null = header value (every pre-CF6 row, unchanged — no backfill); set = the
+    // owning line. Uniqueness is TWO PARTIAL INDEXES (header: (def,record) WHERE LineId IS
+    // NULL; line: (def,record,line) WHERE NOT NULL) — version-independent on PG13–16, the
+    // locked ruling (NULLS NOT DISTINCT is PG15+ and prod's version is unverified).
+    public Guid? LineId { get; set; }
 
     public string? ValueText { get; set; }                // Text + LongText
     public decimal? ValueNumber { get; set; }             // Int + Decimal — numeric(18,4)
