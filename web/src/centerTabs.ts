@@ -61,12 +61,12 @@ export const BUYER_CENTER_TABS: CenterTab[] = [
     key: 'administration', label: 'Administration',
     items: [
       // Management screens gate on the MANAGE action (ViewUsers is just the name directory).
-      { key: 'admin', icon: 'vendor', label: 'User Management', action: 'ManageUsers' },
-      { key: 'lists', icon: 'clip', label: 'Custom Lists', action: 'ManageCustomLists' },
-      { key: 'customfields', icon: 'edit', label: 'Custom Fields', action: 'ManageCustomFields' },
+      { key: 'admin', icon: 'users', label: 'User Management', action: 'ManageUsers' },
+      { key: 'lists', icon: 'list', label: 'Custom Lists', action: 'ManageCustomLists' },
+      { key: 'customfields', icon: 'field', label: 'Custom Fields', action: 'ManageCustomFields' },
       { key: 'segments', icon: 'chart', label: 'Segments', action: 'ManageSegments' },
-      { key: 'entryforms', icon: 'clip', label: 'Entry Forms', action: 'ManageEntryForms' },
-      { key: 'numbering', icon: 'edit', label: 'Numbering', action: 'ManageNumbering' },
+      { key: 'entryforms', icon: 'form', label: 'Entry Forms', action: 'ManageEntryForms' },
+      { key: 'numbering', icon: 'hash', label: 'Numbering', action: 'ManageNumbering' },
     ],
   },
 ]

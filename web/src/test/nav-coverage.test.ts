@@ -30,6 +30,13 @@ describe('nav coverage — no shipped screen renders the placeholder', () => {
     expect(stale, `now implemented — remove from DECLARED_PLACEHOLDERS: ${stale.join(', ')}`).toEqual([])
   })
 
+  it('no two Administration items share an icon (CF1-T3 — glyphs were clip×5/edit×3 shared)', () => {
+    const admin = BUYER_CENTER_TABS.find((t) => t.key === 'administration')!
+    const icons = admin.items.map((i) => i.icon)
+    const dupes = icons.filter((ic, i) => icons.indexOf(ic) !== i)
+    expect(dupes, `duplicate admin icons: ${dupes.join(', ')}`).toEqual([])
+  })
+
   it('every nav icon names a real glyph (an unknown name renders an empty svg SILENTLY)', () => {
     // The Segments entry shipped with icon 'chart' before the glyph existed — no error,
     // just a blank space in the sidebar. Unknown names now fail here instead.

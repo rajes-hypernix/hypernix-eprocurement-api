@@ -42,9 +42,9 @@ Columns: `[ ]`→`[x]` when complete · **Audit** = current-state finding from P
 - [x] AdminCustomLists UI: edit-list modal + order-mode control + delete · Audit:missing (0 controls in browser) · Build:CF1-T2 commit · Test:CF1-T2 (drives the modal on screen)
 
 ### T3 — Icon uniqueness (no shared glyphs)
-- [ ] Each Administration nav item has a DISTINCT icon (today clip×5, edit×3, doc×3, box×3) · Audit:confirmed shared (clip×5 edit×3 doc×3 box×3) · Build:___ · Test:___
-- [ ] New glyphs reserved for the customization objects CF5/CF6 introduce · Audit:none reserved · Build:___ · Test:___
-- [ ] Browser assertion: no two Administration items share an icon name · Audit:no such test · Build:___ · Test:___
+- [x] Each Administration nav item has a DISTINCT icon (today clip×5, edit×3, doc×3, box×3) · Audit:confirmed shared (clip×5 edit×3 doc×3 box×3) · Build:CF1-T3 commit · Test:CF1-T3 distinct icons
+- [x] New glyphs reserved for the customization objects CF5/CF6 introduce · Audit:none reserved · Build:CF1-T3 commit · Test:CF1-T3 (subtab/sublist glyphs in Icon.tsx)
+- [x] Browser assertion: no two Administration items share an icon name · Audit:no such test · Build:CF1-T3 commit · Test:CF1-T3 (pairwise-distinct + draws assertion)
 
 ### T4 — Sidebar collapse
 - [ ] Collapse toggle + persisted width state + slim icon-only rail; main content widens · Audit:missing (0 controls) · Build:___ · Test:___

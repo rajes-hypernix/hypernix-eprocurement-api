@@ -28,6 +28,13 @@ const PATHS: Record<string, string> = {
   split: '<path d="M16 3h5v5M21 3l-7 7M8 21H3v-5M3 21l7-7"/>',
   unlock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2"/>',
   chart: '<path d="M3 3v18h18"/><path d="M7 15v3M12 10v8M17 6v12"/>',
+  // CF1-T3: distinct Administration glyphs (no shared icons) + reserved CF5/CF6 object glyphs.
+  list: '<path d="M8 6h13M8 12h13M8 18h13"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/>',
+  field: '<rect x="3" y="8" width="18" height="8" rx="1.5"/><path d="M7 12h6"/><path d="M17 10v4"/>',
+  form: '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h5"/><path d="M4 18h16"/>',
+  hash: '<path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/>',
+  subtab: '<rect x="3" y="7" width="18" height="14" rx="2"/><path d="M3 11h18"/><path d="M7 7V5a2 2 0 0 1 2-2h2v4M13 7V3h2a2 2 0 0 1 2 2v2"/>',
+  sublist: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M3 14h18"/><path d="M8 9v11"/>',
 }
 
 /** The valid icon names — the nav-coverage test pins every nav icon against this (an
@@ -46,6 +53,7 @@ export function Icon({ name, size = 18 }: { name: string; size?: number }) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
+      data-icon={name}
       dangerouslySetInnerHTML={{ __html: PATHS[name] ?? '' }}
     />
   )

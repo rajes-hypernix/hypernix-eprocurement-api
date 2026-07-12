@@ -90,3 +90,19 @@ test('CF1-T2: edit a custom list — rename, alphabetical order-mode, guarded de
   expect((await request.delete(`${API}/api/custom-fields/${cf.id}`, { headers: ADMIN })).status()).toBe(204)
   expect((await request.delete(`${API}/api/custom-lists/${listCode}`, { headers: ADMIN })).status()).toBe(204)
 })
+
+test('CF1-T3: every Administration nav item renders a DISTINCT icon', async ({ page }) => {
+  await goAs(page, 'u_admin', 'admin')
+  await page.waitForTimeout(1200)
+  const names: string[] = []
+  for (const label of ['User Management', 'Custom Lists', 'Custom Fields', 'Segments', 'Entry Forms', 'Numbering']) {
+    const icon = page.getByRole('button', { name: label }).locator('svg[data-icon]').first()
+    names.push((await icon.getAttribute('data-icon'))!)
+  }
+  expect(new Set(names).size, `admin icons must be pairwise distinct: ${names.join(',')}`).toBe(names.length)
+  for (const n of names) {
+    // and each glyph actually DRAWS something (the blank-icon regression class)
+    const paths = await page.locator(`svg[data-icon="${n}"]`).first().locator('> *').count()
+    expect(paths, `glyph ${n} draws`).toBeGreaterThan(0)
+  }
+})
