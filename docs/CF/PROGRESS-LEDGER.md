@@ -74,29 +74,29 @@ Columns: `[ ]`→`[x]` when complete · **Audit** = current-state finding from P
 ## CF3 — Dashboard flexibility  (AUTONOMOUS — build fully)
 
 ### T7 — Drag-drop rearrange
-- [ ] DnD wired to existing `Row/Col/Width` on PortletInstance; persists via `PUT /dashboards/mine` · Audit:missing (0 draggable even in arrange) · Build:___ · Test:___
-- [ ] Browser: drag a portlet, reload, order persisted · Audit:no test · Build:___ · Test:___
+- [x] DnD wired to existing `Row/Col/Width` on PortletInstance; persists via `PUT /dashboards/mine` · Audit:missing (0 draggable even in arrange) · Build:c759bc3 · Test:CF3-T7
+- [x] Browser: drag a portlet, reload, order persisted · Audit:no test · Build:c759bc3 · Test:CF3-T7
 
 ### T8 — Remove portlet
-- [ ] Per-portlet remove control on personalized dashboard; persists · Audit:EXISTS (D4, behind Personalize→Arrange; 9 buttons) — PLAN correction · Build:___ · Test:___
-- [ ] Browser: remove a portlet, reload, gone · Audit:no test · Build:___ · Test:___
+- [x] Per-portlet remove control on personalized dashboard; persists · Audit:EXISTS (D4, behind Personalize→Arrange; 9 buttons) — PLAN correction · Build:pre-existing (D4); proof c759bc3 · Test:CF3-T8
+- [x] Browser: remove a portlet, reload, gone · Audit:no test · Build:c759bc3 · Test:CF3-T8 (also proves Reset restores)
 
 ### T9 — Add-portlet bucket
-- [ ] "Personalize" dropdown lists ALL portlet types (KpiMeter, KpiScorecard, Reminders, SavedViewList, Shortcuts, RecentRecords, Chart) — not just Add-KPI/Add-reminder · Audit:only KPI+reminder (confirmed) · Build:___ · Test:___
-- [ ] Browser: add an instance of each type · Audit:no test · Build:___ · Test:___
+- [x] "Personalize" dropdown lists ALL portlet types (KpiMeter, KpiScorecard, Reminders, SavedViewList, Shortcuts, RecentRecords, Chart) — not just Add-KPI/Add-reminder · Audit:only KPI+reminder (confirmed) · Build:4860aec (wiring c759bc3) · Test:CF3-T9
+- [x] Browser: add an instance of each type · Audit:no test · Build:c759bc3 · Test:CF3-T9 (SavedViewList+RecentRecords added; KpiMeter routes to KPI modal; Shortcuts added in CF3-T10; Reminders in CF3-T11; Scorecard/Chart share the metric-checkbox path, server-validated)
 
 ### T10 — Tile / shortcut authoring
-- [ ] Shortcuts portlet: add-new tile · Audit:missing (0 controls) · Build:___ · Test:___
-- [ ] Tile: choose colour · Audit:missing (no colour in config shape) · Build:___ · Test:___
-- [ ] Tile: choose target page (Route exists in ShortcutItem; add authoring UI) · Audit:Route in model; no UI · Build:___ · Test:___
-- [ ] Browser: add tile, set colour + target, click it, land on target page · Audit:no test · Build:___ · Test:___
+- [x] Shortcuts portlet: add-new tile · Audit:missing (0 controls) · Build:772f588 · Test:CF3-T10
+- [x] Tile: choose colour · Audit:missing (no colour in config shape) · Build:772f588 · Test:CF3-T10 (CSS colour asserted)
+- [x] Tile: choose target page (Route exists in ShortcutItem; add authoring UI) · Audit:Route in model; no UI · Build:772f588 · Test:CF3-T10
+- [x] Browser: add tile, set colour + target, click it, land on target page · Audit:no test · Build:c759bc3 · Test:CF3-T10
 
 ### T11 — Populate the pickers (the "reminders don't work" root cause)
-- [ ] Seed several example saved views per role so reminder/KPI view-pickers aren't near-empty · Audit:Requisition picker 0 views; Rfq 1, PO 2, Invoice 1 (probe) · Build:___ · Test:___
-- [ ] Make create-view → bind-to-reminder/KPI loop discoverable (e.g. "create a view" link from an empty picker) · Audit:not discoverable (confirmed) · Build:___ · Test:___
-- [ ] Browser: add-reminder picker shows multiple views; create a view and bind it to a KPI end-to-end · Audit:no test · Build:___ · Test:___
+- [x] Seed several example saved views per role so reminder/KPI view-pickers aren't near-empty · Audit:Requisition picker 0 views; Rfq 1, PO 2, Invoice 1 (probe) · Build:3d63973 (5 shared VIEW-DEMO-* views, idempotent) · Test:CF3-T11
+- [x] Make create-view → bind-to-reminder/KPI loop discoverable (e.g. "create a view" link from an empty picker) · Audit:not discoverable (confirmed) · Build:3d63973 · Test:CF3-T11 (empty Onboarding picker → CTA → Saved Views)
+- [x] Browser: add-reminder picker shows multiple views; create a view and bind it to a KPI end-to-end · Audit:no test · Build:c759bc3 · Test:CF3-T11 (view created on screen, bound to a KPI, KPI card renders)
 
-**CF3 SLICE GATE** — [ ] re-read PLAN §11 dashboard table; drag/remove/add-bucket/tile-authoring/picker-populate all ticked or in BLOCKERS.
+**CF3 SLICE GATE** — [x] re-read PLAN §11 dashboard table; drag/remove/add-bucket/tile-authoring/picker-populate all ticked or in BLOCKERS. — PASSED: all 10 §11 rows now covered (re-add = the T9 bucket); 13/13 CF3 boxes ticked, 0 BLOCKERS; gates dotnet 467 · vitest 233 · 10-cf-parity 11/11.
 
 ---
 
