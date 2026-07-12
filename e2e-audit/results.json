@@ -77,12 +77,7 @@
           "tests": [
             {
               "timeout": 60000,
-              "annotations": [
-                {
-                  "type": "health:U4-dashboard-buyer",
-                  "description": "CONSOLE ERRORS: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. Sep"
-                }
-              ],
+              "annotations": [],
               "expectedStatus": "passed",
               "projectId": "chromium",
               "projectName": "chromium",
@@ -91,18 +86,13 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 2431,
+                  "duration": 2599,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-07-03T06:48:01.041Z",
-                  "annotations": [
-                    {
-                      "type": "health:U4-dashboard-buyer",
-                      "description": "CONSOLE ERRORS: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. Sep"
-                    }
-                  ],
+                  "startTime": "2026-07-12T03:44:58.675Z",
+                  "annotations": [],
                   "attachments": []
                 }
               ],
@@ -111,7 +101,7 @@
           ],
           "id": "934d4eb0768fcc8c1556-56d37f55d02461f0117f",
           "file": "01-crawl.spec.ts",
-          "line": 43,
+          "line": 48,
           "column": 7
         },
         {
@@ -130,12 +120,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 2454,
+                  "duration": 2430,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-07-03T06:48:03.698Z",
+                  "startTime": "2026-07-12T03:45:01.489Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -145,7 +135,7 @@
           ],
           "id": "934d4eb0768fcc8c1556-d3aa50cb2dbb041ca704",
           "file": "01-crawl.spec.ts",
-          "line": 43,
+          "line": 48,
           "column": 7
         },
         {
@@ -164,12 +154,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 2105,
+                  "duration": 2592,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-07-03T06:48:06.156Z",
+                  "startTime": "2026-07-12T03:45:03.924Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -179,7 +169,7 @@
           ],
           "id": "934d4eb0768fcc8c1556-e7b1c42da7dba397551b",
           "file": "01-crawl.spec.ts",
-          "line": 43,
+          "line": 48,
           "column": 7
         },
         {
@@ -198,12 +188,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 2147,
+                  "duration": 2309,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-07-03T06:48:08.266Z",
+                  "startTime": "2026-07-12T03:45:06.520Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -213,75 +203,7 @@
           ],
           "id": "934d4eb0768fcc8c1556-d25b29a320a88c019ab5",
           "file": "01-crawl.spec.ts",
-          "line": 43,
-          "column": 7
-        },
-        {
-          "title": "buyer load: admin",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 60000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "chromium",
-              "projectName": "chromium",
-              "results": [
-                {
-                  "workerIndex": 0,
-                  "parallelIndex": 0,
-                  "status": "passed",
-                  "duration": 2114,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-07-03T06:48:10.418Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "934d4eb0768fcc8c1556-fc3ceac5d2a93e4ee516",
-          "file": "01-crawl.spec.ts",
-          "line": 43,
-          "column": 7
-        },
-        {
-          "title": "buyer load: lists",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 60000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "chromium",
-              "projectName": "chromium",
-              "results": [
-                {
-                  "workerIndex": 0,
-                  "parallelIndex": 0,
-                  "status": "passed",
-                  "duration": 2103,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-07-03T06:48:12.536Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "934d4eb0768fcc8c1556-279d8b179ad7a71f9864",
-          "file": "01-crawl.spec.ts",
-          "line": 43,
+          "line": 48,
           "column": 7
         },
         {
@@ -300,12 +222,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 2100,
+                  "duration": 2314,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-07-03T06:48:14.642Z",
+                  "startTime": "2026-07-12T03:45:08.833Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -315,7 +237,7 @@
           ],
           "id": "934d4eb0768fcc8c1556-6a98b016edcc8ffeacf4",
           "file": "01-crawl.spec.ts",
-          "line": 43,
+          "line": 48,
           "column": 7
         },
         {
@@ -334,12 +256,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 2119,
+                  "duration": 2298,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-07-03T06:48:16.747Z",
+                  "startTime": "2026-07-12T03:45:11.152Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -349,113 +271,11 @@
           ],
           "id": "934d4eb0768fcc8c1556-b94a44ab4a183eeaa3b7",
           "file": "01-crawl.spec.ts",
-          "line": 43,
+          "line": 48,
           "column": 7
         },
         {
           "title": "buyer load: rfqs",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 60000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "chromium",
-              "projectName": "chromium",
-              "results": [
-                {
-                  "workerIndex": 0,
-                  "parallelIndex": 0,
-                  "status": "passed",
-                  "duration": 2095,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-07-03T06:48:18.871Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "934d4eb0768fcc8c1556-cac02c8a149ff4f3af09",
-          "file": "01-crawl.spec.ts",
-          "line": 43,
-          "column": 7
-        },
-        {
-          "title": "buyer load: forms",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 60000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "chromium",
-              "projectName": "chromium",
-              "results": [
-                {
-                  "workerIndex": 0,
-                  "parallelIndex": 0,
-                  "status": "passed",
-                  "duration": 2079,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-07-03T06:48:20.970Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "934d4eb0768fcc8c1556-98b5a0415578466ce5af",
-          "file": "01-crawl.spec.ts",
-          "line": 43,
-          "column": 7
-        },
-        {
-          "title": "buyer load: openings",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 60000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "chromium",
-              "projectName": "chromium",
-              "results": [
-                {
-                  "workerIndex": 0,
-                  "parallelIndex": 0,
-                  "status": "passed",
-                  "duration": 2102,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-07-03T06:48:23.054Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "934d4eb0768fcc8c1556-9f0a89c46eb87594d723",
-          "file": "01-crawl.spec.ts",
-          "line": 43,
-          "column": 7
-        },
-        {
-          "title": "buyer load: awards",
           "ok": true,
           "tags": [],
           "tests": [
@@ -475,7 +295,7 @@
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-07-03T06:48:25.160Z",
+                  "startTime": "2026-07-12T03:45:13.454Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -483,13 +303,13 @@
               "status": "expected"
             }
           ],
-          "id": "934d4eb0768fcc8c1556-f1bea92f1a1c9b1836c1",
+          "id": "934d4eb0768fcc8c1556-cac02c8a149ff4f3af09",
           "file": "01-crawl.spec.ts",
-          "line": 43,
+          "line": 48,
           "column": 7
         },
         {
-          "title": "buyer load: pos",
+          "title": "buyer load: forms",
           "ok": true,
           "tags": [],
           "tests": [
@@ -504,12 +324,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 2383,
+                  "duration": 2301,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-07-03T06:48:27.493Z",
+                  "startTime": "2026-07-12T03:45:15.786Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -517,13 +337,13 @@
               "status": "expected"
             }
           ],
-          "id": "934d4eb0768fcc8c1556-a22ec8c42008c30d4795",
+          "id": "934d4eb0768fcc8c1556-98b5a0415578466ce5af",
           "file": "01-crawl.spec.ts",
-          "line": 43,
+          "line": 48,
           "column": 7
         },
         {
-          "title": "buyer load: deliveries",
+          "title": "buyer load: openings",
           "ok": true,
           "tags": [],
           "tests": [
@@ -538,12 +358,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 2300,
+                  "duration": 2285,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-07-03T06:48:29.879Z",
+                  "startTime": "2026-07-12T03:45:18.092Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -551,285 +371,13 @@
               "status": "expected"
             }
           ],
-          "id": "934d4eb0768fcc8c1556-d1cbca39e191ff728412",
+          "id": "934d4eb0768fcc8c1556-9f0a89c46eb87594d723",
           "file": "01-crawl.spec.ts",
-          "line": 43,
+          "line": 48,
           "column": 7
         },
         {
-          "title": "buyer load: invoices",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 60000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "chromium",
-              "projectName": "chromium",
-              "results": [
-                {
-                  "workerIndex": 0,
-                  "parallelIndex": 0,
-                  "status": "passed",
-                  "duration": 2297,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-07-03T06:48:32.183Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "934d4eb0768fcc8c1556-729c5bbdf0d6f6c41bf1",
-          "file": "01-crawl.spec.ts",
-          "line": 43,
-          "column": 7
-        },
-        {
-          "title": "buyer load: statements",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 60000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "chromium",
-              "projectName": "chromium",
-              "results": [
-                {
-                  "workerIndex": 0,
-                  "parallelIndex": 0,
-                  "status": "passed",
-                  "duration": 2365,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-07-03T06:48:34.485Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "934d4eb0768fcc8c1556-fc260a7cc9e353994f3e",
-          "file": "01-crawl.spec.ts",
-          "line": 43,
-          "column": 7
-        },
-        {
-          "title": "buyer load: chats",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 60000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "chromium",
-              "projectName": "chromium",
-              "results": [
-                {
-                  "workerIndex": 0,
-                  "parallelIndex": 0,
-                  "status": "passed",
-                  "duration": 2127,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-07-03T06:48:36.853Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "934d4eb0768fcc8c1556-944ad2543f870bf8f9f4",
-          "file": "01-crawl.spec.ts",
-          "line": 43,
-          "column": 7
-        },
-        {
-          "title": "buyer load: payments",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 60000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "chromium",
-              "projectName": "chromium",
-              "results": [
-                {
-                  "workerIndex": 0,
-                  "parallelIndex": 0,
-                  "status": "passed",
-                  "duration": 2090,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-07-03T06:48:38.985Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "934d4eb0768fcc8c1556-e03da7eccdf4afe1d93f",
-          "file": "01-crawl.spec.ts",
-          "line": 43,
-          "column": 7
-        },
-        {
-          "title": "vendor load: dashboard",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 60000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "chromium",
-              "projectName": "chromium",
-              "results": [
-                {
-                  "workerIndex": 0,
-                  "parallelIndex": 0,
-                  "status": "passed",
-                  "duration": 2073,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-07-03T06:48:41.082Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "934d4eb0768fcc8c1556-92e971f29f99753245fc",
-          "file": "01-crawl.spec.ts",
-          "line": 55,
-          "column": 7
-        },
-        {
-          "title": "vendor load: bids",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 60000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "chromium",
-              "projectName": "chromium",
-              "results": [
-                {
-                  "workerIndex": 0,
-                  "parallelIndex": 0,
-                  "status": "passed",
-                  "duration": 2061,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-07-03T06:48:43.159Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "934d4eb0768fcc8c1556-0ba40154e79425d669fb",
-          "file": "01-crawl.spec.ts",
-          "line": 55,
-          "column": 7
-        },
-        {
-          "title": "vendor load: pos",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 60000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "chromium",
-              "projectName": "chromium",
-              "results": [
-                {
-                  "workerIndex": 0,
-                  "parallelIndex": 0,
-                  "status": "passed",
-                  "duration": 2338,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-07-03T06:48:45.224Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "934d4eb0768fcc8c1556-2f8ff25c92c89a67ea4b",
-          "file": "01-crawl.spec.ts",
-          "line": 55,
-          "column": 7
-        },
-        {
-          "title": "vendor load: deliveries",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 60000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "chromium",
-              "projectName": "chromium",
-              "results": [
-                {
-                  "workerIndex": 0,
-                  "parallelIndex": 0,
-                  "status": "passed",
-                  "duration": 2338,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-07-03T06:48:47.566Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "934d4eb0768fcc8c1556-5df54920174d26390aeb",
-          "file": "01-crawl.spec.ts",
-          "line": 55,
-          "column": 7
-        },
-        {
-          "title": "vendor load: invoices",
+          "title": "buyer load: awards",
           "ok": true,
           "tags": [],
           "tests": [
@@ -849,7 +397,449 @@
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-07-03T06:48:49.908Z",
+                  "startTime": "2026-07-12T03:45:20.381Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "934d4eb0768fcc8c1556-f1bea92f1a1c9b1836c1",
+          "file": "01-crawl.spec.ts",
+          "line": 48,
+          "column": 7
+        },
+        {
+          "title": "buyer load: pos",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2323,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-07-12T03:45:22.714Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "934d4eb0768fcc8c1556-a22ec8c42008c30d4795",
+          "file": "01-crawl.spec.ts",
+          "line": 48,
+          "column": 7
+        },
+        {
+          "title": "buyer load: deliveries",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2269,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-07-12T03:45:25.042Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "934d4eb0768fcc8c1556-d1cbca39e191ff728412",
+          "file": "01-crawl.spec.ts",
+          "line": 48,
+          "column": 7
+        },
+        {
+          "title": "buyer load: invoices",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2336,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-07-12T03:45:27.315Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "934d4eb0768fcc8c1556-729c5bbdf0d6f6c41bf1",
+          "file": "01-crawl.spec.ts",
+          "line": 48,
+          "column": 7
+        },
+        {
+          "title": "buyer load: statements",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2328,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-07-12T03:45:29.656Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "934d4eb0768fcc8c1556-fc260a7cc9e353994f3e",
+          "file": "01-crawl.spec.ts",
+          "line": 48,
+          "column": 7
+        },
+        {
+          "title": "buyer load: chats",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2499,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-07-12T03:45:31.991Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "934d4eb0768fcc8c1556-944ad2543f870bf8f9f4",
+          "file": "01-crawl.spec.ts",
+          "line": 48,
+          "column": 7
+        },
+        {
+          "title": "buyer load: payments",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2290,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-07-12T03:45:34.498Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "934d4eb0768fcc8c1556-e03da7eccdf4afe1d93f",
+          "file": "01-crawl.spec.ts",
+          "line": 48,
+          "column": 7
+        },
+        {
+          "title": "admin load: admin",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2337,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-07-12T03:45:36.793Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "934d4eb0768fcc8c1556-088fbdf3229957cc62ef",
+          "file": "01-crawl.spec.ts",
+          "line": 60,
+          "column": 7
+        },
+        {
+          "title": "admin load: lists",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2304,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-07-12T03:45:39.139Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "934d4eb0768fcc8c1556-3cd11b300b97ca45b2b5",
+          "file": "01-crawl.spec.ts",
+          "line": 60,
+          "column": 7
+        },
+        {
+          "title": "vendor load: dashboard",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2263,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-07-12T03:45:41.447Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "934d4eb0768fcc8c1556-92e971f29f99753245fc",
+          "file": "01-crawl.spec.ts",
+          "line": 71,
+          "column": 7
+        },
+        {
+          "title": "vendor load: bids",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2209,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-07-12T03:45:43.714Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "934d4eb0768fcc8c1556-0ba40154e79425d669fb",
+          "file": "01-crawl.spec.ts",
+          "line": 71,
+          "column": 7
+        },
+        {
+          "title": "vendor load: pos",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2264,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-07-12T03:45:45.927Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "934d4eb0768fcc8c1556-2f8ff25c92c89a67ea4b",
+          "file": "01-crawl.spec.ts",
+          "line": 71,
+          "column": 7
+        },
+        {
+          "title": "vendor load: deliveries",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2305,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-07-12T03:45:48.194Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "934d4eb0768fcc8c1556-5df54920174d26390aeb",
+          "file": "01-crawl.spec.ts",
+          "line": 71,
+          "column": 7
+        },
+        {
+          "title": "vendor load: invoices",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2270,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-07-12T03:45:50.503Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -859,7 +849,7 @@
           ],
           "id": "934d4eb0768fcc8c1556-78ce5447d676b11f4dc2",
           "file": "01-crawl.spec.ts",
-          "line": 55,
+          "line": 71,
           "column": 7
         },
         {
@@ -878,12 +868,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 2406,
+                  "duration": 2352,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-07-03T06:48:52.241Z",
+                  "startTime": "2026-07-12T03:45:52.777Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -893,7 +883,7 @@
           ],
           "id": "934d4eb0768fcc8c1556-f9b70d5e34166ddc78e2",
           "file": "01-crawl.spec.ts",
-          "line": 55,
+          "line": 71,
           "column": 7
         },
         {
@@ -912,12 +902,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 2087,
+                  "duration": 2362,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-07-03T06:48:54.652Z",
+                  "startTime": "2026-07-12T03:45:55.133Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -927,7 +917,7 @@
           ],
           "id": "934d4eb0768fcc8c1556-008c9ca9f7ea75a36624",
           "file": "01-crawl.spec.ts",
-          "line": 55,
+          "line": 71,
           "column": 7
         },
         {
@@ -937,16 +927,7 @@
           "tests": [
             {
               "timeout": 60000,
-              "annotations": [
-                {
-                  "type": "health:dashboard-admin",
-                  "description": "CONSOLE ERRORS: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. Sep"
-                },
-                {
-                  "type": "health:dashboard-approver",
-                  "description": "CONSOLE ERRORS: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. Sep"
-                }
-              ],
+              "annotations": [],
               "expectedStatus": "passed",
               "projectId": "chromium",
               "projectName": "chromium",
@@ -955,22 +936,13 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 4803,
+                  "duration": 5470,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-07-03T06:48:56.743Z",
-                  "annotations": [
-                    {
-                      "type": "health:dashboard-admin",
-                      "description": "CONSOLE ERRORS: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. Sep"
-                    },
-                    {
-                      "type": "health:dashboard-approver",
-                      "description": "CONSOLE ERRORS: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. Sep"
-                    }
-                  ],
+                  "startTime": "2026-07-12T03:45:57.498Z",
+                  "annotations": [],
                   "attachments": []
                 }
               ],
@@ -979,7 +951,7 @@
           ],
           "id": "934d4eb0768fcc8c1556-aba0e327ac2487bdb4b7",
           "file": "01-crawl.spec.ts",
-          "line": 65,
+          "line": 81,
           "column": 5
         }
       ]
@@ -1006,12 +978,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 2396,
+                  "duration": 2630,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-07-03T06:49:01.554Z",
+                  "startTime": "2026-07-12T03:46:02.976Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -1040,12 +1012,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 3074,
+                  "duration": 3220,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-07-03T06:49:03.954Z",
+                  "startTime": "2026-07-12T03:46:05.610Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -1074,16 +1046,16 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 1183,
+                  "duration": 1321,
                   "errors": [],
                   "stdout": [
                     {
-                      "text": "B3 timings: pageLoad=782ms generateLink=141ms linkResolves=true netFail=[] slow=[]\n"
+                      "text": "B3 timings: pageLoad=973ms generateLink=113ms linkResolves=true netFail=[] slow=[]\n"
                     }
                   ],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-07-03T06:49:07.031Z",
+                  "startTime": "2026-07-12T03:46:08.834Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -1120,12 +1092,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 2602,
+                  "duration": 2572,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-07-03T06:49:08.220Z",
+                  "startTime": "2026-07-12T03:46:10.160Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -1154,12 +1126,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 2326,
+                  "duration": 2552,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-07-03T06:49:10.827Z",
+                  "startTime": "2026-07-12T03:46:12.736Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -1188,12 +1160,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 3160,
+                  "duration": 3341,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-07-03T06:49:13.156Z",
+                  "startTime": "2026-07-12T03:46:15.292Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -1222,12 +1194,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 3556,
+                  "duration": 3577,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-07-03T06:49:16.321Z",
+                  "startTime": "2026-07-12T03:46:18.637Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -1237,7 +1209,7 @@
           ],
           "id": "28776ca7bd2b5d558695-ee4d34dcca99723d81c2",
           "file": "03-functional.spec.ts",
-          "line": 58,
+          "line": 60,
           "column": 5
         },
         {
@@ -1256,12 +1228,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 2065,
+                  "duration": 2287,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-07-03T06:49:19.881Z",
+                  "startTime": "2026-07-12T03:46:22.217Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -1271,7 +1243,7 @@
           ],
           "id": "28776ca7bd2b5d558695-613e1f9d2f905e583b9c",
           "file": "03-functional.spec.ts",
-          "line": 74,
+          "line": 76,
           "column": 5
         },
         {
@@ -1290,12 +1262,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 4085,
+                  "duration": 4018,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-07-03T06:49:21.950Z",
+                  "startTime": "2026-07-12T03:46:24.508Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -1305,7 +1277,133 @@
           ],
           "id": "28776ca7bd2b5d558695-fffb9f4bf27cd19b65ea",
           "file": "03-functional.spec.ts",
-          "line": 82,
+          "line": 84,
+          "column": 5
+        }
+      ]
+    },
+    {
+      "title": "04-saved-views.spec.ts",
+      "file": "04-saved-views.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "saved views gate: buyer builds + shares; approver sees the same rows; vendor is scoped",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 7275,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-07-12T03:46:28.534Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "7c30118d4ca98c597bde-f3a8a5b8f4addd046a08",
+          "file": "04-saved-views.spec.ts",
+          "line": 16,
+          "column": 5
+        }
+      ]
+    },
+    {
+      "title": "05-dashboards.spec.ts",
+      "file": "05-dashboards.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "dashboard gate: buyer builds a KPI from her view, pins + arranges it; vendor sees own-scope only",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 9686,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-07-12T03:46:35.816Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "b28085975aeb55b3f2ad-375528b534d65c4a8819",
+          "file": "05-dashboards.spec.ts",
+          "line": 14,
+          "column": 5
+        }
+      ]
+    },
+    {
+      "title": "06-custom-fields.spec.ts",
+      "file": "06-custom-fields.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "custom-field gate: admin defines → buyer populates → view filters → KPI counts",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 10958,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-07-12T03:46:45.508Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "f12284efbc1e44f8b27e-4287b6d794a7f8225b69",
+          "file": "06-custom-fields.spec.ts",
+          "line": 18,
           "column": 5
         }
       ]
@@ -1332,7 +1430,7 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 3186,
+                  "duration": 3167,
                   "errors": [],
                   "stdout": [
                     {
@@ -1341,7 +1439,7 @@
                   ],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-07-03T06:49:26.042Z",
+                  "startTime": "2026-07-12T03:46:56.473Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -1370,12 +1468,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 2900,
+                  "duration": 2872,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-07-03T06:49:29.259Z",
+                  "startTime": "2026-07-12T03:46:59.689Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -1404,7 +1502,7 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 2450,
+                  "duration": 2590,
                   "errors": [],
                   "stdout": [
                     {
@@ -1413,7 +1511,7 @@
                   ],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-07-03T06:49:32.162Z",
+                  "startTime": "2026-07-12T03:47:02.565Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -1435,7 +1533,7 @@
       "line": 0,
       "specs": [
         {
-          "title": "Buyer dashboard: analytics panel renders, no console errors, links navigate",
+          "title": "Buyer dashboard: portlets render live, honest states, no console errors, links navigate",
           "ok": true,
           "tags": [],
           "tests": [
@@ -1450,7 +1548,7 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 3054,
+                  "duration": 3550,
                   "errors": [],
                   "stdout": [
                     {
@@ -1459,7 +1557,7 @@
                   ],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-07-03T06:49:34.618Z",
+                  "startTime": "2026-07-12T03:47:05.161Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -1467,13 +1565,13 @@
               "status": "expected"
             }
           ],
-          "id": "854c9d24c90e8cb5979a-734173a0c92d9b3d4cf0",
+          "id": "854c9d24c90e8cb5979a-4d006b8159374f4bc96a",
           "file": "97-dashboard-analytics.spec.ts",
-          "line": 4,
+          "line": 8,
           "column": 5
         },
         {
-          "title": "Vendor dashboard UNCHANGED: still shows RFQ invitations table, no analytics panel",
+          "title": "Vendor dashboard: work queue + RFQ invitations portlet, own-scope only",
           "ok": true,
           "tags": [],
           "tests": [
@@ -1488,12 +1586,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 2077,
+                  "duration": 2529,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-07-03T06:49:37.677Z",
+                  "startTime": "2026-07-12T03:47:08.715Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -1501,9 +1599,9 @@
               "status": "expected"
             }
           ],
-          "id": "854c9d24c90e8cb5979a-7c04a92bf57f66fc244a",
+          "id": "854c9d24c90e8cb5979a-e251daa9787b27aebacf",
           "file": "97-dashboard-analytics.spec.ts",
-          "line": 35,
+          "line": 39,
           "column": 5
         }
       ]
@@ -1530,7 +1628,7 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 2472,
+                  "duration": 2680,
                   "errors": [],
                   "stdout": [
                     {
@@ -1539,7 +1637,7 @@
                   ],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-07-03T06:49:39.760Z",
+                  "startTime": "2026-07-12T03:47:11.251Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -1576,12 +1674,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 3402,
+                  "duration": 3397,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-07-03T06:49:42.238Z",
+                  "startTime": "2026-07-12T03:47:13.938Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -1599,9 +1697,9 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-07-03T06:48:00.794Z",
-    "duration": 104910.195,
-    "expected": 42,
+    "startTime": "2026-07-12T03:44:58.478Z",
+    "duration": 138978.258,
+    "expected": 45,
     "skipped": 0,
     "unexpected": 0,
     "flaky": 0

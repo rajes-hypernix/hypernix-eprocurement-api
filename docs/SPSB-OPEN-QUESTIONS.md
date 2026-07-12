@@ -16,14 +16,19 @@ discovering a default later.
    actor names; AUTHORIZATION-MATRIX ruling OD-10). Defensible default; SPSB may prefer transparency.
 
 3. **Spend category dimension** — the demo dashboard mocked a Materials/Services/MRO spend split,
-   but no category dimension exists on PO/Invoice lines, so D4's spend chart is single-series
-   (honest). Should P2P lines carry a spend category? Note: **D6's custom segments may be the
-   delivery vehicle** — a "Spend Category" segment applied to PO/Invoice lines is exactly what D6
-   builds.
+   but no category dimension existed on P2P lines, so D4's spend chart is single-series (honest).
+   **D6 update: the engine is READY** — an admin defines a "Spend Category" segment, applies it to
+   PurchaseOrder (per-line if wanted — the line-level path is live and gate-proven on PO lines) and
+   Invoice, and every saved view, KPI and series can slice by it, unassigned records surfaced as
+   their own named bucket. The open question is now **which segments and which values, not
+   whether**: SPSB names the category list (e.g. Materials/Services/MRO) and it is data entry in
+   the Setup screen, zero deployments.
 
 4. **Vendor segmentation for onboarding analytics** — the mock split onboarded vendors by
-   Manufacturer/Distributor/Service-provider; the data model only carries SWEC/Non-SWEC. Should
-   vendors carry a business-type dimension? Same note: a D6 custom segment on Vendor may deliver it.
+   Manufacturer/Distributor/Service-provider; the data model only carries SWEC/Non-SWEC. **D6
+   update: the engine is READY** — a "Business Type" segment applied to Vendor slices onboarding
+   analytics the day SPSB names its values (the Vendor detail's Custom-fields tab already renders
+   segment assignment). Again: which segments and which values, not whether.
 
 *Raised by: RFQ Lifecycle Slice I/J (1); Slice RM role-matrix rulings (2); D4 dashboard honesty
 census (3, 4). These are product stances, not technical constraints — either behaviour is a small

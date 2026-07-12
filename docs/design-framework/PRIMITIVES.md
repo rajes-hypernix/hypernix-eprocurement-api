@@ -154,3 +154,21 @@ the untouched D3/D4 chain, and date criteria may use the ruled `@today±Nd`
 token form. **Required is enforced at value-save ONLY — it does not gate
 record lifecycle transitions.** A PO with an empty required custom field
 still issues; transition gating is D7 form-engine territory, by design.
+
+## Segments — the dimension engine (D6)
+
+`components/segments/SegmentsSection.tsx` is the D5 section pattern applied to
+dimensions: assignments arrive WITH def metadata and options in one call,
+render as selects through `renderField` — the same pipeline, no second path.
+Wired on PrForm, PO detail and VendorDetail; PO Lines carry the ONE line-level
+proof (per-line expander → the same section with `lineId`). Defs/values/
+applications are Admin Setup (`AdminSegments`, SetupPage archetype, A68);
+assignments ride the FOLDED A66/A67 (ruled: same species as custom values —
+the rows split only if the role sets ever diverge). Value codes derive from
+labels via the same `DimCode` as the PR's dimension columns; the four system
+segments mirror those columns one-way and are read-only on every surface.
+Applied segments join the view-builder palette grouped "Segments" and slice
+any aggregate/series via `groupBy` — every slice carries the NAMED
+`Unassigned` bucket (honest-null applied to dimensions). The sliced KPI
+(AddKpi "Slice by segment") is the UI proof; the stacked view-backed chart
+portlet is BACKLOG, gate-driven.

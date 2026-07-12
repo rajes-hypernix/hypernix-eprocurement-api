@@ -201,9 +201,10 @@ portlets/reminders/KPIs consume the same engine). No filter blobs anywhere.
 
 - **FieldRegistry** — grain: one row per queryable field per record type
   (`RecordType` + `FieldKey` unique). `FieldKey` = the LIST DTO property name
-  (PascalCase). `Kind` ∈ {Native, Custom, Segment}: only Native rows exist —
-  Custom (D5) and Segment (D6) are reserved enum members with nullable
-  definition FKs, so those slices add rows, never reshape. Seeded from
+  (PascalCase). `Kind` ∈ {Native, Custom, Segment}: all three are live —
+  Custom rows arrive with D5 defs (CustomFieldDefId set), Segment rows with
+  D6 applications (SegmentDefId set); the slices added rows, never reshaped
+  (as designed at D3). Seeded from
   `Application/Views/FieldRegistrySeed.cs` (THE single source: migration loop,
   test seeding, and the reflection drift-test that pins every row's DataType
   to its DTO property type all read it). 67 native rows at D3.
@@ -274,3 +275,44 @@ documented seam — deliberately not built.
   that strands values turns it red and inherits the cleanup obligation.
 - Deferred (BACKLOG): RecordRef (first honest consumer is L4 custom records),
   DateTime (every user-entered business date is DateOnly per Slice H).
+
+## Custom segments (D6)
+
+Four typed tables — the DIMENSION engine. A segment is a conformed reporting
+dimension: named values (keys), applied per record type, assigned per record
+(or per line), sliced in any view/KPI/series through the same registry
+machinery as every other field.
+
+- **SegmentDef** — grain: one row per dimension. `Code` (`seg_*`, UQ) is the
+  FieldRegistry FieldKey wherever the segment is applied. `IsSystem` marks the
+  four PR-dimension mirrors (below) — read-only via A68 (the convergence
+  BACKLOG row owns changes to them). `HasHierarchy` stores intent;
+  `SegmentValue.ParentValueId` stores the tree flat-with-parent (ruled) —
+  rollup reporting is BACKLOG, gate-driven.
+- **SegmentValue** — grain: one row per dimension KEY. `Code` derives from the
+  label via `SourcingMapping.DimCode` — the SAME derivation the PR's dimension
+  columns use, so codes are dimension-keys-by-construction (the ruled (iii-a)
+  condition 1). UQ(SegmentDefId, Code).
+- **SegmentApplication** — grain: one row per (def, record type). `LineLevel`
+  opts a type into per-line assignment (PO lines are the one line-level proof
+  surface this slice). Applying inserts the Kind=Segment registry row in the
+  same transaction (the D5 lockstep) — USER segments only; system segments
+  deliberately carry no registry rows this slice (PR views already filter on
+  the native columns — one key, one field, no rival). Un-applying with live
+  assignments is refused: dimension keys are never silently dropped.
+- **SegmentAssignment** — grain: one row per (def, record[, line]);
+  UQ(SegmentDefId, RecordType, RecordId, LineId). **An absent row IS the
+  honest null** — group-by surfaces it as the NAMED `Unassigned` bucket
+  (key `__unassigned`) on every slice, never a dropped record.
+- **The four system segments (ruled iii-a):** Department/Location/Category/Job
+  remain COLUMNS on PurchaseRequisitions — the single truth — and project
+  one-way into segment assignments via `SegmentProjection`, called from BOTH
+  RequisitionService write paths and the seeder. The Postgres-backed probe
+  (`SegmentProjectionProbeTests`) pins column ≡ assignment, so a future third
+  write path that forgets the hook goes red. Direct assignment writes on PRs
+  are refused ("edit the PR"). Deterministic ids: `md5(text)::uuid` in SQL ≡
+  `SegmentSeed.HexGuid` in C# (hex-string parse, NOT the mixed-endian
+  byte-array Guid ctor).
+- Group-by (`/aggregate?groupBy=`, `/series?groupBy=`) is part of the D3/D4
+  executor pipeline — same visibility, same scoped sources; a grouped
+  aggregate reconciles to its total by construction (FoldGroup).
