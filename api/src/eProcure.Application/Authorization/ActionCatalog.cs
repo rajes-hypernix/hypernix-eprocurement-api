@@ -98,6 +98,11 @@ public static class ActionCatalog
             // ---- A68 custom segments (D6, ruled) ----
             [ApiActions.ManageSegments] = [Ad],                           // A68: defs/values/applications are platform configuration; assignments ride A66/A67 (folded — split only if the role sets ever diverge)
 
+            // ---- A69–A71 entry forms + numbering (D7, ruled OD-D7-7) ----
+            [ApiActions.ManageEntryForms] = [Ad],                         // A69: form definitions are platform configuration (A65/A68 posture)
+            [ApiActions.ManageNumbering] = [Ad],                          // A70: numbering schemes likewise; reads ride the manage row (A65 precedent)
+            [ApiActions.ReadEntryForms] = [B, Ap, TE, CE, Ad, V],         // A71: every principal resolves ITS OWN form; + dynamic record-type View* inside (4th use of the convention)
+
             // ---- A49–A57 vendor principal ----
             [ApiActions.ViewMyInvitations] = [V],                         // A49
             [ApiActions.DeclineRfqInvitation] = [V],                      // A50 (REG row 5)

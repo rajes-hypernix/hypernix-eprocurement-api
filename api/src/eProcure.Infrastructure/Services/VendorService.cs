@@ -62,7 +62,7 @@ public sealed class VendorService(
         var now = clock.UtcNow;
         var v = new Vendor
         {
-            Code = await codes.NextAsync("SWK-V", ct),
+            Code = await codes.NextAsync(Domain.Views.RecordType.Vendor, ct),
             Name = req.Name,
             RegisteredName = req.Name,
             // Status defaults to Pending (no explicit set — the setter is now private).
@@ -93,7 +93,7 @@ public sealed class VendorService(
         var type = ParseType(req.Type);
         var v = new Vendor
         {
-            Code = await codes.NextAsync("SWK-V", ct),
+            Code = await codes.NextAsync(Domain.Views.RecordType.Vendor, ct),
             Name = req.Name,
             RegisteredName = string.IsNullOrWhiteSpace(req.RegisteredName) ? req.Name : req.RegisteredName!,
             RegistrationNo = string.IsNullOrWhiteSpace(req.RegistrationNo) ? "—" : req.RegistrationNo,

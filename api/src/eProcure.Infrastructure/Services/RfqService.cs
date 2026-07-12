@@ -105,7 +105,7 @@ public sealed class RfqService(
         var now = clock.UtcNow;
         var rfq = new Rfq
         {
-            Code = await codes.NextAsync("RFQ", ct),
+            Code = await codes.NextAsync(Domain.Views.RecordType.Rfq, ct),
             Title = req.Title ?? "",
             Envelope = RfqEnvelope.Dual,
             // Status defaults to Draft (the setter is now private).

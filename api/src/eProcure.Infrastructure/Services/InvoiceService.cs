@@ -87,7 +87,7 @@ public sealed class InvoiceService(
         var grnIds = await db.Grns.Where(g => g.PoId == poId).Select(g => g.Id).ToListAsync(ct);
         var inv = new Invoice
         {
-            Code = await codes.NextAsync("INV", ct),
+            Code = await codes.NextAsync(Domain.Views.RecordType.Invoice, ct),
             PoId = poId, GrnId = grnIds.Count == 1 ? grnIds[0] : null,
             VendorId = po.VendorId, InvoiceNo = req.InvoiceNo, Date = req.Date,
             WhtRate = req.WhtRate, Lines = lines,

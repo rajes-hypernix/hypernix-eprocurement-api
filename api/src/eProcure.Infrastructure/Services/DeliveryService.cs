@@ -81,7 +81,7 @@ public sealed class DeliveryService(
 
         var asn = new Asn
         {
-            Code = await codes.NextAsync("ASN", ct),
+            Code = await codes.NextAsync(Domain.Views.RecordType.Asn, ct),
             PoId = poId, VendorId = po.VendorId, Carrier = req.Carrier, TrackingNo = req.TrackingNo,
             ShippedDate = req.ShippedDate, ExpectedDate = req.ExpectedDate,   // Status defaults to InTransit
             Lines = lines, CreatedUtc = clock.UtcNow, UpdatedUtc = clock.UtcNow,

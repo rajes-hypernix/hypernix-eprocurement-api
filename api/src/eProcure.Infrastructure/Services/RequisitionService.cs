@@ -17,8 +17,22 @@ namespace eProcure.Infrastructure.Services;
 /// </summary>
 public sealed class RequisitionService(
     AppDbContext db, IClock clock, ICodeGenerator codes, IAuditLog audit,
-    Application.Segments.ISegmentProjection segments) : IRequisitionService
+    Application.Segments.ISegmentProjection segments,
+    Application.Forms.IEntryFormSubmitGuard entryForm) : IRequisitionService
 {
+    /// <summary>D7 (OD-D7-2/3): the caller's RESOLVED form's requiredOnForm gates SUBMIT
+    /// only, never draft save. Native keys check the incoming values; cf_/seg_ keys check
+    /// their value/assignment rows (which need the record id — a create-with-submit whose
+    /// form requires them fails loudly with "save a draft first", the honest one-shot answer).</summary>
+    private Task GuardSubmitAsync(SavePrRequest req, Guid recordId, CancellationToken ct) =>
+        entryForm.EnsureSubmittableAsync(Domain.Views.RecordType.Requisition, recordId,
+            new Dictionary<string, string?>
+            {
+                ["Requestor"] = req.Requestor, ["Department"] = req.Department,
+                ["Location"] = req.Location, ["Category"] = req.Category, ["Job"] = req.Job,
+                ["Memo"] = req.Memo, ["RequiredDate"] = req.RequiredDate?.ToString("yyyy-MM-dd"),
+            }, ct);
+
     // HARDENING: PR create/edit + line transitions are RowVersion concurrency-token surfaces (§2.6).
 
     public async Task<IReadOnlyList<RequisitionDto>> ListAsync(CancellationToken ct = default)
@@ -38,10 +52,12 @@ public sealed class RequisitionService(
 
     public async Task<RequisitionDto> CreateAsync(SavePrRequest req, bool submit, CancellationToken ct = default)
     {
+        // Guard BEFORE the code mint: a rejected submit must not burn a gap-free number.
+        if (submit) await GuardSubmitAsync(req, Guid.Empty, ct);
         var now = clock.UtcNow;
         var pr = new PurchaseRequisition
         {
-            Code = await codes.NextAsync("PR", ct),
+            Code = await codes.NextAsync(Domain.Views.RecordType.Requisition, ct),
             Requestor = req.Requestor, Memo = req.Memo,
             Department = req.Department, DepartmentCode = SourcingMapping.DimCode(req.Department),
             Location = req.Location, LocationCode = SourcingMapping.DimCode(req.Location),
@@ -116,6 +132,13 @@ public sealed class RequisitionService(
     public async Task<RequisitionDto> SubmitAsync(Guid id, CancellationToken ct = default)
     {
         var pr = await Load(id, ct);
+        await entryForm.EnsureSubmittableAsync(Domain.Views.RecordType.Requisition, pr.Id,
+            new Dictionary<string, string?>
+            {
+                ["Requestor"] = pr.Requestor, ["Department"] = pr.Department,
+                ["Location"] = pr.Location, ["Category"] = pr.Category, ["Job"] = pr.Job,
+                ["Memo"] = pr.Memo, ["RequiredDate"] = pr.RequiredOn?.ToString("yyyy-MM-dd"),
+            }, ct);
         var from = pr.HeaderStatus.ToString();
         pr.Submit(clock.UtcNow);           // Draft → Submitted, guards ≥1 open line
         await db.SaveChangesAsync(ct);

@@ -40,7 +40,18 @@ public class OnboardingReviewTests
         public readonly FakeClock Clock = new(new DateTime(2026, 7, 1, 9, 0, 0, DateTimeKind.Utc));
         public readonly FakeCurrentUser User = new("u_faridah", "Faridah Yusof");
 
-        public AppDbContext NewContext() => new(new DbContextOptionsBuilder<AppDbContext>().UseInMemoryDatabase(_db).Options);
+        public AppDbContext NewContext()
+        {
+            var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseInMemoryDatabase(_db).Options);
+            // D7 schema invariant (migration-guaranteed in production): the scheme-consulting
+            // mint needs the numbering rows; seed once per named store.
+            if (!db.NumberingSchemes.Any())
+            {
+                db.NumberingSchemes.AddRange(eProcure.Application.Forms.EntryFormSeed.ToSchemeEntities());
+                db.SaveChanges();
+            }
+            return db;
+        }
 
         public async Task<T> Do<T>(Func<OnboardingService, Task<T>> f)
         {

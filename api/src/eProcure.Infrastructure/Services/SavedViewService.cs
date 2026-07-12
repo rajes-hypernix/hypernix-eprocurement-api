@@ -498,17 +498,9 @@ public sealed class SavedViewService(
     /// bound (asEnd) so lte includes the whole day.</summary>
     private DateTime ResolveDateToken(string raw, bool asEnd)
     {
-        var now = clock.UtcNow;
-        DateTime? day = raw switch
-        {
-            "@today" => now.Date,
-            "@startOfMonth" => new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc),
-            "@endOfMonth" => new DateTime(now.Year, now.Month, DateTime.DaysInMonth(now.Year, now.Month), 0, 0, 0, DateTimeKind.Utc),
-            _ => null,
-        };
-        // D5 (ruled): the @today±Nd token FORM — a parser extension, no new token names.
-        if (day is null && System.Text.RegularExpressions.Regex.Match(raw, @"^@today([+-]\d{1,4})d$") is { Success: true } offset)
-            day = now.Date.AddDays(int.Parse(offset.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture));
+        // D7: the token grammar (incl. the D5-ruled @today±Nd form) lives in DateTokens,
+        // shared with entry-form defaults — ONE parser, no rival grammar. Behaviour unchanged.
+        var day = DateTokens.TryResolveDay(raw, clock.UtcNow);
         if (day is { } d)
             return asEnd && raw != "@startOfMonth" ? d.AddDays(1).AddTicks(-1) : d;
         if (raw.StartsWith('@'))

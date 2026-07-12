@@ -26,11 +26,22 @@ public sealed class FakeCurrentUser(
 
 public static class TestDb
 {
-    /// <summary>A fresh in-memory AppDbContext with a unique store per call.</summary>
-    public static AppDbContext NewContext() =>
-        new(new DbContextOptionsBuilder<AppDbContext>()
+    /// <summary>A fresh in-memory AppDbContext with a unique store per call. Carries the
+    /// D7 schema INVARIANTS the production migration guarantees (7 numbering schemes +
+    /// the Standard PR Form) so the scheme-consulting mint and the submit guard behave
+    /// identically to a migrated database.</summary>
+    public static AppDbContext NewContext()
+    {
+        var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>()
             .UseInMemoryDatabase($"eprocure-tests-{Guid.NewGuid()}")
             .Options);
+        db.NumberingSchemes.AddRange(eProcure.Application.Forms.EntryFormSeed.ToSchemeEntities());
+        var (form, fields) = eProcure.Application.Forms.EntryFormSeed.ToStandardPrFormEntities();
+        db.EntryFormDefs.Add(form);
+        db.EntryFormFields.AddRange(fields);
+        db.SaveChanges();
+        return db;
+    }
 }
 
 /// <summary>Bundles a fresh DbContext + the cross-cutting services for service tests.</summary>

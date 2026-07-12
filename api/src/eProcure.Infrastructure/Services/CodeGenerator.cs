@@ -13,8 +13,29 @@ public sealed class CodeGenerator(AppDbContext db, IClock clock) : ICodeGenerato
 {
     public async Task<string> NextAsync(string prefix, CancellationToken ct = default)
     {
-        var p = prefix.ToUpperInvariant();
         var year = clock.UtcNow.Year;
+        var value = await NextValueAsync(prefix.ToUpperInvariant(), year, ct);
+        return $"{prefix.ToUpperInvariant()}-{year}-{value:D4}";
+    }
+
+    /// <summary>D7 (OD-D7-6): scheme-consulting mint for the seven registry record types.
+    /// The scheme shapes the FORMAT only; the sequence machinery is byte-identical.
+    /// YearSegment=false buckets the sequence under year 0 (one continuous counter), so
+    /// year-less codes cannot collide across years by construction. Sequences are keyed
+    /// (prefix, bucket) and never reset — a prefix change starts (or REATTACHES to) its
+    /// own counter, so history is never re-issued.</summary>
+    public async Task<string> NextAsync(Domain.Views.RecordType type, CancellationToken ct = default)
+    {
+        var scheme = await db.NumberingSchemes.AsNoTracking().SingleAsync(s => s.RecordType == type, ct);
+        var year = clock.UtcNow.Year;
+        var bucket = scheme.YearSegment ? year : 0;
+        var value = await NextValueAsync(scheme.Prefix.ToUpperInvariant(), bucket, ct);
+        var padded = value.ToString($"D{scheme.Digits}");
+        return scheme.YearSegment ? $"{scheme.Prefix.ToUpperInvariant()}-{year}-{padded}" : $"{scheme.Prefix.ToUpperInvariant()}-{padded}";
+    }
+
+    private async Task<int> NextValueAsync(string p, int year, CancellationToken ct)
+    {
         int value;
 
         if (db.Database.IsNpgsql())
@@ -46,6 +67,6 @@ public sealed class CodeGenerator(AppDbContext db, IClock clock) : ICodeGenerato
             await db.SaveChangesAsync(ct);
         }
 
-        return $"{p}-{year}-{value:D4}";
+        return value;
     }
 }

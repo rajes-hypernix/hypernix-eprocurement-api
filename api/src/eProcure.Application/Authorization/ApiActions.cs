@@ -86,6 +86,11 @@ public static class ApiActions
     // A68 — custom segments (D6, ruled; assignments FOLD into A66/A67 — same species)
     public const string ManageSegments = "ManageSegments";
 
+    // A69–A71 — entry forms + numbering (D7, ruled OD-D7-7)
+    public const string ManageEntryForms = "ManageEntryForms";
+    public const string ManageNumbering = "ManageNumbering";
+    public const string ReadEntryForms = "ReadEntryForms";
+
     // A49–A57 — vendor principal
     public const string ViewMyInvitations = "ViewMyInvitations";
     public const string DeclineRfqInvitation = "DeclineRfqInvitation";

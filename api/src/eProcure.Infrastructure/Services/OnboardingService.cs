@@ -55,7 +55,7 @@ public sealed class OnboardingService(
             email, type, req.SelectedTemplateIds, rawToken,
             user.UserId ?? "system", user.UserName ?? "System", now, _opt.LinkExpiryDays);
 
-        var app = VendorOnboardingApplication.CreateFromInvitation(await codes.NextAsync("VOB", ct), invitation, now);
+        var app = VendorOnboardingApplication.CreateFromInvitation(await codes.NextAsync(Domain.Views.RecordType.Onboarding, ct), invitation, now);
         if (!string.IsNullOrWhiteSpace(req.Name)) app.Name = req.Name!.Trim();
         invitation.AttachApplication(app.Id);
 
@@ -318,7 +318,7 @@ public sealed class OnboardingService(
         // Build the master vendor in memory (Id assigned) — copies profile/banking/certs/categories,
         // and materialises the vendor's primary contact + address from the captured scalar fields
         // (the form stores those as scalars, not owned rows — so promotion must synthesise them).
-        var vendorCode = await codes.NextAsync("SWK-V", ct);
+        var vendorCode = await codes.NextAsync(Domain.Views.RecordType.Vendor, ct);
         var vendor = new Vendor
         {
             Code = vendorCode,

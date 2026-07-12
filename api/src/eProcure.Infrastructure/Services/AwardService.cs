@@ -154,7 +154,7 @@ public sealed class AwardService(
         var poCodes = new List<string>();
         foreach (var grp in award.Allocations.GroupBy(a => a.VendorId))
         {
-            var code = await codes.NextAsync("PO", ct);
+            var code = await codes.NextAsync(Domain.Views.RecordType.PurchaseOrder, ct);
             var po = new PurchaseOrder
             {
                 Code = code,

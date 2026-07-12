@@ -55,4 +55,37 @@ public static class EntryFormSeed
     public static Guid FormId(string code) => HexGuid($"entryform:{code}");
     public static Guid FieldId(Guid formId, string fieldKey) => HexGuid($"entryformfield:{formId}:{fieldKey}");
     public static Guid SchemeId(RecordType type) => HexGuid($"numberingscheme:{type}");
+
+    /// <summary>Entity builders for TEST stores (the FieldRegistrySeed.ToEntities precedent):
+    /// production gets these rows from the migration; in-memory test contexts seed the same
+    /// invariant so the scheme-consulting mint and the submit guard behave identically.</summary>
+    public static (Domain.Forms.EntryFormDef Def, List<Domain.Forms.EntryFormField> Fields) ToStandardPrFormEntities()
+    {
+        var seeded = new DateTime(2026, 7, 12, 0, 0, 0, DateTimeKind.Utc);
+        var formId = FormId(StandardPrFormCode);
+        var def = new Domain.Forms.EntryFormDef
+        {
+            Id = formId, Code = StandardPrFormCode, Name = StandardPrFormName,
+            RecordType = RecordType.Requisition, IsSystem = true, Active = true,
+            CreatedUtc = seeded, UpdatedUtc = seeded,
+        };
+        var fields = StandardPrFields.Select(f => new Domain.Forms.EntryFormField
+        {
+            Id = FieldId(formId, f.FieldKey), FormDefId = formId, FieldKey = f.FieldKey,
+            Subtab = f.Subtab, FieldGroup = f.FieldGroup, Sort = f.Sort,
+            DisplayType = Domain.Forms.EntryFormDisplayType.Normal, RequiredOnForm = false,
+            FullWidth = f.FullWidth, Label = f.Label, Placeholder = f.Placeholder,
+        }).ToList();
+        return (def, fields);
+    }
+
+    public static List<Domain.Forms.NumberingScheme> ToSchemeEntities()
+    {
+        var seeded = new DateTime(2026, 7, 12, 0, 0, 0, DateTimeKind.Utc);
+        return Schemes.Select(s => new Domain.Forms.NumberingScheme
+        {
+            Id = SchemeId(s.RecordType), RecordType = s.RecordType, Prefix = s.Prefix,
+            YearSegment = s.YearSegment, Digits = s.Digits, UpdatedUtc = seeded,
+        }).ToList();
+    }
 }

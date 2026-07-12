@@ -17,7 +17,7 @@ public class RequisitionServiceTests
     private static RequisitionService NewService(out TestContext c)
     {
         c = TestContext.New();
-        return new RequisitionService(c.Db, c.Clock, c.Codes, c.Audit, new SegmentProjection(c.Db, c.Clock));
+        return new RequisitionService(c.Db, c.Clock, c.Codes, c.Audit, new SegmentProjection(c.Db, c.Clock), new EntryFormService(c.Db, c.Clock, c.User));
     }
 
     private static SavePrRequest Save(params PrLineInput[] lines) => new(

@@ -65,12 +65,14 @@ POST api/onboarding/draft/raise-clarification
 
 ## 4. The matrix — endpoint × action × role (AS RULED)
 
-134 authenticated endpoints (102 at ruling + the permissions read + D3's
+142 authenticated endpoints (102 at ruling + the permissions read + D3's
 seven /api/views endpoints + D4's aggregate/series + eight dashboards/metrics
 endpoints + D5's seven custom-field endpoints + D6's six /api/segments and
-two /api/segment-assignments endpoints − the retired legacy dashboard read),
-grouped into actions A1–A68 (one
-action per row, 67 live with A1 retired; the RoleMatrix suite generates one
+two /api/segment-assignments endpoints + D7's five /api/entry-forms
+endpoints, the resolve read and two /api/numbering endpoints − the retired
+legacy dashboard
+read), grouped into actions A1–A71 (one
+action per row, 70 live with A1 retired; the RoleMatrix suite generates one
 test case per action). Every endpoint appears exactly once. Coverage tally
 in §4.6. D4 note: /views/{id}/aggregate and /views/{id}/series ride A59
 (they are view reads with the same dynamic record-type check). D6 note:
@@ -92,8 +94,11 @@ aggregate is still a view read over the same scoped pipeline.
 | A64 | ManageRoleDashboards | PUT /dashboards/role-defaults/{role} | – | – | – | – | ✓ | – | D4 (ruled): role defaults are platform configuration (OD-3 posture), Admin only |
 | A65 | ManageCustomFields | GET/POST /custom-fields · PUT /custom-fields/{id} · POST /custom-fields/{id}/active · DELETE /custom-fields/{id} | – | – | – | – | ✓ | – | D5 (ruled): defs are platform configuration; zero-value hard-delete only, valued defs deactivate-only forever |
 | A68 | ManageSegments | GET/POST /segments · PUT /segments/{id} · POST /segments/{id}/values · POST /segments/{id}/applications · DELETE /segments/{id}/applications/{type} | – | – | – | – | ✓ | – | D6: segment defs/values/applications are platform configuration (A65 posture). System defs (IsSystem) reject all writes — the convergence BACKLOG row owns changes to the four PR dimensions. Unapply with live assignments → 409: dimension keys are never silently dropped |
+| A69 | ManageEntryForms | GET/POST /entry-forms · PUT /entry-forms/{id} · DELETE /entry-forms/{id} · PUT /entry-forms/{id}/roles | – | – | – | – | ✓ | – | D7 (OD-D7-7): entry-form definitions are platform configuration (A65/A68 posture). IsSystem (Standard) forms reject writes/deletes — the seeded layout is the parity baseline. RecordType restricted to Requisition this slice (OD-D7-5) |
+| A70 | ManageNumbering | GET /numbering · PUT /numbering/{recordType} | – | – | – | – | ✓ | – | D7 (OD-D7-6): schemes shape codes at FORMAT time over the untouched Slice G gap-free generator; reads ride the manage row (A65 precedent). All four format-change uniqueness cases test-pinned (NumberingTests) |
 | A66 | ReadCustomValues | GET /custom-values/{type}/{id} · GET /segment-assignments/{type}/{id} | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | D5 (ruled; the "no new rows" prior withdrawn): + dynamic record-type View\* + the record's EXISTING scoped detail fetch — vendors read only records they can reach (test-pinned). **D6 (ruled fold): segment-assignment reads are the same species — same three layers, same role set. If the role sets ever diverge, THAT is the moment the rows split** |
 | A67 | EditCustomValues | PUT /custom-values/{type}/{id} · PUT /segment-assignments/{type}/{id} | ✓ | – | – | – | – | – | D5 (ruled): Buyer only, deny-by-default (Admin per OD-3; vendors pending a concrete need); + dynamic View\* + scoped fetch. **D6 (ruled fold): segment-assignment writes ride the same row — split only if the role sets ever diverge.** System-segment assignments on PRs additionally 409 ("edit the PR"): dimension columns stay the single truth |
+| A71 | ReadEntryForms | GET /entry-forms/resolve | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | D7 (OD-D7-7): every principal resolves ITS OWN form (fixed global role precedence → Standard fallback) + dynamic record-type View\* inside — the 4TH use of the convention (vendor × Requisition → 403, test-pinned). The caller can never name a form: server-side re-resolution at submit is the anti-bypass (OD-D7-2) |
 | A3 | Search | GET /search | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | OD-4 (MODIFIED): all roles keep search, but **result-type filtering by the caller's permitted View\* actions lands in THIS slice (Phase 2)** — search must not undo OD-2's vendor-master denial through the side door. Scoping test: TechEvaluator searching a vendor name → zero vendor-type hits. Vendor in-query scoping unchanged (TEST `SearchScopingTests.cs:81-82`) |
 | A4 | DownloadFile | GET /files/{id} | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | SVC: `FileAccessPolicy.cs:15-30` fail-closed vendor scoping; TEST `VendorScopingTests.cs:77-84` pins internal-reads-any + vendor deny-on-uncertainty. Evaluators need bid attachments to score |
 | A5 | UploadFile | POST /files | ✓ | – | – | – | – | ✓ | OD-5: Buyer + Vendor only — narrowest surface matching real affordances. SVC: `FilesController.cs:23` ownership stamping unchanged |
@@ -183,10 +188,12 @@ aggregate is still a view read over the same scoped pipeline.
 | A62–A64 dashboards + metrics (D4) | 8 |
 | A65–A67 custom fields (D5) + D6 segment-assignments riding A66/A67 | 9 |
 | A68 segments (D6) | 6 |
+| A69–A70 entry forms + numbering manage (D7) | 7 |
+| A71 entry-form resolve (D7) | 1 |
 | A7–A23 internal reads | 35 |
 | A24–A48 internal writes | 49 |
 | A49–A57 vendor actions | 11 |
-| **Total** | **145 live** (Slice RM's 113 + permissions + D3 views + D4 dashboards/metrics + D5 custom fields + D6 segments/segment-assignments − the retired A1) — matches the ApiExplorer surface (same enumeration as `AnonymousSweepTests.cs:44-51`). (A1 ViewDashboard retired with the legacy GET /api/dashboard at D4 Phase 4 — sanctioned.) |
+| **Total** | **153 live** (Slice RM's 113 + permissions + D3 views + D4 dashboards/metrics + D5 custom fields + D6 segments/segment-assignments + D7 entry-forms/numbering − the retired A1) — matches the ApiExplorer surface (same enumeration as `AnonymousSweepTests.cs:44-51`). (A1 ViewDashboard retired with the legacy GET /api/dashboard at D4 Phase 4 — sanctioned.) |
 
 ## 5. The Vendor principal's complete action list (as ruled)
 

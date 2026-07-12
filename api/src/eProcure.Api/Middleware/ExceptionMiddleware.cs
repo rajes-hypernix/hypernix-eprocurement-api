@@ -46,6 +46,11 @@ public sealed class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionM
             // D6: same loud posture for segment defs, values and assignments.
             await Write(ctx, StatusCodes.Status400BadRequest, "Invalid segment data", ex.Message);
         }
+        catch (Application.Forms.FormValidationException ex)
+        {
+            // D7: entry-form/numbering config errors AND unmet requiredOnForm at submit.
+            await Write(ctx, StatusCodes.Status400BadRequest, "Invalid form data", ex.Message);
+        }
         catch (DomainRuleException ex)
         {
             await Write(ctx, StatusCodes.Status409Conflict, "Rule violation", ex.Message);

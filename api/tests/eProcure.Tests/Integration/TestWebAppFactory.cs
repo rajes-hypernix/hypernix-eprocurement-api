@@ -52,11 +52,21 @@ public sealed class TestWebAppFactory(
         });
     }
 
-    /// <summary>Seed the in-memory store before exercising the host.</summary>
+    /// <summary>Seed the in-memory store before exercising the host. The D7 schema
+    /// invariants (numbering schemes + Standard PR Form — migration-guaranteed in
+    /// production) ride along idempotently so mint/submit paths behave identically.</summary>
     public async Task SeedAsync(Func<AppDbContext, Task> seed)
     {
         using var scope = Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        if (!db.NumberingSchemes.Any())
+        {
+            db.NumberingSchemes.AddRange(eProcure.Application.Forms.EntryFormSeed.ToSchemeEntities());
+            var (form, fields) = eProcure.Application.Forms.EntryFormSeed.ToStandardPrFormEntities();
+            db.EntryFormDefs.Add(form);
+            db.EntryFormFields.AddRange(fields);
+            await db.SaveChangesAsync();
+        }
         await seed(db);
         await db.SaveChangesAsync();
     }

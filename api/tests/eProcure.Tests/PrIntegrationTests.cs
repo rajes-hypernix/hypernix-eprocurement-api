@@ -26,7 +26,7 @@ public class PrIntegrationTests
         public Task PushBillPaymentAsync(string c, CancellationToken ct = default) => Task.CompletedTask;
     }
 
-    private static RequisitionService Reqs(TestContext c) => new(c.Db, c.Clock, c.Codes, c.Audit, new SegmentProjection(c.Db, c.Clock));
+    private static RequisitionService Reqs(TestContext c) => new(c.Db, c.Clock, c.Codes, c.Audit, new SegmentProjection(c.Db, c.Clock), new EntryFormService(c.Db, c.Clock, c.User));
     private static RfqService Rfqs(TestContext c) => new(c.Db, c.Clock, c.Codes, c.Audit, c.User, new eProcure.Infrastructure.Services.CustomListService(c.Db, c.Clock), Microsoft.Extensions.Options.Options.Create(new eProcure.Application.Sourcing.RfqGovernanceOptions()), Microsoft.Extensions.Logging.Abstractions.NullLogger<eProcure.Infrastructure.Services.RfqService>.Instance);
 
     private static async Task<PurchaseRequisition> SeedPr(TestContext c, string code, params (string item, decimal qty, PrLineStatus st)[] lines)
