@@ -79,7 +79,9 @@ public sealed class RoleSearchFilterTests(RoleSearchFilterFixture fx) : IClassFi
     public async Task Approver_search_spans_the_full_internal_read_tier()
     {
         var hits = await Search(fx.ClientAs("rsf_approver"), "sidedoor");
-        hits.Select(h => h.Type).Distinct().Should().BeEquivalentTo(["Vendor", "Requisition", "Rfq", "PurchaseOrder"],
+        // CF1-T5: Statement joined the hit classes (internal-only, ViewStatements [B,Ap,Ad]) —
+        // the fixture's vendor name matches, so the Approver's tier now surfaces it too.
+        hits.Select(h => h.Type).Distinct().Should().BeEquivalentTo(["Vendor", "Requisition", "Rfq", "PurchaseOrder", "Statement"],
             "OD-1 grants the Approver the full internal read tier, so every seeded type surfaces");
     }
 }
