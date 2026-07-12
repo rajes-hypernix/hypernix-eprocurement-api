@@ -81,6 +81,28 @@ public sealed class RoleMetricScopingTests(RoleMetricScopingFixture fx) : IClass
         }
     }
 
+    [Theory]
+    [InlineData("VU-hidro")]
+    [InlineData("VU-sentausa")]
+    public async Task Vendors_are_403d_from_the_onboarding_roster_series(string persona)
+    {
+        // A2F.1 (the T1 completion): the two onboarding series are org-wide ROSTER counts —
+        // the same species as vendorCount, now on the same internal-only action.
+        var vendor = fx.ClientAs(persona);
+        (await vendor.GetAsync("/api/metrics/vendorsOnboardedSwecByMonth/series")).StatusCode
+            .Should().Be(HttpStatusCode.Forbidden, $"{persona} must not read org onboarding counts");
+        (await vendor.GetAsync("/api/metrics/vendorsOnboardedNonSwecByMonth/series")).StatusCode
+            .Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task Internal_users_keep_the_onboarding_roster_series()
+    {
+        var buyer = fx.ClientAs("u_faridah");
+        (await buyer.GetAsync("/api/metrics/vendorsOnboardedSwecByMonth/series")).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await buyer.GetAsync("/api/metrics/vendorsOnboardedNonSwecByMonth/series")).StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
     [Fact]
     public async Task Internal_users_keep_the_aggregates()
     {

@@ -55,8 +55,8 @@ public sealed class SystemMetricService(AppDbContext db, IClock clock, ICurrentU
         new(MetricIds.SpendVsSameMonthLy, "vs same month last year", "%", ApiActions.ViewSpendAnalytics, false),  // A2F-T1 (AUTHZ-1)
         new(MetricIds.PrToPoCycleDays, "PR → PO cycle", Days, ApiActions.ViewPos, false),
         new(MetricIds.SpendByMonth, "Committed spend by month", Rm, ApiActions.ViewSpendAnalytics, true),     // A2F-T1 (AUTHZ-1)
-        new(MetricIds.VendorsOnboardedSwecByMonth, "SWEC vendors onboarded", Count, ApiActions.ViewVendors, true),
-        new(MetricIds.VendorsOnboardedNonSwecByMonth, "Non-SWEC vendors onboarded", Count, ApiActions.ViewVendors, true),
+        new(MetricIds.VendorsOnboardedSwecByMonth, "SWEC vendors onboarded", Count, ApiActions.ViewUsers, true),      // A2F.1 (T1 completion): org-wide ROSTER series — rides the same internal-only action as vendorCount
+        new(MetricIds.VendorsOnboardedNonSwecByMonth, "Non-SWEC vendors onboarded", Count, ApiActions.ViewUsers, true),  // A2F.1 (T1 completion)
     ];
 
     public async Task<MetricValueDto> ValueAsync(string id, CancellationToken ct = default)
