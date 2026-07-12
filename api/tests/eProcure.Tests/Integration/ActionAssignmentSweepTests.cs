@@ -79,9 +79,14 @@ public sealed class ActionAssignmentSweepTests
         unknownActions.Should().BeEmpty("these [Action] names are not in ActionCatalog.Rules");
         // 3. The token-scoped/demo exemptions carry no action — they are outside the matrix by design.
         annotatedExemptions.Should().BeEmpty("[AllowAnonymous] endpoints must not carry an [Action]");
-        // 4. No orphan catalog rows: every action in the catalog is carried by at least one endpoint,
-        //    so the matrix document, the catalog, and the API surface cannot silently diverge.
-        ActionCatalog.Rules.Keys.Except(usedActions).Should().BeEmpty(
-            "these catalog actions are assigned to no endpoint — remove the row or annotate the endpoint");
+        // 4. No orphan catalog rows: every action in the catalog is carried by at least one endpoint
+        //    STATICALLY, or consumed by a DERIVED dynamic carrier — the metric catalog's per-metric
+        //    RequiredAction (A2F-T1: A72 ViewSpendAnalytics exists ONLY there, enforced inside
+        //    SystemMetricService.Require; per-role proof lives in RoleMetricScopingTests). The set is
+        //    DERIVED from the live catalog, not hand-listed, so a retired metric re-orphans its action
+        //    and this sweep goes red again — the no-orphan guarantee is unchanged in strength.
+        var dynamicCarriers = eProcure.Infrastructure.Services.SystemMetricService.CatalogRequiredActions;
+        ActionCatalog.Rules.Keys.Except(usedActions).Except(dynamicCarriers).Should().BeEmpty(
+            "these catalog actions are assigned to no endpoint and no dynamic carrier — remove the row or annotate the endpoint");
     }
 }

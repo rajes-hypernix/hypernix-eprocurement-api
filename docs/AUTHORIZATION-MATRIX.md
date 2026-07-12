@@ -71,9 +71,13 @@ endpoints + D5's seven custom-field endpoints + D6's six /api/segments and
 two /api/segment-assignments endpoints + D7's five /api/entry-forms
 endpoints, the resolve read and two /api/numbering endpoints − the retired
 legacy dashboard
-read), grouped into actions A1–A71 (one
-action per row, 70 live with A1 retired; the RoleMatrix suite generates one
-test case per action). Every endpoint appears exactly once. Coverage tally
+read), grouped into actions A1–A72 (one
+action per row, 71 live with A1 retired; the RoleMatrix suite generates one
+test case per action — A72 is the one DYNAMIC-ONLY action, carried by no
+endpoint: it exists solely as the spend metrics' RequiredAction inside
+SystemMetricService, so its per-role proof is RoleMetricScopingTests and
+the no-orphan sweeps recognise metric-catalog actions as derived dynamic
+carriers). Every endpoint appears exactly once. Coverage tally
 in §4.6. D4 note: /views/{id}/aggregate and /views/{id}/series ride A59
 (they are view reads with the same dynamic record-type check). D6 note:
 their `groupBy` parameter adds no endpoint and no action — a grouped
@@ -92,7 +96,8 @@ ViewRunPaginationTests pins scoping across pages).
 | A59 | UseSavedViews | GET /views · GET /views/fields · GET /views/{id}/run | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | D3 (ruled): the run ADDITIONALLY checks the view's record-type View\* action via `ViewVocabulary.ViewActionFor` — e.g. TechEvaluator × Vendor view → 403 (test-pinned) |
 | A60 | ManageOwnSavedViews | POST /views · PUT /views/{id} · DELETE /views/{id} | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | D3 (ruled): own views only (owner checks in service; foreign private view → 404 existence-hiding); vendor scoping of the executor's sources makes vendor-owned views safe |
 | A61 | ManageSharedViews | POST /views/{id}/share | ✓ | – | – | – | ✓ | – | D3 (ruled): sharing is publication — Buyer, Admin; its own endpoint so the no-orphan drift sweep holds |
-| A62 | UseDashboards | GET /dashboards/mine · GET /metrics · GET /metrics/{id}/value · GET /metrics/{id}/series | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | D4 (ruled): metric reads ADDITIONALLY check the metric's RequiredAction (SystemMetricService catalog) — e.g. evaluator × spend metric → 403, vendor metrics vendor-only (test-pinned) |
+| A62 | UseDashboards | GET /dashboards/mine · GET /metrics · GET /metrics/{id}/value · GET /metrics/{id}/series | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | D4 (ruled): metric reads ADDITIONALLY check the metric's RequiredAction (SystemMetricService catalog) — e.g. evaluator × spend metric → 403, vendor metrics vendor-only (test-pinned). **A2F-T1 (AUTHZ-1): the org-wide aggregates no longer ride own-record read actions — spend metrics require A72, vendorCount rides A22 (internal-only roster count; note TE/CE thereby gain a bare COUNT they lacked under A16 — a count identifies no vendor, OD-2's masking intent holds)** |
+| A72 | ViewSpendAnalytics | *(dynamic carrier only — no endpoint; consumed as the RequiredAction of committedSpendMtd / spendVsSameMonthLy / spendByMonth via A62's metric reads)* | ✓ | ✓ | – | – | ✓ | – | A2F-T1 (AUTHZ-1, ruled): org-wide spend aggregates are INTERNAL (OD-3 posture). ViewInvoices was the bug — role V holds it for its OWN invoices, which must never unlock org totals. Per-role proof: RoleMetricScopingTests (vendors 403, buyer 200, vendor-scoped metrics untouched) |
 | A63 | ManageOwnDashboard | POST /dashboards/personalize · PUT /dashboards/mine · DELETE /dashboards/mine | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | D4 (ruled): copy-on-write personalization; reset falls back to the role-default union |
 | A64 | ManageRoleDashboards | PUT /dashboards/role-defaults/{role} | – | – | – | – | ✓ | – | D4 (ruled): role defaults are platform configuration (OD-3 posture), Admin only |
 | A65 | ManageCustomFields | GET/POST /custom-fields · PUT /custom-fields/{id} · POST /custom-fields/{id}/active · DELETE /custom-fields/{id} | – | – | – | – | ✓ | – | D5 (ruled): defs are platform configuration; zero-value hard-delete only, valued defs deactivate-only forever |

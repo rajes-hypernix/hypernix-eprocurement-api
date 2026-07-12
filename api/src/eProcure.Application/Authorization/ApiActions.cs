@@ -91,6 +91,9 @@ public static class ApiActions
     public const string ManageNumbering = "ManageNumbering";
     public const string ReadEntryForms = "ReadEntryForms";
 
+    // A72 — org spend analytics (A2F-T1, AUTHZ-1: aggregates are internal — OD-3 posture)
+    public const string ViewSpendAnalytics = "ViewSpendAnalytics";
+
     // A49–A57 — vendor principal
     public const string ViewMyInvitations = "ViewMyInvitations";
     public const string DeclineRfqInvitation = "DeclineRfqInvitation";

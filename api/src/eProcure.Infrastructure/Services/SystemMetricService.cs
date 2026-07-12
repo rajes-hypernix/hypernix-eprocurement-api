@@ -25,7 +25,16 @@ public sealed class SystemMetricService(AppDbContext db, IClock clock, ICurrentU
     private const string Rm = "RM";
     private const string Days = "days";
 
-    public IReadOnlyList<MetricDescriptor> Catalog { get; } =
+    /// <summary>The catalog actions consumed DYNAMICALLY (per-metric RequiredAction, enforced
+    /// in Require). The no-orphan sweep derives its dynamic-carrier set from this, so an
+    /// action used only by a metric (A72 ViewSpendAnalytics) is not an orphan — and becomes
+    /// one again the day its last metric retires.</summary>
+    public static IReadOnlyCollection<string> CatalogRequiredActions =>
+        Rows.Select(m => m.RequiredAction).Distinct().ToArray();
+
+    public IReadOnlyList<MetricDescriptor> Catalog { get; } = Rows;
+
+    private static readonly MetricDescriptor[] Rows =
     [
         // OD-D4-1 (ruled option a): the query stays byte-identical to DashboardService.cs:51
         // (counts ALL PRs); the label→query correction is a post-D4 BACKLOG row.
@@ -33,7 +42,7 @@ public sealed class SystemMetricService(AppDbContext db, IClock clock, ICurrentU
         new(MetricIds.RfqsAwaitingBids, "RFQs awaiting bids", Count, ApiActions.ViewRfqs, false),
         new(MetricIds.RfqsReadyToOpen, "Ready to open", Count, ApiActions.ViewRfqs, false),
         new(MetricIds.RfqsUnderEvaluation, "Under evaluation", Count, ApiActions.ViewRfqs, false),
-        new(MetricIds.VendorCount, "Vendors", Count, ApiActions.ViewVendors, false),
+        new(MetricIds.VendorCount, "Vendors", Count, ApiActions.ViewUsers, false),                // A2F-T1: a management ROSTER COUNT, not the masked vendor list — rides the internal-only user-directory action (ruled: reuse, not mint)
         new(MetricIds.UserCount, "Users", Count, ApiActions.ViewUsers, false),
         new(MetricIds.TechScoringPending, "Technical scoring pending", Count, ApiActions.ViewBidOpenings, false),
         new(MetricIds.CommOpeningsPending, "Commercial envelopes to open", Count, ApiActions.ViewBidOpenings, false),
@@ -42,10 +51,10 @@ public sealed class SystemMetricService(AppDbContext db, IClock clock, ICurrentU
         new(MetricIds.VendorBidsSubmitted, "Bids submitted", Count, ApiActions.ViewMyInvitations, false),
         new(MetricIds.VendorPosToAcknowledge, "POs to acknowledge", Count, ApiActions.ViewMyInvitations, false),
         new(MetricIds.VendorOpenPos, "Open purchase orders", Count, ApiActions.ViewMyInvitations, false),
-        new(MetricIds.CommittedSpendMtd, "Committed spend MTD", Rm, ApiActions.ViewInvoices, false),
-        new(MetricIds.SpendVsSameMonthLy, "vs same month last year", "%", ApiActions.ViewInvoices, false),
+        new(MetricIds.CommittedSpendMtd, "Committed spend MTD", Rm, ApiActions.ViewSpendAnalytics, false),    // A2F-T1 (AUTHZ-1): org-wide spend — ViewInvoices let vendors (own-record readers) pull org totals
+        new(MetricIds.SpendVsSameMonthLy, "vs same month last year", "%", ApiActions.ViewSpendAnalytics, false),  // A2F-T1 (AUTHZ-1)
         new(MetricIds.PrToPoCycleDays, "PR → PO cycle", Days, ApiActions.ViewPos, false),
-        new(MetricIds.SpendByMonth, "Committed spend by month", Rm, ApiActions.ViewInvoices, true),
+        new(MetricIds.SpendByMonth, "Committed spend by month", Rm, ApiActions.ViewSpendAnalytics, true),     // A2F-T1 (AUTHZ-1)
         new(MetricIds.VendorsOnboardedSwecByMonth, "SWEC vendors onboarded", Count, ApiActions.ViewVendors, true),
         new(MetricIds.VendorsOnboardedNonSwecByMonth, "Non-SWEC vendors onboarded", Count, ApiActions.ViewVendors, true),
     ];

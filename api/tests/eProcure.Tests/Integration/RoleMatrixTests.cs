@@ -94,7 +94,15 @@ public sealed class RoleMatrixTests(RoleMatrixFixture fx) : IClassFixture<RoleMa
     public async Task Allowed_roles_pass_the_gate_and_denied_roles_get_exactly_403(string action)
     {
         var endpoints = fx.EndpointsFor(action);
-        endpoints.Should().NotBeEmpty($"action {action} must be carried by at least one endpoint (drift sweep)");
+        if (endpoints.Count == 0)
+        {
+            // A2F-T1: an action may live ONLY as a dynamic carrier (a metric's RequiredAction —
+            // A72 ViewSpendAnalytics). Its per-role 403/200 proof is RoleMetricScopingTests;
+            // here we pin that it is a KNOWN dynamic carrier, so a truly orphaned row still fails.
+            eProcure.Infrastructure.Services.SystemMetricService.CatalogRequiredActions
+                .Should().Contain(action, $"action {action} is carried by no endpoint — it must be a dynamic carrier or be removed (drift sweep)");
+            return;
+        }
 
         var allowedRoles = ActionCatalog.RolesFor(action);
         var failures = new List<string>();
