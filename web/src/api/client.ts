@@ -161,6 +161,8 @@ export const getMyDashboard = () => http<UserDashboardDto>('/dashboards/mine')
 export const personalizeDashboard = () => http<UserDashboardDto>('/dashboards/personalize', { method: 'POST' })
 export const updateMyDashboard = (req: UpdateDashboardRequest) => http<UserDashboardDto>('/dashboards/mine', { method: 'PUT', body: JSON.stringify(req) })
 export const resetMyDashboard = () => http<undefined>('/dashboards/mine', { method: 'DELETE' })
+export type MetricDescriptorDto = { id: string; label: string; unit: string; requiredAction: string; isSeries: boolean }
+export const getMetricCatalog = () => http<MetricDescriptorDto[]>('/metrics')
 export const getMetricValue = (id: string) => http<MetricValueDto>(`/metrics/${id}/value`)
 export const getMetricSeries = (id: string, months = 12) => http<MetricSeriesDto>(`/metrics/${id}/series?months=${months}`)
 export const aggregateView = (id: string, fn: string, field?: string | null, groupBy?: string | null) =>
