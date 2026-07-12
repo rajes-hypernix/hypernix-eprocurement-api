@@ -29,3 +29,5 @@
 2026-07-13 07:37 CF6-T1 c89afcd — line-scope model landed with locked partial-index uniqueness; STOP-gate held (480/480, CHECKs untouched).
 2026-07-13 07:37 CF6-T3 — PR lines table renders Line-scope custom columns (editable, saved with the form, ownership-verified); admin Scope authoring; browser journey CF6 green (author→enter→persist at line grain, no header bleed).
 2026-07-13 07:37 CF6 partial-close — sublist objects deferred to BLOCKERS B4 (complete CF7 chosen over a half-built sublist UI); tagging v1.4-cf6-line-fields.
+2026-07-13 07:55 CF7-T1+T2 643bb7d — 8 operators (null semantics pinned FIRST, per lock) + grouped-OR (ViewFilterGroups, default 0 = legacy); builder 'or…'; browser proof green. NO ViewDefaultGrouping migration (locked). T3/T4 deferred → BLOCKERS B5.
+2026-07-13 07:55 LONGRUN CLOSE — suites dotnet 482 · vitest 234 · e2e 71/71; tags v1.1..v1.5; morning report posted.

@@ -38,3 +38,10 @@ needs its own designer surface; with the run's remaining budget it was a choice 
 half-built sublist UI and a COMPLETE CF7. Chose complete CF7. No sublist schema was created
 (nothing half-shipped to revert); the CF5 designer + line-field model are the foundation it
 plugs into. Estimated one focused slice.
+
+**B5 — CF7-T3 (segments as a searchable class) and T4 (run-time result grouping): DEFERRED.**
+The slice's core — richer criteria (8 operators with the locked null semantics) and one-level
+grouped-OR — shipped, browser-proven, with the ViewFilterGroups migration named in the plan.
+T3/T4 are additive (a new scoped projection + a run parameter over the existing D6 aggregate
+seam; no schema) and were cut on run budget after CF5 (full), CF6 (line-fields half), and
+CF7-T1/T2. Each is a small focused follow-up; the Step 0 plan's designs stand.
