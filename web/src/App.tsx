@@ -7,6 +7,7 @@ import { Dashboard } from './components/Dashboard'
 import { VendorsPage } from './components/vendors/VendorsPage'
 import { AdminUsers } from './components/admin/AdminUsers'
 import { AdminCustomLists } from './components/admin/AdminCustomLists'
+import { AdminCustomFields } from './components/admin/AdminCustomFields'
 import { Requisitions } from './components/sourcing/Requisitions'
 import { Consolidate } from './components/sourcing/Consolidate'
 import { RfqList } from './components/sourcing/RfqList'
@@ -123,6 +124,7 @@ export default function App() {
               {base === 'onboarding' && <OnboardingPage route={active} onNavigate={go} />}
               {base === 'admin' && <AdminUsers />}
               {base === 'lists' && <AdminCustomLists />}
+              {base === 'customfields' && <AdminCustomFields />}
               {base === 'reqs' && <Requisitions onOpenRfq={(id) => go(`rfqs/${id}`)} onConsolidate={() => go('consolidate')} />}
               {base === 'consolidate' && <Consolidate onOpenRfq={(id) => go(`rfqs/${id}`)} onBack={() => go('reqs')} />}
               {base === 'rfqs' &&
@@ -144,7 +146,7 @@ export default function App() {
               {base === 'chats' && <Clarifications />}
               {base === 'payments' && <PvPlaceholder />}
               {base === 'design' && Gallery && <Suspense fallback={null}><Gallery /></Suspense>}
-              {!['dashboard', 'vendors', 'onboarding', 'admin', 'lists', 'reqs', 'consolidate', 'rfqs', 'forms', 'openings', 'awards', 'pos', 'deliveries', 'invoices', 'statements', 'chats', 'payments', 'design'].includes(base) && (
+              {!['dashboard', 'vendors', 'onboarding', 'admin', 'lists', 'customfields', 'reqs', 'consolidate', 'rfqs', 'forms', 'openings', 'awards', 'pos', 'deliveries', 'invoices', 'statements', 'chats', 'payments', 'design'].includes(base) && (
                 <Placeholder label={LABELS[base] ?? base} />
               )}
             </>

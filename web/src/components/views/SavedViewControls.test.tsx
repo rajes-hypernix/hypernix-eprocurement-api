@@ -13,9 +13,9 @@ const VIEWS: SavedViewDto[] = [
 ]
 
 const FIELDS: client.ViewFieldDto[] = [
-  { fieldKey: 'Status', label: 'Status', dataType: 'Enum', options: ['Draft', 'Open', 'Closed'] },
-  { fieldKey: 'ClosesUtc', label: 'Closes', dataType: 'Instant', options: null },
-  { fieldKey: 'Code', label: 'RFQ', dataType: 'Code', options: null },
+  { fieldKey: 'Status', label: 'Status', dataType: 'Enum', kind: 'Native', options: ['Draft', 'Open', 'Closed'] },
+  { fieldKey: 'ClosesUtc', label: 'Closes', dataType: 'Instant', kind: 'Native', options: null },
+  { fieldKey: 'Code', label: 'RFQ', dataType: 'Code', kind: 'Native', options: null },
 ]
 
 const asBuyer = (permissions: string[]) => {

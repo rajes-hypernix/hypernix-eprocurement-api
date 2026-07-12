@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getPos, getPo, issuePo, acknowledgePo, getAsns, getInvoices, getPoAudit, type PoListItem } from '../../api/client'
 import { Icon } from '../Icon'
+import { CustomFieldsSection } from '../customfields/CustomFieldsSection'
 import { ConfirmModal, EmptyState, Notice, Spinner } from '../ui'
 import { fmt, fmtDay } from '../../lib/format'
 import { useIdentity } from '../../identity'
@@ -248,6 +249,7 @@ function PoDetailView({ id, onBack, onNavigate }: { id: string; onBack: () => vo
         </div>
       )}
 
+      <CustomFieldsSection recordType="PurchaseOrder" recordId={id} />
       {showIssue && (
         <ConfirmModal
           icon="send" title={`Issue ${po.code}?`}

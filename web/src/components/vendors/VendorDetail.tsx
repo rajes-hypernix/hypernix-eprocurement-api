@@ -14,12 +14,14 @@ import { SwecPicker } from './SwecPicker'
 import { EntityPage } from '../../ui/archetypes/EntityPage'
 import { Stat, Kv } from '../../ui/display'
 import { Button } from '../../ui/Button'
+import { CustomFieldsSection } from '../customfields/CustomFieldsSection'
 
 const TABS: [string, string][] = [
   ['overview', 'Overview'],
   ['categories', 'Categories'],
   ['contacts', 'Contacts'],
   ['addresses', 'Addresses'],
+  ['custom', 'Custom fields'],
   ['banking', 'Banking & Currencies'],
   ['compliance', 'Compliance'],
   ['performance', 'Performance'],
@@ -63,6 +65,7 @@ export function VendorDetail({ id, onBack }: { id: string; onBack: () => void })
   const cats = v.categories ?? []
 
   const content: Record<string, React.ReactNode> = {
+    custom: <CustomFieldsSection recordType="Vendor" recordId={v.id ?? ''} />,
     overview: (
         <>
           <div className="grid g4" style={{ marginBottom: 16 }}>

@@ -14,6 +14,7 @@ import { NumberField } from '../../ui/NumberField'
 import { MoneyField } from '../../ui/MoneyField'
 import { Button } from '../../ui/Button'
 import { TransactionPage, type TransactionSection } from '../../ui/archetypes/TransactionPage'
+import { CustomFieldsSection } from '../customfields/CustomFieldsSection'
 
 type PrLine = NonNullable<RequisitionDto['lines']>[number]
 // A line being edited: carries the server id (existing) or undefined (new).
@@ -203,6 +204,7 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
           />
         </Modal>
       )}
+      {id && <CustomFieldsSection recordType="Requisition" recordId={id} />}
     </TransactionPage>
   )
 }

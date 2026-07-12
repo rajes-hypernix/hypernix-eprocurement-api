@@ -117,7 +117,7 @@ export type SavedViewDto = {
   isShared: boolean; isSystem: boolean
   filters: SavedViewFilterDto[]; columns: SavedViewColumnDto[]
 }
-export type ViewFieldDto = { fieldKey: string; label: string; dataType: string; options?: string[] | null }
+export type ViewFieldDto = { fieldKey: string; label: string; dataType: string; kind: string; options?: string[] | null }
 export type ViewRunColumn = { fieldKey: string; label: string; dataType: string }
 export type ViewRunResult = {
   viewId: string; name: string; recordType: string
@@ -159,6 +159,33 @@ export const getMetricValue = (id: string) => http<MetricValueDto>(`/metrics/${i
 export const getMetricSeries = (id: string, months = 12) => http<MetricSeriesDto>(`/metrics/${id}/series?months=${months}`)
 export const aggregateView = (id: string, fn: string, field?: string | null) =>
   http<ViewAggregateResult>(`/views/${id}/aggregate?fn=${fn}${field ? `&field=${encodeURIComponent(field)}` : ''}`)
+
+// --- Custom fields (D5, AUTHORIZATION-MATRIX A65-A67) ---
+export type CustomFieldDefDto = {
+  id: string; code: string; label: string; recordType: string; dataType: string
+  customListId?: string | null; required: boolean; helpText: string; active: boolean; sort: number; valueCount: number
+}
+export type SaveCustomFieldDefRequest = {
+  label: string; recordType: string; dataType: string; customListId?: string | null
+  required: boolean; helpText: string; sort: number
+}
+export type CustomValueDto = {
+  code: string; label: string; dataType: string; required: boolean; helpText: string
+  customListCode?: string | null; value?: string | null
+}
+export const getCustomFieldDefs = (recordType?: string) =>
+  http<CustomFieldDefDto[]>(`/custom-fields${recordType ? `?recordType=${recordType}` : ''}`)
+export const createCustomFieldDef = (req: SaveCustomFieldDefRequest) =>
+  http<CustomFieldDefDto>('/custom-fields', { method: 'POST', body: JSON.stringify(req) })
+export const updateCustomFieldDef = (id: string, req: SaveCustomFieldDefRequest) =>
+  http<CustomFieldDefDto>(`/custom-fields/${id}`, { method: 'PUT', body: JSON.stringify(req) })
+export const setCustomFieldActive = (id: string, active: boolean) =>
+  http<CustomFieldDefDto>(`/custom-fields/${id}/active`, { method: 'POST', body: JSON.stringify(active) })
+export const deleteCustomFieldDef = (id: string) => http<undefined>(`/custom-fields/${id}`, { method: 'DELETE' })
+export const getCustomValues = (recordType: string, recordId: string) =>
+  http<CustomValueDto[]>(`/custom-values/${recordType}/${recordId}`)
+export const saveCustomValues = (recordType: string, recordId: string, values: Record<string, string | null>) =>
+  http<CustomValueDto[]>(`/custom-values/${recordType}/${recordId}`, { method: 'PUT', body: JSON.stringify({ values }) })
 
 // --- Vendor portal: invitations + bidding ---
 export const getMyInvitations = () => http<InvitationDto[]>('/my/rfqs')

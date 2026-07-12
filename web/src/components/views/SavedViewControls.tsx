@@ -34,9 +34,15 @@ const OPERATORS_FOR: Record<string, string[]> = {
   Number: ['Eq', 'Between', 'Gte', 'Lte'],
   Bool: ['Eq'],
 }
-/** The ruled relative tokens — gate-driven set (@today/@startOfMonth/@endOfMonth). */
+/** The ruled relative tokens (@today/@startOfMonth/@endOfMonth) + the D5-ruled @today±Nd
+ *  token FORM ('days from today…' renders a number input, no new token names). */
 const DATE_TOKENS = ['@today', '@startOfMonth', '@endOfMonth']
 const CUSTOM_DATE = 'on date…'
+const OFFSET_DAYS = 'days from today…'
+const offsetOf = (v: string): number | null => {
+  const m = /^@today([+-]\d{1,4})d$/.exec(v)
+  return m ? Number(m[1]) : null
+}
 
 export function ViewPicker({ views, selectedId, onSelect, onNew, onEdit }: {
   views: SavedViewDto[]
@@ -83,15 +89,31 @@ function CriterionValue({ field, value, onChange, idx }: {
   switch (field.dataType) {
     case 'Date':
     case 'Instant': {
-      const isToken = value.startsWith('@') || value === ''
+      const offset = offsetOf(value)
+      const isOffset = offset !== null
+      const isToken = (value.startsWith('@') && !isOffset) || value === ''
+      const mode = isOffset ? OFFSET_DAYS : isToken ? value : CUSTOM_DATE
       return (
         <span style={{ display: 'inline-flex', gap: 4 }}>
           <SelectField
-            spec={spec(`${key}-tok`, 'Value', 'select', [...DATE_TOKENS, CUSTOM_DATE])}
-            value={isToken ? value : CUSTOM_DATE}
-            onChange={(v) => onChange(v === CUSTOM_DATE ? new Date().toISOString().slice(0, 10) : String(v ?? ''))}
+            spec={spec(`${key}-tok`, 'Value', 'select', [...DATE_TOKENS, OFFSET_DAYS, CUSTOM_DATE])}
+            value={mode}
+            onChange={(v) => onChange(
+              v === CUSTOM_DATE ? new Date().toISOString().slice(0, 10)
+              : v === OFFSET_DAYS ? '@today+90d'
+              : String(v ?? ''))}
           />
-          {!isToken && <DateField spec={spec(key, field.label, 'date')} value={value} onChange={(v) => onChange(String(v ?? ''))} />}
+          {isOffset && (
+            <NumberField
+              spec={spec(`${key}-off`, 'Days', 'number')}
+              value={String(offset)}
+              onChange={(v) => {
+                const n = Number(v ?? 0)
+                onChange(`@today${n >= 0 ? '+' : ''}${n}d`)
+              }}
+            />
+          )}
+          {!isToken && !isOffset && <DateField spec={spec(key, field.label, 'date')} value={value} onChange={(v) => onChange(String(v ?? ''))} />}
         </span>
       )
     }
@@ -182,7 +204,18 @@ export function ViewBuilder({ recordType, existing, defaultColumns, onClose, onS
         return (
           <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'flex-end', marginBottom: 6, flexWrap: 'wrap' }}>
             <SelectField
-              spec={spec(`crit-${i}-field`, 'Field', 'select', fields.map((f) => f.fieldKey))}
+              spec={{
+                key: `crit-${i}-field`, label: 'Field', dataType: 'select',
+                options: {
+                  kind: 'static',
+                  options: [
+                    { label: 'Fields', options: fields.filter((f) => f.kind !== 'Custom').map((f) => ({ code: f.fieldKey, label: f.label })) },
+                    ...(fields.some((f) => f.kind === 'Custom')
+                      ? [{ label: 'Custom fields', options: fields.filter((f) => f.kind === 'Custom').map((f) => ({ code: f.fieldKey, label: f.label })) }]
+                      : []),
+                  ],
+                },
+              }}
               value={c.fieldKey}
               onChange={(v) => setRow(i, { fieldKey: String(v ?? ''), operator: 'Eq', value: '', value2: '' })}
             />
