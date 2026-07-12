@@ -6,6 +6,7 @@ import {
 import { Icon } from '../Icon'
 import { ConfirmModal, EmptyState, Notice, Spinner } from '../ui'
 import { useIdentity } from '../../identity'
+import { useViewRows } from '../views/useViewRows'
 import { fmtDay, todayIso } from '../../lib/format'
 
 const ASN_TONE: Record<string, string> = { Draft: 'b-grey', InTransit: 'b-blue', Received: 'b-green' }
@@ -16,12 +17,26 @@ export function DeliveryPage({ route, onNavigate }: { route: string; onNavigate:
   if (parts[1] === 'receive') return <ReceiveForm asnId={parts[2]} onBack={() => onNavigate('deliveries')} />
   if (parts[1] === 'new') return <AsnForm poId={parts[2]} onBack={() => onNavigate('deliveries')} />
   if (parts[1] === 'asn') return <AsnDetail asnId={parts[2]} onBack={() => onNavigate('deliveries')} />
+  // 'deliveries/view/{id}' (D7.5): open the list WITH that saved view picked.
+  if (parts[1] === 'view') return <DeliveryList onNavigate={onNavigate} initialViewId={parts[2]} />
   return <DeliveryList onNavigate={onNavigate} />
 }
 
-function DeliveryList({ onNavigate }: { onNavigate: (key: string) => void }) {
+// D7.5 rollout mount (the RfqList recipe): rows from the picked view's paged run — the
+// seeded "All Shipping Notices" system view by default (reproduces getAsns exactly).
+const rowToAsn = (row: Record<string, unknown>) => ({
+  id: (row.Id as string | undefined) ?? undefined,
+  code: (row.Code as string | undefined) ?? null,
+  poCode: (row.PoCode as string | undefined) ?? null,
+  carrier: (row.Carrier as string | undefined) ?? null,
+  expectedDate: (row.ExpectedDate as string | undefined) ?? null,
+  status: (row.Status as string | undefined) ?? null,
+})
+
+function DeliveryList({ onNavigate, initialViewId }: { onNavigate: (key: string) => void; initialViewId?: string }) {
   const { isVendor } = useIdentity()
-  const { data: asns = [] } = useQuery({ queryKey: ['asns'], queryFn: getAsns })
+  const { run, picker, builderModal, pager } = useViewRows('Asn', initialViewId)
+  const asns = (run?.rows ?? []).map(rowToAsn)
   const { data: pos = [] } = useQuery({ queryKey: ['pos'], queryFn: getPos, enabled: isVendor })
   const shippable = pos.filter((p) => p.status === 'Acknowledged' || p.status === 'PartiallyReceived')
 
@@ -50,7 +65,7 @@ function DeliveryList({ onNavigate }: { onNavigate: (key: string) => void }) {
       )}
 
       <div className="card">
-        <div className="chead"><h3>Shipping notices</h3></div>
+        <div className="chead"><h3>Shipping notices</h3><div className="spacer" />{picker}</div>
         <table>
           <thead><tr><th>ASN</th><th>PO</th><th>Carrier</th><th>Expected</th><th>Status</th><th /></tr></thead>
           <tbody>
@@ -75,6 +90,8 @@ function DeliveryList({ onNavigate }: { onNavigate: (key: string) => void }) {
             {asns.length === 0 && <tr><td colSpan={6}><EmptyState>No shipping notices yet.</EmptyState></td></tr>}
           </tbody>
         </table>
+        {pager}
+        {builderModal}
       </div>
     </>
   )

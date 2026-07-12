@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithProviders } from '../../test/utils'
+import { renderWithProviders, mockSystemView, mockViewRun } from '../../test/utils'
 import { InvoicePage } from './InvoiceScreens'
 import * as client from '../../api/client'
 
@@ -11,6 +11,8 @@ describe('Invoice screens', () => {
     vi.spyOn(client, 'getPersonas').mockResolvedValue([
       { code: 'u_faridah', name: 'Faridah', kind: 'internal', roles: ['Buyer'], vendorName: null },
     ])
+    vi.spyOn(client, 'getViews').mockResolvedValue([mockSystemView('Invoice') as never])
+    vi.spyOn(client, 'runView').mockResolvedValue(mockViewRun('Invoice', [{ Id: 'i1', Code: 'INV-2026-0094', InvoiceNo: 'MEG-7720', PoCode: 'PO-2026-1193', Total: 150336, MatchStatus: 'Variance', Status: 'Exception' }]) as never)
   })
 
   it('lists invoices with match + status', async () => {

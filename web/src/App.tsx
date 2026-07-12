@@ -140,7 +140,13 @@ export default function App() {
               {base === 'segments' && <AdminSegments />}
               {base === 'entryforms' && <AdminEntryForms />}
               {base === 'numbering' && <AdminNumbering />}
-              {base === 'reqs' && <Requisitions onOpenRfq={(id) => go(`rfqs/${id}`)} onConsolidate={() => go('consolidate')} />}
+              {base === 'reqs' &&
+                (active.startsWith('reqs/view/') ? (
+                  // D7.5: open Requisitions WITH that saved view intersected (reminders / home click-throughs).
+                  <Requisitions key={active} onOpenRfq={(id) => go(`rfqs/${id}`)} onConsolidate={() => go('consolidate')} initialViewId={active.slice('reqs/view/'.length)} />
+                ) : (
+                  <Requisitions onOpenRfq={(id) => go(`rfqs/${id}`)} onConsolidate={() => go('consolidate')} />
+                ))}
               {base === 'consolidate' && <Consolidate onOpenRfq={(id) => go(`rfqs/${id}`)} onBack={() => go('reqs')} />}
               {base === 'rfqs' &&
                 (active.startsWith('rfqs/view/') ? (

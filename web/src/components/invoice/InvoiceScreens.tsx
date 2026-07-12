@@ -1,28 +1,48 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  getInvoices, getInvoice, getBillablePlan, submitInvoice, approveInvoice, resolveInvoice,
+  getInvoice, getBillablePlan, submitInvoice, approveInvoice, resolveInvoice,
 } from '../../api/client'
 import { Icon } from '../Icon'
 import { ConfirmModal, EmptyState, Notice, Spinner } from '../ui'
 import { fmt, fmtDay, todayIso } from '../../lib/format'
 import { useIdentity } from '../../identity'
+import { useViewRows } from '../views/useViewRows'
 
 const INV_TONE: Record<string, string> = { Draft: 'b-grey', Submitted: 'b-blue', Approved: 'b-green', Exception: 'b-red', Paid: 'b-grey' }
 
 export function InvoicePage({ route, onNavigate }: { route: string; onNavigate: (key: string) => void }) {
   const parts = route.split('/')
   if (parts[1] === 'new') return <InvoiceForm poId={parts[2]} onBack={() => onNavigate('invoices')} />
+  // 'invoices/view/{id}' (D7.5): open the list WITH that saved view picked.
+  if (parts[1] === 'view') return <InvoiceList onOpen={(id) => onNavigate(`invoices/${id}`)} initialViewId={parts[2]} />
   if (parts.length >= 2) return <InvoiceDetail id={parts[1]} onBack={() => onNavigate('invoices')} />
   return <InvoiceList onOpen={(id) => onNavigate(`invoices/${id}`)} />
 }
 
-function InvoiceList({ onOpen }: { onOpen: (id: string) => void }) {
+// D7.5 rollout mount (the RfqList recipe): rows from the picked view's paged run — the
+// seeded "All Invoices" system view by default (reproduces getInvoices exactly).
+const rowToInvoice = (row: Record<string, unknown>) => ({
+  id: (row.Id as string | undefined) ?? undefined,
+  code: (row.Code as string | undefined) ?? null,
+  invoiceNo: (row.InvoiceNo as string | undefined) ?? null,
+  poCode: (row.PoCode as string | undefined) ?? null,
+  total: (row.Total as number | undefined) ?? 0,
+  matchStatus: (row.MatchStatus as string | undefined) ?? null,
+  status: (row.Status as string | undefined) ?? null,
+})
+
+function InvoiceList({ onOpen, initialViewId }: { onOpen: (id: string) => void; initialViewId?: string }) {
   const { isVendor } = useIdentity()
-  const { data: invoices = [] } = useQuery({ queryKey: ['invoices'], queryFn: getInvoices })
+  const { run, picker, builderModal, pager } = useViewRows('Invoice', initialViewId)
+  const invoices = (run?.rows ?? []).map(rowToInvoice)
   return (
     <>
-      <div className="pagehead"><div><h1>Invoices</h1><p>Supplier billing and line-level 3-way matching — PO vs goods receipt vs invoice.</p></div></div>
+      <div className="pagehead">
+        <div><h1>Invoices</h1><p>Supplier billing and line-level 3-way matching — PO vs goods receipt vs invoice.</p></div>
+        <div className="spacer" />
+        {picker}
+      </div>
       <div className="card">
         <table>
           <thead><tr><th>Invoice</th><th>Supplier ref</th>{!isVendor && <th>PO</th>}<th className="amt">Total</th><th>Match</th><th>Status</th><th /></tr></thead>
@@ -41,6 +61,8 @@ function InvoiceList({ onOpen }: { onOpen: (id: string) => void }) {
             {invoices.length === 0 && <tr><td colSpan={isVendor ? 6 : 7}><EmptyState>No invoices.</EmptyState></td></tr>}
           </tbody>
         </table>
+        {pager}
+        {builderModal}
       </div>
     </>
   )

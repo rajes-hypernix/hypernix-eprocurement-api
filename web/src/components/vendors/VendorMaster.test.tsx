@@ -1,13 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
-import { renderWithQuery } from '../../test/utils'
+import { renderWithProviders, mockSystemView, mockViewRun } from '../../test/utils'
 import { VendorMaster } from './VendorMaster'
 import * as client from '../../api/client'
 
 describe('VendorMaster', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
+    vi.spyOn(client, 'getPersonas').mockResolvedValue([])
     vi.spyOn(client, 'getSwec').mockResolvedValue([])
+    vi.spyOn(client, 'getViews').mockResolvedValue([mockSystemView('Vendor') as never])
+    vi.spyOn(client, 'runView').mockResolvedValue(mockViewRun('Vendor', [{
+      Id: 'v1', Code: 'SWK-V-10293', Name: 'Sentausa Engineering Sdn Bhd', Type: 'SWEC',
+      Categories: ['40101800P'], Region: 'Peninsular', State: 'Selangor', Rating: 4.6, Otd: 96, Status: 'Registered',
+    }]) as never)
     vi.spyOn(client, 'getVendors').mockResolvedValue([
       {
         id: 'v1',
@@ -25,7 +31,7 @@ describe('VendorMaster', () => {
   })
 
   it('lists seeded vendors with type, rating, OTD and status', async () => {
-    renderWithQuery(<VendorMaster onOpen={() => {}} />)
+    renderWithProviders(<VendorMaster onOpen={() => {}} />)
     await waitFor(() =>
       expect(screen.getByText('Sentausa Engineering Sdn Bhd')).toBeInTheDocument(),
     )
@@ -37,7 +43,7 @@ describe('VendorMaster', () => {
   })
 
   it('renders the prototype filter controls', () => {
-    renderWithQuery(<VendorMaster onOpen={() => {}} />)
+    renderWithProviders(<VendorMaster onOpen={() => {}} />)
     expect(screen.getByText('Vendor Master')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('name or SWK-V-…')).toBeInTheDocument()
   })

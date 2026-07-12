@@ -1,23 +1,44 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { getVendors, type VendorListItem } from '../../api/client'
+import { type VendorListItem } from '../../api/client'
 import { useSwec } from '../../api/swec'
 import { Icon } from '../Icon'
 import { EmptyState } from '../ui'
 import { StatusBadge, TypeBadge } from './badges'
+import { useViewRows } from '../views/useViewRows'
 
 const REGIONS = ['Peninsular', 'Sarawak', 'Sabah']
 
-export function VendorMaster({ onOpen, onNavigate }: { onOpen: (id: string) => void; onNavigate?: (key: string) => void }) {
+// D7.5 rollout mount (the RfqList recipe): rows come from the picked view's paged run —
+// the seeded "All Vendors" system view by default (reproduces today's list exactly); the
+// prototype filterbar stays LAYERED on the page's rows (client-side, same narrowing).
+const rowToVendor = (row: Record<string, unknown>): VendorListItem => ({
+  id: (row.Id as string | undefined) ?? undefined,
+  code: (row.Code as string | undefined) ?? null,
+  name: (row.Name as string | undefined) ?? null,
+  type: (row.Type as string | undefined) ?? null,
+  categories: (row.Categories as string[] | undefined) ?? [],
+  region: (row.Region as string | undefined) ?? null,
+  state: (row.State as string | undefined) ?? null,
+  rating: (row.Rating as number | undefined) ?? null,
+  otd: (row.Otd as number | undefined) ?? null,
+  status: (row.Status as string | undefined) ?? null,
+} as VendorListItem)
+
+export function VendorMaster({ onOpen, onNavigate, initialViewId }: {
+  onOpen: (id: string) => void; onNavigate?: (key: string) => void; initialViewId?: string
+}) {
   const { data: swec } = useSwec()
   const [q, setQ] = useState('')
   const [type, setType] = useState('all')
   const [region, setRegion] = useState('all')
+  const { run, picker, builderModal, pager } = useViewRows('Vendor', initialViewId)
 
-  const { data: vendors = [], isPending } = useQuery({
-    queryKey: ['vendors', q, type, region],
-    queryFn: () => getVendors({ q, type, region }),
-  })
+  const all = (run?.rows ?? []).map(rowToVendor)
+  const isPending = !run
+  const vendors = all.filter((v) =>
+    (!q.trim() || `${v.name} ${v.code}`.toLowerCase().includes(q.trim().toLowerCase()))
+    && (type === 'all' || v.type === type)
+    && (region === 'all' || v.region === region))
 
   const swecCount = vendors.filter((v) => v.type === 'SWEC').length
 
@@ -44,6 +65,7 @@ export function VendorMaster({ onOpen, onNavigate }: { onOpen: (id: string) => v
       <div className="card" style={{ marginBottom: 14 }}>
         <div className="cbody">
           <div className="filterbar">
+            {picker}
             <div className="field" style={{ margin: 0 }}>
               <label>Search vendor / code</label>
               <input
@@ -132,6 +154,8 @@ export function VendorMaster({ onOpen, onNavigate }: { onOpen: (id: string) => v
             )}
           </tbody>
         </table>
+        {pager}
+        {builderModal}
       </div>
       <p className="hint" style={{ marginTop: 10 }}>
         {vendors.length} vendor(s)

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithProviders } from '../../test/utils'
+import { renderWithProviders, mockSystemView, mockViewRun } from '../../test/utils'
 import { DeliveryPage } from './DeliveryScreens'
 import * as client from '../../api/client'
 
@@ -11,6 +11,8 @@ describe('Delivery screens', () => {
     vi.spyOn(client, 'getPersonas').mockResolvedValue([
       { code: 'u_faridah', name: 'Faridah', kind: 'internal', roles: ['Buyer'], vendorName: null },
     ])
+    vi.spyOn(client, 'getViews').mockResolvedValue([mockSystemView('Asn') as never])
+    vi.spyOn(client, 'runView').mockResolvedValue(mockViewRun('Asn', [{ Id: 'a1', Code: 'ASN-2026-0511', PoCode: 'PO-2026-1186', Carrier: 'Tiong Nam', ExpectedDate: '2026-06-29', Status: 'InTransit' }]) as never)
   })
 
   it('lists ASNs and offers Receive for an in-transit ASN (buyer)', async () => {

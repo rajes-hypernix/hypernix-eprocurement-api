@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  getRequisitions, createRfqDraft, cancelPrLine, releasePrLine, reopenPrLine,
-  type RequisitionDto, type RfqLineDto,
+  getRequisitions, createRfqDraft, cancelPrLine, releasePrLine, reopenPrLine, getViews, runView,
+  type RequisitionDto, type RfqLineDto, type SavedViewDto,
 } from '../../api/client'
 import { Icon } from '../Icon'
 import { Modal } from '../ui'
 import { PrForm } from './PrForm'
+import { ViewPicker, ViewBuilder } from '../views/SavedViewControls'
 import { PrHeaderBadge, LineChip, PR_KANBAN_COLUMNS, isLineSourceable } from '../../lib/prStatus'
 import { fmtDay } from '../../lib/format'
 
@@ -33,14 +34,33 @@ const filterLabel = (key: FilterKey, v: string) => (key === 'headerStatus' ? STA
 
 type LineModal = { kind: 'cancel' | 'release'; prId: string; lineId: string; item: string }
 
-export function Requisitions({ onOpenRfq, onConsolidate, addTo }: {
+export function Requisitions({ onOpenRfq, onConsolidate, addTo, initialViewId }: {
   onOpenRfq: (id: string) => void
   onConsolidate?: () => void
   addTo?: { existing: Set<string>; onAdd: (lines: RfqLineDto[]) => void }
+  initialViewId?: string
 }) {
   const qc = useQueryClient()
   const standalone = !addTo   // PR-management features only outside the RFQ add-lines picker
-  const { data: prs = [] } = useQuery({ queryKey: ['requisitions'], queryFn: getRequisitions })
+  const { data: allPrs = [] } = useQuery({ queryKey: ['requisitions'], queryFn: getRequisitions })
+  // D7.5 ID-INTERSECTION mount (ruled): Requisitions rows are DEEP (expandable lines,
+  // line-level bulk-select) and don't project to flat view columns, so a picked view
+  // filters the typed rows BY ID from the view's run — server-scoped, server-filtered
+  // criteria; the hand-rolled line machinery untouched; the ListPage migration row
+  // (facets-as-criteria) stands. Native list stays the default (no system view — an
+  // honest asymmetry, ruled). ACCEPTED LIMIT: the run is fetched at the paging cap
+  // (200); a PR view beyond 200 rows truncates the intersection (noted on the row).
+  const { data: prViews = [] } = useQuery({ queryKey: ['views', 'Requisition'], queryFn: () => getViews('Requisition'), enabled: standalone })
+  const [pickedView, setPickedView] = useState<string | null>(initialViewId ?? null)
+  const [viewBuilder, setViewBuilder] = useState<{ existing: SavedViewDto | null } | null>(null)
+  const { data: viewRun } = useQuery({
+    queryKey: ['view-run-ids', pickedView],
+    queryFn: () => runView(pickedView!, 1, 200),
+    enabled: standalone && pickedView !== null,
+  })
+  const prs = standalone && pickedView && viewRun
+    ? allPrs.filter((p) => new Set(viewRun.rows.map((r) => String(r.Id))).has(p.id ?? ''))
+    : allPrs
   // Source-eligible (header-gated) AND, in "add to draft" mode, not already in the draft.
   const selectable = (pr: RequisitionDto, l: PrLine) => isLineSourceable(pr, l) && !(addTo?.existing.has(lineKey(pr.code!, l.itemCode!)))
   const avail = (pr: RequisitionDto) => (pr.lines ?? []).filter((l) => selectable(pr, l))
@@ -157,6 +177,31 @@ export function Requisitions({ onOpenRfq, onConsolidate, addTo }: {
       </div>
 
       {openFilter && <div className="mscrim" onClick={() => setOpenFilter(null)} />}
+      {standalone && (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', marginBottom: 10 }}>
+          <ViewPicker
+            views={prViews}
+            selectedId={pickedView}
+            onSelect={setPickedView}
+            onNew={() => setViewBuilder({ existing: null })}
+            onEdit={(v) => setViewBuilder({ existing: v })}
+          />
+          {pickedView && (
+            <button type="button" className="btn btn-out btn-sm" onClick={() => setPickedView(null)} aria-label="Clear saved view">
+              ✕ Standard list
+            </button>
+          )}
+        </div>
+      )}
+      {viewBuilder && (
+        <ViewBuilder
+          recordType="Requisition"
+          existing={viewBuilder.existing}
+          defaultColumns={['Code', 'Requestor', 'Department', 'HeaderStatus', 'Value']}
+          onClose={() => setViewBuilder(null)}
+          onSaved={(v) => { setViewBuilder(null); setPickedView(v.id) }}
+        />
+      )}
       <div className="filterbar2">
         {FILTERS.map((f) => {
           const sel = filters[f.key]

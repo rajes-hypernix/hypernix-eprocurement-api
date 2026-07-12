@@ -22,6 +22,10 @@ export function VendorsPage({
   if (route === 'vendors/manual') {
     return <ManualVendorForm onSaved={(id) => onNavigate(`vendors/${id}`)} onBack={() => onNavigate('vendors/new')} />
   }
+  // 'vendors/view/{id}' (D7.5): open the master WITH that saved view picked.
+  if (route.startsWith('vendors/view/')) {
+    return <VendorMaster onOpen={(id) => onNavigate(`vendors/${id}`)} onNavigate={onNavigate} initialViewId={route.slice('vendors/view/'.length)} />
+  }
   const openId = route.startsWith('vendors/') ? route.slice('vendors/'.length) : null
   return openId ? (
     <VendorDetail id={openId} onBack={() => onNavigate('vendors')} />

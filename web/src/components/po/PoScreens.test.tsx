@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
-import { renderWithProviders } from '../../test/utils'
+import { renderWithProviders, mockSystemView, mockViewRun } from '../../test/utils'
 import { PoPage } from './PoScreens'
 import * as client from '../../api/client'
 
@@ -8,6 +8,8 @@ describe('PO screens', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
     vi.spyOn(client, 'getPersonas').mockResolvedValue([])
+    vi.spyOn(client, 'getViews').mockResolvedValue([mockSystemView('PurchaseOrder') as never])
+    vi.spyOn(client, 'runView').mockResolvedValue(mockViewRun('PurchaseOrder', [{ Id: 'p1', Code: 'PO-2026-1186', VendorName: 'Pantai', RfqCode: null, Status: 'PartiallyReceived', Total: 23520, ReceivedQty: 16, TotalQty: 24 }]) as never)
   })
 
   it('lists POs with status and receipt progress', async () => {

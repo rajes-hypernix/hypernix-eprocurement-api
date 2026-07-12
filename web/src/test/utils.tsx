@@ -40,3 +40,15 @@ export const STANDARD_PR_FORM = {
     { fieldKey: 'Memo', label: 'Memo / Justification', dataType: 'Text', kind: 'Native', subtab: null, fieldGroup: 'Header', sort: 6, displayType: 'Normal', requiredOnForm: false, defaultValue: null, sourceFieldKey: null, fullWidth: true, placeholder: 'Short description of the requirement', customListCode: null, options: null },
   ],
 }
+
+/// D7.5: mock plumbing for the ViewPicker rollout mounts — a record type's system view
+/// plus a paged run built from PascalCase rows. List tests feed their old fixtures
+/// through this (the rows are the same data, keyed the registry way).
+export const mockSystemView = (recordType: string) => ({
+  id: `sys-${recordType}`, code: 'VIEW-SYS-TEST', name: `All ${recordType}`, recordType,
+  ownerUserId: null, isShared: true, isSystem: true, filters: [], columns: [],
+})
+export const mockViewRun = (recordType: string, rows: Record<string, unknown>[]) => ({
+  viewId: `sys-${recordType}`, name: `All ${recordType}`, recordType,
+  columns: [], rows, page: 1, size: 50, total: rows.length,
+})

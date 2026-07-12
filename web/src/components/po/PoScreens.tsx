@@ -4,6 +4,7 @@ import { getPos, getPo, issuePo, acknowledgePo, getAsns, getInvoices, getPoAudit
 import { Icon } from '../Icon'
 import { CustomFieldsSection } from '../customfields/CustomFieldsSection'
 import { SegmentsSection } from '../segments/SegmentsSection'
+import { useViewRows } from '../views/useViewRows'
 import { Button } from '../../ui/Button'
 import { ConfirmModal, EmptyState, Notice, Spinner } from '../ui'
 import { fmt, fmtDay } from '../../lib/format'
@@ -16,6 +17,10 @@ const STATUS_TONE: Record<string, string> = {
 const label = (s: string | null | undefined) => (s === 'PartiallyReceived' ? 'Partially received' : s ?? '')
 
 export function PoPage({ route, onNavigate }: { route: string; onNavigate: (key: string) => void }) {
+  // 'pos/view/{id}' (D7.5): open the list WITH that saved view picked (reminders /
+  // View-all / Saved Views home click-throughs) — checked before the detail branch.
+  if (route.startsWith('pos/view/'))
+    return <PoList onOpen={(id) => onNavigate(`pos/${id}`)} initialViewId={route.slice('pos/view/'.length)} />
   if (route.startsWith('pos/'))
     return <PoDetailView id={route.slice('pos/'.length)} onBack={() => onNavigate('pos')} onNavigate={onNavigate} />
   return <PoList onOpen={(id) => onNavigate(`pos/${id}`)} />
@@ -35,12 +40,29 @@ const poInFilter = (status: string, f: string) => {
   return true
 }
 
-function PoList({ onOpen }: { onOpen: (id: string) => void }) {
+// D7.5 rollout mount (the RfqList recipe): rows come from the picked view's paged run —
+// the seeded "All Purchase Orders" system view by default (reproduces getPos exactly);
+// the status tabs stay LAYERED on the page's rows; the KPI stat cards keep their own
+// full-list query (they are KPIs of all POs, not of the current view page).
+const rowToPo = (row: Record<string, unknown>): PoListItem => ({
+  id: (row.Id as string | undefined) ?? undefined,
+  code: (row.Code as string | undefined) ?? null,
+  vendorName: (row.VendorName as string | undefined) ?? null,
+  rfqCode: (row.RfqCode as string | undefined) ?? null,
+  status: (row.Status as string | undefined) ?? null,
+  total: (row.Total as number | undefined) ?? 0,
+  receivedQty: (row.ReceivedQty as number | undefined) ?? 0,
+  totalQty: (row.TotalQty as number | undefined) ?? 0,
+} as PoListItem)
+
+function PoList({ onOpen, initialViewId }: { onOpen: (id: string) => void; initialViewId?: string }) {
   const { isVendor } = useIdentity()
   const { data: pos = [] } = useQuery({ queryKey: ['pos'], queryFn: getPos })
   const [tab, setTab] = useState('all')
+  const { run, picker, builderModal, pager } = useViewRows('PurchaseOrder', initialViewId)
 
-  const shown = pos.filter((p) => poInFilter(p.status ?? '', tab))
+  const viewRows = (run?.rows ?? []).map(rowToPo)
+  const shown = viewRows.filter((p) => poInFilter(p.status ?? '', tab))
   const exceptions = pos.filter((p) => p.status === 'Discrepancy').length
   const openVal = pos.filter((p) => !['Draft', 'Closed'].includes(p.status ?? '')).reduce((a, p) => a + (p.total ?? 0), 0)
   const awaiting = pos.filter((p) => ['Issued', 'Acknowledged', 'PartiallyReceived'].includes(p.status ?? '')).length
@@ -61,10 +83,12 @@ function PoList({ onOpen }: { onOpen: (id: string) => void }) {
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap', alignItems: 'flex-end' }}>
         {PO_TABS.map((t) => (
           <button key={t.key} type="button" className={`btn btn-sm ${tab === t.key ? 'btn-pri' : 'btn-out'}`} onClick={() => setTab(t.key)}>{t.label}</button>
         ))}
+        <div className="spacer" />
+        {picker}
       </div>
 
       <div className="card">
@@ -93,6 +117,8 @@ function PoList({ onOpen }: { onOpen: (id: string) => void }) {
             {shown.length === 0 && <tr><td colSpan={isVendor ? 6 : 7}><EmptyState>No POs in this view.</EmptyState></td></tr>}
           </tbody>
         </table>
+        {pager}
+        {builderModal}
       </div>
     </>
   )
