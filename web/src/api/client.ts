@@ -133,6 +133,33 @@ export const deleteView = (id: string) => http<undefined>(`/views/${id}`, { meth
 export const shareView = (id: string, isShared: boolean) => http<SavedViewDto>(`/views/${id}/share`, { method: 'POST', body: JSON.stringify({ isShared }) })
 export const runView = (id: string) => http<ViewRunResult>(`/views/${id}/run`)
 
+// --- Dashboards + metric layer (D4, AUTHORIZATION-MATRIX A62-A64) ---
+export type PortletDto = {
+  id: string; portletType: string; title: string
+  col: number; row: number; width: number
+  savedViewId?: string | null; configJson: string
+}
+export type UserDashboardDto = { id: string; name: string; isPersonalized: boolean; portlets: PortletDto[] }
+export type PortletUpsert = {
+  id?: string | null; portletType: string; title: string
+  col: number; row: number; width: number
+  savedViewId?: string | null; configJson: string
+}
+export type UpdateDashboardRequest = { name?: string | null; portlets: PortletUpsert[] }
+export type MetricValueDto = { id: string; label: string; unit: string; value?: number | null; notYetAvailable: boolean; excludedNullCount: number }
+export type SeriesBucketDto = { bucket: string; value: number }
+export type MetricSeriesDto = { id: string; label: string; unit: string; buckets: SeriesBucketDto[]; unbucketedCount: number }
+export type ViewAggregateResult = { viewId: string; fn: string; fieldKey?: string | null; value?: number | null; excludedNullCount: number }
+
+export const getMyDashboard = () => http<UserDashboardDto>('/dashboards/mine')
+export const personalizeDashboard = () => http<UserDashboardDto>('/dashboards/personalize', { method: 'POST' })
+export const updateMyDashboard = (req: UpdateDashboardRequest) => http<UserDashboardDto>('/dashboards/mine', { method: 'PUT', body: JSON.stringify(req) })
+export const resetMyDashboard = () => http<undefined>('/dashboards/mine', { method: 'DELETE' })
+export const getMetricValue = (id: string) => http<MetricValueDto>(`/metrics/${id}/value`)
+export const getMetricSeries = (id: string, months = 12) => http<MetricSeriesDto>(`/metrics/${id}/series?months=${months}`)
+export const aggregateView = (id: string, fn: string, field?: string | null) =>
+  http<ViewAggregateResult>(`/views/${id}/aggregate?fn=${fn}${field ? `&field=${encodeURIComponent(field)}` : ''}`)
+
 // --- Vendor portal: invitations + bidding ---
 export const getMyInvitations = () => http<InvitationDto[]>('/my/rfqs')
 export const getMyBid = (rfqId: string) =>

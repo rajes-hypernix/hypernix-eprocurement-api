@@ -20,6 +20,9 @@ public static class DashboardSeed
     /// <summary>The shared "Recent purchase orders" system view the SavedViewList portlet rides.</summary>
     public static readonly Guid RecentPosViewId = new("d4000000-0000-0000-0000-00000000b001");
 
+    /// <summary>D3's "All RFQs" system view — the Reminders portlet's click-through target.</summary>
+    public static readonly Guid AllRfqsViewId = new("d3000000-0000-0000-0000-00000000a11f");
+
     public static Guid DashboardId(string role) =>
         new(MD5.HashData(Encoding.UTF8.GetBytes($"dashboard:role:{role}")));
     public static Guid PortletId(string role, int index) =>
@@ -57,6 +60,18 @@ public static class DashboardSeed
             Meter("Committed spend MTD", 0, 2, MetricIds.CommittedSpendMtd, "invoices"),
             Meter("vs same month last year", 1, 2, MetricIds.SpendVsSameMonthLy, null),
             RecentPos,
+            // Appended by the DashboardSeedRefresh migration (indexes 6–8 — earlier ids stay stable):
+            // the remaining portlet types live on the buyer default so every type ships REAL.
+            new(PortletType.Reminders, "Reminders", 0, 4, 1, null,
+                J(new PortletConfigs.RemindersConfig([new(AllRfqsViewId, "All RFQs", "rfqs")]))),
+            new(PortletType.Shortcuts, "Shortcuts", 1, 4, 1, null,
+                J(new PortletConfigs.ShortcutsConfig([
+                    new("New requisition", "reqs", "ManageRequisitions"),
+                    new("Consolidate to RFQ", "consolidate", "ManageRfqDraft"),
+                    new("Vendor master", "vendors", null),
+                    new("Invite a vendor", "onboarding/invite", "InviteOnboarding"),
+                ]))),
+            new(PortletType.RecentRecords, "Recent records", 0, 5, 2, null, "{}"),
         ]),
 
         new("DASH-SYS-VENDOR", "Vendor Dashboard", Roles.Vendor,

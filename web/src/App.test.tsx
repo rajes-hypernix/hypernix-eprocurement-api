@@ -15,22 +15,29 @@ describe('App shell', () => {
     // clicks exists only when /auth/permissions grants its action.
     vi.spyOn(client, 'getPermissions').mockResolvedValue(['ViewDashboard', 'ViewVendors', 'ViewRequisitions', 'ViewRfqs'])
     vi.spyOn(client, 'getRequisitions').mockResolvedValue([])
-    vi.spyOn(client, 'getDashboard').mockResolvedValue({
-      title: 'Sourcing Dashboard', subtitle: 'Live picture of requisitions, active RFQs and awards.',
-      cards: [{ label: 'Open requisitions', value: '7', sub: 'ready to source', tone: 'clay', link: 'reqs' }],
+    // D4: the dashboard renders from the resolved portlet list + live metric values.
+    vi.spyOn(client, 'getMyDashboard').mockResolvedValue({
+      id: 'd1', name: 'Sourcing Dashboard', isPersonalized: false,
+      portlets: [{
+        id: 'p1', portletType: 'KpiScorecard', title: 'Sourcing pipeline', col: 0, row: 0, width: 2,
+        savedViewId: null, configJson: JSON.stringify({ items: [{ metricId: 'openRequisitions', link: 'reqs' }] }),
+      }],
+    })
+    vi.spyOn(client, 'getMetricValue').mockResolvedValue({
+      id: 'openRequisitions', label: 'Open requisitions', unit: 'count', value: 7, notYetAvailable: false, excludedNullCount: 0,
     })
     vi.spyOn(client, 'getRfqs').mockResolvedValue([
       { id: 'r1', code: 'RFQ-2026-0087', title: 'Piping', envelope: 'Single', status: 'Open', currency: 'MYR', closesUtc: '2026-07-03T00:00:00Z', invitedCount: 2, lineCount: 3, questionCount: 6, bidCount: 1 },
     ])
   })
 
-  it('renders the brand and the Sourcing Dashboard by default', async () => {
+  it('renders the brand and the server-driven dashboard by default', async () => {
     renderWithProviders(<App />)
     expect(screen.getByText('Hypernix eProcure')).toBeInTheDocument()
     await waitFor(() => expect(screen.getByRole('heading', { level: 1, name: 'Sourcing Dashboard' })).toBeInTheDocument())
-    // Buyer dashboard now shows the analytics panel (demo) in place of the Active RFQs table.
-    expect(screen.getByText('Sourcing analytics')).toBeInTheDocument()
-    expect(screen.getByText('PO-2026-0141')).toBeInTheDocument()
+    // D4: portlets render live metric values — no mock analytics panel.
+    await waitFor(() => expect(screen.getByText('Open requisitions')).toBeInTheDocument())
+    expect(screen.getByText('7')).toBeInTheDocument()
   })
 
   it('navigates to another screen when a nav item is clicked', async () => {

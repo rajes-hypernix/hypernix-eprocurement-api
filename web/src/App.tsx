@@ -126,7 +126,10 @@ export default function App() {
               {base === 'reqs' && <Requisitions onOpenRfq={(id) => go(`rfqs/${id}`)} onConsolidate={() => go('consolidate')} />}
               {base === 'consolidate' && <Consolidate onOpenRfq={(id) => go(`rfqs/${id}`)} onBack={() => go('reqs')} />}
               {base === 'rfqs' &&
-                (active.startsWith('rfqs/') ? (
+                (active.startsWith('rfqs/view/') ? (
+                  // Reminders click-through (D4): open the list WITH that saved view picked.
+                  <RfqList onOpen={(id) => go(`rfqs/${id}`)} onNew={() => go('consolidate')} initialViewId={active.slice('rfqs/view/'.length)} />
+                ) : active.startsWith('rfqs/') ? (
                   <RfqBuilder id={active.slice('rfqs/'.length)} onBack={() => go('rfqs')} onNavigate={go} />
                 ) : (
                   <RfqList onOpen={(id) => go(`rfqs/${id}`)} onNew={() => go('consolidate')} />

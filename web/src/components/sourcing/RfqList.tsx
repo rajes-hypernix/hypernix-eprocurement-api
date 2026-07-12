@@ -35,13 +35,13 @@ const toItem = (row: Record<string, unknown>): RfqListItem => ({
   bidCount: (row.BidCount as number | undefined) ?? 0,
 } as RfqListItem)
 
-export function RfqList({ onOpen, onNew }: { onOpen: (id: string) => void; onNew: () => void }) {
+export function RfqList({ onOpen, onNew, initialViewId }: { onOpen: (id: string) => void; onNew: () => void; initialViewId?: string }) {
   const qc = useQueryClient()
   // Saved-view-driven (D3 proof screen): rows come from the picked view's run — the system
   // "All RFQs" view by default (reproduces the old getRfqs list exactly). The quick filters
   // below stay LAYERED on the run's rows, per the ruling (parity of the pinned e2e).
   const { data: views = [] } = useQuery({ queryKey: ['views', 'Rfq'], queryFn: () => getViews('Rfq') })
-  const [picked, setPicked] = useState<string | null>(null)
+  const [picked, setPicked] = useState<string | null>(initialViewId ?? null)
   const viewId = picked ?? views.find((v) => v.isSystem)?.id ?? null
   const { data: run } = useQuery({
     queryKey: ['view-run', viewId], queryFn: () => runView(viewId!), enabled: viewId !== null,
