@@ -53,6 +53,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     // Dashboards + portlets (D4).
     public DbSet<Domain.Dashboards.Dashboard> Dashboards => Set<Domain.Dashboards.Dashboard>();
 
+    // Custom fields (D5).
+    public DbSet<Domain.CustomFields.CustomFieldDef> CustomFieldDefs => Set<Domain.CustomFields.CustomFieldDef>();
+    public DbSet<Domain.CustomFields.CustomFieldValue> CustomFieldValues => Set<Domain.CustomFields.CustomFieldValue>();
+
     protected override void OnModelCreating(ModelBuilder b)
     {
         base.OnModelCreating(b);
@@ -621,6 +625,53 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.PortletType).HasConversion<string>().HasMaxLength(20);
             e.Property(x => x.Title).HasMaxLength(120).IsRequired();
             e.Property(x => x.ConfigJson).HasMaxLength(4000).IsRequired();
+        });
+
+        // Custom fields (D5): six sparse typed columns for eight DataTypes (ruled consolidation);
+        // two CHECKs = full type-safety (exactly one populated + kind matches the def's DataType).
+        b.Entity<Domain.CustomFields.CustomFieldDef>(e =>
+        {
+            e.ToTable("CustomFieldDefs");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => x.Code).IsUnique();
+            e.Property(x => x.Code).HasMaxLength(60).IsRequired();
+            e.Property(x => x.Label).HasMaxLength(100).IsRequired();
+            e.Property(x => x.RecordType).HasConversion<string>().HasMaxLength(30);
+            e.Property(x => x.DataType).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.HelpText).HasMaxLength(500);
+            e.HasIndex(x => new { x.RecordType, x.Active });
+            e.HasOne<Domain.Configuration.CustomList>().WithMany().HasForeignKey(x => x.CustomListId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        b.Entity<Domain.CustomFields.CustomFieldValue>(e =>
+        {
+            e.ToTable("CustomFieldValues", t =>
+            {
+                t.HasCheckConstraint("CK_CustomFieldValues_ExactlyOne",
+                    "(CASE WHEN \"ValueText\" IS NOT NULL THEN 1 ELSE 0 END + " +
+                    "CASE WHEN \"ValueNumber\" IS NOT NULL THEN 1 ELSE 0 END + " +
+                    "CASE WHEN \"ValueMoney\" IS NOT NULL THEN 1 ELSE 0 END + " +
+                    "CASE WHEN \"ValueDate\" IS NOT NULL THEN 1 ELSE 0 END + " +
+                    "CASE WHEN \"ValueBool\" IS NOT NULL THEN 1 ELSE 0 END + " +
+                    "CASE WHEN \"ValueListCode\" IS NOT NULL THEN 1 ELSE 0 END) = 1");
+                t.HasCheckConstraint("CK_CustomFieldValues_KindMatch",
+                    "(\"DataType\" IN ('Text','LongText') AND \"ValueText\" IS NOT NULL) OR " +
+                    "(\"DataType\" IN ('Int','Decimal') AND \"ValueNumber\" IS NOT NULL) OR " +
+                    "(\"DataType\" = 'Money' AND \"ValueMoney\" IS NOT NULL) OR " +
+                    "(\"DataType\" = 'Date' AND \"ValueDate\" IS NOT NULL) OR " +
+                    "(\"DataType\" = 'Bool' AND \"ValueBool\" IS NOT NULL) OR " +
+                    "(\"DataType\" = 'ListValue' AND \"ValueListCode\" IS NOT NULL)");
+            });
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.FieldDefId, x.RecordId }).IsUnique();
+            e.HasIndex(x => new { x.RecordType, x.RecordId });
+            e.Property(x => x.RecordType).HasConversion<string>().HasMaxLength(30);
+            e.Property(x => x.DataType).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.ValueText).HasMaxLength(4000);
+            e.Property(x => x.ValueNumber).HasColumnType("numeric(18,4)");
+            e.Property(x => x.ValueMoney).HasColumnType("numeric(18,2)");
+            e.Property(x => x.ValueListCode).HasMaxLength(50);
+            e.HasOne<Domain.CustomFields.CustomFieldDef>().WithMany().HasForeignKey(x => x.FieldDefId).OnDelete(DeleteBehavior.Restrict);
         });
 
         // Optimistic concurrency: use PostgreSQL's system column `xmin` as a row-version token on the
