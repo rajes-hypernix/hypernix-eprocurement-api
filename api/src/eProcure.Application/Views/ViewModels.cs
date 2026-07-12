@@ -5,7 +5,7 @@ namespace eProcure.Application.Views;
 /// silently dropped filter.</summary>
 public sealed class ViewValidationException(string message) : Exception(message);
 
-public sealed record SavedViewFilterDto(string FieldKey, string Operator, string Value, string? Value2);
+public sealed record SavedViewFilterDto(string FieldKey, string Operator, string Value, string? Value2, int GroupIndex = 0);   // CF7-T2: >=1 ORs within the group
 
 public sealed record SavedViewColumnDto(string FieldKey, string? Label, string? SortDirection);
 

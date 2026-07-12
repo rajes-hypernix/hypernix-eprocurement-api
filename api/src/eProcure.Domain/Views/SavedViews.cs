@@ -15,7 +15,10 @@ public enum FieldDataType { Code, Text, Enum, Date, Instant, Money, Number, Bool
 /// it absorbs; Gte/Lte kept per ruling as Between's decomposition + the D4 "overdue" consumer.
 /// Deliberately absent (deny-by-default): Neq, Gt/Lt strict, IsEmpty — no real filter needs
 /// them; adding one later is an enum member + an executor case.</summary>
-public enum ViewOperator { Eq, In, Contains, Between, Gte, Lte }
+// CF7-T1 additions (Neq..NotContains). Null semantics are LOCKED and pinned by tests:
+// Neq/NotIn/NotContains EXCLUDE null rows (null is unknown, not different); IsEmpty is
+// the explicit ask for nulls. Stored by NAME (HasConversion<string>) — order-safe.
+public enum ViewOperator { Eq, In, Contains, Between, Gte, Lte, Neq, Gt, Lt, StartsWith, IsEmpty, IsNotEmpty, NotIn, NotContains }
 
 public enum ViewSortDirection { Asc, Desc }
 
@@ -72,6 +75,9 @@ public class SavedViewFilter
     public Guid SavedViewId { get; set; }
     public string FieldKey { get; set; } = default!;
     public ViewOperator Operator { get; set; }
+    // CF7-T2 (locked: one-level grouped-OR): filters sharing a GroupIndex >= 1 OR together;
+    // groups AND each other; 0 = ungrouped (today's composition, unchanged).
+    public int GroupIndex { get; set; }
     public string Value { get; set; } = default!;
     public string? Value2 { get; set; }
     public int Sort { get; set; }

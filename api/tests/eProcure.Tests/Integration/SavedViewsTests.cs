@@ -273,4 +273,67 @@ public sealed class SavedViewsTests(SavedViewsFixture fx) : IClassFixture<SavedV
         run.Columns.Select(c => c.FieldKey).Should().ContainInOrder("Code", "Title", "Envelope", "InvitedCount", "BidCount", "ClosesUtc", "Status");
         Codes(run).Should().BeEquivalentTo(["RFQ-2026-7301", "RFQ-2026-7302", "RFQ-2026-7303"]);
     }
+
+    // ---- CF7-T1/T2: richer operators (locked null semantics) + one-level grouped-OR ----
+
+    [Fact]
+    public async Task Negative_operators_exclude_null_rows_and_IsEmpty_is_the_explicit_null_ask()
+    {
+        var buyer = fx.ClientAs("u_faridah");
+        // A Text custom field: one RFQ-scoped record has a value, the rest are honest nulls.
+        var def = await (await fx.ClientAs("u_admin").PostAsJsonAsync("/api/custom-fields",
+            new eProcure.Application.CustomFields.SaveCustomFieldDefRequest("CF7 Tag", "Rfq", "Text", null, false, "", 0)))
+            .Content.ReadFromJsonAsync<eProcure.Application.CustomFields.CustomFieldDefDto>();
+        var rfqs = await buyer.GetFromJsonAsync<List<System.Text.Json.JsonElement>>("/api/rfqs");
+        var first = rfqs![0].GetProperty("id").GetGuid();
+        (await buyer.PutAsJsonAsync($"/api/custom-values/Rfq/{first}",
+            new eProcure.Application.CustomFields.SaveCustomValuesRequest(new() { [def!.Code] = "keep" })))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+
+        async Task<int> CountWith(string op, string val)
+        {
+            var view = await (await buyer.PostAsJsonAsync("/api/views", new SaveViewRequest(
+                $"cf7-{op}-{val}", "Rfq", [new SavedViewFilterDto(def.Code, op, val, null)],
+                [new SavedViewColumnDto("Code", null, null)]))).Content.ReadFromJsonAsync<SavedViewDto>();
+            var run = await buyer.GetFromJsonAsync<ViewRunResult>($"/api/views/{view!.Id}/run");
+            return run!.Total;
+        }
+
+        (await CountWith("Neq", "keep")).Should().Be(0, "LOCKED: null rows are UNKNOWN, not different — Neq excludes them");
+        (await CountWith("NotContains", "kee")).Should().Be(0, "same rule for NotContains");
+        (await CountWith("IsEmpty", "")).Should().Be(rfqs.Count - 1, "IsEmpty is the explicit ask for nulls");
+        (await CountWith("IsNotEmpty", "")).Should().Be(1);
+        (await CountWith("StartsWith", "ke")).Should().Be(1);
+        (await CountWith("NotIn", "keep")).Should().Be(0, "NotIn excludes nulls too");
+    }
+
+    [Fact]
+    public async Task Grouped_OR_ors_within_the_group_and_ANDs_between_groups()
+    {
+        var buyer = fx.ClientAs("u_faridah");
+        var all = await buyer.GetFromJsonAsync<List<System.Text.Json.JsonElement>>("/api/rfqs");
+        var statuses = all!.Select(r => r.GetProperty("status").GetString()!).Distinct().Take(2).ToList();
+        statuses.Should().HaveCountGreaterThan(1, "the seed carries at least two RFQ statuses");
+        var expected = all.Count(r => statuses.Contains(r.GetProperty("status").GetString()!));
+
+        // (Status = A OR Status = B) — one explicit group.
+        var view = await (await buyer.PostAsJsonAsync("/api/views", new SaveViewRequest(
+            "cf7-or", "Rfq",
+            [new SavedViewFilterDto("Status", "Eq", statuses[0], null, 1),
+             new SavedViewFilterDto("Status", "Eq", statuses[1], null, 1)],
+            [new SavedViewColumnDto("Code", null, null)]))).Content.ReadFromJsonAsync<SavedViewDto>();
+        var run = await buyer.GetFromJsonAsync<ViewRunResult>($"/api/views/{view!.Id}/run");
+        run!.Total.Should().Be(expected, "the group ORs its members");
+        view.Filters.Should().OnlyContain(fl => fl.GroupIndex == 1, "GroupIndex round-trips");
+
+        // AND between the group and an impossible ungrouped criterion → zero.
+        var view2 = await (await buyer.PostAsJsonAsync("/api/views", new SaveViewRequest(
+            "cf7-or-and", "Rfq",
+            [new SavedViewFilterDto("Status", "Eq", statuses[0], null, 1),
+             new SavedViewFilterDto("Status", "Eq", statuses[1], null, 1),
+             new SavedViewFilterDto("Code", "Contains", "ZZZ-NOPE", null, 0)],
+            [new SavedViewColumnDto("Code", null, null)]))).Content.ReadFromJsonAsync<SavedViewDto>();
+        (await buyer.GetFromJsonAsync<ViewRunResult>($"/api/views/{view2!.Id}/run"))!.Total
+            .Should().Be(0, "groups AND against ungrouped criteria");
+    }
 }

@@ -110,7 +110,7 @@ export const getPersonas = () => http<PersonaDto[]>('/auth/personas')
 export const getPermissions = () => http<string[]>('/auth/permissions')
 
 // --- Saved views engine (D3, AUTHORIZATION-MATRIX A59-A61) ---
-export type SavedViewFilterDto = { fieldKey: string; operator: string; value: string; value2?: string | null }
+export type SavedViewFilterDto = { fieldKey: string; operator: string; value: string; value2?: string | null; groupIndex?: number }
 export type SavedViewColumnDto = { fieldKey: string; label?: string | null; sortDirection?: string | null }
 export type SavedViewDto = {
   id: string; code: string; name: string; recordType: string; ownerUserId?: string | null

@@ -87,8 +87,8 @@ describe('ViewBuilder', () => {
       name: 'Open RFQs closing this month',
       recordType: 'Rfq',
       filters: [
-        { fieldKey: 'Status', operator: 'Eq', value: 'Open', value2: null },
-        { fieldKey: 'ClosesUtc', operator: 'Between', value: '@startOfMonth', value2: '@endOfMonth' },
+        { fieldKey: 'Status', operator: 'Eq', value: 'Open', value2: null, groupIndex: 0 },
+        { fieldKey: 'ClosesUtc', operator: 'Between', value: '@startOfMonth', value2: '@endOfMonth', groupIndex: 0 },
       ],
       columns: [{ fieldKey: 'Code' }, { fieldKey: 'Status' }],
     })

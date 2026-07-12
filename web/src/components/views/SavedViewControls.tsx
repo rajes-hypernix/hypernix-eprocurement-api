@@ -23,15 +23,17 @@ import { Modal, Notice } from '../ui'
  */
 
 /** Operators valid per registry DataType — mirrors SavedViewService.ValidateDefinitionAsync. */
+// CF7-T1: the richer operator set (server-validated per data type; null semantics locked:
+// Neq/NotIn/NotContains exclude null rows — IsEmpty is the explicit null ask).
 const OPERATORS_FOR: Record<string, string[]> = {
-  Code: ['Eq', 'In', 'Contains'],
-  Text: ['Eq', 'In', 'Contains'],
-  Enum: ['Eq', 'In', 'Contains'],
-  Tags: ['Eq', 'In', 'Contains'],
-  Date: ['Eq', 'Between', 'Gte', 'Lte'],
-  Instant: ['Eq', 'Between', 'Gte', 'Lte'],
-  Money: ['Eq', 'Between', 'Gte', 'Lte'],
-  Number: ['Eq', 'Between', 'Gte', 'Lte'],
+  Code: ['Eq', 'In', 'Neq', 'NotIn', 'Contains', 'NotContains', 'StartsWith', 'IsEmpty', 'IsNotEmpty'],
+  Text: ['Eq', 'In', 'Neq', 'NotIn', 'Contains', 'NotContains', 'StartsWith', 'IsEmpty', 'IsNotEmpty'],
+  Enum: ['Eq', 'In', 'Neq', 'NotIn', 'Contains', 'NotContains', 'StartsWith', 'IsEmpty', 'IsNotEmpty'],
+  Tags: ['Eq', 'In', 'Neq', 'NotIn', 'Contains', 'NotContains', 'StartsWith', 'IsEmpty', 'IsNotEmpty'],
+  Date: ['Eq', 'Neq', 'Between', 'Gte', 'Lte', 'Gt', 'Lt', 'IsEmpty', 'IsNotEmpty'],
+  Instant: ['Eq', 'Neq', 'Between', 'Gte', 'Lte', 'Gt', 'Lt', 'IsEmpty', 'IsNotEmpty'],
+  Money: ['Eq', 'Neq', 'Between', 'Gte', 'Lte', 'Gt', 'Lt', 'IsEmpty', 'IsNotEmpty'],
+  Number: ['Eq', 'Neq', 'Between', 'Gte', 'Lte', 'Gt', 'Lt', 'IsEmpty', 'IsNotEmpty'],
   Bool: ['Eq'],
 }
 /** The ruled relative tokens (@today/@startOfMonth/@endOfMonth) + the D5-ruled @today±Nd
@@ -74,7 +76,7 @@ export function ViewPicker({ views, selectedId, onSelect, onNew, onEdit }: {
   )
 }
 
-interface CriterionRow { fieldKey: string; operator: string; value: string; value2: string }
+interface CriterionRow { fieldKey: string; operator: string; value: string; value2: string; groupIndex?: number }
 
 const spec = (key: string, label: string, dataType: FieldSpec['dataType'], options?: string[] | null): FieldSpec => ({
   key, label, dataType,
@@ -147,7 +149,7 @@ export function ViewBuilder({ recordType, existing, defaultColumns, onClose, onS
   const [name, setName] = useState(existing?.name ?? '')
   const [shared, setShared] = useState(existing?.isShared ?? false)
   const [criteria, setCriteria] = useState<CriterionRow[]>(
-    existing?.filters.map((f) => ({ fieldKey: f.fieldKey, operator: f.operator, value: f.value, value2: f.value2 ?? '' })) ?? [],
+    existing?.filters.map((f) => ({ fieldKey: f.fieldKey, operator: f.operator, value: f.value, value2: f.value2 ?? '', groupIndex: f.groupIndex ?? 0 })) ?? [],
   )
   const [columns, setColumns] = useState<string[]>(existing?.columns.map((c) => c.fieldKey) ?? defaultColumns)
   const [error, setError] = useState<string | null>(null)
@@ -156,6 +158,7 @@ export function ViewBuilder({ recordType, existing, defaultColumns, onClose, onS
     mutationFn: async () => {
       const filters: SavedViewFilterDto[] = criteria.map((c) => ({
         fieldKey: c.fieldKey, operator: c.operator, value: c.value, value2: c.operator === 'Between' ? c.value2 : null,
+        groupIndex: c.groupIndex ?? 0,
       }))
       const cols: SavedViewColumnDto[] = columns.map((k) => ({ fieldKey: k }))
       const req = { name, recordType, filters, columns: cols }
@@ -231,6 +234,17 @@ export function ViewBuilder({ recordType, existing, defaultColumns, onClose, onS
             {field && c.operator === 'Between' && (
               <CriterionValue field={field} value={c.value2} onChange={(v) => setRow(i, { value2: v })} idx={`${i}-v2`} />
             )}
+            {(c.groupIndex ?? 0) >= 1 && <span className="badge b-blue" title="ORs with its group">or-group {c.groupIndex}</span>}
+            <Button variant="ghost" size="sm" onClick={() => {
+              // CF7-T2: one-level grouped-OR — this row and the new row OR together.
+              setCriteria((rows) => {
+                const gi = (rows[i].groupIndex ?? 0) >= 1
+                  ? rows[i].groupIndex!
+                  : Math.max(0, ...rows.map((r) => r.groupIndex ?? 0)) + 1
+                const next = rows.map((r, j) => (j === i ? { ...r, groupIndex: gi } : r))
+                return [...next.slice(0, i + 1), { ...rows[i], value: '', value2: '', groupIndex: gi }, ...next.slice(i + 1)]
+              })
+            }} ariaLabel={`Or with criterion ${i + 1}`}>or…</Button>
             <Button variant="ghost" size="sm" icon="x" onClick={() => setCriteria((rows) => rows.filter((_, j) => j !== i))} ariaLabel={`Remove criterion ${i + 1}`} />
           </div>
         )

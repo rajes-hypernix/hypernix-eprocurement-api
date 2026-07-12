@@ -655,3 +655,48 @@ test('CF6: line field end-to-end — admin authors a Line-scope field on screen,
     data: { values: {}, lines: { [lineId]: { [def.code]: null } } } })
   expect((await request.delete(`${API}/api/custom-fields/${def.id}`, { headers: ADMIN })).status()).toBe(204)
 })
+
+// ── CF7 — Saved View → Saved Search: richer criteria ─────────────────────────
+
+test('CF7: builder speaks the new operators and grouped-OR — (Draft OR Submitted) matches the union on screen', async ({ page, request }) => {
+  const NAME = `CF7 OrView ${STAMP}`
+  // Expected union from the API (PR statuses Draft + Submitted).
+  const prs = await (await request.get(`${API}/api/requisitions`, { headers: BUYER })).json()
+  const expected = prs.filter((r: { headerStatus: string }) => ['Draft', 'Submitted'].includes(r.headerStatus)).length
+  expect(expected).toBeGreaterThan(0)
+
+  await goAs(page, 'u_faridah', 'views')
+  await page.getByRole('button', { name: /New view/ }).click()
+  await page.getByLabel('Record type', { exact: true }).last().selectOption('Requisition')
+  await page.getByRole('button', { name: 'Choose fields…' }).click()
+  await page.getByLabel('View name', { exact: true }).fill(NAME)
+  await page.getByRole('button', { name: 'Add criterion' }).click()
+  await page.getByLabel('Field', { exact: true }).selectOption('HeaderStatus')
+  await page.getByLabel('Operator', { exact: true }).selectOption('Eq')
+  await page.getByLabel('PR status', { exact: true }).selectOption('Draft')
+  await page.getByRole('button', { name: 'Or with criterion 1' }).click()      // the CF7-T2 affordance
+  await expect(page.getByText('or-group 1')).toHaveCount(2)                    // both rows carry the group
+  await page.getByLabel('PR status', { exact: true }).nth(1).selectOption('Submitted')
+  await page.getByRole('button', { name: 'Save view' }).click()
+  await page.waitForTimeout(1000)
+
+  // The run agrees with the union.
+  const views = await (await request.get(`${API}/api/views?recordType=Requisition`, { headers: BUYER })).json()
+  const mine = views.find((v: { name: string }) => v.name === NAME)
+  expect(mine.filters.every((f: { groupIndex: number }) => f.groupIndex === 1)).toBe(true)
+  const run = await (await request.get(`${API}/api/views/${mine.id}/run`, { headers: BUYER })).json()
+  expect(run.total).toBe(expected)
+
+  // A NEW operator drives on screen too: edit the view to IsNotEmpty on Department.
+  await page.getByRole('button', { name: `Edit ${NAME}`, exact: true }).click()
+  await page.getByRole('button', { name: 'Add criterion' }).click()
+  await page.getByLabel('Field', { exact: true }).last().selectOption('Department')
+  await page.getByLabel('Operator', { exact: true }).last().selectOption('IsNotEmpty')
+  await page.getByRole('button', { name: 'Save changes' }).click()   // edit mode's save label
+  await page.waitForTimeout(1000)
+  const run2 = await (await request.get(`${API}/api/views/${mine.id}/run`, { headers: BUYER })).json()
+  expect(run2.total).toBeGreaterThan(0)
+  expect(run2.total).toBeLessThanOrEqual(run.total)
+
+  expect((await request.delete(`${API}/api/views/${mine.id}`, { headers: BUYER })).ok()).toBeTruthy()
+})

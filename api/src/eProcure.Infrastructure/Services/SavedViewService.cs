@@ -440,6 +440,14 @@ public sealed class SavedViewService(
 
     private List<object> ApplyFilters(List<object> rows, IEnumerable<SavedViewFilter> filters, IReadOnlyDictionary<string, FieldRegistryEntry> registry)
     {
+        // CF7-T2 (locked): explicit groups (GroupIndex >= 1) OR internally, AND between groups.
+        foreach (var orGroup in filters.Where(f => f.GroupIndex >= 1).GroupBy(f => f.GroupIndex))
+        {
+            var members = orGroup.ToList();
+            rows = rows.Where(r => members.Any(f => Matches(r, f, registry[f.FieldKey]))).ToList();
+        }
+        filters = filters.Where(f => f.GroupIndex == 0).ToList();
+
         // Composition rule (mirrors the facets the operators were derived from): rows sharing a
         // FieldKey with Eq/In OR together (membership); everything else ANDs.
         foreach (var group in filters.GroupBy(f => f.FieldKey))
@@ -483,6 +491,33 @@ public sealed class SavedViewService(
             case ViewOperator.Between:
                 return Compare(value, f.Value, entry) is { } lo && lo >= 0 &&
                        Compare(value, f.Value2 ?? f.Value, entry) is { } hi && hi <= 0;
+
+            // CF7-T1 — locked null semantics: negative operators EXCLUDE null rows (null is
+            // "unknown", never "different"); IsEmpty is the explicit way to ask for nulls.
+            case ViewOperator.Neq:
+                if (value is null) return false;
+                if (entry.DataType == FieldDataType.Bool)
+                    return value is bool nb && nb != bool.Parse(f.Value);
+                if (entry.DataType is FieldDataType.Money or FieldDataType.Number)
+                    return ToDecimal(value) != decimal.Parse(f.Value, System.Globalization.CultureInfo.InvariantCulture);
+                return !string.Equals(value.ToString(), f.Value, StringComparison.OrdinalIgnoreCase);
+            case ViewOperator.NotIn:
+                return value is not null && !string.Equals(value.ToString(), f.Value, StringComparison.OrdinalIgnoreCase);
+            case ViewOperator.NotContains:
+                if (value is null) return false;
+                if (entry.DataType == FieldDataType.Tags && value is IEnumerable<string> nlist)
+                    return !nlist.Any(x => x.Contains(f.Value, StringComparison.OrdinalIgnoreCase));
+                return value.ToString()?.Contains(f.Value, StringComparison.OrdinalIgnoreCase) != true;
+            case ViewOperator.StartsWith:
+                return value?.ToString()?.StartsWith(f.Value, StringComparison.OrdinalIgnoreCase) == true;
+            case ViewOperator.IsEmpty:
+                return value is null || (value is string es && string.IsNullOrWhiteSpace(es));
+            case ViewOperator.IsNotEmpty:
+                return value is not null && (value is not string ns || !string.IsNullOrWhiteSpace(ns));
+            case ViewOperator.Gt:
+                return Compare(value, f.Value, entry) is { } g && g > 0;
+            case ViewOperator.Lt:
+                return Compare(value, f.Value, entry) is { } l && l < 0;
             default:
                 throw new ViewValidationException($"Unsupported operator {f.Operator}.");
         }
@@ -559,9 +594,11 @@ public sealed class SavedViewService(
             var dt = registry[f.FieldKey].DataType;
             var ok = op switch
             {
-                ViewOperator.Eq or ViewOperator.In => true,
-                ViewOperator.Contains => dt is FieldDataType.Code or FieldDataType.Text or FieldDataType.Enum or FieldDataType.Tags,
-                ViewOperator.Between or ViewOperator.Gte or ViewOperator.Lte =>
+                ViewOperator.Eq or ViewOperator.In or ViewOperator.Neq or ViewOperator.NotIn
+                    or ViewOperator.IsEmpty or ViewOperator.IsNotEmpty => true,
+                ViewOperator.Contains or ViewOperator.NotContains or ViewOperator.StartsWith =>
+                    dt is FieldDataType.Code or FieldDataType.Text or FieldDataType.Enum or FieldDataType.Tags,
+                ViewOperator.Between or ViewOperator.Gte or ViewOperator.Lte or ViewOperator.Gt or ViewOperator.Lt =>
                     dt is FieldDataType.Date or FieldDataType.Instant or FieldDataType.Money or FieldDataType.Number,
                 _ => false,
             };
@@ -569,7 +606,8 @@ public sealed class SavedViewService(
                 throw new ViewValidationException($"Operator {op} is not valid for {dt} field '{f.FieldKey}'.");
             if (op == ViewOperator.Between && string.IsNullOrWhiteSpace(f.Value2))
                 throw new ViewValidationException($"Between on '{f.FieldKey}' needs both bounds.");
-            if (dt is FieldDataType.Date or FieldDataType.Instant)
+            if (dt is FieldDataType.Date or FieldDataType.Instant
+                && op is not (ViewOperator.IsEmpty or ViewOperator.IsNotEmpty))
             {
                 ResolveDateToken(f.Value, asEnd: false);                       // throws on unknown token / unparsable date
                 if (f.Value2 is not null) ResolveDateToken(f.Value2, asEnd: true);
@@ -605,6 +643,7 @@ public sealed class SavedViewService(
             Value = f.Value,
             Value2 = f.Value2,
             Sort = i,
+            GroupIndex = Math.Max(0, f.GroupIndex),
         }));
         view.Columns.AddRange(req.Columns.Select((c, i) => new SavedViewColumn
         {
@@ -618,7 +657,7 @@ public sealed class SavedViewService(
 
     private static SavedViewDto ToDto(SavedView v) => new(
         v.Id, v.Code, v.Name, v.RecordType.ToString(), v.OwnerUserId, v.IsShared, v.IsSystem,
-        v.Filters.OrderBy(f => f.Sort).Select(f => new SavedViewFilterDto(f.FieldKey, f.Operator.ToString(), f.Value, f.Value2)).ToList(),
+        v.Filters.OrderBy(f => f.Sort).Select(f => new SavedViewFilterDto(f.FieldKey, f.Operator.ToString(), f.Value, f.Value2, f.GroupIndex)).ToList(),
         v.Columns.OrderBy(c => c.Sort).Select(c => new SavedViewColumnDto(c.FieldKey, c.Label, c.SortDirection?.ToString())).ToList());
 
     // ---- D5: custom-field resolution ----
