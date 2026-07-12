@@ -4,3 +4,5 @@
 [19:28 UTC] CF1-T2: list self-lifecycle + order-mode — see git log — CF1-T2 spec
 [19:29 UTC] CF1-T3: distinct admin icons + reserved glyphs — see git log — CF1-T3 spec
 [19:31 UTC] CF1-T4: sidebar collapse — see git log — CF1-T4 spec
+[19:35 UTC] CF1-T5: search deep-links + ASN/Statement hit classes — see git log — CF1-T5 spec
+[19:36 UTC] CF1-T5b: red-gate repair (process slip logged) — 465/465

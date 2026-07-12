@@ -55,7 +55,7 @@ Columns: `[ ]`→`[x]` when complete · **Audit** = current-state finding from P
 - [x] Statement search hit deep-links to its detail (was a dead click) · Audit:dead click (default:null) · Build:CF1-T5 commit · Test:CF1-T5 deep-links
 - [x] Regression: PO / Invoice / RFQ / Vendor still deep-link correctly · Audit:working (confirmed) · Build:CF1-T5 commit · Test:CF1-T5 deep-links
 
-**CF1 SLICE GATE** — [ ] re-read PLAN §1(display),§3,§8,§9,§12; every box above ticked or in BLOCKERS; CF1 tag if using per-slice tags.
+**CF1 SLICE GATE** — [x] re-read PLAN §1(display),§3,§8,§9,§12 against the ledger 2026-07-13: §1-display=T1 pinned; §3 all four gaps closed (edit/order-mode/inactivate-delete/UI) with resolver applied in lookups; §8 distinct+reserved+asserted; §9 built+persisted; §12 all three misroutes closed + regression pinned. All 14 CF1 boxes [x]; zero BLOCKERS. (No per-slice tags — one band tag at the end.)
 
 ---
 
