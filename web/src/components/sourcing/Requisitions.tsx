@@ -34,11 +34,13 @@ const filterLabel = (key: FilterKey, v: string) => (key === 'headerStatus' ? STA
 
 type LineModal = { kind: 'cancel' | 'release'; prId: string; lineId: string; item: string }
 
-export function Requisitions({ onOpenRfq, onConsolidate, addTo, initialViewId }: {
+export function Requisitions({ onOpenRfq, onConsolidate, addTo, initialViewId, initialOpenId }: {
   onOpenRfq: (id: string) => void
   onConsolidate?: () => void
   addTo?: { existing: Set<string>; onAdd: (lines: RfqLineDto[]) => void }
   initialViewId?: string
+  /** CF1-T5: open THIS PR's form directly (global-search deep link). */
+  initialOpenId?: string
 }) {
   const qc = useQueryClient()
   const standalone = !addTo   // PR-management features only outside the RFQ add-lines picker
@@ -77,7 +79,7 @@ export function Requisitions({ onOpenRfq, onConsolidate, addTo, initialViewId }:
 
   // PR-management state (standalone only)
   const [view, setView] = useState<'table' | 'kanban'>('table')
-  const [editingId, setEditingId] = useState<string | null | undefined>(undefined) // undefined=list · null=new · id=edit
+  const [editingId, setEditingId] = useState<string | null | undefined>(initialOpenId ?? undefined) // undefined=list · null=new · id=edit
   const [lineModal, setLineModal] = useState<LineModal | null>(null)
   const [reason, setReason] = useState('')
 

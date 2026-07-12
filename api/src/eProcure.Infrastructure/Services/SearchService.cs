@@ -81,6 +81,30 @@ public sealed class SearchService(AppDbContext db, ICurrentUser user) : ISearchS
                 .Select(i => new SearchHit("Invoice", i.Id, i.Code, i.InvoiceNo)));
         }
 
+        // CF1-T5: ASN + Statement hit classes — these record types previously produced NO
+        // hits at all (the audit's "dead click" was a missing hit class, not just a null
+        // route). Same OD-4 discipline: type gated by the caller's View* action, vendor
+        // principals scoped in-query.
+        if (Can(ApiActions.ViewAsns))
+        {
+            var asns = db.Asns.AsNoTracking()
+                .Where(a => a.Code.ToLower().Contains(nq) || a.Carrier.ToLower().Contains(nq));
+            if (vid is { } v5) asns = asns.Where(a => a.VendorId == v5);
+            hits.AddRange((await asns.OrderByDescending(a => a.Code).Take(PerTypeCap).Select(a => new { a.Id, a.Code, a.Carrier }).ToListAsync(ct))
+                .Select(a => new SearchHit("Asn", a.Id, a.Code, a.Carrier)));
+        }
+
+        if (Can(ApiActions.ViewStatements) && vid is null)
+        {
+            // Statements are DERIVED per vendor (no stored aggregate — DATA-MODEL) — the hit
+            // id is the VENDOR id, which is exactly what the statements/{vendorId} route takes.
+            // Internal-only: a vendor's own statement is its single portal page, not a search space.
+            var stmtVendors = db.Vendors.AsNoTracking()
+                .Where(v => v.Code.ToLower().Contains(nq) || v.Name.ToLower().Contains(nq));
+            hits.AddRange((await stmtVendors.OrderBy(v => v.Code).Take(PerTypeCap).Select(v => new { v.Id, v.Code, v.Name }).ToListAsync(ct))
+                .Select(v => new SearchHit("Statement", v.Id, $"SOA · {v.Code}", $"Statement — {v.Name}")));
+        }
+
         return hits;
     }
 }

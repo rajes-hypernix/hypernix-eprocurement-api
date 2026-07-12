@@ -50,10 +50,10 @@ Columns: `[ ]`→`[x]` when complete · **Audit** = current-state finding from P
 - [x] Collapse toggle + persisted width state + slim icon-only rail; main content widens · Audit:missing (0 controls) · Build:CF1-T4 commit · Test:CF1-T4 sidebar collapses
 
 ### T5 — Global-search routing (the PR-goes-to-list complaint)
-- [ ] Requisition search hit deep-links to that PR's detail (not the list) · Audit:misroutes to #reqs (probe) · Build:___ · Test:___
-- [ ] ASN (delivery) search hit deep-links to its detail (was a dead click) · Audit:dead click (default:null) · Build:___ · Test:___
-- [ ] Statement search hit deep-links to its detail (was a dead click) · Audit:dead click (default:null) · Build:___ · Test:___
-- [ ] Regression: PO / Invoice / RFQ / Vendor still deep-link correctly · Audit:working (confirmed) · Build:___ · Test:___
+- [x] Requisition search hit deep-links to that PR's detail (not the list) · Audit:misroutes to #reqs (probe) · Build:CF1-T5 commit · Test:CF1-T5 deep-links
+- [x] ASN (delivery) search hit deep-links to its detail (was a dead click) · Audit:dead click (default:null) · Build:CF1-T5 commit · Test:CF1-T5 deep-links
+- [x] Statement search hit deep-links to its detail (was a dead click) · Audit:dead click (default:null) · Build:CF1-T5 commit · Test:CF1-T5 deep-links
+- [x] Regression: PO / Invoice / RFQ / Vendor still deep-link correctly · Audit:working (confirmed) · Build:CF1-T5 commit · Test:CF1-T5 deep-links
 
 **CF1 SLICE GATE** — [ ] re-read PLAN §1(display),§3,§8,§9,§12; every box above ticked or in BLOCKERS; CF1 tag if using per-slice tags.
 

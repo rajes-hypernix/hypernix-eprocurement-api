@@ -3,3 +3,4 @@
 [19:20 UTC] CF1-T1: money pin (already-built, now proven) — see git log — CF1-T1 spec
 [19:28 UTC] CF1-T2: list self-lifecycle + order-mode — see git log — CF1-T2 spec
 [19:29 UTC] CF1-T3: distinct admin icons + reserved glyphs — see git log — CF1-T3 spec
+[19:31 UTC] CF1-T4: sidebar collapse — see git log — CF1-T4 spec

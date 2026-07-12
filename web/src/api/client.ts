@@ -572,5 +572,5 @@ export const deleteCustomListValue = (id: string) =>
   http<CustomListValue | undefined>(`/custom-lists/values/${id}`, { method: 'DELETE' })
 
 // --- Global search (D2 navigation shell; hand-typed like Custom Lists — schema regen rides the next gen:api) ---
-export type SearchHit = { type: 'Vendor' | 'Requisition' | 'Rfq' | 'PurchaseOrder' | 'Invoice'; id: string; code: string; title: string }
+export type SearchHit = { type: 'Vendor' | 'Requisition' | 'Rfq' | 'PurchaseOrder' | 'Invoice' | 'Asn' | 'Statement'; id: string; code: string; title: string }
 export const searchGlobal = (q: string) => http<SearchHit[]>(`/search?q=${encodeURIComponent(q)}`)

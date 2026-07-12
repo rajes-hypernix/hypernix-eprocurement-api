@@ -23,10 +23,12 @@ const TYPE_META: Record<string, { label: string; icon: string }> = {
 const hitRoute = (h: SearchHit, isVendor: boolean): string | null => {
   switch (h.type) {
     case 'Vendor': return isVendor ? null : `vendors/${h.id}`
-    case 'Requisition': return 'reqs'          // PR editing is reached from the list (no deep link today)
+    case 'Requisition': return `reqs/open/${h.id}`        // CF1-T5: deep-link to the PR itself (was the list)
     case 'Rfq': return isVendor ? `bid/${h.id}` : `rfqs/${h.id}`
     case 'PurchaseOrder': return `pos/${h.id}`
     case 'Invoice': return `invoices/${h.id}`
+    case 'Asn': return `deliveries/asn/${h.id}`           // CF1-T5: was a dead click
+    case 'Statement': return isVendor ? 'statement' : `statements/${h.id}`   // CF1-T5: hit id = vendorId
     default: return null
   }
 }

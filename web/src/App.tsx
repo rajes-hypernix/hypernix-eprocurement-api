@@ -147,7 +147,10 @@ export default function App() {
               {base === 'entryforms' && <AdminEntryForms />}
               {base === 'numbering' && <AdminNumbering />}
               {base === 'reqs' &&
-                (active.startsWith('reqs/view/') ? (
+                (active.startsWith('reqs/open/') ? (
+                  // CF1-T5: global-search deep link straight to the PR's form.
+                  <Requisitions key={active} onOpenRfq={(id) => go(`rfqs/${id}`)} onConsolidate={() => go('consolidate')} initialOpenId={active.slice('reqs/open/'.length)} />
+                ) : active.startsWith('reqs/view/') ? (
                   // D7.5: open Requisitions WITH that saved view intersected (reminders / home click-throughs).
                   <Requisitions key={active} onOpenRfq={(id) => go(`rfqs/${id}`)} onConsolidate={() => go('consolidate')} initialViewId={active.slice('reqs/view/'.length)} />
                 ) : (

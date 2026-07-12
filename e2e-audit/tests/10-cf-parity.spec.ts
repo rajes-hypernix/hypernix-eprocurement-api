@@ -126,3 +126,43 @@ test('CF1-T4: sidebar collapses to a slim rail, persists across reload, expands 
   await page.waitForTimeout(400)
   expect((await side.boundingBox())!.width).toBeGreaterThan(wide / 2)   // and back
 })
+
+test('CF1-T5: global search deep-links PR / ASN / Statement to their DETAIL, regressions hold', async ({ page, request }) => {
+  // PR: was the list; now the PR's own form.
+  const prs = await (await request.get(`${API}/api/requisitions`, { headers: BUYER })).json()
+  const pr = prs.find((p: { submitted: boolean }) => p.submitted) ?? prs[0]
+  await goAs(page, 'u_faridah', 'dashboard')
+  const search = page.getByLabel('Global search')
+  await search.fill(pr.code)
+  await page.waitForTimeout(900)
+  await page.locator('.gsr-item', { hasText: pr.code }).first().click()
+  await page.waitForTimeout(1200)
+  expect(page.url()).toContain(`reqs/open/${pr.id}`)
+  await expect(page.getByRole('heading', { name: `Edit ${pr.code}` })).toBeVisible()   // the PR itself, not the list
+
+  // ASN: was a dead click (no hits existed at all).
+  const asns = await (await request.get(`${API}/api/asns`, { headers: BUYER })).json()
+  await goAs(page, 'u_faridah', 'dashboard')
+  await search.fill(asns[0].code)
+  await page.waitForTimeout(900)
+  await page.locator('.gsr-item', { hasText: asns[0].code }).first().click()
+  await page.waitForTimeout(1200)
+  expect(page.url()).toContain(`deliveries/asn/${asns[0].id}`)
+
+  // Statement: hit id = vendorId → the statement detail.
+  await goAs(page, 'u_faridah', 'dashboard')
+  await search.fill('Sentausa')
+  await page.waitForTimeout(900)
+  await page.locator('.gsr-item', { hasText: /Statement — Sentausa/ }).first().click()
+  await page.waitForTimeout(1200)
+  expect(page.url()).toContain('statements/')
+
+  // Regression: PO still deep-links.
+  const pos = await (await request.get(`${API}/api/pos`, { headers: BUYER })).json()
+  await goAs(page, 'u_faridah', 'dashboard')
+  await search.fill(pos[0].code)
+  await page.waitForTimeout(900)
+  await page.locator('.gsr-item', { hasText: pos[0].code }).first().click()
+  await page.waitForTimeout(1200)
+  expect(page.url()).toContain(`pos/${pos[0].id}`)
+})
