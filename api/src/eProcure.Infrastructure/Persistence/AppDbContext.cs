@@ -63,6 +63,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Domain.Segments.SegmentApplication> SegmentApplications => Set<Domain.Segments.SegmentApplication>();
     public DbSet<Domain.Segments.SegmentAssignment> SegmentAssignments => Set<Domain.Segments.SegmentAssignment>();
 
+    // D7 — entry forms + numbering
+    public DbSet<Domain.Forms.EntryFormDef> EntryFormDefs => Set<Domain.Forms.EntryFormDef>();
+    public DbSet<Domain.Forms.EntryFormField> EntryFormFields => Set<Domain.Forms.EntryFormField>();
+    public DbSet<Domain.Forms.EntryFormRoleMap> EntryFormRoleMaps => Set<Domain.Forms.EntryFormRoleMap>();
+    public DbSet<Domain.Forms.NumberingScheme> NumberingSchemes => Set<Domain.Forms.NumberingScheme>();
+
     protected override void OnModelCreating(ModelBuilder b)
     {
         base.OnModelCreating(b);
@@ -717,6 +723,50 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.RecordType).HasConversion<string>().HasMaxLength(30);
             e.HasOne<Domain.Segments.SegmentDef>().WithMany().HasForeignKey(x => x.SegmentDefId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<Domain.Segments.SegmentValue>().WithMany().HasForeignKey(x => x.SegmentValueId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Entry forms + numbering (D7): forms address FieldRegistry keys with NO FK — the
+        // ruled liveness semantic is loud-fail at save/render (an FK would silently convert
+        // D5's zero-value hard-delete into blocked deletes).
+        b.Entity<Domain.Forms.EntryFormDef>(e =>
+        {
+            e.ToTable("EntryFormDefs");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => x.Code).IsUnique();
+            e.Property(x => x.Code).HasMaxLength(80).IsRequired();
+            e.Property(x => x.Name).HasMaxLength(100).IsRequired();
+            e.Property(x => x.RecordType).HasConversion<string>().HasMaxLength(30);
+        });
+        b.Entity<Domain.Forms.EntryFormField>(e =>
+        {
+            e.ToTable("EntryFormFields");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.FormDefId, x.FieldKey }).IsUnique();
+            e.Property(x => x.FieldKey).HasMaxLength(100).IsRequired();
+            e.Property(x => x.FieldGroup).HasMaxLength(80).IsRequired();
+            e.Property(x => x.Subtab).HasMaxLength(80);
+            e.Property(x => x.DisplayType).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.Label).HasMaxLength(120);
+            e.Property(x => x.Placeholder).HasMaxLength(200);
+            e.Property(x => x.SourceFieldKey).HasMaxLength(100);
+            e.HasOne<Domain.Forms.EntryFormDef>().WithMany().HasForeignKey(x => x.FormDefId).OnDelete(DeleteBehavior.Cascade);
+        });
+        b.Entity<Domain.Forms.EntryFormRoleMap>(e =>
+        {
+            e.ToTable("EntryFormRoleMaps");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.RecordType, x.Role }).IsUnique();
+            e.Property(x => x.RecordType).HasConversion<string>().HasMaxLength(30);
+            e.Property(x => x.Role).HasMaxLength(40).IsRequired();
+            e.HasOne<Domain.Forms.EntryFormDef>().WithMany().HasForeignKey(x => x.FormDefId).OnDelete(DeleteBehavior.Cascade);
+        });
+        b.Entity<Domain.Forms.NumberingScheme>(e =>
+        {
+            e.ToTable("NumberingSchemes");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => x.RecordType).IsUnique();
+            e.Property(x => x.RecordType).HasConversion<string>().HasMaxLength(30);
+            e.Property(x => x.Prefix).HasMaxLength(12).IsRequired();
         });
 
         // Optimistic concurrency: use PostgreSQL's system column `xmin` as a row-version token on the
