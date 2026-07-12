@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Json;
 using FluentAssertions;
 using Xunit;
 
@@ -32,5 +33,24 @@ public sealed class DemoGatingTests
 
         var resp = await client.GetAsync("/api/rfqs");
         resp.StatusCode.Should().Be(HttpStatusCode.OK, "demo mode is active — the persona authenticates");
+    }
+
+    // TEST-SWEEP-T1: the inventory demands the 404 EXPLICITLY (not just the 401 fallback) —
+    // dev-users/dev-login are [AllowAnonymous] so in Production they must vanish (404), and in
+    // a demo-active environment they must work.
+    [Fact]
+    public async Task Dev_login_endpoints_are_404_in_Production_and_work_when_demo_is_active()
+    {
+        await using var prod = new TestWebAppFactory(environment: "Production", demoEnabled: true);
+        var prodClient = prod.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        (await prodClient.GetAsync("/api/auth/dev-users")).StatusCode.Should().Be(HttpStatusCode.NotFound,
+            "demo-only endpoints are inert in Production regardless of config");
+        (await prodClient.PostAsJsonAsync("/api/auth/dev-login", new { user = "u_faridah" })).StatusCode
+            .Should().Be(HttpStatusCode.NotFound);
+
+        await using var demo = new TestWebAppFactory(environment: "Testing", demoEnabled: true);
+        var demoClient = demo.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        (await demoClient.GetAsync("/api/auth/dev-users")).StatusCode.Should().Be(HttpStatusCode.OK,
+            "the same endpoints bootstrap login when demo mode is active");
     }
 }

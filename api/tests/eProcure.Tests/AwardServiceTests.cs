@@ -152,4 +152,19 @@ public sealed class AwardServiceTests
         elig!.CommercialRevealed.Should().BeFalse();
         elig.Lines.SelectMany(l => l.Options).Should().BeEmpty();   // no prices leaked
     }
+
+    // TEST-SWEEP-T2 (inventory PART 3): the one-award-per-RFQ constraint, pinned explicitly.
+    [Fact]
+    public async Task Second_award_submission_after_approval_is_rejected_one_award_per_rfq()
+    {
+        var (svc, c, rfqId, va, _) = await SetupAsync();
+        var dto = await svc.SubmitForApprovalAsync(rfqId, new SubmitAwardRequest([new AllocationInput("PUMP", va, 4)]));
+        c.User.UserId = "u_lim"; c.User.UserName = "Lim"; c.User.Roles = [Roles.Buyer, Roles.Approver];
+        await svc.ApproveAsync(dto.Id);
+
+        c.User.UserId = "u_faridah"; c.User.UserName = "Faridah"; c.User.Roles = [Roles.Buyer];
+        var again = async () => await svc.SubmitForApprovalAsync(rfqId, new SubmitAwardRequest([new AllocationInput("PUMP", va, 1)]));
+        (await again.Should().ThrowAsync<eProcure.Domain.DomainRuleException>())
+            .WithMessage("*already been awarded*");
+    }
 }

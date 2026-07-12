@@ -236,4 +236,27 @@ public sealed class SegmentLifecycleTests(SegmentsFixture fx) : IClassFixture<Se
         (await toggled.Content.ReadFromJsonAsync<SegmentDefDto>())!.Active.Should().BeFalse();
         await admin.PostAsJsonAsync($"/api/segments/{assigned.Id}/active", true);   // restore for other tests
     }
+
+    // TEST-SWEEP-T2 (inventory PART 8): per-PO-LINE assignment — LineId is a real grain,
+    // not a dead column: header and line values coexist and read back distinctly per grain.
+    [Fact]
+    public async Task Per_po_line_assignment_coexists_with_the_header_value()
+    {
+        var buyer = fx.ClientAs("u_faridah");
+        var def = await fx.CreateProjectSegment("Head Grain", "Line Grain");
+        var lineId = await fx.Factory.LineIdOf(fx.PoAId);
+
+        await fx.Assign(fx.PoAId, def.Code, "HEAD-GRAIN");   // header (LineId null)
+        (await buyer.PutAsJsonAsync($"/api/segment-assignments/PurchaseOrder/{fx.PoAId}",
+            new SaveSegmentAssignmentsRequest(new() { [def.Code] = "LINE-GRAIN" }, lineId)))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var header = (await buyer.GetFromJsonAsync<List<SegmentAssignmentDto>>(
+            $"/api/segment-assignments/PurchaseOrder/{fx.PoAId}"))!;
+        header.Single(a => a.SegmentCode == def.Code).ValueCode.Should().Be("HEAD-GRAIN", "header grain untouched by the line write");
+
+        var line = (await buyer.GetFromJsonAsync<List<SegmentAssignmentDto>>(
+            $"/api/segment-assignments/PurchaseOrder/{fx.PoAId}?lineId={lineId}"))!;
+        line.Single(a => a.SegmentCode == def.Code).ValueCode.Should().Be("LINE-GRAIN", "line grain reads back by lineId");
+    }
 }

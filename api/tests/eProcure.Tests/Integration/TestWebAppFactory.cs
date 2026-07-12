@@ -55,6 +55,14 @@ public sealed class TestWebAppFactory(
     /// <summary>Seed the in-memory store before exercising the host. The D7 schema
     /// invariants (numbering schemes + Standard PR Form — migration-guaranteed in
     /// production) ride along idempotently so mint/submit paths behave identically.</summary>
+    /// <summary>TEST-SWEEP-T2: first line id of a PO — the per-line segment grain needs a real line.</summary>
+    public async Task<Guid> LineIdOf(Guid poId)
+    {
+        using var scope = Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        return (await db.PurchaseOrders.AsNoTracking().Include(p => p.Lines).FirstAsync(p => p.Id == poId)).Lines.First().Id;
+    }
+
     public async Task SeedAsync(Func<AppDbContext, Task> seed)
     {
         using var scope = Services.CreateScope();

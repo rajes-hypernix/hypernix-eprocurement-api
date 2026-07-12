@@ -237,8 +237,8 @@ public sealed class CustomFieldsTests(CustomFieldsFixture fx) : IClassFixture<Cu
             new SaveCustomValuesRequest(new() { [def.Code] = "stamped-by-system" })))
             .StatusCode.Should().Be(HttpStatusCode.OK, "an unchanged echo is tolerated so whole-form saves don't break");
 
-        var read = await buyer.GetFromJsonAsync<List<CustomValueDto>>($"/api/custom-values/PurchaseOrder/{fx.PoCId}");
-        read!.Single(v => v.Code == def.Code).Value.Should().Be("stamped-by-system");
+        var read = (await buyer.GetFromJsonAsync<List<CustomValueDto>>($"/api/custom-values/PurchaseOrder/{fx.PoCId}"))!;
+        read.Single(v => v.Code == def.Code).Value.Should().Be("stamped-by-system");
         read.Single(v => v.Code == def.Code).DisplayType.Should().Be("Inline");
     }
 
@@ -277,5 +277,28 @@ public sealed class CustomFieldsTests(CustomFieldsFixture fx) : IClassFixture<Cu
             .Content.ReadFromJsonAsync<SavedViewDto>();
         var ownRun = await buyer.GetFromJsonAsync<ViewRunResult>($"/api/views/{mine!.Id}/run");
         ownRun!.Columns.Select(c => c.FieldKey).Should().NotContain(def.Code);
+    }
+
+    // TEST-SWEEP-T2 (inventory PART 6): every one of the 8 launch data types creates a def
+    // and lands a registry row — pinned as a loop, not sampled.
+    [Fact]
+    public async Task Every_data_type_creates_a_def_with_its_registry_row()
+    {
+        var admin = fx.ClientAs("u_admin");
+        var listId = ((await (await admin.PostAsJsonAsync("/api/custom-lists",
+                new { code = "SWEEPT2", name = "Sweep T2", description = (string?)null, parentListCode = (string?)null }))
+            .Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("id").GetGuid());
+
+        foreach (var type in new[] { "Text", "LongText", "Int", "Decimal", "Money", "Date", "Bool", "ListValue" })
+        {
+            var resp = await admin.PostAsJsonAsync("/api/custom-fields", new SaveCustomFieldDefRequest(
+                $"Sweep {type}", "Vendor", type, type == "ListValue" ? listId : null, false, "", 0));
+            resp.StatusCode.Should().Be(HttpStatusCode.OK, $"{type}: {await resp.Content.ReadAsStringAsync()}");
+            var def = (await resp.Content.ReadFromJsonAsync<CustomFieldDefDto>())!;
+            def.DataType.Should().Be(type);
+            var fields = await admin.GetFromJsonAsync<List<ViewFieldDto>>("/api/views/fields?recordType=Vendor");
+            fields!.Should().Contain(x => x.FieldKey == def.Code && x.Kind == "Custom",
+                $"the {type} def registers in the D3 palette in the same transaction");
+        }
     }
 }
