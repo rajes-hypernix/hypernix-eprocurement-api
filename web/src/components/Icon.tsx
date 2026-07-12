@@ -27,7 +27,12 @@ const PATHS: Record<string, string> = {
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   split: '<path d="M16 3h5v5M21 3l-7 7M8 21H3v-5M3 21l7-7"/>',
   unlock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2"/>',
+  chart: '<path d="M3 3v18h18"/><path d="M7 15v3M12 10v8M17 6v12"/>',
 }
+
+/** The valid icon names — the nav-coverage test pins every nav icon against this (an
+ * unknown name renders an EMPTY svg silently; the Segments entry shipped that way). */
+export const ICON_NAMES = Object.keys(PATHS)
 
 export function Icon({ name, size = 18 }: { name: string; size?: number }) {
   return (
