@@ -57,6 +57,7 @@ export function buildSections(fields: ResolvedFormFieldDto[]): TransactionSectio
     title,
     rows: chunk3(gf.filter((f) => !f.fullWidth).map(toSpec)),
     fullWidth: gf.filter((f) => f.fullWidth).map(toSpec),
+    columnBreak: gf.some((f) => f.groupColumnBreak),   // CF5-T3: this group starts the second column
   }))
 }
 

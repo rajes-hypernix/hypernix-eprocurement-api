@@ -20,6 +20,8 @@ export interface TransactionSection {
   rows: FieldSpec[][]
   /** full-width specs after the rows (memo-style) */
   fullWidth?: FieldSpec[]
+  /** CF5-T3: this section starts the SECOND column (two-column canvas, ruled D3) */
+  columnBreak?: boolean
 }
 
 /**
@@ -125,7 +127,18 @@ export function TransactionPage({
 
       {actionBar}
 
-      {sections.map((s) => renderSection(s))}
+      {(() => {
+        // CF5-T3 column break: sections after the FIRST break render in a second column
+        // (two-column canvas only — ruled D3; extra breaks fold into the right column).
+        const br = sections.findIndex((s) => s.columnBreak)
+        if (br <= 0) return sections.map((s) => renderSection(s))
+        return (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, alignItems: 'start' }} data-cols="2">
+            <div>{sections.slice(0, br).map((s) => renderSection(s))}</div>
+            <div>{sections.slice(br).map((s) => renderSection(s))}</div>
+          </div>
+        )
+      })()}
 
       {tabs && tabs.length > 0 && (
         <>

@@ -241,9 +241,12 @@ export type EntryFormFieldDto = {
   requiredOnForm: boolean; defaultValue?: string | null; sourceFieldKey?: string | null
   fullWidth: boolean; label?: string | null; placeholder?: string | null
 }
+export type EntryFormSubtabDto = { id: string; name: string; sort: number; hidden: boolean }
+export type EntryFormGroupDto = { id: string; subtabId?: string | null; title: string; sort: number; columnBreak: boolean }
 export type EntryFormDefDto = {
   id: string; code: string; name: string; recordType: string; isSystem: boolean; active: boolean
   fields: EntryFormFieldDto[]; roles: string[]
+  subtabs?: EntryFormSubtabDto[]; groups?: EntryFormGroupDto[]
 }
 export type SaveEntryFormRequest = { name: string; recordType: string; fields: EntryFormFieldDto[] }
 export type ResolvedFormFieldDto = {
@@ -252,6 +255,7 @@ export type ResolvedFormFieldDto = {
   defaultValue?: string | null; sourceFieldKey?: string | null; fullWidth: boolean
   placeholder?: string | null; customListCode?: string | null
   options?: { code: string; label: string }[] | null
+  groupColumnBreak?: boolean
 }
 export type ResolvedFormDto = { formId: string; formCode: string; formName: string; recordType: string; fields: ResolvedFormFieldDto[] }
 export type NumberingSchemeDto = { recordType: string; prefix: string; yearSegment: boolean; digits: number; nextPreview: string }
@@ -265,6 +269,16 @@ export const updateEntryForm = (id: string, req: SaveEntryFormRequest) =>
 export const deleteEntryForm = (id: string) => http<undefined>(`/entry-forms/${id}`, { method: 'DELETE' })
 export const assignEntryFormRoles = (id: string, roles: string[]) =>
   http<EntryFormDefDto>(`/entry-forms/${id}/roles`, { method: 'PUT', body: JSON.stringify({ roles }) })
+export const saveEntryFormSubtab = (formId: string, subtab: { name: string; sort: number; hidden: boolean }, subtabId?: string) =>
+  http<EntryFormDefDto>(`/entry-forms/${formId}/subtabs${subtabId ? `/${subtabId}` : ''}`,
+    { method: subtabId ? 'PUT' : 'POST', body: JSON.stringify(subtab) })
+export const deleteEntryFormSubtab = (formId: string, subtabId: string) =>
+  http<EntryFormDefDto>(`/entry-forms/${formId}/subtabs/${subtabId}`, { method: 'DELETE' })
+export const saveEntryFormGroup = (formId: string, group: { title: string; subtabId?: string | null; sort: number; columnBreak: boolean }, groupId?: string) =>
+  http<EntryFormDefDto>(`/entry-forms/${formId}/groups${groupId ? `/${groupId}` : ''}`,
+    { method: groupId ? 'PUT' : 'POST', body: JSON.stringify(group) })
+export const deleteEntryFormGroup = (formId: string, groupId: string) =>
+  http<EntryFormDefDto>(`/entry-forms/${formId}/groups/${groupId}`, { method: 'DELETE' })
 export const resolveEntryForm = (recordType: string) =>
   http<ResolvedFormDto>(`/entry-forms/resolve?recordType=${encodeURIComponent(recordType)}`)
 export const getNumberingSchemes = () => http<NumberingSchemeDto[]>('/numbering')

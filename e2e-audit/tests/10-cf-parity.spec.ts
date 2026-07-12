@@ -466,3 +466,142 @@ test('CF4-T12: field authoring — display=Inline renders as text, insert-before
   expect((await request.delete(`${API}/api/custom-fields/${star.id}`, { headers: ADMIN })).status()).toBe(204)
   expect((await request.delete(`${API}/api/custom-fields/${anchor.id}`, { headers: ADMIN })).status()).toBe(204)
 })
+
+// ── CF5 — Entry-form layout editor ───────────────────────────────────────────
+
+/** A run-stamped user form (copy of Standard fields) assigned to Buyer, via API. */
+async function makeCf5Form(request: import('@playwright/test').APIRequestContext, name: string) {
+  const forms = await (await request.get(`${API}/api/entry-forms?recordType=Requisition`, { headers: ADMIN })).json()
+  const std = forms.find((f: { isSystem: boolean }) => f.isSystem)
+  const form = await (await request.post(`${API}/api/entry-forms`, { headers: { ...ADMIN, ...JSON_H },
+    data: { name, recordType: 'Requisition', fields: std.fields } })).json()
+  await request.put(`${API}/api/entry-forms/${form.id}/roles`, { headers: { ...ADMIN, ...JSON_H }, data: { roles: ['Buyer'] } })
+  return form
+}
+
+const openForm = async (page: import('@playwright/test').Page, name: string) => {
+  await goAs(page, 'u_admin', 'entryforms')
+  await page.waitForTimeout(1200)
+  await page.getByRole('button', { name: new RegExp(name) }).first().click()
+}
+
+/** Buyer opens the first PR — the resolved role form renders there. */
+const openPrAsBuyer = async (page: import('@playwright/test').Page, request: import('@playwright/test').APIRequestContext) => {
+  const prs = await (await request.get(`${API}/api/requisitions`, { headers: BUYER })).json()
+  await goAs(page, 'u_faridah', `reqs/open/${prs[0].id}`)
+  await page.waitForTimeout(1500)
+}
+
+test('CF5-T2: subtabs are OBJECTS — create empty, drop a field in, hide it; the buyer form follows', async ({ page, request }) => {
+  const FORM = `CF5 Tabs ${STAMP}`
+  const TAB = `Extra ${STAMP}`
+  const form = await makeCf5Form(request, FORM)
+  await openForm(page, FORM)
+
+  // Create the subtab as an EMPTY object (impossible when subtabs were just strings).
+  await page.getByLabel('New subtab name', { exact: true }).fill(TAB)
+  await page.getByRole('button', { name: 'Add subtab' }).click()
+  await expect(page.getByLabel(`Subtab ${TAB}`, { exact: true })).toBeVisible()
+
+  // Drag the Category field row onto the chip.
+  const dataTransfer = await page.evaluateHandle(() => new DataTransfer())
+  await page.getByRole('row', { name: /Category/ }).dispatchEvent('dragstart', { dataTransfer })
+  await page.getByLabel(`Subtab ${TAB}`, { exact: true }).dispatchEvent('drop', { dataTransfer })
+  await page.waitForTimeout(800)
+
+  // The buyer's PR form gains the tab; Category lives behind it.
+  await openPrAsBuyer(page, request)
+  await page.getByRole('button', { name: TAB }).click()
+  await expect(page.getByRole('textbox', { name: 'Category' })).toBeVisible()   // the FORM field (a Segments card also names Category)
+
+  // Hide it → the tab disappears from the buyer form (fields excluded server-side).
+  await openForm(page, FORM)
+  await page.getByRole('button', { name: `Hide subtab ${TAB}` }).click()
+  await page.waitForTimeout(600)
+  await openPrAsBuyer(page, request)
+  await expect(page.getByRole('button', { name: TAB })).toHaveCount(0)
+
+  expect((await request.delete(`${API}/api/entry-forms/${form.id}`, { headers: ADMIN })).status()).toBe(204)
+})
+
+test('CF5-T3: column break on a field group — the buyer form renders TWO columns', async ({ page, request }) => {
+  const FORM = `CF5 Cols ${STAMP}`
+  const GROUP = `Extras ${STAMP}`
+  const form = await makeCf5Form(request, FORM)
+  await openForm(page, FORM)
+
+  // Move Job + Memo into a second group by naming it on the fields, then save.
+  await page.getByLabel('Job group', { exact: true }).fill(GROUP)
+  await page.getByLabel('Memo group', { exact: true }).fill(GROUP)
+  await page.getByRole('button', { name: 'Save form' }).click()
+  await page.waitForTimeout(800)
+
+  // Flip the new group's column break (controlled checkbox: click, then the refetch confirms).
+  await page.getByLabel(`Column break at ${GROUP}`, { exact: true }).click()
+  await page.waitForTimeout(1000)
+  await expect(page.getByLabel(`Column break at ${GROUP}`, { exact: true })).toBeChecked()
+
+  // The buyer form renders the two-column canvas with both section titles.
+  await openPrAsBuyer(page, request)
+  const cols = page.locator('[data-cols="2"]')
+  await expect(cols).toBeVisible()
+  await expect(cols.getByText('Header', { exact: true })).toBeVisible()
+  await expect(cols.getByText(GROUP, { exact: true })).toBeVisible()
+
+  expect((await request.delete(`${API}/api/entry-forms/${form.id}`, { headers: ADMIN })).status()).toBe(204)
+})
+
+test('CF5-T4: drag a field between containers — placement persists across reload and the buyer form follows', async ({ page, request }) => {
+  const FORM = `CF5 Drag ${STAMP}`
+  const TAB = `Moved ${STAMP}`
+  const form = await makeCf5Form(request, FORM)
+  await openForm(page, FORM)
+  await page.getByLabel('New subtab name', { exact: true }).fill(TAB)
+  await page.getByRole('button', { name: 'Add subtab' }).click()
+
+  const dataTransfer = await page.evaluateHandle(() => new DataTransfer())
+  await page.getByRole('row', { name: /^Job/ }).dispatchEvent('dragstart', { dataTransfer })
+  await page.getByLabel(`Subtab ${TAB}`, { exact: true }).dispatchEvent('drop', { dataTransfer })
+  await page.waitForTimeout(800)
+
+  // PERSISTED: reload the composer — Job's subtab cell carries the name.
+  await page.reload({ waitUntil: 'networkidle' })
+  await page.getByRole('button', { name: new RegExp(FORM) }).first().click()
+  await expect(page.getByLabel('Job subtab', { exact: true })).toHaveValue(TAB)
+
+  // And back: drop Job on Body — the subtab empties but SURVIVES as an object.
+  const dt2 = await page.evaluateHandle(() => new DataTransfer())
+  await page.getByRole('row', { name: /^Job/ }).dispatchEvent('dragstart', { dataTransfer: dt2 })
+  await page.getByLabel('Body drop target', { exact: true }).dispatchEvent('drop', { dataTransfer: dt2 })
+  await page.waitForTimeout(800)
+  await expect(page.getByLabel(`Subtab ${TAB}`, { exact: true })).toBeVisible()   // empty subtab object persists
+
+  expect((await request.delete(`${API}/api/entry-forms/${form.id}`, { headers: ADMIN })).status()).toBe(204)
+})
+
+test('CF5-T5: guards — required-on-hidden warns (allow), populated containers refuse deletion', async ({ page, request }) => {
+  const FORM = `CF5 Guard ${STAMP}`
+  const TAB = `Req ${STAMP}`
+  const form = await makeCf5Form(request, FORM)
+  // Place a REQUIRED Department on the subtab via API (the composer path is proven in 08).
+  const fields = form.fields.map((f: { fieldKey: string }) =>
+    f.fieldKey === 'Department' ? { ...f, subtab: TAB, requiredOnForm: true } : f)
+  await request.put(`${API}/api/entry-forms/${form.id}`, { headers: { ...ADMIN, ...JSON_H },
+    data: { name: FORM, recordType: 'Requisition', fields } })
+
+  await openForm(page, FORM)
+
+  // Hiding warns about the required field (warn-but-allow, ruled D2) — dismiss = no hide.
+  let warned = ''
+  page.once('dialog', (d) => { warned = d.message(); void d.dismiss() })
+  await page.getByRole('button', { name: `Hide subtab ${TAB}` }).click()
+  await page.waitForTimeout(400)
+  expect(warned).toContain('required')
+  expect(warned).toContain('Department')
+
+  // A subtab with groups refuses deletion — the guard surfaces on screen.
+  await page.getByRole('button', { name: `Delete subtab ${TAB}` }).click()
+  await expect(page.getByText(/still holds field groups/)).toBeVisible()
+
+  expect((await request.delete(`${API}/api/entry-forms/${form.id}`, { headers: ADMIN })).status()).toBe(204)
+})

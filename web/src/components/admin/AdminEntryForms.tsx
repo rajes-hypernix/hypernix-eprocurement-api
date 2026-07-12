@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   getEntryForms, createEntryForm, updateEntryForm, deleteEntryForm, assignEntryFormRoles, setEntryFormActive,
+  saveEntryFormSubtab, deleteEntryFormSubtab, saveEntryFormGroup, deleteEntryFormGroup,
   getViewFields, type EntryFormDefDto, type EntryFormFieldDto,
 } from '../../api/client'
 import { SetupPage } from '../../ui/archetypes/SetupPage'
@@ -148,7 +149,10 @@ function FormComposer({ form, onChanged, onDeleted }: {
         <thead><tr><th>Field</th><th>Group</th><th>Subtab</th><th>Display</th><th>Required</th><th>Default</th><th /></tr></thead>
         <tbody>
           {fields.map((f, i) => (
-            <tr key={f.fieldKey}>
+            <tr key={f.fieldKey}
+              draggable={!ro}
+              onDragStart={(e) => e.dataTransfer.setData('text/field-key', f.fieldKey)}
+              style={!ro ? { cursor: 'grab' } : undefined}>
               <td className="mono">{f.fieldKey}{f.label ? ` · ${f.label}` : ''}{f.fullWidth ? ' · full-width' : ''}</td>
               <td>{ro ? f.fieldGroup : <TextField chrome="bare" spec={spec(`ef-${i}-group`, `${f.fieldKey} group`, 'text')} value={f.fieldGroup} onChange={(v) => set(i, { fieldGroup: String(v ?? '') })} />}</td>
               <td>{ro ? f.subtab ?? '—' : <TextField chrome="bare" spec={{ ...spec(`ef-${i}-subtab`, `${f.fieldKey} subtab`, 'text'), placeholder: 'main body' }} value={f.subtab ?? ''} onChange={(v) => set(i, { subtab: String(v ?? '') || null })} />}</td>
@@ -197,6 +201,8 @@ function FormComposer({ form, onChanged, onDeleted }: {
         />
       )}
 
+      {!ro && <LayoutPanel form={form} fields={fields} onChanged={onChanged} onError={setError} />}
+
       <h4 style={{ marginTop: 18 }}>Preferred for roles</h4>
       {ro
         ? <p className="hint">The Standard form is the fallback for every role without a preferred form — it is not assigned directly.</p>
@@ -214,6 +220,98 @@ function FormComposer({ form, onChanged, onDeleted }: {
         SUBMIT only — drafts always save. Hidden means hidden, not forbidden: the server's
         role matrix is unchanged by form layout.
       </p>
+    </div>
+  )
+}
+
+/**
+ * CF5-T2..T5: the layout objects panel. Subtabs are chips (add / hide with a required-field
+ * warning / delete-guarded) that double as DRAG TARGETS — drop a field row from the table
+ * onto a chip (or Body) to move it there; the move persists immediately through the same
+ * whole-form save the composer uses. Groups list their column-break toggle (T3).
+ */
+function LayoutPanel({ form, fields, onChanged, onError }: {
+  form: EntryFormDefDto
+  fields: EntryFormFieldDto[]
+  onChanged: () => void
+  onError: (msg: string | null) => void
+}) {
+  const [newSubtab, setNewSubtab] = useState('')
+  const subtabs = form.subtabs ?? []
+  const groups = form.groups ?? []
+  const fail = (e: unknown) => onError(e instanceof Error ? e.message : 'Layout change failed.')
+  const ok = () => { onError(null); onChanged() }
+
+  const saveFields = (next: EntryFormFieldDto[]) =>
+    updateEntryForm(form.id, { name: form.name, recordType: form.recordType, fields: next.map((x, i) => ({ ...x, sort: i })) })
+
+  const dropField = (subtabName: string | null) => (e: React.DragEvent) => {
+    e.preventDefault()
+    const key = e.dataTransfer.getData('text/field-key')
+    if (!key) return
+    void saveFields(fields.map((f) => (f.fieldKey === key ? { ...f, subtab: subtabName } : f))).then(ok, fail)
+  }
+
+  const toggleHidden = (id: string, name: string, sort: number, hidden: boolean) => {
+    if (!hidden) return void saveEntryFormSubtab(form.id, { name, sort, hidden }, id).then(ok, fail)
+    const requiredHere = fields.filter((f) => f.subtab === name && f.requiredOnForm).map((f) => f.fieldKey)
+    if (requiredHere.length > 0 && !window.confirm(
+      `Subtab “${name}” holds required field(s): ${requiredHere.join(', ')}. Hidden fields STILL gate submit — users of this form must fill them elsewhere. Hide anyway?`))
+      return
+    void saveEntryFormSubtab(form.id, { name, sort, hidden }, id).then(ok, fail)
+  }
+
+  return (
+    <div style={{ marginTop: 14 }}>
+      <h4>Subtabs</h4>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        <span className="badge b-grey" onDragOver={(e) => e.preventDefault()} onDrop={dropField(null)}
+          style={{ padding: '6px 10px' }} aria-label="Body drop target">Body (drop here)</span>
+        {subtabs.map((s) => (
+          <span key={s.id} className={`badge ${s.hidden ? 'b-grey' : 'b-blue'}`}
+            onDragOver={(e) => e.preventDefault()} onDrop={dropField(s.name)}
+            style={{ padding: '6px 10px', display: 'inline-flex', gap: 6, alignItems: 'center' }}
+            aria-label={`Subtab ${s.name}`}>
+            {s.name}{s.hidden ? ' (hidden)' : ''}
+            <button type="button" className="lnk" aria-label={`${s.hidden ? 'Show' : 'Hide'} subtab ${s.name}`}
+              onClick={() => toggleHidden(s.id, s.name, s.sort, !s.hidden)}>{s.hidden ? 'show' : 'hide'}</button>
+            <button type="button" className="lnk" aria-label={`Delete subtab ${s.name}`}
+              onClick={() => void deleteEntryFormSubtab(form.id, s.id).then(ok, fail)}>✕</button>
+          </span>
+        ))}
+        <div style={{ width: 170 }}>
+          <TextField chrome="bare" spec={{ ...spec('cf5-new-subtab', 'New subtab name', 'text'), placeholder: 'New subtab name' }}
+            value={newSubtab} onChange={(v) => setNewSubtab(String(v ?? ''))} />
+        </div>
+        <Button variant="outline" size="sm" ariaLabel="Add subtab" onClick={() => {
+          if (!newSubtab.trim()) return
+          void saveEntryFormSubtab(form.id, { name: newSubtab.trim(), sort: subtabs.length, hidden: false })
+            .then(() => { setNewSubtab(''); ok() }, fail)
+        }}>Add subtab</Button>
+      </div>
+      <p className="hint">Drag a field row onto a subtab (or Body) to move it. Hiding a subtab hides its fields from the form — required fields still gate submit.</p>
+
+      <h4 style={{ marginTop: 12 }}>Field groups</h4>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        {groups.map((g) => {
+          const subtabName = subtabs.find((s) => s.id === g.subtabId)?.name
+          const empty = !fields.some((f) => (f.fieldGroup || 'Header') === g.title && (f.subtab ?? null) === (subtabName ?? null))
+          return (
+            <span key={g.id} className="badge b-grey" style={{ padding: '6px 10px', display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+              {g.title}{subtabName ? ` · ${subtabName}` : ''}
+              <CheckboxField chrome="bare" spec={spec(`cf5-break-${g.id}`, `Column break at ${g.title}`, 'boolean')}
+                value={g.columnBreak}
+                onChange={(v) => void saveEntryFormGroup(form.id,
+                  { title: g.title, subtabId: g.subtabId ?? null, sort: g.sort, columnBreak: v === true }, g.id).then(ok, fail)} />
+              {empty && (
+                <button type="button" className="lnk" aria-label={`Delete group ${g.title}`}
+                  onClick={() => void deleteEntryFormGroup(form.id, g.id).then(ok, fail)}>✕</button>
+              )}
+            </span>
+          )
+        })}
+        {groups.length === 0 && <span className="hint">Groups appear as you name them on fields.</span>}
+      </div>
     </div>
   )
 }
