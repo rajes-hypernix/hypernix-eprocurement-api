@@ -27,6 +27,11 @@ const JSON_H = { 'Content-Type': 'application/json' }
 
 test('entry-forms gate: standard → admin composes role form → buyer gets it; PO numbering from Setup', async ({ page, request }) => {
   test.setTimeout(180_000)
+  // TEST-SWEEP self-healing (F2): a mid-test failure in a PREVIOUS run can strand its
+  // run-stamped form (cleanup never reached). Sweep them so litter never compounds.
+  const stale = await (await request.get(`${API}/api/entry-forms?recordType=Requisition`, { headers: ADMIN })).json()
+  for (const s of stale.filter((x: { isSystem: boolean }) => !x.isSystem))
+    await request.delete(`${API}/api/entry-forms/${s.id}`, { headers: ADMIN })
   page.on('dialog', (d) => void d.accept())   // the dirty-guard confirm on deliberate navigation
 
   // ---- 1. BEFORE: the buyer's create form IS the seeded Standard layout ----

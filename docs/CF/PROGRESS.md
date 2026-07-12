@@ -18,3 +18,6 @@
 2026-07-13 04:36 AUTONOMOUS BAND COMPLETE — 39/39 CF1–CF4 boxes ticked, BLOCKERS empty; dotnet 470 · vitest 233 · e2e 65/65 (all raised vs A0); results.json regenerated; tagging v1.0-cf-autonomous-band.
 2026-07-13 04:39 CF5/CF6/CF7 STEP 0 — three plans written (layout editor, line fields+sublists, saved search); every migration named; zero implementation code, per the band boundary.
 2026-07-13 04:40 PHASE C — CF-VERIFICATION.md written (37 PLAN rows + 19 Build_Comments paragraphs, all accounted); BLOCKERS.md empty; morning report posted. CF programme handoff complete.
+2026-07-13 06:45 LONGRUN P1 baselines — dotnet 471 · vitest 233 · e2e 65 (after SWEEP-FIX-T1 e6cf324: entry-form copy de-dupe + UI error surfacing; found by the baseline run).
+2026-07-13 06:45 LONGRUN P1 TEST-SWEEP-T1/T2 edcbc88 — 8 new tests close every inventory gap (dev-404, one-award, 8-types, line-grain segments, FK floor, CHECK 23514, xmin×9, inactive-value options).
+2026-07-13 06:45 LONGRUN P1 COMPLETE — 69/69 inventory boxes evidence-filled; B2/B3 blocked-with-reason; FULL-TEST-REPORT.md written; suites 478/234/65; tagging v1.1-full-test-sweep.
