@@ -23,6 +23,8 @@ export const BUYER_CENTER_TABS: CenterTab[] = [
     key: 'sourcing', label: 'Sourcing',
     items: [
       { key: 'dashboard', icon: 'dashboard', label: 'Dashboard', action: 'UseDashboards' },
+      // D7.5 (ruled): the builder's front door rides A59 — an existing D3 action, nothing minted.
+      { key: 'views', icon: 'eye', label: 'Saved Views', action: 'UseSavedViews' },
       { key: 'reqs', icon: 'doc', label: 'Requisitions', action: 'ViewRequisitions' },
       { key: 'rfqs', icon: 'rfq', label: 'RFQs', action: 'ViewRfqs' },
       { key: 'awards', icon: 'award', label: 'Awards & POs', action: 'ViewAwards' },

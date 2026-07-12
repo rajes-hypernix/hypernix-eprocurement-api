@@ -125,7 +125,7 @@ export type ViewRunResult = {
 }
 export type SaveViewRequest = { name: string; recordType: string; filters: SavedViewFilterDto[]; columns: SavedViewColumnDto[] }
 
-export const getViews = (recordType: string) => http<SavedViewDto[]>(`/views?recordType=${encodeURIComponent(recordType)}`)
+export const getViews = (recordType?: string) => http<SavedViewDto[]>(`/views${recordType ? `?recordType=${encodeURIComponent(recordType)}` : ''}`)
 export const getViewFields = (recordType: string) => http<ViewFieldDto[]>(`/views/fields?recordType=${encodeURIComponent(recordType)}`)
 export const createView = (req: SaveViewRequest) => http<SavedViewDto>('/views', { method: 'POST', body: JSON.stringify(req) })
 export const updateView = (id: string, req: SaveViewRequest) => http<SavedViewDto>(`/views/${id}`, { method: 'PUT', body: JSON.stringify(req) })

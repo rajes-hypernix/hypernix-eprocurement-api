@@ -11,6 +11,14 @@ import { AdminCustomFields } from './components/admin/AdminCustomFields'
 import { AdminSegments } from './components/admin/AdminSegments'
 import { AdminEntryForms } from './components/admin/AdminEntryForms'
 import { AdminNumbering } from './components/admin/AdminNumbering'
+import { SavedViewsHome } from './components/views/SavedViewsHome'
+
+// Record type → its list screen's route base (the D7.5 rollout targets; the reminder
+// and View-all click-throughs ride the same map).
+export const LIST_ROUTE: Record<string, string> = {
+  Requisition: 'reqs', Rfq: 'rfqs', PurchaseOrder: 'pos', Invoice: 'invoices',
+  Asn: 'deliveries', Vendor: 'vendors', Onboarding: 'onboarding',
+}
 import { Requisitions } from './components/sourcing/Requisitions'
 import { Consolidate } from './components/sourcing/Consolidate'
 import { RfqList } from './components/sourcing/RfqList'
@@ -123,6 +131,7 @@ export default function App() {
           ) : (
             <>
               {base === 'dashboard' && <Dashboard onNavigate={go} />}
+              {base === 'views' && <SavedViewsHome onOpenList={(rt, viewId) => go(`${LIST_ROUTE[rt] ?? 'views'}/view/${viewId}`)} />}
               {base === 'vendors' && <VendorsPage route={active} onNavigate={go} />}
               {base === 'onboarding' && <OnboardingPage route={active} onNavigate={go} />}
               {base === 'admin' && <AdminUsers />}
