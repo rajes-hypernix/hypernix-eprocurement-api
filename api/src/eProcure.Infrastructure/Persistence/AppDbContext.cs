@@ -50,6 +50,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<FieldRegistryEntry> FieldRegistry => Set<FieldRegistryEntry>();
     public DbSet<SavedView> SavedViews => Set<SavedView>();
 
+    // Dashboards + portlets (D4).
+    public DbSet<Domain.Dashboards.Dashboard> Dashboards => Set<Domain.Dashboards.Dashboard>();
+
     protected override void OnModelCreating(ModelBuilder b)
     {
         base.OnModelCreating(b);
@@ -591,6 +594,33 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.FieldKey).HasMaxLength(100).IsRequired();
             e.Property(x => x.Label).HasMaxLength(100);
             e.Property(x => x.SortDirection).HasConversion<string>().HasMaxLength(10);
+        });
+
+        // Dashboards + portlets (D4): exactly one owner axis (role default XOR personal copy),
+        // enforced at the DB; ConfigJson is the framework's ONE sanctioned JSON (schemas in
+        // Application/Dashboards/PortletConfigs, validated on save).
+        b.Entity<Domain.Dashboards.Dashboard>(e =>
+        {
+            e.ToTable("Dashboards", t => t.HasCheckConstraint("CK_Dashboards_OneOwnerAxis",
+                "(\"OwnerRole\" IS NOT NULL AND \"OwnerUserId\" IS NULL AND \"IsRoleDefault\") OR " +
+                "(\"OwnerRole\" IS NULL AND \"OwnerUserId\" IS NOT NULL AND NOT \"IsRoleDefault\")"));
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => x.Code).IsUnique();
+            e.Property(x => x.Code).HasMaxLength(50).IsRequired();
+            e.Property(x => x.Name).HasMaxLength(200).IsRequired();
+            e.Property(x => x.OwnerRole).HasMaxLength(30);
+            e.Property(x => x.OwnerUserId).HasMaxLength(100);
+            e.HasIndex(x => x.OwnerUserId);
+            e.HasMany(x => x.Portlets).WithOne().HasForeignKey(p => p.DashboardId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        b.Entity<Domain.Dashboards.PortletInstance>(e =>
+        {
+            e.ToTable("PortletInstances");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.PortletType).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.Title).HasMaxLength(120).IsRequired();
+            e.Property(x => x.ConfigJson).HasMaxLength(4000).IsRequired();
         });
 
         // Optimistic concurrency: use PostgreSQL's system column `xmin` as a row-version token on the
