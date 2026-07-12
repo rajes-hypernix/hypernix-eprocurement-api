@@ -54,6 +54,38 @@ public sealed class EntryFormsController(IEntryFormService forms) : ControllerBa
     [Action(ApiActions.ReadEntryForms)]
     public async Task<ActionResult<ResolvedFormDto>> Resolve([FromQuery] string recordType, CancellationToken ct) =>
         Ok(await forms.ResolveAsync(recordType, ct));
+
+    // ---------- CF5-T2/T3: layout-object CRUD (A69, same guard as the composer) ----------
+
+    [HttpPost("{id:guid}/subtabs")]
+    [Action(ApiActions.ManageEntryForms)]
+    public async Task<ActionResult<EntryFormDefDto>> CreateSubtab(Guid id, [FromBody] SaveSubtabRequest req, CancellationToken ct) =>
+        Ok(await forms.CreateSubtabAsync(id, req, ct));
+
+    [HttpPut("{id:guid}/subtabs/{subtabId:guid}")]
+    [Action(ApiActions.ManageEntryForms)]
+    public async Task<ActionResult<EntryFormDefDto>> UpdateSubtab(Guid id, Guid subtabId, [FromBody] SaveSubtabRequest req, CancellationToken ct) =>
+        Ok(await forms.UpdateSubtabAsync(id, subtabId, req, ct));
+
+    [HttpDelete("{id:guid}/subtabs/{subtabId:guid}")]
+    [Action(ApiActions.ManageEntryForms)]
+    public async Task<ActionResult<EntryFormDefDto>> DeleteSubtab(Guid id, Guid subtabId, CancellationToken ct) =>
+        Ok(await forms.DeleteSubtabAsync(id, subtabId, ct));
+
+    [HttpPost("{id:guid}/groups")]
+    [Action(ApiActions.ManageEntryForms)]
+    public async Task<ActionResult<EntryFormDefDto>> CreateGroup(Guid id, [FromBody] SaveGroupRequest req, CancellationToken ct) =>
+        Ok(await forms.CreateGroupAsync(id, req, ct));
+
+    [HttpPut("{id:guid}/groups/{groupId:guid}")]
+    [Action(ApiActions.ManageEntryForms)]
+    public async Task<ActionResult<EntryFormDefDto>> UpdateGroup(Guid id, Guid groupId, [FromBody] SaveGroupRequest req, CancellationToken ct) =>
+        Ok(await forms.UpdateGroupAsync(id, groupId, req, ct));
+
+    [HttpDelete("{id:guid}/groups/{groupId:guid}")]
+    [Action(ApiActions.ManageEntryForms)]
+    public async Task<ActionResult<EntryFormDefDto>> DeleteGroup(Guid id, Guid groupId, CancellationToken ct) =>
+        Ok(await forms.DeleteGroupAsync(id, groupId, ct));
 }
 
 /// <summary>Numbering schemes — Admin Setup (A70). Format-time config over the untouched

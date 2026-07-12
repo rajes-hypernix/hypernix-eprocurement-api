@@ -12,9 +12,18 @@ public sealed record EntryFormFieldDto(
     bool RequiredOnForm, string? DefaultValue, string? SourceFieldKey, bool FullWidth,
     string? Label, string? Placeholder);
 
+// CF5: subtabs and groups as first-class objects on the def DTO (additive — the string
+// placement on each field stays the composer's wire language; these carry the object
+// state the strings cannot: Hidden, ColumnBreak, explicit empty containers, Sort).
+public sealed record EntryFormSubtabDto(Guid Id, string Name, int Sort, bool Hidden);
+public sealed record EntryFormGroupDto(Guid Id, Guid? SubtabId, string Title, int Sort, bool ColumnBreak);
+public sealed record SaveSubtabRequest(string Name, int Sort, bool Hidden);
+public sealed record SaveGroupRequest(string Title, Guid? SubtabId, int Sort, bool ColumnBreak);
+
 public sealed record EntryFormDefDto(
     Guid Id, string Code, string Name, string RecordType, bool IsSystem, bool Active,
-    IReadOnlyList<EntryFormFieldDto> Fields, IReadOnlyList<string> Roles);
+    IReadOnlyList<EntryFormFieldDto> Fields, IReadOnlyList<string> Roles,
+    IReadOnlyList<EntryFormSubtabDto>? Subtabs = null, IReadOnlyList<EntryFormGroupDto>? Groups = null);
 
 public sealed record SaveEntryFormRequest(string Name, string RecordType, List<EntryFormFieldDto> Fields);
 
@@ -29,7 +38,8 @@ public sealed record ResolvedFormFieldDto(
     string FieldKey, string Label, string DataType, string Kind, string? Subtab,
     string FieldGroup, int Sort, string DisplayType, bool RequiredOnForm,
     string? DefaultValue, string? SourceFieldKey, bool FullWidth, string? Placeholder,
-    string? CustomListCode, IReadOnlyList<SegmentOptionDto>? Options);
+    string? CustomListCode, IReadOnlyList<SegmentOptionDto>? Options,
+    bool GroupColumnBreak = false);
 
 public sealed record SegmentOptionDto(string Code, string Label);
 
@@ -49,6 +59,13 @@ public interface IEntryFormService
     Task DeleteAsync(Guid id, CancellationToken ct = default);
     Task<EntryFormDefDto> SetActiveAsync(Guid id, bool active, CancellationToken ct = default);   // CF2-T6: the missing inactivate verb
     Task<EntryFormDefDto> AssignRolesAsync(Guid id, AssignRolesRequest req, CancellationToken ct = default);
+    // CF5-T2/T3: layout-object CRUD (guards: delete refuses non-empty containers).
+    Task<EntryFormDefDto> CreateSubtabAsync(Guid formId, SaveSubtabRequest req, CancellationToken ct = default);
+    Task<EntryFormDefDto> UpdateSubtabAsync(Guid formId, Guid subtabId, SaveSubtabRequest req, CancellationToken ct = default);
+    Task<EntryFormDefDto> DeleteSubtabAsync(Guid formId, Guid subtabId, CancellationToken ct = default);
+    Task<EntryFormDefDto> CreateGroupAsync(Guid formId, SaveGroupRequest req, CancellationToken ct = default);
+    Task<EntryFormDefDto> UpdateGroupAsync(Guid formId, Guid groupId, SaveGroupRequest req, CancellationToken ct = default);
+    Task<EntryFormDefDto> DeleteGroupAsync(Guid formId, Guid groupId, CancellationToken ct = default);
     /// <summary>The caller's form for a record type (A71 + dynamic View*): fixed global
     /// role precedence, first held role with an Active mapped form wins, Standard fallback.</summary>
     Task<ResolvedFormDto> ResolveAsync(string recordType, CancellationToken ct = default);

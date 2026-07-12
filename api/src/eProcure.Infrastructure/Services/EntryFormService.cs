@@ -86,14 +86,15 @@ public sealed class EntryFormService(AppDbContext db, IClock clock, ICurrentUser
         if (!string.IsNullOrWhiteSpace(req.Name)) def.Name = req.Name.Trim();
         def.UpdatedUtc = clock.UtcNow;
 
-        // Replace the layout wholesale (the composer saves the full field list). The D4
-        // lesson: explicit AddRange for replacement children with preset PKs — a tracked
-        // parent's nav discovery would misclassify them as Modified. CF5: fields first
-        // (they FK the groups), then groups, then subtabs.
+        // Replace the FIELDS wholesale (the composer saves the full field list) but SYNC the
+        // containers: a field save creates missing subtabs/groups by name and PRESERVES the
+        // existing objects (their Hidden/ColumnBreak/Sort state and explicitly-created empty
+        // containers survive). Containers are DELETED only through their explicit endpoints,
+        // where the guards live (CF5-T2/T3).
         db.EntryFormFields.RemoveRange(await db.EntryFormFields.Where(f => f.FormDefId == def.Id).ToListAsync(ct));
-        db.EntryFormGroups.RemoveRange(await db.EntryFormGroups.Where(g => g.FormDefId == def.Id).ToListAsync(ct));
-        db.EntryFormSubtabs.RemoveRange(await db.EntryFormSubtabs.Where(s => s.FormDefId == def.Id).ToListAsync(ct));
-        AddLayout(def.Id, req.Fields);
+        var existingSubtabs = await db.EntryFormSubtabs.Where(s => s.FormDefId == def.Id).ToListAsync(ct);
+        var existingGroups = await db.EntryFormGroups.Where(g => g.FormDefId == def.Id).ToListAsync(ct);
+        AddLayout(def.Id, req.Fields, existingSubtabs, existingGroups);
         await db.SaveChangesAsync(ct);
         return await ToDtoAsync(def, ct);
     }
@@ -154,6 +155,12 @@ public sealed class EntryFormService(AppDbContext db, IClock clock, ICurrentUser
         var fields = await db.EntryFormFields.AsNoTracking()
             .Where(f => f.FormDefId == def.Id).OrderBy(f => f.Sort).ToListAsync(ct);
         var placement = await PlacementAsync(def.Id, ct);   // CF5: group/subtab objects → the wire strings
+        // CF5-T2: a HIDDEN subtab's fields don't render. Hidden is layout, not permission —
+        // required fields on a hidden subtab still gate submit (warn-but-allow, ruled D2).
+        var hiddenSubtabs = await db.EntryFormSubtabs.AsNoTracking()
+            .Where(s => s.FormDefId == def.Id && s.Hidden).Select(s => s.Name).ToListAsync(ct);
+        var breaks = await db.EntryFormGroups.AsNoTracking()
+            .Where(g => g.FormDefId == def.Id && g.ColumnBreak).Select(g => g.Id).ToListAsync(ct);
 
         var registry = await db.FieldRegistry.AsNoTracking()
             .Where(r => r.RecordType == type).ToDictionaryAsync(r => r.FieldKey, ct);
@@ -181,10 +188,12 @@ public sealed class EntryFormService(AppDbContext db, IClock clock, ICurrentUser
             }
 
             var (subtabName, groupTitle) = placement[f.GroupId];
+            if (subtabName is not null && hiddenSubtabs.Contains(subtabName)) continue;
             resolved.Add(new ResolvedFormFieldDto(
                 f.FieldKey, f.Label ?? reg.Label, reg.DataType.ToString(), reg.Kind.ToString(),
                 subtabName, groupTitle, f.Sort, f.DisplayType.ToString(), f.RequiredOnForm,
-                ResolveDefault(f, reg), f.SourceFieldKey, f.FullWidth, f.Placeholder, listCode, options));
+                ResolveDefault(f, reg), f.SourceFieldKey, f.FullWidth, f.Placeholder, listCode, options,
+                breaks.Contains(f.GroupId)));
         }
         return new ResolvedFormDto(def.Id, def.Code, def.Name, type.ToString(), resolved);
     }
@@ -295,10 +304,15 @@ public sealed class EntryFormService(AppDbContext db, IClock clock, ICurrentUser
     /// materializes them as subtab/group OBJECTS (find-or-create by name within the form, in
     /// order of first appearance) and points each field at its group. The T2/T3 designer adds
     /// first-class object CRUD on top; the wire contract stays compatible meanwhile.</summary>
-    private void AddLayout(Guid formId, List<EntryFormFieldDto> fields)
+    private void AddLayout(Guid formId, List<EntryFormFieldDto> fields,
+        List<EntryFormSubtab>? existingSubtabs = null, List<EntryFormGroup>? existingGroups = null)
     {
         var subtabs = new Dictionary<string, EntryFormSubtab>(StringComparer.OrdinalIgnoreCase);
         var groups = new Dictionary<(string? Subtab, string Title), EntryFormGroup>();
+        foreach (var s in existingSubtabs ?? []) subtabs[s.Name] = s;
+        foreach (var g in existingGroups ?? [])
+            groups[(g.SubtabId is { } sid ? (existingSubtabs ?? []).First(s => s.Id == sid).Name : null, g.Title)] = g;
+        var preexistingSubtabs = subtabs.Count; var preexistingGroups = groups.Count;
         foreach (var f in fields)
         {
             var subtabName = Norm(f.Subtab);
@@ -332,8 +346,9 @@ public sealed class EntryFormService(AppDbContext db, IClock clock, ICurrentUser
                 Label = Norm(f.Label), Placeholder = Norm(f.Placeholder),
             });
         }
-        db.EntryFormSubtabs.AddRange(subtabs.Values);
-        db.EntryFormGroups.AddRange(groups.Values);
+        db.EntryFormSubtabs.AddRange(subtabs.Values.Where(s => (existingSubtabs ?? []).All(x => x.Id != s.Id)));
+        db.EntryFormGroups.AddRange(groups.Values.Where(g => (existingGroups ?? []).All(x => x.Id != g.Id)));
+        _ = (preexistingSubtabs, preexistingGroups);   // sort counters seeded from the dictionaries
     }
 
     /// <summary>GroupId → (subtab name, group title) for a form — the object→string join.</summary>
@@ -356,11 +371,107 @@ public sealed class EntryFormService(AppDbContext db, IClock clock, ICurrentUser
         var roles = await db.EntryFormRoleMaps.AsNoTracking()
             .Where(m => m.FormDefId == def.Id).Select(m => m.Role).OrderBy(r => r).ToListAsync(ct);
         var placement = await PlacementAsync(def.Id, ct);
+        var subtabs = await db.EntryFormSubtabs.AsNoTracking().Where(s => s.FormDefId == def.Id)
+            .OrderBy(s => s.Sort).ThenBy(s => s.Name)
+            .Select(s => new EntryFormSubtabDto(s.Id, s.Name, s.Sort, s.Hidden)).ToListAsync(ct);
+        var groups = await db.EntryFormGroups.AsNoTracking().Where(g => g.FormDefId == def.Id)
+            .OrderBy(g => g.Sort).ThenBy(g => g.Title)
+            .Select(g => new EntryFormGroupDto(g.Id, g.SubtabId, g.Title, g.Sort, g.ColumnBreak)).ToListAsync(ct);
         return new EntryFormDefDto(def.Id, def.Code, def.Name, def.RecordType.ToString(), def.IsSystem, def.Active,
             fields.Select(f => new EntryFormFieldDto(f.FieldKey, placement[f.GroupId].Subtab, placement[f.GroupId].Group, f.Sort,
                 f.DisplayType.ToString(), f.RequiredOnForm, f.DefaultValue, f.SourceFieldKey,
                 f.FullWidth, f.Label, f.Placeholder)).ToList(),
-            roles);
+            roles, subtabs, groups);
+    }
+
+    // ---------- CF5-T2/T3: layout-object CRUD ----------
+
+    public async Task<EntryFormDefDto> CreateSubtabAsync(Guid formId, SaveSubtabRequest req, CancellationToken ct = default)
+    {
+        var def = await LoadUserForm(formId, ct);
+        var name = Norm(req.Name) ?? throw new FormValidationException("A subtab needs a name.");
+        if (await db.EntryFormSubtabs.AnyAsync(s => s.FormDefId == formId && s.Name == name, ct))
+            throw new FormValidationException($"Subtab '{name}' already exists on this form.");
+        db.EntryFormSubtabs.Add(new EntryFormSubtab
+        {
+            Id = Guid.NewGuid(), FormDefId = formId, Name = name, Sort = req.Sort, Hidden = req.Hidden,
+        });
+        def.UpdatedUtc = clock.UtcNow;
+        await db.SaveChangesAsync(ct);
+        return await ToDtoAsync(def, ct);
+    }
+
+    public async Task<EntryFormDefDto> UpdateSubtabAsync(Guid formId, Guid subtabId, SaveSubtabRequest req, CancellationToken ct = default)
+    {
+        var def = await LoadUserForm(formId, ct);
+        var subtab = await db.EntryFormSubtabs.FirstOrDefaultAsync(s => s.Id == subtabId && s.FormDefId == formId, ct)
+            ?? throw new NotFoundException("Subtab not found on this form.");
+        var name = Norm(req.Name) ?? throw new FormValidationException("A subtab needs a name.");
+        if (await db.EntryFormSubtabs.AnyAsync(s => s.FormDefId == formId && s.Name == name && s.Id != subtabId, ct))
+            throw new FormValidationException($"Subtab '{name}' already exists on this form.");
+        subtab.Name = name; subtab.Sort = req.Sort; subtab.Hidden = req.Hidden;
+        def.UpdatedUtc = clock.UtcNow;
+        await db.SaveChangesAsync(ct);
+        return await ToDtoAsync(def, ct);
+    }
+
+    public async Task<EntryFormDefDto> DeleteSubtabAsync(Guid formId, Guid subtabId, CancellationToken ct = default)
+    {
+        var def = await LoadUserForm(formId, ct);
+        var subtab = await db.EntryFormSubtabs.FirstOrDefaultAsync(s => s.Id == subtabId && s.FormDefId == formId, ct)
+            ?? throw new NotFoundException("Subtab not found on this form.");
+        // The never-silently-drop rule: a subtab with groups refuses deletion (move or hide instead).
+        if (await db.EntryFormGroups.AnyAsync(g => g.SubtabId == subtabId, ct))
+            throw new DomainRuleException("This subtab still holds field groups — move its fields (or hide the subtab) first.");
+        db.EntryFormSubtabs.Remove(subtab);
+        def.UpdatedUtc = clock.UtcNow;
+        await db.SaveChangesAsync(ct);
+        return await ToDtoAsync(def, ct);
+    }
+
+    public async Task<EntryFormDefDto> CreateGroupAsync(Guid formId, SaveGroupRequest req, CancellationToken ct = default)
+    {
+        var def = await LoadUserForm(formId, ct);
+        var title = Norm(req.Title) ?? throw new FormValidationException("A field group needs a title.");
+        if (req.SubtabId is { } sid && !await db.EntryFormSubtabs.AnyAsync(s => s.Id == sid && s.FormDefId == formId, ct))
+            throw new FormValidationException("The target subtab does not exist on this form.");
+        if (await db.EntryFormGroups.AnyAsync(g => g.FormDefId == formId && g.SubtabId == req.SubtabId && g.Title == title, ct))
+            throw new FormValidationException($"Group '{title}' already exists in that container.");
+        db.EntryFormGroups.Add(new EntryFormGroup
+        {
+            Id = Guid.NewGuid(), FormDefId = formId, SubtabId = req.SubtabId,
+            Title = title, Sort = req.Sort, ColumnBreak = req.ColumnBreak,
+        });
+        def.UpdatedUtc = clock.UtcNow;
+        await db.SaveChangesAsync(ct);
+        return await ToDtoAsync(def, ct);
+    }
+
+    public async Task<EntryFormDefDto> UpdateGroupAsync(Guid formId, Guid groupId, SaveGroupRequest req, CancellationToken ct = default)
+    {
+        var def = await LoadUserForm(formId, ct);
+        var group = await db.EntryFormGroups.FirstOrDefaultAsync(g => g.Id == groupId && g.FormDefId == formId, ct)
+            ?? throw new NotFoundException("Field group not found on this form.");
+        var title = Norm(req.Title) ?? throw new FormValidationException("A field group needs a title.");
+        if (req.SubtabId is { } sid && !await db.EntryFormSubtabs.AnyAsync(s => s.Id == sid && s.FormDefId == formId, ct))
+            throw new FormValidationException("The target subtab does not exist on this form.");
+        group.Title = title; group.SubtabId = req.SubtabId; group.Sort = req.Sort; group.ColumnBreak = req.ColumnBreak;
+        def.UpdatedUtc = clock.UtcNow;
+        await db.SaveChangesAsync(ct);
+        return await ToDtoAsync(def, ct);
+    }
+
+    public async Task<EntryFormDefDto> DeleteGroupAsync(Guid formId, Guid groupId, CancellationToken ct = default)
+    {
+        var def = await LoadUserForm(formId, ct);
+        var group = await db.EntryFormGroups.FirstOrDefaultAsync(g => g.Id == groupId && g.FormDefId == formId, ct)
+            ?? throw new NotFoundException("Field group not found on this form.");
+        if (await db.EntryFormFields.AnyAsync(f => f.GroupId == groupId, ct))
+            throw new DomainRuleException("This group still holds fields — move them first.");
+        db.EntryFormGroups.Remove(group);
+        def.UpdatedUtc = clock.UtcNow;
+        await db.SaveChangesAsync(ct);
+        return await ToDtoAsync(def, ct);
     }
 
     private static RecordType Parse(string raw) =>
