@@ -57,6 +57,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Domain.CustomFields.CustomFieldDef> CustomFieldDefs => Set<Domain.CustomFields.CustomFieldDef>();
     public DbSet<Domain.CustomFields.CustomFieldValue> CustomFieldValues => Set<Domain.CustomFields.CustomFieldValue>();
 
+    // Custom segments (D6) — the dimension engine.
+    public DbSet<Domain.Segments.SegmentDef> SegmentDefs => Set<Domain.Segments.SegmentDef>();
+    public DbSet<Domain.Segments.SegmentValue> SegmentValues => Set<Domain.Segments.SegmentValue>();
+    public DbSet<Domain.Segments.SegmentApplication> SegmentApplications => Set<Domain.Segments.SegmentApplication>();
+    public DbSet<Domain.Segments.SegmentAssignment> SegmentAssignments => Set<Domain.Segments.SegmentAssignment>();
+
     protected override void OnModelCreating(ModelBuilder b)
     {
         base.OnModelCreating(b);
@@ -672,6 +678,45 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.ValueMoney).HasColumnType("numeric(18,2)");
             e.Property(x => x.ValueListCode).HasMaxLength(50);
             e.HasOne<Domain.CustomFields.CustomFieldDef>().WithMany().HasForeignKey(x => x.FieldDefId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Custom segments (D6): every assignment is a dimension key by construction (FK to a
+        // controlled value); UQ per (def, record, line) — one key per grain.
+        b.Entity<Domain.Segments.SegmentDef>(e =>
+        {
+            e.ToTable("SegmentDefs");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => x.Code).IsUnique();
+            e.Property(x => x.Code).HasMaxLength(60).IsRequired();
+            e.Property(x => x.Name).HasMaxLength(100).IsRequired();
+        });
+        b.Entity<Domain.Segments.SegmentValue>(e =>
+        {
+            e.ToTable("SegmentValues");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.SegmentDefId, x.Code }).IsUnique();
+            e.Property(x => x.Code).HasMaxLength(60).IsRequired();
+            e.Property(x => x.Label).HasMaxLength(120).IsRequired();
+            e.HasOne<Domain.Segments.SegmentDef>().WithMany().HasForeignKey(x => x.SegmentDefId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Domain.Segments.SegmentValue>().WithMany().HasForeignKey(x => x.ParentValueId).OnDelete(DeleteBehavior.Restrict);
+        });
+        b.Entity<Domain.Segments.SegmentApplication>(e =>
+        {
+            e.ToTable("SegmentApplications");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.SegmentDefId, x.RecordType }).IsUnique();
+            e.Property(x => x.RecordType).HasConversion<string>().HasMaxLength(30);
+            e.HasOne<Domain.Segments.SegmentDef>().WithMany().HasForeignKey(x => x.SegmentDefId).OnDelete(DeleteBehavior.Restrict);
+        });
+        b.Entity<Domain.Segments.SegmentAssignment>(e =>
+        {
+            e.ToTable("SegmentAssignments");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.SegmentDefId, x.RecordType, x.RecordId, x.LineId }).IsUnique();
+            e.HasIndex(x => new { x.RecordType, x.RecordId });
+            e.Property(x => x.RecordType).HasConversion<string>().HasMaxLength(30);
+            e.HasOne<Domain.Segments.SegmentDef>().WithMany().HasForeignKey(x => x.SegmentDefId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Domain.Segments.SegmentValue>().WithMany().HasForeignKey(x => x.SegmentValueId).OnDelete(DeleteBehavior.Restrict);
         });
 
         // Optimistic concurrency: use PostgreSQL's system column `xmin` as a row-version token on the
