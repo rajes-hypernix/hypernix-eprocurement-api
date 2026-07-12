@@ -7,6 +7,8 @@ import { Icon } from '../Icon'
 import { ConfirmModal, EmptyState, Notice, Spinner } from '../ui'
 import { useIdentity } from '../../identity'
 import { useViewRows } from '../views/useViewRows'
+import { CustomFieldsSection } from '../customfields/CustomFieldsSection'
+import { SegmentsSection } from '../segments/SegmentsSection'
 import { fmtDay, todayIso } from '../../lib/format'
 
 const ASN_TONE: Record<string, string> = { Draft: 'b-grey', InTransit: 'b-blue', Received: 'b-green' }
@@ -246,6 +248,8 @@ function AsnDetail({ asnId, onBack }: { asnId: string; onBack: () => void }) {
           </table>
         </div>
       )}
+      <CustomFieldsSection recordType="Asn" recordId={asnId} />
+      <SegmentsSection recordType="Asn" recordId={asnId} />
     </>
   )
 }

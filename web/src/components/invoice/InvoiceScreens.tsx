@@ -8,6 +8,8 @@ import { ConfirmModal, EmptyState, Notice, Spinner } from '../ui'
 import { fmt, fmtDay, todayIso } from '../../lib/format'
 import { useIdentity } from '../../identity'
 import { useViewRows } from '../views/useViewRows'
+import { CustomFieldsSection } from '../customfields/CustomFieldsSection'
+import { SegmentsSection } from '../segments/SegmentsSection'
 
 const INV_TONE: Record<string, string> = { Draft: 'b-grey', Submitted: 'b-blue', Approved: 'b-green', Exception: 'b-red', Paid: 'b-grey' }
 
@@ -139,6 +141,8 @@ function InvoiceDetail({ id, onBack }: { id: string; onBack: () => void }) {
           <div className="mrow"><span>Subtotal</span><span style={{ fontWeight: 600 }}>RM {fmt(inv.subtotal)}</span></div>
           <div className="mrow"><span>SST (8%)</span><span style={{ fontWeight: 600 }}>RM {fmt(inv.sst)}</span></div>
           {(inv.wht ?? 0) > 0 && <div className="mrow"><span>Withholding tax ({inv.whtRate}%)</span><span style={{ fontWeight: 600 }}>− RM {fmt(inv.wht)}</span></div>}
+      <CustomFieldsSection recordType="Invoice" recordId={id} />
+      <SegmentsSection recordType="Invoice" recordId={id} />
           <div className="mrow" style={{ borderBottom: 'none' }}><span style={{ fontWeight: 700 }}>Total payable</span><span style={{ fontWeight: 800, color: 'var(--teal)' }}>RM {fmt(inv.total)}</span></div>
         </div>
       </div>

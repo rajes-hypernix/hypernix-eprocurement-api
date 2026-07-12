@@ -10,6 +10,8 @@ import { RfqStatusBadge } from '../../lib/rfqStatus'
 import {
   InvitationStatusBadge, ReasonModal, ExtendModal, AddVendorModal, ActivityTimeline, useReasonLabeler,
 } from './RfqGovernance'
+import { CustomFieldsSection } from '../customfields/CustomFieldsSection'
+import { SegmentsSection } from '../segments/SegmentsSection'
 
 // Pre-bid invitation statuses a buyer may still rescind (never once a bid is submitted — G3).
 const RESCINDABLE = new Set(['Invited', 'Viewed', 'IntendToBid', 'Declined'])
@@ -179,6 +181,8 @@ export function RfqDetailHub({ rfq, onBack, onNavigate }: { rfq: RfqDetail; onBa
           </tbody>
         </table>
       </div>
+      <CustomFieldsSection recordType="Rfq" recordId={rfq.id ?? ''} />
+      <SegmentsSection recordType="Rfq" recordId={rfq.id ?? ''} />
     </>
   )
 }

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { screen } from '@testing-library/react'
-import { renderWithQuery } from '../../test/utils'
+import { renderWithProviders } from '../../test/utils'
 import { RfqDetailHub } from './RfqDetailHub'
 import * as client from '../../api/client'
 import type { RfqDetail, CustomList } from '../../api/client'
@@ -33,11 +33,12 @@ const reasonLists: CustomList[] = [
 describe('RfqDetailHub — invitation lifecycle (Slice J)', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
+    vi.spyOn(client, 'getPersonas').mockResolvedValue([])
     vi.spyOn(client, 'getCustomLists').mockResolvedValue(reasonLists)
   })
 
   it('renders all six invitation statuses; Rescinded is struck through', () => {
-    renderWithQuery(<RfqDetailHub rfq={rfq} onBack={() => {}} onNavigate={() => {}} />)
+    renderWithProviders(<RfqDetailHub rfq={rfq} onBack={() => {}} onNavigate={() => {}} />)
     for (const t of ['Bid submitted', 'Invited', 'Viewed', 'Intends to bid', 'Declined', 'Rescinded'])
       expect(screen.getByText(t)).toBeInTheDocument()
     // Rescinded vendor name is struck through
@@ -45,14 +46,14 @@ describe('RfqDetailHub — invitation lifecycle (Slice J)', () => {
   })
 
   it('offers Rescind only for pre-bid rows, never for a submitted bid', () => {
-    renderWithQuery(<RfqDetailHub rfq={rfq} onBack={() => {}} onNavigate={() => {}} />)
+    renderWithProviders(<RfqDetailHub rfq={rfq} onBack={() => {}} onNavigate={() => {}} />)
     const rescindButtons = screen.getAllByRole('button', { name: 'Rescind' })
     // Invited, Viewed, IntendToBid, Declined = 4 rescindable; BidSubmitted + Rescinded excluded.
     expect(rescindButtons).toHaveLength(4)
   })
 
   it('shows Add vendor + Extend deadline while Open, and the extension count', () => {
-    renderWithQuery(<RfqDetailHub rfq={rfq} onBack={() => {}} onNavigate={() => {}} />)
+    renderWithProviders(<RfqDetailHub rfq={rfq} onBack={() => {}} onNavigate={() => {}} />)
     expect(screen.getByRole('button', { name: /Add vendor/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Extend deadline/ })).toBeInTheDocument()
     expect(screen.getByText('extended 1×')).toBeInTheDocument()

@@ -7,6 +7,8 @@ import {
 import { useSwec } from '../../api/swec'
 import { Icon } from '../Icon'
 import { Modal, Notice, Spinner } from '../ui'
+import { CustomFieldsSection } from '../customfields/CustomFieldsSection'
+import { SegmentsSection } from '../segments/SegmentsSection'
 
 /**
  * Buyer review of one onboarding application (SPEC §4/§7/§8): profile, banking, financial band with a
@@ -209,6 +211,8 @@ export function OnboardingReview({ id, onBack }: { id: string; onBack: () => voi
           <p style={{ marginTop: 0 }}>Promoted into the Vendor Master as <b>{approved}</b>. A supplier-portal login has been provisioned and a set-password email sent.</p>
         </Modal>
       )}
+      <CustomFieldsSection recordType="Onboarding" recordId={id} />
+      <SegmentsSection recordType="Onboarding" recordId={id} />
     </>
   )
 }

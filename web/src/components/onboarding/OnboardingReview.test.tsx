@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithQuery } from '../../test/utils'
+import { renderWithProviders } from '../../test/utils'
 import { OnboardingQueue } from './OnboardingQueue'
 import { OnboardingReview } from './OnboardingReview'
 import { OnboardingResubmit } from './OnboardingResubmit'
@@ -23,6 +23,7 @@ const review = (status = 'UnderReview'): Review => ({
 describe('Onboarding queue + review (Slice D)', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
+    vi.spyOn(client, 'getPersonas').mockResolvedValue([])
     vi.spyOn(client, 'getSwec').mockResolvedValue([])
   })
 
@@ -35,7 +36,7 @@ describe('Onboarding queue + review (Slice D)', () => {
   it('queue lists applications and Review navigates', async () => {
     vi.spyOn(client, 'getOnboardingApplications').mockResolvedValue([queueItem() as never])
     const onNav = vi.fn()
-    renderWithQuery(<OnboardingQueue onNavigate={onNav} />)
+    renderWithProviders(<OnboardingQueue onNavigate={onNav} />)
     expect(await screen.findByText('VOB-2026-0001')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: /Review/ }))
     expect(onNav).toHaveBeenCalledWith('onboarding/a1')
@@ -47,7 +48,7 @@ describe('Onboarding queue + review (Slice D)', () => {
       id: 'inv1', email: 'v@x.my', type: 'Non-SWEC', status: 'Sent', invitedByName: 'F', createdUtc: '', expiresUtc: '',
       applicationId: 'a1', applicationCode: 'VOB-2026-0001', magicLink: 'http://localhost:5173/?t=new-tok#onboard',
     })
-    renderWithQuery(<OnboardingQueue onNavigate={() => {}} />)
+    renderWithProviders(<OnboardingQueue onNavigate={() => {}} />)
     await userEvent.click(await screen.findByRole('button', { name: /Resend link/ }))
     await waitFor(() => expect(resend).toHaveBeenCalledWith('inv1'))
     expect(await screen.findByText('Link resent')).toBeInTheDocument()
@@ -57,7 +58,7 @@ describe('Onboarding queue + review (Slice D)', () => {
   it('review shows the financial band + calc drawer; approve promotes and shows the vendor code', async () => {
     vi.spyOn(client, 'getOnboardingApplication').mockResolvedValue(review())
     const approve = vi.spyOn(client, 'approveOnboarding').mockResolvedValue({ vendorId: 'v1', vendorCode: 'SWK-V-2026-0001', duplicateWarning: null })
-    renderWithQuery(<OnboardingReview id="a1" onBack={() => {}} />)
+    renderWithProviders(<OnboardingReview id="a1" onBack={() => {}} />)
 
     expect(await screen.findByText('Financial pre-qualification')).toBeInTheDocument()
     expect(screen.getByText('Band C')).toBeInTheDocument()
@@ -76,7 +77,7 @@ describe('Onboarding queue + review (Slice D)', () => {
   it('batched clarification: add an item and send it as one round', async () => {
     vi.spyOn(client, 'getOnboardingApplication').mockResolvedValue(review())
     const clarify = vi.spyOn(client, 'clarifyOnboarding').mockResolvedValue(review('ClarificationRequested'))
-    renderWithQuery(<OnboardingReview id="a1" onBack={() => {}} />)
+    renderWithProviders(<OnboardingReview id="a1" onBack={() => {}} />)
 
     await userEvent.click((await screen.findAllByRole('button', { name: /Request clarification/ }))[0])
     await userEvent.type(screen.getByLabelText('Clarification topic'), 'ISO 9001 certificate')
@@ -90,7 +91,7 @@ describe('Onboarding queue + review (Slice D)', () => {
   it('a Submitted application offers Start review (A4)', async () => {
     vi.spyOn(client, 'getOnboardingApplication').mockResolvedValue(review('Submitted'))
     const start = vi.spyOn(client, 'startOnboardingReview').mockResolvedValue(review('UnderReview'))
-    renderWithQuery(<OnboardingReview id="a1" onBack={() => {}} />)
+    renderWithProviders(<OnboardingReview id="a1" onBack={() => {}} />)
     await userEvent.click((await screen.findAllByRole('button', { name: 'Start review' }))[0])
     await waitFor(() => expect(start).toHaveBeenCalledWith('a1'))
   })
@@ -109,7 +110,7 @@ describe('Vendor resubmit (Slice D, A8)', () => {
       }],
     }
     const resubmit = vi.spyOn(client, 'resubmitOnboarding').mockResolvedValue(app)
-    renderWithQuery(<OnboardingResubmit token="tok" app={app} onDone={() => {}} />)
+    renderWithProviders(<OnboardingResubmit token="tok" app={app} onDone={() => {}} />)
 
     expect(screen.getByText('ISO 9001')).toBeInTheDocument()          // only the flagged item
     await userEvent.type(screen.getByLabelText('Response to ISO 9001'), 'Attached.')
