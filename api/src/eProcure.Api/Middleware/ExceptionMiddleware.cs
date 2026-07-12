@@ -31,6 +31,11 @@ public sealed class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionM
             // never a silently dropped filter.
             await Write(ctx, StatusCodes.Status400BadRequest, "Invalid view definition", ex.Message);
         }
+        catch (Application.Dashboards.DashboardValidationException ex)
+        {
+            // D4: same loud-validation posture for portlet configs and dashboard edits.
+            await Write(ctx, StatusCodes.Status400BadRequest, "Invalid dashboard definition", ex.Message);
+        }
         catch (DomainRuleException ex)
         {
             await Write(ctx, StatusCodes.Status409Conflict, "Rule violation", ex.Message);

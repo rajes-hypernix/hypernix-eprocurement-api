@@ -86,6 +86,11 @@ public static class ActionCatalog
             [ApiActions.ManageOwnSavedViews] = [B, Ap, TE, CE, Ad, V],    // A60: own views only — the scoped sources make vendor views safe
             [ApiActions.ManageSharedViews] = [B, Ad],                     // A61: sharing is publication; carried by POST /api/views/{id}/share
 
+            // ---- A62–A64 dashboards + metric layer (D4, ruled) ----
+            [ApiActions.UseDashboards] = [B, Ap, TE, CE, Ad, V],          // A62: mine/metrics; metric reads ALSO check the metric's RequiredAction (SystemMetricService)
+            [ApiActions.ManageOwnDashboard] = [B, Ap, TE, CE, Ad, V],     // A63: personalize/arrange/reset own copy (copy-on-write)
+            [ApiActions.ManageRoleDashboards] = [Ad],                     // A64: role defaults are platform configuration (OD-3 posture), not publication
+
             // ---- A49–A57 vendor principal ----
             [ApiActions.ViewMyInvitations] = [V],                         // A49
             [ApiActions.DeclineRfqInvitation] = [V],                      // A50 (REG row 5)

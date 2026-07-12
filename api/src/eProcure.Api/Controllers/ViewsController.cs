@@ -51,9 +51,25 @@ public sealed class ViewsController(ISavedViewService views) : ControllerBase
         Ok(await views.ShareAsync(id, req.IsShared, ct));
 
     /// <summary>The heart: typed rows shaped by the view's columns, built on the scoped
-    /// sources (D3 Step 0(c)). Rows only — aggregation is D4's seam.</summary>
+    /// sources (D3 Step 0(c)).</summary>
     [HttpGet("{id:guid}/run")]
     [Action(ApiActions.UseSavedViews)]
     public async Task<ActionResult<ViewRunResult>> Run(Guid id, CancellationToken ct) =>
         Ok(await views.RunAsync(id, ct));
+
+    /// <summary>D4 aggregation seam: count|sum|avg over the SAME pipeline as the run —
+    /// same visibility, same record-type View* check, same scoped sources.</summary>
+    [HttpGet("{id:guid}/aggregate")]
+    [Action(ApiActions.UseSavedViews)]
+    public async Task<ActionResult<Application.Dashboards.ViewAggregateResult>> Aggregate(
+        Guid id, [FromQuery] string fn, [FromQuery] string? field, CancellationToken ct) =>
+        Ok(await views.AggregateAsync(id, fn, field, ct));
+
+    /// <summary>Month-bucketed series for chart portlets; null bucket-field rows are excluded
+    /// and surfaced as unbucketedCount (the honest-data rule applied to time).</summary>
+    [HttpGet("{id:guid}/series")]
+    [Action(ApiActions.UseSavedViews)]
+    public async Task<ActionResult<Application.Dashboards.ViewSeriesResult>> Series(
+        Guid id, [FromQuery] string fn, [FromQuery] string? field, [FromQuery] string bucket, [FromQuery] int months = 12, CancellationToken ct = default) =>
+        Ok(await views.SeriesAsync(id, fn, field, bucket, months, ct));
 }

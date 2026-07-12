@@ -89,11 +89,17 @@ public sealed class SavedViewService(
         await ValidateDefinitionAsync(type, req, ct);
 
         view.Name = req.Name.Trim();
-        db.RemoveRange(view.Filters);                              // Restrict FKs: children replaced explicitly
-        db.RemoveRange(view.Columns);
-        view.Filters.Clear();
-        view.Columns.Clear();
+        // Restrict FKs: children replaced explicitly. The replacements carry preset Guid PKs, so
+        // they MUST be AddRange()d — children merely discovered on a tracked parent's nav are
+        // classified Modified (an UPDATE of a nonexistent row → spurious 409 on every edit; the
+        // D4 dashboard work surfaced this latent D3 edit-path bug, now pinned by a test).
+        db.RemoveRange(view.Filters.ToList());
+        db.RemoveRange(view.Columns.ToList());
+        view.Filters = [];
+        view.Columns = [];
         ApplyDefinition(view, req);
+        db.AddRange(view.Filters);
+        db.AddRange(view.Columns);
         view.UpdatedUtc = clock.UtcNow;
         await db.SaveChangesAsync(ct);
         return ToDto(view);
@@ -136,7 +142,10 @@ public sealed class SavedViewService(
 
     // ---------- the run ----------
 
-    public async Task<ViewRunResult> RunAsync(Guid id, CancellationToken ct = default)
+    /// <summary>The shared run pipeline: visibility → View* check → registry validation →
+    /// scoped source → filters. Run shapes rows; aggregate/series (D4) fold them.</summary>
+    private async Task<(SavedView View, IReadOnlyDictionary<string, FieldRegistryEntry> Registry, List<object> Rows)>
+        PrepareAsync(Guid id, CancellationToken ct)
     {
         var view = await db.SavedViews.AsNoTracking().Include(v => v.Filters).Include(v => v.Columns)
             .FirstOrDefaultAsync(v => v.Id == id, ct)
@@ -154,6 +163,12 @@ public sealed class SavedViewService(
 
         var rows = await SourceRowsAsync(view.RecordType, ct);     // THE scoped sources — see class doc
         var filtered = ApplyFilters(rows.Cast<object>().ToList(), view.Filters, registry);
+        return (view, registry, filtered);
+    }
+
+    public async Task<ViewRunResult> RunAsync(Guid id, CancellationToken ct = default)
+    {
+        var (view, registry, filtered) = await PrepareAsync(id, ct);
         filtered = ApplySort(filtered, view.Columns, registry);
 
         var columns = view.Columns.OrderBy(c => c.Sort)
@@ -168,6 +183,80 @@ public sealed class SavedViewService(
         }).ToList();
 
         return new ViewRunResult(view.Id, view.Name, view.RecordType.ToString(), columns, shaped);
+    }
+
+    // ---- D4 aggregation seam: same pipeline, folded instead of shaped. Null semantics as
+    // ruled: count→0 honest; sum over zero rows→0; avg over zero rows→null; sum/avg where
+    // every input value is null (backfill-null)→null with ExcludedNullCount surfaced.
+    // In-memory over the scoped DTO lists (the ruled trade-off); the escape hatch, if real
+    // data ever proves strain, is a per-type IScopedQuerySource<TDto> exposing an IQueryable
+    // with the SAME scoping predicate — the switch in SourceRowsAsync is the one seam.
+
+    public async Task<Application.Dashboards.ViewAggregateResult> AggregateAsync(Guid id, string fn, string? fieldKey, CancellationToken ct = default)
+    {
+        var (view, registry, rows) = await PrepareAsync(id, ct);
+        fn = fn.ToLowerInvariant();
+        if (fn == "count")
+            return new(view.Id, fn, null, rows.Count, 0);
+
+        var entry = RequireNumericField(fn, fieldKey, registry);
+        var values = rows.Select(r => Prop(r, entry.FieldKey)).ToList();
+        var excluded = values.Count(v => v is null);
+        var nums = values.Where(v => v is not null).Select(v => ToDecimal(v!)).ToList();
+
+        decimal? value = fn switch
+        {
+            "sum" => rows.Count > 0 && nums.Count == 0 ? null : nums.Sum(),   // all-null inputs → honest null; zero rows → 0
+            "avg" => nums.Count == 0 ? null : Math.Round(nums.Average(), 2),
+            _ => throw new ViewValidationException($"Unknown aggregate fn '{fn}' — count|sum|avg."),
+        };
+        return new(view.Id, fn, entry.FieldKey, value, excluded);
+    }
+
+    public async Task<Application.Dashboards.ViewSeriesResult> SeriesAsync(Guid id, string fn, string? fieldKey, string bucketField, int months, CancellationToken ct = default)
+    {
+        var (view, registry, rows) = await PrepareAsync(id, ct);
+        fn = fn.ToLowerInvariant();
+        if (!registry.TryGetValue(bucketField, out var bucket) ||
+            bucket.DataType is not (FieldDataType.Date or FieldDataType.Instant))
+            throw new ViewValidationException($"Series bucket field must be a Date/Instant registry key; '{bucketField}' is not.");
+        FieldRegistryEntry? entry = fn == "count" ? null : RequireNumericField(fn, fieldKey, registry);
+
+        months = Math.Clamp(months, 3, 36);
+        var now = clock.UtcNow;
+        var first = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(-(months - 1));
+        var keys = Enumerable.Range(0, months).Select(i => first.AddMonths(i).ToString("yyyy-MM")).ToList();
+
+        string? BucketOf(object row) => Prop(row, bucketField) switch
+        {
+            DateOnly d => $"{d.Year:d4}-{d.Month:d2}",
+            DateTime t => t.ToString("yyyy-MM"),
+            _ => null,                                             // null bucket field → excluded, surfaced
+        };
+
+        var unbucketed = rows.Count(r => BucketOf(r) is null);
+        var groups = rows.Select(r => (Key: BucketOf(r), Row: r)).Where(x => x.Key is not null)
+            .GroupBy(x => x.Key!).ToDictionary(g => g.Key, g => g.Select(x => x.Row).ToList());
+
+        decimal ValueOf(List<object>? bucketRows)
+        {
+            if (bucketRows is null || bucketRows.Count == 0) return 0m;
+            if (fn == "count") return bucketRows.Count;
+            var nums = bucketRows.Select(r => Prop(r, entry!.FieldKey)).Where(v => v is not null).Select(v => ToDecimal(v!)).ToList();
+            return nums.Count == 0 ? 0m : fn == "sum" ? nums.Sum() : Math.Round(nums.Average(), 2);
+        }
+
+        var buckets = keys.Select(k => new Application.Dashboards.SeriesBucketDto(k, ValueOf(groups.GetValueOrDefault(k)))).ToList();
+        return new(view.Id, fn, entry?.FieldKey, bucketField, buckets, unbucketed);
+    }
+
+    private static FieldRegistryEntry RequireNumericField(string fn, string? fieldKey, IReadOnlyDictionary<string, FieldRegistryEntry> registry)
+    {
+        if (fieldKey is null || !registry.TryGetValue(fieldKey, out var entry))
+            throw new ViewValidationException($"fn={fn} needs a registry fieldKey.");
+        if (entry.DataType is not (FieldDataType.Money or FieldDataType.Number))
+            throw new ViewValidationException($"fn={fn} needs a Money/Number field; '{fieldKey}' is {entry.DataType}.");
+        return entry;
     }
 
     /// <summary>The (c) table: record type → the existing scoped list the executor builds on.</summary>

@@ -72,6 +72,11 @@ public static class ApiActions
     public const string ManageOwnSavedViews = "ManageOwnSavedViews";
     public const string ManageSharedViews = "ManageSharedViews";
 
+    // A62–A64 — dashboards + metric layer (D4, ruled)
+    public const string UseDashboards = "UseDashboards";
+    public const string ManageOwnDashboard = "ManageOwnDashboard";
+    public const string ManageRoleDashboards = "ManageRoleDashboards";
+
     // A49–A57 — vendor principal
     public const string ViewMyInvitations = "ViewMyInvitations";
     public const string DeclineRfqInvitation = "DeclineRfqInvitation";

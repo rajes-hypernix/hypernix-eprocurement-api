@@ -241,6 +241,21 @@ public sealed class SavedViewsTests(SavedViewsFixture fx) : IClassFixture<SavedV
     }
 
     [Fact]
+    public async Task Owner_edit_replaces_filters_and_columns_successfully()
+    {
+        // Pins the D3 edit path (surfaced by D4): replacement children with preset PKs must be
+        // Added, not misclassified Modified — the latter 409s on every legitimate edit.
+        var buyer = fx.ClientAs("u_faridah");
+        var view = await Create(buyer, Rfq("d4-editable", [new("Status", "Eq", "Open", null)]));
+        var resp = await buyer.PutAsJsonAsync($"/api/views/{view.Id}", Rfq("d4-edited", [new("Status", "Eq", "Closed", null)]));
+        resp.StatusCode.Should().Be(HttpStatusCode.OK, await resp.Content.ReadAsStringAsync());
+        var edited = (await resp.Content.ReadFromJsonAsync<SavedViewDto>())!;
+        edited.Name.Should().Be("d4-edited");
+        edited.Filters.Single().Value.Should().Be("Closed");
+        Codes(await Run(buyer, edited.Id)).Should().BeEquivalentTo(["RFQ-2026-7303"]);
+    }
+
+    [Fact]
     public async Task Only_the_owner_edits_a_shared_view()
     {
         var buyer = fx.ClientAs("u_faridah");
