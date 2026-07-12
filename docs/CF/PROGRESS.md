@@ -21,3 +21,4 @@
 2026-07-13 06:45 LONGRUN P1 baselines — dotnet 471 · vitest 233 · e2e 65 (after SWEEP-FIX-T1 e6cf324: entry-form copy de-dupe + UI error surfacing; found by the baseline run).
 2026-07-13 06:45 LONGRUN P1 TEST-SWEEP-T1/T2 edcbc88 — 8 new tests close every inventory gap (dev-404, one-award, 8-types, line-grain segments, FK floor, CHECK 23514, xmin×9, inactive-value options).
 2026-07-13 06:45 LONGRUN P1 COMPLETE — 69/69 inventory boxes evidence-filled; B2/B3 blocked-with-reason; FULL-TEST-REPORT.md written; suites 478/234/65; tagging v1.1-full-test-sweep.
+2026-07-13 06:48 LONGRUN P2 COMPLETE — 12/12 dimensions probed: verdict CLEAN-WITH-NOTES (2 notes: dev-era migration drops → recommend pre-prod squash; e2e fixed sleeps). 0 fixes needed beyond the already-committed warning. Tagging v1.2-backend-clean.
