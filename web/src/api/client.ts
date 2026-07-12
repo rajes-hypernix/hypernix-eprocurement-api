@@ -149,7 +149,11 @@ export type UpdateDashboardRequest = { name?: string | null; portlets: PortletUp
 export type MetricValueDto = { id: string; label: string; unit: string; value?: number | null; notYetAvailable: boolean; excludedNullCount: number }
 export type SeriesBucketDto = { bucket: string; value: number }
 export type MetricSeriesDto = { id: string; label: string; unit: string; buckets: SeriesBucketDto[]; unbucketedCount: number }
-export type ViewAggregateResult = { viewId: string; fn: string; fieldKey?: string | null; value?: number | null; excludedNullCount: number }
+export type ViewAggregateGroup = { key: string; label: string; value?: number | null }
+export type ViewAggregateResult = {
+  viewId: string; fn: string; fieldKey?: string | null; value?: number | null; excludedNullCount: number
+  groupedBy?: string | null; groups?: ViewAggregateGroup[] | null
+}
 
 export const getMyDashboard = () => http<UserDashboardDto>('/dashboards/mine')
 export const personalizeDashboard = () => http<UserDashboardDto>('/dashboards/personalize', { method: 'POST' })
@@ -157,8 +161,8 @@ export const updateMyDashboard = (req: UpdateDashboardRequest) => http<UserDashb
 export const resetMyDashboard = () => http<undefined>('/dashboards/mine', { method: 'DELETE' })
 export const getMetricValue = (id: string) => http<MetricValueDto>(`/metrics/${id}/value`)
 export const getMetricSeries = (id: string, months = 12) => http<MetricSeriesDto>(`/metrics/${id}/series?months=${months}`)
-export const aggregateView = (id: string, fn: string, field?: string | null) =>
-  http<ViewAggregateResult>(`/views/${id}/aggregate?fn=${fn}${field ? `&field=${encodeURIComponent(field)}` : ''}`)
+export const aggregateView = (id: string, fn: string, field?: string | null, groupBy?: string | null) =>
+  http<ViewAggregateResult>(`/views/${id}/aggregate?fn=${fn}${field ? `&field=${encodeURIComponent(field)}` : ''}${groupBy ? `&groupBy=${encodeURIComponent(groupBy)}` : ''}`)
 
 // --- Custom fields (D5, AUTHORIZATION-MATRIX A65-A67) ---
 export type CustomFieldDefDto = {
@@ -186,6 +190,34 @@ export const getCustomValues = (recordType: string, recordId: string) =>
   http<CustomValueDto[]>(`/custom-values/${recordType}/${recordId}`)
 export const saveCustomValues = (recordType: string, recordId: string, values: Record<string, string | null>) =>
   http<CustomValueDto[]>(`/custom-values/${recordType}/${recordId}`, { method: 'PUT', body: JSON.stringify({ values }) })
+
+// --- Segments (D6, AUTHORIZATION-MATRIX A68 + the folded A66/A67) ---
+export type SegmentValueDto = { id: string; code: string; label: string; parentValueId?: string | null; active: boolean; sort: number }
+export type SegmentApplicationDto = { recordType: string; lineLevel: boolean }
+export type SegmentDefDto = {
+  id: string; code: string; name: string; hasHierarchy: boolean; required: boolean; active: boolean; isSystem: boolean
+  values: SegmentValueDto[]; applications: SegmentApplicationDto[]
+}
+export type SaveSegmentDefRequest = { name: string; hasHierarchy: boolean; required: boolean }
+export type SegmentAssignmentDto = {
+  segmentCode: string; segmentName: string; required: boolean
+  options: SegmentValueDto[]; valueCode?: string | null; valueLabel?: string | null
+}
+export const getSegmentDefs = () => http<SegmentDefDto[]>('/segments')
+export const createSegmentDef = (req: SaveSegmentDefRequest) =>
+  http<SegmentDefDto>('/segments', { method: 'POST', body: JSON.stringify(req) })
+export const updateSegmentDef = (id: string, req: SaveSegmentDefRequest) =>
+  http<SegmentDefDto>(`/segments/${id}`, { method: 'PUT', body: JSON.stringify(req) })
+export const addSegmentValue = (id: string, req: { label: string; parentValueId?: string | null; sort: number }) =>
+  http<SegmentDefDto>(`/segments/${id}/values`, { method: 'POST', body: JSON.stringify(req) })
+export const applySegment = (id: string, req: { recordType: string; lineLevel: boolean }) =>
+  http<SegmentDefDto>(`/segments/${id}/applications`, { method: 'POST', body: JSON.stringify(req) })
+export const unapplySegment = (id: string, recordType: string) =>
+  http<SegmentDefDto>(`/segments/${id}/applications/${recordType}`, { method: 'DELETE' })
+export const getSegmentAssignments = (recordType: string, recordId: string, lineId?: string | null) =>
+  http<SegmentAssignmentDto[]>(`/segment-assignments/${recordType}/${recordId}${lineId ? `?lineId=${lineId}` : ''}`)
+export const saveSegmentAssignments = (recordType: string, recordId: string, assignments: Record<string, string | null>, lineId?: string | null) =>
+  http<SegmentAssignmentDto[]>(`/segment-assignments/${recordType}/${recordId}`, { method: 'PUT', body: JSON.stringify({ assignments, lineId: lineId ?? null }) })
 
 // --- Vendor portal: invitations + bidding ---
 export const getMyInvitations = () => http<InvitationDto[]>('/my/rfqs')

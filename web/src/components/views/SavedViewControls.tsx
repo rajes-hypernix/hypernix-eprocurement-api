@@ -209,9 +209,12 @@ export function ViewBuilder({ recordType, existing, defaultColumns, onClose, onS
                 options: {
                   kind: 'static',
                   options: [
-                    { label: 'Fields', options: fields.filter((f) => f.kind !== 'Custom').map((f) => ({ code: f.fieldKey, label: f.label })) },
+                    { label: 'Fields', options: fields.filter((f) => f.kind !== 'Custom' && f.kind !== 'Segment').map((f) => ({ code: f.fieldKey, label: f.label })) },
                     ...(fields.some((f) => f.kind === 'Custom')
                       ? [{ label: 'Custom fields', options: fields.filter((f) => f.kind === 'Custom').map((f) => ({ code: f.fieldKey, label: f.label })) }]
+                      : []),
+                    ...(fields.some((f) => f.kind === 'Segment')
+                      ? [{ label: 'Segments', options: fields.filter((f) => f.kind === 'Segment').map((f) => ({ code: f.fieldKey, label: f.label })) }]
                       : []),
                   ],
                 },

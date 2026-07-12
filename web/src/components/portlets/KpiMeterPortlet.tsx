@@ -16,8 +16,8 @@ export function KpiMeterPortlet({ portlet, onNavigate }: { portlet: PortletDto; 
     enabled: metricBacked,
   })
   const { data: agg } = useQuery({
-    queryKey: ['view-agg', portlet.savedViewId, cfg.fn, cfg.fieldKey],
-    queryFn: () => aggregateView(portlet.savedViewId!, cfg.fn ?? 'count', cfg.fieldKey),
+    queryKey: ['view-agg', portlet.savedViewId, cfg.fn, cfg.fieldKey, cfg.groupBy],
+    queryFn: () => aggregateView(portlet.savedViewId!, cfg.fn ?? 'count', cfg.fieldKey, cfg.groupBy),
     enabled: !metricBacked && !!portlet.savedViewId,
   })
 
@@ -49,6 +49,17 @@ export function KpiMeterPortlet({ portlet, onNavigate }: { portlet: PortletDto; 
               <span className={`badge ${value >= cfg.target ? 'b-green' : 'b-amber'}`}>
                 {value >= cfg.target ? 'met' : `${fmtMetric(cfg.target - value, unit)} to go`}
               </span>
+            </div>
+          )}
+          {/* D6 sliced KPI: one row per segment value, Unassigned included — honest-null on dimensions. */}
+          {agg?.groups && agg.groups.length > 0 && (
+            <div className="sub" data-testid="kpi-slices" style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {agg.groups.map((g) => (
+                <div key={g.key} style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+                  <span className={g.key === '__unassigned' ? 'hint' : undefined}>{g.label}</span>
+                  <span>{g.value == null ? '—' : fmtMetric(g.value, unit)}</span>
+                </div>
+              ))}
             </div>
           )}
         </>

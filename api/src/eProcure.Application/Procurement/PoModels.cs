@@ -1,7 +1,7 @@
 namespace eProcure.Application.Procurement;
 
 public sealed record PoLineDto(
-    string ItemCode, string Description, decimal Qty, string Uom, decimal UnitPrice,
+    Guid Id, string ItemCode, string Description, decimal Qty, string Uom, decimal UnitPrice,
     decimal ReceivedQty, decimal InvoicedQty, decimal LineTotal);
 
 public sealed record PoListItem(

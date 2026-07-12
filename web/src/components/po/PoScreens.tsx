@@ -1,8 +1,10 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getPos, getPo, issuePo, acknowledgePo, getAsns, getInvoices, getPoAudit, type PoListItem } from '../../api/client'
 import { Icon } from '../Icon'
 import { CustomFieldsSection } from '../customfields/CustomFieldsSection'
+import { SegmentsSection } from '../segments/SegmentsSection'
+import { Button } from '../../ui/Button'
 import { ConfirmModal, EmptyState, Notice, Spinner } from '../ui'
 import { fmt, fmtDay } from '../../lib/format'
 import { useIdentity } from '../../identity'
@@ -105,6 +107,7 @@ function PoDetailView({ id, onBack, onNavigate }: { id: string; onBack: () => vo
   const { data: audit = [] } = useQuery({ queryKey: ['po-audit', id], queryFn: () => getPoAudit(id) })
   const [notice, setNotice] = useState('')
   const [showIssue, setShowIssue] = useState(false)
+  const [segmentsLine, setSegmentsLine] = useState<string | null>(null)
   const inval = () => { void qc.invalidateQueries({ queryKey: ['po', id] }); void qc.invalidateQueries({ queryKey: ['pos'] }) }
   const issue = useMutation({ mutationFn: () => issuePo(id), onSuccess: () => { inval(); setShowIssue(false) }, onError: (e: Error) => { setShowIssue(false); setNotice(e.message) } })
   const ack = useMutation({ mutationFn: () => acknowledgePo(id), onSuccess: inval, onError: (e: Error) => setNotice(e.message) })
@@ -162,14 +165,31 @@ function PoDetailView({ id, onBack, onNavigate }: { id: string; onBack: () => vo
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="chead"><h3>PO Lines</h3><div className="spacer" /><span className="hint">Total RM {fmt(po.total)}</span></div>
         <table>
-          <thead><tr><th>Code</th><th>Item</th><th className="amt">Qty</th><th>UoM</th><th className="amt">Unit price</th><th className="amt">Line total</th><th className="amt">Recv</th><th className="amt">Inv</th></tr></thead>
+          <thead><tr><th>Code</th><th>Item</th><th className="amt">Qty</th><th>UoM</th><th className="amt">Unit price</th><th className="amt">Line total</th><th className="amt">Recv</th><th className="amt">Inv</th><th /></tr></thead>
           <tbody>
             {lines.map((l, i) => (
-              <tr key={i}>
-                <td>{l.itemCode}</td><td>{l.description}</td><td className="amt">{l.qty}</td><td>{l.uom}</td>
-                <td className="amt">RM {fmt(l.unitPrice)}</td><td className="amt">RM {fmt(l.lineTotal)}</td>
-                <td className="amt">{l.receivedQty}</td><td className="amt">{l.invoicedQty}</td>
-              </tr>
+              <Fragment key={l.id ?? i}>
+                <tr>
+                  <td>{l.itemCode}</td><td>{l.description}</td><td className="amt">{l.qty}</td><td>{l.uom}</td>
+                  <td className="amt">RM {fmt(l.unitPrice)}</td><td className="amt">RM {fmt(l.lineTotal)}</td>
+                  <td className="amt">{l.receivedQty}</td><td className="amt">{l.invoicedQty}</td>
+                  <td className="amt">
+                    {l.id && (
+                      <Button variant="ghost" size="sm" ariaLabel={`Line segments for ${l.itemCode}`}
+                        onClick={() => setSegmentsLine((cur) => (cur === l.id ? null : l.id!))}>
+                        Segments
+                      </Button>
+                    )}
+                  </td>
+                </tr>
+                {segmentsLine === l.id && l.id && (
+                  <tr>
+                    <td colSpan={9} style={{ padding: 0 }}>
+                      <SegmentsSection recordType="PurchaseOrder" recordId={id} lineId={l.id} title={`Line segments — ${l.itemCode}`} />
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
             ))}
           </tbody>
         </table>
@@ -250,6 +270,7 @@ function PoDetailView({ id, onBack, onNavigate }: { id: string; onBack: () => vo
       )}
 
       <CustomFieldsSection recordType="PurchaseOrder" recordId={id} />
+      <SegmentsSection recordType="PurchaseOrder" recordId={id} />
       {showIssue && (
         <ConfirmModal
           icon="send" title={`Issue ${po.code}?`}

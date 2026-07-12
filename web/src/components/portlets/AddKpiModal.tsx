@@ -27,10 +27,12 @@ export function AddKpiModal({ onClose, onAdd }: { onClose: () => void; onAdd: (p
   const [fieldKey, setFieldKey] = useState('')
   const [target, setTarget] = useState('')
   const [title, setTitle] = useState('')
+  const [groupBy, setGroupBy] = useState('')
 
   const { data: views = [] } = useQuery({ queryKey: ['views', recordType], queryFn: () => getViews(recordType) })
   const { data: fields = [] } = useQuery({ queryKey: ['view-fields', recordType], queryFn: () => getViewFields(recordType), staleTime: Infinity })
   const numericKeys = fields.filter((f) => f.dataType === 'Money' || f.dataType === 'Number').map((f) => f.fieldKey)
+  const segments = fields.filter((f) => f.kind === 'Segment')
   const view = views.find((v) => v.id === viewId)
   const ready = !!view && !!title.trim() && (fn === 'count' || !!fieldKey)
 
@@ -45,6 +47,7 @@ export function AddKpiModal({ onClose, onAdd }: { onClose: () => void; onAdd: (p
       configJson: JSON.stringify({
         fn, fieldKey: fn === 'count' ? null : fieldKey,
         target: target ? Number(target) : null, link: null, metricId: null,
+        groupBy: groupBy || null,
       }),
     })
   }
@@ -69,6 +72,11 @@ export function AddKpiModal({ onClose, onAdd }: { onClose: () => void; onAdd: (p
       <SelectField spec={spec('kpi-fn', 'Function', 'select', FNS)} value={fn} onChange={(v) => setFn(String(v ?? 'count'))} />
       {fn !== 'count' && (
         <SelectField spec={spec('kpi-field', 'Field', 'select', numericKeys)} value={fieldKey} onChange={(v) => setFieldKey(String(v ?? ''))} />
+      )}
+      {segments.length > 0 && (
+        <SelectField
+          spec={{ key: 'kpi-groupby', label: 'Slice by segment (optional)', dataType: 'select', options: { kind: 'static', options: segments.map((s) => ({ code: s.fieldKey, label: s.label })) } }}
+          value={groupBy} onChange={(v) => setGroupBy(String(v ?? ''))} />
       )}
       <NumberField spec={spec('kpi-target', 'Target (optional)', 'number')} value={target} onChange={(v) => setTarget(String(v ?? ''))} />
     </Modal>

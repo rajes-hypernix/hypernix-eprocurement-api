@@ -15,6 +15,7 @@ import { EntityPage } from '../../ui/archetypes/EntityPage'
 import { Stat, Kv } from '../../ui/display'
 import { Button } from '../../ui/Button'
 import { CustomFieldsSection } from '../customfields/CustomFieldsSection'
+import { SegmentsSection } from '../segments/SegmentsSection'
 
 const TABS: [string, string][] = [
   ['overview', 'Overview'],
@@ -65,7 +66,12 @@ export function VendorDetail({ id, onBack }: { id: string; onBack: () => void })
   const cats = v.categories ?? []
 
   const content: Record<string, React.ReactNode> = {
-    custom: <CustomFieldsSection recordType="Vendor" recordId={v.id ?? ''} />,
+    custom: (
+      <>
+        <CustomFieldsSection recordType="Vendor" recordId={v.id ?? ''} />
+        <SegmentsSection recordType="Vendor" recordId={v.id ?? ''} />
+      </>
+    ),
     overview: (
         <>
           <div className="grid g4" style={{ marginBottom: 16 }}>

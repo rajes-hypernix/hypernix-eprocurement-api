@@ -8,6 +8,7 @@ import { VendorsPage } from './components/vendors/VendorsPage'
 import { AdminUsers } from './components/admin/AdminUsers'
 import { AdminCustomLists } from './components/admin/AdminCustomLists'
 import { AdminCustomFields } from './components/admin/AdminCustomFields'
+import { AdminSegments } from './components/admin/AdminSegments'
 import { Requisitions } from './components/sourcing/Requisitions'
 import { Consolidate } from './components/sourcing/Consolidate'
 import { RfqList } from './components/sourcing/RfqList'
@@ -125,6 +126,7 @@ export default function App() {
               {base === 'admin' && <AdminUsers />}
               {base === 'lists' && <AdminCustomLists />}
               {base === 'customfields' && <AdminCustomFields />}
+              {base === 'segments' && <AdminSegments />}
               {base === 'reqs' && <Requisitions onOpenRfq={(id) => go(`rfqs/${id}`)} onConsolidate={() => go('consolidate')} />}
               {base === 'consolidate' && <Consolidate onOpenRfq={(id) => go(`rfqs/${id}`)} onBack={() => go('reqs')} />}
               {base === 'rfqs' &&

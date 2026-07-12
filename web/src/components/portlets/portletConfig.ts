@@ -1,7 +1,7 @@
 // ConfigJson shapes per portlet type — mirrors Application/Dashboards/PortletConfigs.cs
 // (the framework's ONE sanctioned JSON; the server validates on save, we parse defensively).
 
-export interface KpiMeterConfig { metricId?: string | null; fn?: string | null; fieldKey?: string | null; target?: number | null; link?: string | null }
+export interface KpiMeterConfig { metricId?: string | null; fn?: string | null; fieldKey?: string | null; target?: number | null; link?: string | null; groupBy?: string | null }
 export interface ScorecardItem { metricId: string; link?: string | null }
 export interface KpiScorecardConfig { items: ScorecardItem[] }
 export interface ReminderItem { savedViewId: string; label: string; route: string }

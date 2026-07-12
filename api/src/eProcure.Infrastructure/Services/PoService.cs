@@ -86,7 +86,7 @@ public sealed class PoService(
         return new PoDetail(p.Id, p.Code, p.VendorId, vendors.GetValueOrDefault(p.VendorId, "Vendor"),
             p.RfqId is { } r ? rfqCodes.GetValueOrDefault(r) : null, p.AwardCode,
             p.Status.ToString(), p.Currency, p.Incoterm, p.NsId, p.Acknowledged, p.Total,
-            p.Lines.Select(l => new PoLineDto(l.ItemCode, l.Description, l.Qty, l.Uom, l.UnitPrice,
+            p.Lines.Select(l => new PoLineDto(l.Id, l.ItemCode, l.Description, l.Qty, l.Uom, l.UnitPrice,
                 l.ReceivedQty, l.InvoicedQty, l.Qty * l.UnitPrice)).ToList());
     }
 }

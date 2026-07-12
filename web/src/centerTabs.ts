@@ -62,6 +62,7 @@ export const BUYER_CENTER_TABS: CenterTab[] = [
       { key: 'admin', icon: 'vendor', label: 'User Management', action: 'ManageUsers' },
       { key: 'lists', icon: 'clip', label: 'Custom Lists', action: 'ManageCustomLists' },
       { key: 'customfields', icon: 'edit', label: 'Custom Fields', action: 'ManageCustomFields' },
+      { key: 'segments', icon: 'chart', label: 'Segments', action: 'ManageSegments' },
     ],
   },
 ]

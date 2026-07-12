@@ -14,7 +14,8 @@ public sealed class DashboardValidationException(string message) : Exception(mes
 /// </summary>
 public static class PortletConfigs
 {
-    public sealed record KpiMeterConfig(string? MetricId, string? Fn, string? FieldKey, decimal? Target, string? Link);
+    // GroupBy (D6): a Segment fieldKey — the KPI renders one slice per value + Unassigned.
+    public sealed record KpiMeterConfig(string? MetricId, string? Fn, string? FieldKey, decimal? Target, string? Link, string? GroupBy = null);
     public sealed record ScorecardItem(string MetricId, string? Link);
     public sealed record KpiScorecardConfig(List<ScorecardItem> Items);
     public sealed record ReminderItem(Guid SavedViewId, string Label, string Route);
@@ -45,6 +46,8 @@ public static class PortletConfigs
                         throw new DashboardValidationException("A view-backed KpiMeter needs fn (count|sum|avg).");
                     if (c.Fn is "sum" or "avg" && c.FieldKey is null)
                         throw new DashboardValidationException($"fn={c.Fn} needs a Money/Number fieldKey.");
+                    if (c.GroupBy is not null && !viewBacked)
+                        throw new DashboardValidationException("groupBy slices a view-backed KPI — metric-backed KPIs have no dimension.");
                     break;
                 }
                 case PortletType.KpiScorecard:
