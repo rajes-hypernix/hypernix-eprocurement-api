@@ -129,13 +129,13 @@ Produce a written Step 0 file plan for EACH, saved to file, for operator review 
 **Do not write implementation code for these.**
 
 ### CF5 — Entry-form LAYOUT EDITOR (Step 0 only)
-- [ ] `docs/CF/STEP0-CF5-layout-editor.md` written: subtabs-as-objects, field groups, drag reorder, column break; model additions + every migration named; task breakdown · Done:___
+- [x] `docs/CF/STEP0-CF5-layout-editor.md` written: subtabs-as-objects, field groups, drag reorder, column break; model additions + every migration named; task breakdown · Done:written — migration `EntryFormLayout`; T1–T5 breakdown; 3 operator decisions flagged; NO code
 
 ### CF6 — Custom LINE fields + sublists (Step 0 only)
-- [ ] `docs/CF/STEP0-CF6-line-fields.md` written: LineId model decision (justified), line placement, sublists-as-objects, sublist-in-subtab, line-field show/hide/reorder; migrations named; coupled — not split · Done:___
+- [x] `docs/CF/STEP0-CF6-line-fields.md` written: LineId model decision (justified), line placement, sublists-as-objects, sublist-in-subtab, line-field show/hide/reorder; migrations named; coupled — not split · Done:written — LineId chosen as nullable discriminator on the ONE value table (3 options weighed); migrations `CustomFieldLineScope` + `EntryFormSublists`; depends-on-CF5 stated; T1–T4; NO code
 
 ### CF7 — Saved View → Saved Search (Step 0 only)
-- [ ] `docs/CF/STEP0-CF7-saved-search.md` written: richer criteria (operators + AND/OR), segments-as-searchable-class, grouping parity; User/Item DEFERRED, customizations-class DROPPED (both noted) · Done:___
+- [x] `docs/CF/STEP0-CF7-saved-search.md` written: richer criteria (operators + AND/OR), segments-as-searchable-class, grouping parity; User/Item DEFERRED, customizations-class DROPPED (both noted) · Done:written — 8 operators with null semantics up front; grouped-OR (one level) via `ViewFilterGroups`; segment search class; run-time grouping; deferrals/drops recorded; T1–T4; NO code
 
 ---
 
