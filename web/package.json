@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint --type-aware",
-    "gen:api": "openapi-typescript http://localhost:5260/swagger/v1/swagger.json -o src/api/schema.ts",
+    "gen:api": "npx --yes openapi-typescript@7.13.0 http://localhost:5260/swagger/v1/swagger.json -o src/api/schema.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "preview": "vite preview"
@@ -27,9 +27,8 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.2",
     "jsdom": "^29.1.1",
-    "openapi-typescript": "^7.13.0",
     "oxlint": "^1.69.0",
-    "oxlint-tsgolint": "^0.23.0",
+    "oxlint-tsgolint": "^0.24.0",
     "typescript": "~6.0.2",
     "vite": "^8.1.0",
     "vitest": "^4.1.9"

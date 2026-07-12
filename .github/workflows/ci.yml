@@ -34,7 +34,7 @@ jobs:
           --health-retries 10
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: actions/setup-dotnet@v4
         with:
@@ -81,7 +81,7 @@ jobs:
         working-directory: web
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: actions/setup-node@v4
         with:
@@ -89,11 +89,11 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
 
-      # --legacy-peer-deps: openapi-typescript (dev-only codegen for `gen:api`, unused in
-      # build/lint/test) still declares peer typescript@^5.x while the app is on typescript 6.
-      # This only relaxes peer resolution; it disables no check and installs from the lockfile.
+      # A2F-T7: the flag is GONE — openapi-typescript left package.json (gen:api runs it
+      # via npx; no released version supports TS 6) and oxlint-tsgolint moved into oxlint's
+      # peer range, so a plain npm ci resolves cleanly.
       - name: Install
-        run: npm ci --legacy-peer-deps
+        run: npm ci
 
       - name: Typecheck
         run: npx tsc -b

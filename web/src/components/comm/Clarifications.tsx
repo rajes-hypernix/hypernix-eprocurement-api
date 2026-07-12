@@ -5,6 +5,7 @@ import {
   getVendors, getRfqs, getMyInvitations,
 } from '../../api/client'
 import { Icon } from '../Icon'
+import { MessageInput } from './MessageInput'
 import { useIdentity } from '../../identity'
 
 const initials = (name: string) =>
@@ -102,11 +103,7 @@ export function Clarifications() {
                 {!isVendor && isRfq && (
                   <label className="cbcast"><input type="checkbox" checked={broadcast} onChange={(e) => setBroadcast(e.target.checked)} /> <Icon name="users" size={13} /> Share answer with all bidders (anonymised)</label>
                 )}
-                <div className="cinrow">
-                  <input type="text" value={text} placeholder="Type a message…" onChange={(e) => setText(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter' && text.trim()) { e.preventDefault(); send.mutate() } }} />
-                  <button type="button" className="cibtn" disabled={!text.trim() || send.isPending} onClick={() => send.mutate()}><Icon name="send" size={15} /></button>
-                </div>
+                <MessageInput value={text} onChange={setText} onSend={() => text.trim() && send.mutate()} busy={send.isPending} />
               </div>
             </div>
           )}
