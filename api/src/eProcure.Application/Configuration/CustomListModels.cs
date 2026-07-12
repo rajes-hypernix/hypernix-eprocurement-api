@@ -21,5 +21,9 @@ public interface ICustomListService
     Task<CustomListDto> CreateListAsync(CreateCustomListRequest req, CancellationToken ct = default);
     Task<CustomListValueDto> AddValueAsync(string listCode, AddCustomListValueRequest req, CancellationToken ct = default);
     Task<CustomListValueDto> UpdateValueAsync(Guid valueId, UpdateCustomListValueRequest req, CancellationToken ct = default);
-    Task DeleteValueAsync(Guid valueId, CancellationToken ct = default);
+    /// <summary>A2F-T3 (GAP-5): delete carries the in-use guard — an UNREFERENCED value is
+    /// hard-deleted (returns null); a REFERENCED one is DEACTIVATED and returned inactive
+    /// (the custom-field-def rule: a stored code is never silently dropped). Reactivation
+    /// already exists via UpdateValueAsync(active: true).</summary>
+    Task<CustomListValueDto?> DeleteValueAsync(Guid valueId, CancellationToken ct = default);
 }

@@ -39,7 +39,8 @@ public sealed class CustomListsController(ICustomListService lists) : Controller
     [Action(ApiActions.ManageCustomLists)]
     public async Task<IActionResult> DeleteValue(Guid valueId, CancellationToken ct)
     {
-        await lists.DeleteValueAsync(valueId, ct);
+        // A2F-T3: 200 + the inactive value when the in-use guard deactivated it; 204 when gone.
+        if (await lists.DeleteValueAsync(valueId, ct) is { } deactivated) return Ok(deactivated);
         return NoContent();
     }
 }

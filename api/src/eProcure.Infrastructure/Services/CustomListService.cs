@@ -68,12 +68,60 @@ public sealed class CustomListService(AppDbContext db, IClock clock) : ICustomLi
         return ToDto(value);
     }
 
-    public async Task DeleteValueAsync(Guid valueId, CancellationToken ct = default)
+    public async Task<CustomListValueDto?> DeleteValueAsync(Guid valueId, CancellationToken ct = default)
     {
         var value = await db.CustomListValues.FirstOrDefaultAsync(v => v.Id == valueId, ct)
             ?? throw new NotFoundException($"List value {valueId} not found.");
+        var list = await db.CustomLists.AsNoTracking().FirstAsync(l => l.Id == value.CustomListId, ct);
+
+        // A2F-T3 (GAP-5): the "never silently drop a referenced value" discipline (the D5
+        // custom-field-def rule, the D6 unapply rule). A referenced value DEACTIVATES —
+        // gone from new-entry options (lookups filter Active), still resolving for display
+        // of the records that hold its code. Only an unreferenced value hard-deletes.
+        if (await IsReferencedAsync(list.Code, value.Code, ct))
+        {
+            value.Active = false;
+            await db.SaveChangesAsync(ct);
+            return ToDto(value);
+        }
+
         db.CustomListValues.Remove(value);
         await db.SaveChangesAsync(ct);
+        return null;
+    }
+
+    /// <summary>Every store a list value's CODE can live in — the universal custom-field
+    /// probe plus, per SYSTEM list, the native code-holding columns it sources. A probe
+    /// that over-matches merely deactivates (conservative + reversible via UpdateValueAsync);
+    /// a miss would strand a dangling code, so new native list-sourced columns must be
+    /// added here. Onboarding questionnaire ANSWERS are deliberately not probed: they store
+    /// free values per question order, not typed list references (matching on raw string
+    /// equality would over-claim every coincidental text answer).</summary>
+    private async Task<bool> IsReferencedAsync(string listCode, string valueCode, CancellationToken ct)
+    {
+        // Custom-field values: defs bound to this list, storing this code (D5's ValueListCode).
+        var defIds = await db.CustomFieldDefs.AsNoTracking()
+            .Where(d => d.CustomListId != null && db.CustomLists.Any(l => l.Id == d.CustomListId && l.Code == listCode))
+            .Select(d => d.Id).ToListAsync(ct);
+        if (defIds.Count > 0 &&
+            await db.CustomFieldValues.AsNoTracking().AnyAsync(v => defIds.Contains(v.FieldDefId) && v.ValueListCode == valueCode, ct))
+            return true;
+
+        return listCode switch
+        {
+            "COUNTRY" => await db.Vendors.AnyAsync(v => v.Country == valueCode || v.Addresses.Any(a => a.Country == valueCode), ct),
+            "STATE" => await db.Vendors.AnyAsync(v => v.State == valueCode || v.Addresses.Any(a => a.State == valueCode), ct),
+            "CITY" => await db.Vendors.AnyAsync(v => v.City == valueCode || v.Addresses.Any(a => a.City == valueCode), ct),
+            "BANK" => await db.Vendors.AnyAsync(v => v.BankAccounts.Any(b => b.Bank == valueCode), ct),
+            "CURRENCY" => await db.Vendors.AnyAsync(v => v.Currencies.Any(c => c.Code == valueCode), ct),
+            "PAYMENT_TERMS" => await db.Vendors.AnyAsync(v => v.PaymentTerms == valueCode, ct),
+            "RFQ_DECLINE_REASON" => await db.Rfqs.AnyAsync(r => r.Invitations.Any(i => i.DeclineReasonCode == valueCode), ct)
+                                    || await db.RfqEvents.AnyAsync(e => e.ReasonCode == valueCode, ct),
+            "RFQ_RESCIND_REASON" => await db.Rfqs.AnyAsync(r => r.Invitations.Any(i => i.RescindReasonCode == valueCode), ct)
+                                    || await db.RfqEvents.AnyAsync(e => e.ReasonCode == valueCode, ct),
+            "RFQ_EXTENSION_REASON" => await db.RfqEvents.AnyAsync(e => e.ReasonCode == valueCode, ct),
+            _ => false,   // user-created lists: only the custom-field store can reference them
+        };
     }
 
     private async Task<CustomList> LoadList(string code, CancellationToken ct) =>

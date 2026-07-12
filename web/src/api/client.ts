@@ -559,8 +559,10 @@ export const addCustomListValue = (listCode: string, body: { code: string; label
   http<CustomListValue>(`/custom-lists/${encodeURIComponent(listCode)}/values`, { method: 'POST', body: JSON.stringify(body) })
 export const updateCustomListValue = (id: string, body: { label: string; parentValueCode?: string | null; sort: number; active: boolean }) =>
   http<CustomListValue>(`/custom-lists/values/${id}`, { method: 'PUT', body: JSON.stringify(body) })
+// A2F-T3: 204 (hard-deleted) or 200 + the value deactivated by the in-use guard —
+// the admin list refresh then shows it as Hidden (reactivate via the edit modal).
 export const deleteCustomListValue = (id: string) =>
-  http<void>(`/custom-lists/values/${id}`, { method: 'DELETE' })
+  http<CustomListValue | undefined>(`/custom-lists/values/${id}`, { method: 'DELETE' })
 
 // --- Global search (D2 navigation shell; hand-typed like Custom Lists — schema regen rides the next gen:api) ---
 export type SearchHit = { type: 'Vendor' | 'Requisition' | 'Rfq' | 'PurchaseOrder' | 'Invoice'; id: string; code: string; title: string }
