@@ -56,6 +56,18 @@ function PvPlaceholder() {
   )
 }
 
+// Every route base with a real screen above. The Placeholder ("Coming in a later slice")
+// renders ONLY for bases missing from this list — so a new screen is not live until its
+// base is added here. The nav-coverage test pins every sidebar key against this list
+// (D6/D7/D7.5 shipped screens that rendered WITH the placeholder appended because this
+// list went stale — caught by the operator, never again by a human).
+export const IMPLEMENTED_BASES = [
+  'dashboard', 'views', 'vendors', 'onboarding', 'admin', 'lists', 'customfields',
+  'segments', 'entryforms', 'numbering', 'reqs', 'consolidate', 'rfqs', 'forms',
+  'openings', 'awards', 'pos', 'deliveries', 'invoices', 'statements', 'chats',
+  'payments', 'design',
+]
+
 function Placeholder({ label }: { label: string }) {
   return (
     <>
@@ -161,7 +173,7 @@ export default function App() {
               {base === 'chats' && <Clarifications />}
               {base === 'payments' && <PvPlaceholder />}
               {base === 'design' && Gallery && <Suspense fallback={null}><Gallery /></Suspense>}
-              {!['dashboard', 'vendors', 'onboarding', 'admin', 'lists', 'customfields', 'reqs', 'consolidate', 'rfqs', 'forms', 'openings', 'awards', 'pos', 'deliveries', 'invoices', 'statements', 'chats', 'payments', 'design'].includes(base) && (
+              {!IMPLEMENTED_BASES.includes(base) && (
                 <Placeholder label={LABELS[base] ?? base} />
               )}
             </>

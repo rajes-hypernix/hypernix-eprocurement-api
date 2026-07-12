@@ -10,6 +10,7 @@ const VENDOR = 'VU-sentausa'
 
 const buyerRoutes: [string, string][] = [
   ['dashboard', 'U4-dashboard-buyer'],
+  ['views', 'U49-saved-views-home'],
   ['vendors', 'U5-vendor-master'],
   ['onboarding', 'U41-onboarding-queue'],
   ['onboarding/invite', 'U43-onboarding-invite'],
@@ -32,6 +33,10 @@ const buyerRoutes: [string, string][] = [
 const adminRoutes: [string, string][] = [
   ['admin', 'U10-admin-users'],
   ['lists', 'U11-admin-custom-lists'],
+  ['customfields', 'U50-admin-custom-fields'],
+  ['segments', 'U51-admin-segments'],
+  ['entryforms', 'U52-admin-entry-forms'],
+  ['numbering', 'U53-admin-numbering'],
 ]
 
 const vendorRoutes: [string, string][] = [
@@ -44,11 +49,22 @@ const vendorRoutes: [string, string][] = [
   ['chats', 'U36-clarifications-vendor'],
 ]
 
+
+// A shipped screen must NEVER carry the unimplemented placeholder (the stale
+// IMPLEMENTED_BASES list shipped Segments/Entry Forms/Numbering/Views home WITH
+// "Coming in a later slice" appended — operator-caught; this pins every crawled page).
+async function expectNoPlaceholder(page: import('@playwright/test').Page, route: string) {
+  for (const text of ['Coming in a later slice', 'not implemented yet']) {
+    expect(await page.getByText(text).count(), `"${text}" visible on ${route}`).toBe(0)
+  }
+}
+
 for (const [route, name] of buyerRoutes) {
   test(`buyer load: ${route}`, async ({ page }, info) => {
     const w = watch(page)
     await goAs(page, BUYER, route)
     await page.waitForTimeout(1200)
+    if (route !== 'payments') await expectNoPlaceholder(page, route)   // payments = the one DELIBERATE placeholder (PV deferred)
     await shot(page, name)
     const issues = reportHealth(w, info, name)
     // Hard-fail only on JS/page errors (a broken screen); net/slow are reported.
@@ -61,6 +77,7 @@ for (const [route, name] of adminRoutes) {
     const w = watch(page)
     await goAs(page, ADMIN, route)
     await page.waitForTimeout(1200)
+    if (route !== 'payments') await expectNoPlaceholder(page, route)   // payments = the one DELIBERATE placeholder (PV deferred)
     await shot(page, name)
     const issues = reportHealth(w, info, name)
     expect(w.pageErrors, `page errors on ${route}: ${issues.join(' ; ')}`).toEqual([])
@@ -72,6 +89,7 @@ for (const [route, name] of vendorRoutes) {
     const w = watch(page)
     await goAs(page, VENDOR, route)
     await page.waitForTimeout(1200)
+    if (route !== 'payments') await expectNoPlaceholder(page, route)   // payments = the one DELIBERATE placeholder (PV deferred)
     await shot(page, name)
     const issues = reportHealth(w, info, name)
     expect(w.pageErrors, `page errors on ${route}: ${issues.join(' ; ')}`).toEqual([])
