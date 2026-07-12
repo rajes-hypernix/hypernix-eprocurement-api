@@ -10,7 +10,7 @@ import type { PortletDto } from '../../api/client'
  */
 export function DashboardPage({
   title, subtitle, toolbar, portlets, renderPortlet,
-  arrangeMode = false, onMoveUp, onMoveDown, onToggleWidth, onRemove,
+  arrangeMode = false, onMoveUp, onMoveDown, onToggleWidth, onRemove, onDropSwap,
 }: {
   title: string
   subtitle?: string
@@ -22,6 +22,8 @@ export function DashboardPage({
   onMoveDown?: (p: PortletDto) => void
   onToggleWidth?: (p: PortletDto) => void
   onRemove?: (p: PortletDto) => void
+  /** CF3-T7: drag one portlet onto another in arrange mode — the pair swap positions. */
+  onDropSwap?: (from: PortletDto, to: PortletDto) => void
 }) {
   const ordered = [...portlets].sort((a, b) => a.row - b.row || a.col - b.col)
   return (
@@ -38,8 +40,18 @@ export function DashboardPage({
           <section
             key={p.id || `${p.portletType}-${p.row}-${p.col}`}
             className="card"
-            style={{ gridColumn: p.width >= 2 ? '1 / -1' : undefined, padding: 14 }}
+            style={{ gridColumn: p.width >= 2 ? '1 / -1' : undefined, padding: 14, cursor: arrangeMode ? 'grab' : undefined }}
             aria-label={p.title}
+            draggable={arrangeMode}
+            onDragStart={(e) => { if (arrangeMode) e.dataTransfer.setData('text/portlet-id', p.id) }}
+            onDragOver={(e) => { if (arrangeMode) e.preventDefault() }}
+            onDrop={(e) => {
+              if (!arrangeMode) return
+              e.preventDefault()
+              const fromId = e.dataTransfer.getData('text/portlet-id')
+              const from = ordered.find((x) => x.id === fromId)
+              if (from && from.id !== p.id) onDropSwap?.(from, p)
+            }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
               <h3 style={{ margin: 0 }}>{p.title}</h3>

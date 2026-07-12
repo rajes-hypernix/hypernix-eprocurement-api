@@ -216,3 +216,177 @@ test('CF2-T6: uniform lifecycle on screen — segment value edit/delete, def dea
   await expect(page.getByRole('button', { name: 'Reactivate form' })).toBeVisible()
   expect((await request.delete(`${API}/api/entry-forms/${copy.id}`, { headers: ADMIN })).status()).toBe(204)
 })
+
+// ── CF3 — Dashboard flexibility ──────────────────────────────────────────────
+// All five tests drive u_lim's dashboard (personalize is copy-on-write) and
+// reset it via the API afterwards so nothing leaks between tests or personas.
+
+const LIM = { 'X-Demo-User': 'u_lim' }
+const resetDash = (request: import('@playwright/test').APIRequestContext) =>
+  request.delete(`${API}/api/dashboards/mine`, { headers: LIM })
+
+/** Titles of the rendered portlet cards, in DOM (row/col) order. */
+const portletTitles = (page: import('@playwright/test').Page) =>
+  page.locator('section.card[aria-label]').evaluateAll((els) =>
+    els.map((e) => e.getAttribute('aria-label')))
+
+test('CF3-T7: drag a portlet onto another in Arrange — they swap, and the order survives reload', async ({ page, request }) => {
+  await resetDash(request)
+  await goAs(page, 'u_lim', 'dashboard')
+  await page.getByRole('button', { name: 'Personalize dashboard' }).click()
+  await page.getByRole('button', { name: 'Arrange portlets' }).click()
+
+  const before = await portletTitles(page)
+  expect(before.length).toBeGreaterThan(1)
+  const [a, b] = [before[0]!, before[1]!]
+
+  // HTML5 DnD via dispatched events sharing ONE DataTransfer (the Playwright-documented path).
+  const dataTransfer = await page.evaluateHandle(() => new DataTransfer())
+  const src = page.locator(`section.card[aria-label="${a}"]`)
+  const dst = page.locator(`section.card[aria-label="${b}"]`)
+  await src.dispatchEvent('dragstart', { dataTransfer })
+  await dst.dispatchEvent('dragover', { dataTransfer })
+  await dst.dispatchEvent('drop', { dataTransfer })
+  await page.waitForTimeout(400)
+
+  expect((await portletTitles(page)).slice(0, 2)).toEqual([b, a])   // swapped in the draft
+  await page.getByRole('button', { name: 'Arrange portlets' }).click()   // Done = save
+  await page.waitForTimeout(800)
+  await page.reload({ waitUntil: 'networkidle' })
+  expect((await portletTitles(page)).slice(0, 2)).toEqual([b, a])   // PERSISTED
+  await resetDash(request)
+})
+
+test('CF3-T8: remove a portlet in Arrange — gone after reload; Reset brings the role default back', async ({ page, request }) => {
+  await resetDash(request)
+  await goAs(page, 'u_lim', 'dashboard')
+  await page.getByRole('button', { name: 'Personalize dashboard' }).click()
+  await page.getByRole('button', { name: 'Arrange portlets' }).click()
+
+  const victim = (await portletTitles(page))[0]!
+  await page.getByRole('button', { name: `Remove ${victim}` }).click()
+  await page.getByRole('button', { name: 'Arrange portlets' }).click()   // Done = save
+  await page.waitForTimeout(800)
+  await page.reload({ waitUntil: 'networkidle' })
+  expect(await portletTitles(page)).not.toContain(victim)
+
+  await page.getByRole('button', { name: 'Reset to role default' }).click()
+  await page.waitForTimeout(1000)
+  expect(await portletTitles(page)).toContain(victim)   // reset restores the role default
+})
+
+test('CF3-T9: the Add-portlet bucket — SavedViewList and RecentRecords added on screen, KpiMeter routes to the KPI modal, all persist', async ({ page, request }) => {
+  await resetDash(request)
+  await goAs(page, 'u_lim', 'dashboard')
+
+  // SavedViewList bound to a CF3-T11 seeded example view.
+  await page.getByRole('button', { name: 'Add portlet' }).click()
+  await page.getByLabel('Portlet type', { exact: true }).selectOption({ label: 'Saved-view list (top-N rows)' })
+  await page.getByLabel('Record type', { exact: true }).selectOption('Requisition')
+  await page.getByLabel('Saved view', { exact: true }).selectOption({ label: 'PRs pending approval' })
+  await page.getByRole('button', { name: 'Add portlet' }).last().click()
+  await expect(page.locator('section.card[aria-label="PRs pending approval"]')).toBeVisible()
+
+  // RecentRecords — the zero-config type.
+  await page.getByRole('button', { name: 'Add portlet' }).first().click()
+  await page.getByLabel('Portlet type', { exact: true }).selectOption({ label: 'Recent records' })
+  await page.getByLabel('Title (optional)', { exact: true }).fill(`Recent ${STAMP}`)
+  await page.getByRole('button', { name: 'Add portlet' }).last().click()
+  await expect(page.locator(`section.card[aria-label="Recent ${STAMP}"]`)).toBeVisible()
+
+  // KpiMeter routes to the existing richer modal (Continue…).
+  await page.getByRole('button', { name: 'Add portlet' }).first().click()
+  await page.getByRole('button', { name: 'Continue…' }).click()
+  await expect(page.getByText('Add KPI from a saved view')).toBeVisible()
+  await page.getByRole('button', { name: 'Cancel' }).click()
+
+  await page.reload({ waitUntil: 'networkidle' })
+  const titles = await portletTitles(page)
+  expect(titles).toContain('PRs pending approval')
+  expect(titles).toContain(`Recent ${STAMP}`)
+  await resetDash(request)
+})
+
+test('CF3-T10: shortcut tiles are authorable — first tile with colour+target via the bucket, second via Add tile; colour renders; click navigates', async ({ page, request }) => {
+  await resetDash(request)
+  await goAs(page, 'u_lim', 'dashboard')
+
+  await page.getByRole('button', { name: 'Add portlet' }).click()
+  await page.getByLabel('Portlet type', { exact: true }).selectOption({ label: 'Shortcuts (tiles)' })
+  await page.getByLabel('Title (optional)', { exact: true }).fill(`Tiles ${STAMP}`)
+  await page.getByLabel('First tile label', { exact: true }).fill(`Go Views ${STAMP}`)
+  await page.getByLabel('Tile target page', { exact: true }).selectOption({ label: 'Saved Views' })
+  await page.getByLabel('Tile colour', { exact: true }).selectOption({ label: 'Teal' })
+  await page.getByRole('button', { name: 'Add portlet' }).last().click()
+
+  const tile = page.getByRole('button', { name: `Go Views ${STAMP}` })
+  await expect(tile).toBeVisible()
+  await expect(tile).toHaveCSS('background-color', 'rgb(51, 99, 116)')   // Teal #336374 rendered
+
+  // Second tile through MY portlet's own Add tile (the role default has its own Shortcuts card).
+  await page.locator(`section.card[aria-label="Tiles ${STAMP}"]`).getByRole('button', { name: 'Add tile' }).click()
+  const dlg = page.getByRole('dialog')
+  await dlg.getByLabel('Tile label', { exact: true }).fill(`Go POs ${STAMP}`)
+  await dlg.getByLabel('Target page', { exact: true }).selectOption({ label: 'Purchase Orders' })
+  await dlg.getByLabel('Colour', { exact: true }).selectOption({ label: 'Plum' })
+  await dlg.getByRole('button', { name: 'Add tile' }).click()
+  const tile2 = page.getByRole('button', { name: `Go POs ${STAMP}` })
+  await expect(tile2).toBeVisible()
+  await expect(tile2).toHaveCSS('background-color', 'rgb(122, 46, 69)')  // Plum #7A2E45
+
+  await tile.click()   // the tile NAVIGATES
+  await expect(page.getByRole('heading', { name: 'Saved Views' })).toBeVisible()
+  await resetDash(request)
+})
+
+test('CF3-T11: reminder/KPI pickers are populated by seeded example views; an empty picker offers the create-view loop', async ({ page, request }) => {
+  await resetDash(request)
+  await goAs(page, 'u_lim', 'dashboard')
+
+  // The seeded example views populate the picker (the operator's "reminders don't work" fix).
+  await page.getByRole('button', { name: 'Add reminder' }).click()
+  await page.getByLabel('Saved view', { exact: true }).selectOption({ label: 'PRs pending approval' })
+  await page.getByRole('button', { name: 'Add reminder' }).last().click()
+  await expect(page.getByText('PRs pending approval')).toBeVisible()   // the reminder row landed
+
+  // Create a view ON SCREEN and bind it to a KPI — the full create→bind loop.
+  await goAs(page, 'u_lim', 'views')
+  await page.getByRole('button', { name: /New view/ }).click()
+  await page.getByLabel('Record type', { exact: true }).last().selectOption('Requisition')
+  await page.getByRole('button', { name: 'Choose fields…' }).click()
+  await page.getByLabel('View name', { exact: true }).fill(`CF View ${STAMP}`)
+  await page.getByRole('button', { name: 'Add criterion' }).click()
+  await page.getByLabel('Field', { exact: true }).selectOption('HeaderStatus')
+  await page.getByLabel('Operator', { exact: true }).selectOption('Eq')
+  await page.getByLabel('PR status', { exact: true }).selectOption('Submitted')
+  await page.getByRole('button', { name: 'Save view' }).click()
+  await page.waitForTimeout(1000)
+  await expect(page.getByText(`CF View ${STAMP}`)).toBeVisible()
+
+  await goAs(page, 'u_lim', 'dashboard')
+  await page.getByRole('button', { name: 'Add KPI', exact: true }).click()
+  await page.getByLabel('KPI title', { exact: true }).fill(`CF KPI ${STAMP}`)
+  await page.getByLabel('Record type', { exact: true }).selectOption('Requisition')
+  await page.getByLabel('Saved view', { exact: true }).selectOption({ label: `CF View ${STAMP}` })
+  await page.getByRole('button', { name: 'Add KPI' }).last().click()
+  await expect(page.locator(`section.card[aria-label="CF KPI ${STAMP}"]`)).toBeVisible()   // bound KPI renders
+
+  // An EMPTY picker (a record type with no views) offers "create one in Saved Views".
+  const types = ['Requisition', 'Rfq', 'PurchaseOrder', 'Invoice', 'Asn', 'Vendor', 'Onboarding']
+  let emptyType: string | null = null
+  for (const t of types) {
+    const vs = await (await request.get(`${API}/api/views?recordType=${t}`, { headers: LIM })).json()
+    if (vs.length === 0) { emptyType = t; break }
+  }
+  if (emptyType) {
+    await page.getByRole('button', { name: 'Add reminder' }).first().click()
+    await page.getByLabel('Record type', { exact: true }).selectOption(emptyType)
+    await page.getByRole('button', { name: 'create one in Saved Views' }).click()
+    await expect(page.getByRole('heading', { name: 'Saved Views' })).toBeVisible()   // the loop lands on view authoring
+  }
+  // cleanup: the run-stamped view goes; the dashboard resets.
+  const mine = await (await request.get(`${API}/api/views?recordType=Requisition`, { headers: LIM })).json()
+  const stamped = mine.find((v: { name: string }) => v.name === `CF View ${STAMP}`)
+  if (stamped) expect((await request.delete(`${API}/api/views/${stamped.id}`, { headers: LIM })).ok()).toBeTruthy()
+  await resetDash(request)
+})

@@ -17,6 +17,7 @@ import { ChartPortlet } from './portlets/ChartPortlet'
 import { MyInvitationsPortlet } from './portlets/MyInvitationsPortlet'
 import { AddKpiModal } from './portlets/AddKpiModal'
 import { AddReminderModal } from './portlets/AddReminderModal'
+import { AddPortletModal } from './portlets/AddPortletModal'
 import { parseConfig, type RemindersConfig, type ReminderItem } from './portlets/portletConfig'
 
 /**
@@ -67,6 +68,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (key: string) => void })
   const [draft, setDraft] = useState<PortletUpsert[] | null>(null)
   const [addKpi, setAddKpi] = useState(false)
   const [addReminder, setAddReminder] = useState(false)
+  const [addPortlet, setAddPortlet] = useState(false)
   const invalidate = () => { void qc.invalidateQueries({ queryKey: ['my-dashboard'] }) }
 
   const save = useMutation({
@@ -83,7 +85,18 @@ export function Dashboard({ onNavigate }: { onNavigate: (key: string) => void })
       const current = dash!.isPersonalized ? dash! : await personalizeDashboard()
       return updateMyDashboard({ name: null, portlets: pack([...current.portlets.map(toUpsert), p]) })
     },
-    onSuccess: () => { setAddKpi(false); invalidate() },
+    onSuccess: () => { setAddKpi(false); setAddPortlet(false); invalidate() },
+  })
+  // CF3-T10: a portlet edits its OWN config (tile authoring) — persisted like any arrange.
+  const updatePortletConfig = useMutation({
+    mutationFn: async (v: { portletId: string; configJson: string }) => {
+      const current = dash!.isPersonalized ? dash! : await personalizeDashboard()
+      return updateMyDashboard({
+        name: null,
+        portlets: pack(current.portlets.map(toUpsert).map((x) => (x.id === v.portletId ? { ...x, configJson: v.configJson } : x))),
+      })
+    },
+    onSuccess: invalidate,
   })
   // D7.5 task 5: append a reminder item — into the EXISTING Reminders portlet when one
   // is on the dashboard, else a new Reminders portlet carries it. Same copy-on-write.
@@ -122,6 +135,15 @@ export function Dashboard({ onNavigate }: { onNavigate: (key: string) => void })
   const toggleWidth = (p: PortletDto) =>
     setDraft(pack(working.map((x) => (x.id === p.id ? { ...x, width: x.width >= 2 ? 1 : 2 } : x))))
   const remove = (p: PortletDto) => setDraft(pack(working.filter((x) => x.id !== p.id)))
+  // CF3-T7: drag-drop = swap the two portlets' positions in the working order.
+  const dropSwap = (from: PortletDto, to: PortletDto) => {
+    const list = [...working]
+    const i = list.findIndex((x) => x.id === from.id)
+    const j = list.findIndex((x) => x.id === to.id)
+    if (i < 0 || j < 0) return
+    ;[list[i], list[j]] = [list[j], list[i]]
+    setDraft(pack(list))
+  }
 
   const shown: PortletDto[] = arrange
     ? working.map((p, i) => ({ ...p, id: p.id ?? `draft-${i}`, savedViewId: p.savedViewId ?? null } as PortletDto))
@@ -134,6 +156,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (key: string) => void })
         subtitle={dash.isPersonalized ? 'Your personalized dashboard.' : 'Your role’s standard dashboard.'}
         toolbar={
           <>
+            <Button variant="ghost" size="sm" icon="plus" onClick={() => setAddPortlet(true)} ariaLabel="Add portlet">Add portlet</Button>
             <Button variant="ghost" size="sm" icon="plus" onClick={() => setAddKpi(true)} ariaLabel="Add KPI">Add KPI</Button>
             <Button variant="ghost" size="sm" icon="clock" onClick={() => setAddReminder(true)} ariaLabel="Add reminder">Add reminder</Button>
             {dash.isPersonalized ? (
@@ -150,15 +173,24 @@ export function Dashboard({ onNavigate }: { onNavigate: (key: string) => void })
           </>
         }
         portlets={shown}
-        renderPortlet={(p) => PORTLETS[p.portletType]?.(p, onNavigate) ?? <span className="hint">Unknown portlet type.</span>}
+        renderPortlet={(p) =>
+          p.portletType === 'Shortcuts' && dash.isPersonalized ? (
+            <ShortcutsPortlet portlet={p} onNavigate={onNavigate}
+              onUpdateConfig={(portletId, configJson) => updatePortletConfig.mutate({ portletId, configJson })} />
+          ) : (PORTLETS[p.portletType]?.(p, onNavigate) ?? <span className="hint">Unknown portlet type.</span>)}
         arrangeMode={arrange}
         onMoveUp={(p) => move(p, -1)}
         onMoveDown={(p) => move(p, 1)}
         onToggleWidth={toggleWidth}
         onRemove={remove}
+        onDropSwap={dropSwap}
       />
-      {addKpi && <AddKpiModal onClose={() => setAddKpi(false)} onAdd={(p) => addKpiPortlet.mutate(p)} />}
-      {addReminder && <AddReminderModal onClose={() => setAddReminder(false)} onAdd={(i) => addReminderItem.mutate(i)} />}
+      {addPortlet && (
+        <AddPortletModal onClose={() => setAddPortlet(false)} onAdd={(p) => addKpiPortlet.mutate(p)}
+          onKpi={() => setAddKpi(true)} onReminder={() => setAddReminder(true)} />
+      )}
+      {addKpi && <AddKpiModal onClose={() => setAddKpi(false)} onAdd={(p) => addKpiPortlet.mutate(p)} onGoCreateViews={() => onNavigate('views')} />}
+      {addReminder && <AddReminderModal onClose={() => setAddReminder(false)} onAdd={(i) => addReminderItem.mutate(i)} onGoCreateViews={() => onNavigate('views')} />}
     </>
   )
 }
