@@ -23,8 +23,10 @@ public class Award
     public decimal TotalValue => Allocations.Sum(a => a.Qty * a.UnitPrice);
 
     // Approval (DoA gate)
-    public string? ApproverUserId { get; set; }
-    public DateTime? ApprovedUtc { get; set; }
+    // A2F-T5 (NIT-3): approval stamps are private-set, written only inside the guarded
+    // transitions below — the Invoice.MarkApproved / Rfq.MarkAwarded discipline.
+    public string? ApproverUserId { get; private set; }
+    public DateTime? ApprovedUtc { get; private set; }
 
     public DateTime CreatedUtc { get; set; }
     public DateTime UpdatedUtc { get; set; }
@@ -37,6 +39,9 @@ public class Award
     {
         if (Status == AwardStatus.Approved) throw new DomainRuleException($"Award {Code} is already approved.");
         Status = AwardStatus.PendingApproval;
+        // A (re)submission has no approval yet — the stamps reset HERE, not in the service.
+        ApproverUserId = null;
+        ApprovedUtc = null;
     }
 
     /// <summary>PendingApproval → Approved, stamping the approver (DoA/SoD checks live in the service).</summary>
@@ -52,7 +57,13 @@ public class Award
 
     /// <summary>TEST/SEED ONLY — sets the status directly, bypassing transitions. Never call from
     /// production service code (enforced by the ArchitectureTests source-scan).</summary>
-    public Award SeededAs(AwardStatus status) { Status = status; return this; }
+    public Award SeededAs(AwardStatus status, string? approverUserId = null, DateTime? approvedUtc = null)
+    {
+        Status = status;
+        ApproverUserId = approverUserId;
+        ApprovedUtc = approvedUtc;
+        return this;
+    }
 }
 
 public class AwardAllocation

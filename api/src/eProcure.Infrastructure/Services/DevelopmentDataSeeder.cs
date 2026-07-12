@@ -490,12 +490,10 @@ public sealed class DevelopmentDataSeeder(
             Code = "AWD-2026-0074",
             RfqId = rfq.Id,
             CreatedByUserId = "u_faridah",
-            ApproverUserId = "u_lim",     // different person (DoA / SoD)
-            ApprovedUtc = now,
             Allocations = allocations,    // TotalValue (59,550) is derived from these (DBA-10)
             CreatedUtc = now,
             UpdatedUtc = now,
-        }.SeededAs(AwardStatus.Approved);
+        }.SeededAs(AwardStatus.Approved, approverUserId: "u_lim", approvedUtc: now);   // different person (DoA / SoD)
         db.Awards.Add(award);
 
         var po = new PurchaseOrder

@@ -123,9 +123,7 @@ public sealed class AwardService(
         award.Allocations = allocations;
         // TotalValue is computed from Allocations (DBA-10) — no longer stored. `total` is retained
         // locally only for the audit line below.
-        award.ApproverUserId = null;
-        award.ApprovedUtc = null;
-        award.UpdatedUtc = clock.UtcNow;
+        award.UpdatedUtc = clock.UtcNow;   // approval stamps reset inside MarkPendingApproval (A2F-T5)
         await db.SaveChangesAsync(ct);
 
         await audit.WriteAsync("Award", award.Code, "Submitted for approval",
