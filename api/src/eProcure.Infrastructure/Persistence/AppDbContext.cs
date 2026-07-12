@@ -65,6 +65,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     // D7 — entry forms + numbering
     public DbSet<Domain.Forms.EntryFormDef> EntryFormDefs => Set<Domain.Forms.EntryFormDef>();
+    public DbSet<Domain.Forms.EntryFormSubtab> EntryFormSubtabs => Set<Domain.Forms.EntryFormSubtab>();
+    public DbSet<Domain.Forms.EntryFormGroup> EntryFormGroups => Set<Domain.Forms.EntryFormGroup>();
     public DbSet<Domain.Forms.EntryFormField> EntryFormFields => Set<Domain.Forms.EntryFormField>();
     public DbSet<Domain.Forms.EntryFormRoleMap> EntryFormRoleMaps => Set<Domain.Forms.EntryFormRoleMap>();
     public DbSet<Domain.Forms.NumberingScheme> NumberingSchemes => Set<Domain.Forms.NumberingScheme>();
@@ -737,19 +739,37 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Name).HasMaxLength(100).IsRequired();
             e.Property(x => x.RecordType).HasConversion<string>().HasMaxLength(30);
         });
+        b.Entity<Domain.Forms.EntryFormSubtab>(e =>
+        {
+            e.ToTable("EntryFormSubtabs");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.FormDefId, x.Name }).IsUnique();
+            e.Property(x => x.Name).HasMaxLength(80).IsRequired();
+            e.HasOne<Domain.Forms.EntryFormDef>().WithMany().HasForeignKey(x => x.FormDefId).OnDelete(DeleteBehavior.Cascade);
+        });
+        b.Entity<Domain.Forms.EntryFormGroup>(e =>
+        {
+            e.ToTable("EntryFormGroups");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.FormDefId, x.SubtabId, x.Title }).IsUnique();
+            e.Property(x => x.Title).HasMaxLength(80).IsRequired();
+            e.HasOne<Domain.Forms.EntryFormDef>().WithMany().HasForeignKey(x => x.FormDefId).OnDelete(DeleteBehavior.Cascade);
+            // No cascade from subtab: deleting a subtab with groups is service-guarded (409).
+            e.HasOne<Domain.Forms.EntryFormSubtab>().WithMany().HasForeignKey(x => x.SubtabId).OnDelete(DeleteBehavior.Restrict);
+        });
         b.Entity<Domain.Forms.EntryFormField>(e =>
         {
             e.ToTable("EntryFormFields");
             e.HasKey(x => x.Id);
             e.HasIndex(x => new { x.FormDefId, x.FieldKey }).IsUnique();
             e.Property(x => x.FieldKey).HasMaxLength(100).IsRequired();
-            e.Property(x => x.FieldGroup).HasMaxLength(80).IsRequired();
-            e.Property(x => x.Subtab).HasMaxLength(80);
             e.Property(x => x.DisplayType).HasConversion<string>().HasMaxLength(20);
             e.Property(x => x.Label).HasMaxLength(120);
             e.Property(x => x.Placeholder).HasMaxLength(200);
             e.Property(x => x.SourceFieldKey).HasMaxLength(100);
             e.HasOne<Domain.Forms.EntryFormDef>().WithMany().HasForeignKey(x => x.FormDefId).OnDelete(DeleteBehavior.Cascade);
+            // Restrict, not cascade: a group with fields refuses deletion (service-guarded).
+            e.HasOne<Domain.Forms.EntryFormGroup>().WithMany().HasForeignKey(x => x.GroupId).OnDelete(DeleteBehavior.Restrict);
         });
         b.Entity<Domain.Forms.EntryFormRoleMap>(e =>
         {

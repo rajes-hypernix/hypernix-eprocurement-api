@@ -36,8 +36,10 @@ public static class TestDb
             .UseInMemoryDatabase($"eprocure-tests-{Guid.NewGuid()}")
             .Options);
         db.NumberingSchemes.AddRange(eProcure.Application.Forms.EntryFormSeed.ToSchemeEntities());
-        var (form, fields) = eProcure.Application.Forms.EntryFormSeed.ToStandardPrFormEntities();
+        var (form, subtabs, groups, fields) = eProcure.Application.Forms.EntryFormSeed.ToStandardPrFormEntities();
         db.EntryFormDefs.Add(form);
+        db.EntryFormSubtabs.AddRange(subtabs);
+        db.EntryFormGroups.AddRange(groups);
         db.EntryFormFields.AddRange(fields);
         db.SaveChanges();
         return db;

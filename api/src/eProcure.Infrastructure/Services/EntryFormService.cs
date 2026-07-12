@@ -74,7 +74,7 @@ public sealed class EntryFormService(AppDbContext db, IClock clock, ICurrentUser
             IsSystem = false, Active = true, CreatedUtc = now, UpdatedUtc = now,
         };
         db.EntryFormDefs.Add(def);
-        db.EntryFormFields.AddRange(ToEntities(def.Id, req.Fields));
+        AddLayout(def.Id, req.Fields);
         await db.SaveChangesAsync(ct);
         return await ToDtoAsync(def, ct);
     }
@@ -88,9 +88,12 @@ public sealed class EntryFormService(AppDbContext db, IClock clock, ICurrentUser
 
         // Replace the layout wholesale (the composer saves the full field list). The D4
         // lesson: explicit AddRange for replacement children with preset PKs — a tracked
-        // parent's nav discovery would misclassify them as Modified.
+        // parent's nav discovery would misclassify them as Modified. CF5: fields first
+        // (they FK the groups), then groups, then subtabs.
         db.EntryFormFields.RemoveRange(await db.EntryFormFields.Where(f => f.FormDefId == def.Id).ToListAsync(ct));
-        db.EntryFormFields.AddRange(ToEntities(def.Id, req.Fields));
+        db.EntryFormGroups.RemoveRange(await db.EntryFormGroups.Where(g => g.FormDefId == def.Id).ToListAsync(ct));
+        db.EntryFormSubtabs.RemoveRange(await db.EntryFormSubtabs.Where(s => s.FormDefId == def.Id).ToListAsync(ct));
+        AddLayout(def.Id, req.Fields);
         await db.SaveChangesAsync(ct);
         return await ToDtoAsync(def, ct);
     }
@@ -109,6 +112,8 @@ public sealed class EntryFormService(AppDbContext db, IClock clock, ICurrentUser
         var def = await LoadUserForm(id, ct);
         db.EntryFormRoleMaps.RemoveRange(await db.EntryFormRoleMaps.Where(m => m.FormDefId == def.Id).ToListAsync(ct));
         db.EntryFormFields.RemoveRange(await db.EntryFormFields.Where(f => f.FormDefId == def.Id).ToListAsync(ct));
+        db.EntryFormGroups.RemoveRange(await db.EntryFormGroups.Where(g => g.FormDefId == def.Id).ToListAsync(ct));
+        db.EntryFormSubtabs.RemoveRange(await db.EntryFormSubtabs.Where(s => s.FormDefId == def.Id).ToListAsync(ct));
         db.EntryFormDefs.Remove(def);
         await db.SaveChangesAsync(ct);
     }
@@ -148,6 +153,7 @@ public sealed class EntryFormService(AppDbContext db, IClock clock, ICurrentUser
         var def = await ResolveDefAsync(type, ct);
         var fields = await db.EntryFormFields.AsNoTracking()
             .Where(f => f.FormDefId == def.Id).OrderBy(f => f.Sort).ToListAsync(ct);
+        var placement = await PlacementAsync(def.Id, ct);   // CF5: group/subtab objects → the wire strings
 
         var registry = await db.FieldRegistry.AsNoTracking()
             .Where(r => r.RecordType == type).ToDictionaryAsync(r => r.FieldKey, ct);
@@ -174,9 +180,10 @@ public sealed class EntryFormService(AppDbContext db, IClock clock, ICurrentUser
                     .Select(v => new SegmentOptionDto(v.Code, v.Label)).ToListAsync(ct);
             }
 
+            var (subtabName, groupTitle) = placement[f.GroupId];
             resolved.Add(new ResolvedFormFieldDto(
                 f.FieldKey, f.Label ?? reg.Label, reg.DataType.ToString(), reg.Kind.ToString(),
-                f.Subtab, f.FieldGroup, f.Sort, f.DisplayType.ToString(), f.RequiredOnForm,
+                subtabName, groupTitle, f.Sort, f.DisplayType.ToString(), f.RequiredOnForm,
                 ResolveDefault(f, reg), f.SourceFieldKey, f.FullWidth, f.Placeholder, listCode, options));
         }
         return new ResolvedFormDto(def.Id, def.Code, def.Name, type.ToString(), resolved);
@@ -284,16 +291,61 @@ public sealed class EntryFormService(AppDbContext db, IClock clock, ICurrentUser
         }
     }
 
-    private static List<EntryFormField> ToEntities(Guid formId, List<EntryFormFieldDto> fields) =>
-        fields.Select(f => new EntryFormField
+    /// <summary>CF5: the composer still SPEAKS strings (subtab name, group title) — this seam
+    /// materializes them as subtab/group OBJECTS (find-or-create by name within the form, in
+    /// order of first appearance) and points each field at its group. The T2/T3 designer adds
+    /// first-class object CRUD on top; the wire contract stays compatible meanwhile.</summary>
+    private void AddLayout(Guid formId, List<EntryFormFieldDto> fields)
+    {
+        var subtabs = new Dictionary<string, EntryFormSubtab>(StringComparer.OrdinalIgnoreCase);
+        var groups = new Dictionary<(string? Subtab, string Title), EntryFormGroup>();
+        foreach (var f in fields)
         {
-            Id = Guid.NewGuid(), FormDefId = formId, FieldKey = f.FieldKey, Subtab = Norm(f.Subtab),
-            FieldGroup = string.IsNullOrWhiteSpace(f.FieldGroup) ? "Header" : f.FieldGroup.Trim(),
-            Sort = f.Sort, DisplayType = Enum.Parse<EntryFormDisplayType>(f.DisplayType),
-            RequiredOnForm = f.RequiredOnForm, DefaultValue = Norm(f.DefaultValue),
-            SourceFieldKey = Norm(f.SourceFieldKey), FullWidth = f.FullWidth,
-            Label = Norm(f.Label), Placeholder = Norm(f.Placeholder),
-        }).ToList();
+            var subtabName = Norm(f.Subtab);
+            var title = string.IsNullOrWhiteSpace(f.FieldGroup) ? "Header" : f.FieldGroup.Trim();
+            EntryFormSubtab? subtab = null;
+            if (subtabName is not null && !subtabs.TryGetValue(subtabName, out subtab))
+            {
+                subtab = new EntryFormSubtab
+                {
+                    Id = Guid.NewGuid(), FormDefId = formId, Name = subtabName,
+                    Sort = subtabs.Count, Hidden = false,
+                };
+                subtabs[subtabName] = subtab;
+            }
+            var gKey = (subtab?.Name, title);
+            if (!groups.TryGetValue(gKey, out var group))
+            {
+                group = new EntryFormGroup
+                {
+                    Id = Guid.NewGuid(), FormDefId = formId, SubtabId = subtab?.Id,
+                    Title = title, Sort = groups.Count, ColumnBreak = false,
+                };
+                groups[gKey] = group;
+            }
+            db.EntryFormFields.Add(new EntryFormField
+            {
+                Id = Guid.NewGuid(), FormDefId = formId, FieldKey = f.FieldKey, GroupId = group.Id,
+                Sort = f.Sort, DisplayType = Enum.Parse<EntryFormDisplayType>(f.DisplayType),
+                RequiredOnForm = f.RequiredOnForm, DefaultValue = Norm(f.DefaultValue),
+                SourceFieldKey = Norm(f.SourceFieldKey), FullWidth = f.FullWidth,
+                Label = Norm(f.Label), Placeholder = Norm(f.Placeholder),
+            });
+        }
+        db.EntryFormSubtabs.AddRange(subtabs.Values);
+        db.EntryFormGroups.AddRange(groups.Values);
+    }
+
+    /// <summary>GroupId → (subtab name, group title) for a form — the object→string join.</summary>
+    private async Task<Dictionary<Guid, (string? Subtab, string Group)>> PlacementAsync(Guid formId, CancellationToken ct)
+    {
+        var subtabs = await db.EntryFormSubtabs.AsNoTracking()
+            .Where(s => s.FormDefId == formId).ToDictionaryAsync(s => s.Id, s => s.Name, ct);
+        return await db.EntryFormGroups.AsNoTracking()
+            .Where(g => g.FormDefId == formId)
+            .ToDictionaryAsync(g => g.Id,
+                g => ((string?)(g.SubtabId is { } sid ? subtabs[sid] : null), g.Title), ct);
+    }
 
     private static string? Norm(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
 
@@ -303,8 +355,9 @@ public sealed class EntryFormService(AppDbContext db, IClock clock, ICurrentUser
             .Where(f => f.FormDefId == def.Id).OrderBy(f => f.Sort).ToListAsync(ct);
         var roles = await db.EntryFormRoleMaps.AsNoTracking()
             .Where(m => m.FormDefId == def.Id).Select(m => m.Role).OrderBy(r => r).ToListAsync(ct);
+        var placement = await PlacementAsync(def.Id, ct);
         return new EntryFormDefDto(def.Id, def.Code, def.Name, def.RecordType.ToString(), def.IsSystem, def.Active,
-            fields.Select(f => new EntryFormFieldDto(f.FieldKey, f.Subtab, f.FieldGroup, f.Sort,
+            fields.Select(f => new EntryFormFieldDto(f.FieldKey, placement[f.GroupId].Subtab, placement[f.GroupId].Group, f.Sort,
                 f.DisplayType.ToString(), f.RequiredOnForm, f.DefaultValue, f.SourceFieldKey,
                 f.FullWidth, f.Label, f.Placeholder)).ToList(),
             roles);

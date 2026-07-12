@@ -37,13 +37,41 @@ public class EntryFormDef
 /// boundary). Label/Placeholder/FullWidth are census-derived render overrides
 /// (OD-D7-4 + byte-identical parity: "Job / Cost ref" is not the registry's "Job").
 /// Grain: one row per (form, field).</summary>
+/// <summary>CF5: a subtab as a MANAGED OBJECT (was a string label on placed fields).
+/// Creatable empty, reorderable, hideable. Hidden is layout-only: required fields on a
+/// hidden subtab still gate submit (warn-but-allow, ruled D2). Grain: one row per
+/// (form, name).</summary>
+public class EntryFormSubtab
+{
+    public Guid Id { get; set; }                           // deterministic for seeds/backfill
+    public Guid FormDefId { get; set; }
+    public string Name { get; set; } = default!;
+    public int Sort { get; set; }
+    public bool Hidden { get; set; }
+}
+
+/// <summary>CF5: a field group as an object — the section container (body or subtab).
+/// ColumnBreak starts a new column at this group (NetSuite's column break; "same as
+/// previous" is its absence). Grain: one row per (form, subtab-or-body, title).</summary>
+public class EntryFormGroup
+{
+    public Guid Id { get; set; }                           // deterministic for seeds/backfill
+    public Guid FormDefId { get; set; }
+    public Guid? SubtabId { get; set; }                    // null = the main body
+    public string Title { get; set; } = default!;
+    public int Sort { get; set; }
+    public bool ColumnBreak { get; set; }
+}
+
 public class EntryFormField
 {
     public Guid Id { get; set; }
     public Guid FormDefId { get; set; }
     public string FieldKey { get; set; } = default!;
-    public string? Subtab { get; set; }
-    public string FieldGroup { get; set; } = default!;     // section title ("Header")
+    // CF5: placement is by GROUP object; the subtab derives from the group's SubtabId —
+    // one FK, no field↔group subtab-consistency invariant to police.
+    public Guid GroupId { get; set; }
+    public bool ColumnBreak { get; set; }                  // field-level break inside its group
     public int Sort { get; set; }
     public EntryFormDisplayType DisplayType { get; set; }
     public bool RequiredOnForm { get; set; }               // gates SUBMIT, never draft save (OD-D7-3)

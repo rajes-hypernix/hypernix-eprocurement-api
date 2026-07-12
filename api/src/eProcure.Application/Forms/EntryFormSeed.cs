@@ -55,11 +55,16 @@ public static class EntryFormSeed
     public static Guid FormId(string code) => HexGuid($"entryform:{code}");
     public static Guid FieldId(Guid formId, string fieldKey) => HexGuid($"entryformfield:{formId}:{fieldKey}");
     public static Guid SchemeId(RecordType type) => HexGuid($"numberingscheme:{type}");
+    // CF5 layout objects — the SAME md5 derivations the EntryFormLayout migration uses in SQL,
+    // so C# seeds and the backfill mint IDENTICAL ids (the SegmentSeed rule).
+    public static Guid SubtabId(Guid formId, string name) => HexGuid($"entryformsubtab:{formId}:{name}");
+    public static Guid GroupId(Guid formId, string? subtabName, string title) => HexGuid($"entryformgroup:{formId}:{subtabName ?? ""}:{title}");
 
     /// <summary>Entity builders for TEST stores (the FieldRegistrySeed.ToEntities precedent):
     /// production gets these rows from the migration; in-memory test contexts seed the same
     /// invariant so the scheme-consulting mint and the submit guard behave identically.</summary>
-    public static (Domain.Forms.EntryFormDef Def, List<Domain.Forms.EntryFormField> Fields) ToStandardPrFormEntities()
+    public static (Domain.Forms.EntryFormDef Def, List<Domain.Forms.EntryFormSubtab> Subtabs,
+        List<Domain.Forms.EntryFormGroup> Groups, List<Domain.Forms.EntryFormField> Fields) ToStandardPrFormEntities()
     {
         var seeded = new DateTime(2026, 7, 12, 0, 0, 0, DateTimeKind.Utc);
         var formId = FormId(StandardPrFormCode);
@@ -69,14 +74,27 @@ public static class EntryFormSeed
             RecordType = RecordType.Requisition, IsSystem = true, Active = true,
             CreatedUtc = seeded, UpdatedUtc = seeded,
         };
+        // CF5: layout objects, derived from the SAME FieldRow vocabulary (order of first appearance).
+        var subtabs = StandardPrFields.Where(f => f.Subtab is not null).Select(f => f.Subtab!).Distinct()
+            .Select((name, i) => new Domain.Forms.EntryFormSubtab
+            {
+                Id = SubtabId(formId, name), FormDefId = formId, Name = name, Sort = i, Hidden = false,
+            }).ToList();
+        var groups = StandardPrFields.Select(f => (f.Subtab, f.FieldGroup)).Distinct()
+            .Select((g, i) => new Domain.Forms.EntryFormGroup
+            {
+                Id = GroupId(formId, g.Subtab, g.FieldGroup), FormDefId = formId,
+                SubtabId = g.Subtab is null ? null : SubtabId(formId, g.Subtab),
+                Title = g.FieldGroup, Sort = i, ColumnBreak = false,
+            }).ToList();
         var fields = StandardPrFields.Select(f => new Domain.Forms.EntryFormField
         {
             Id = FieldId(formId, f.FieldKey), FormDefId = formId, FieldKey = f.FieldKey,
-            Subtab = f.Subtab, FieldGroup = f.FieldGroup, Sort = f.Sort,
+            GroupId = GroupId(formId, f.Subtab, f.FieldGroup), Sort = f.Sort,
             DisplayType = Domain.Forms.EntryFormDisplayType.Normal, RequiredOnForm = false,
             FullWidth = f.FullWidth, Label = f.Label, Placeholder = f.Placeholder,
         }).ToList();
-        return (def, fields);
+        return (def, subtabs, groups, fields);
     }
 
     public static List<Domain.Forms.NumberingScheme> ToSchemeEntities()
