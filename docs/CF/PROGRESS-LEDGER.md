@@ -32,8 +32,8 @@ Columns: `[ ]`→`[x]` when complete · **Audit** = current-state finding from P
 ## CF1 — Quick parity wins  (AUTONOMOUS — build fully)
 
 ### T1 — Money display format
-- [ ] Money fields render grouped decimals `100,000.00` in `renderField` and all read surfaces · Audit:ALREADY (fmt+MoneyField-on-blur); Decimal residual · Build:___ · Test:___
-- [ ] Grouped value parses back to raw numeric on edit (round-trip) · Audit:ALREADY by construction; untested · Build:___ · Test:___
+- [x] Money fields render grouped decimals `100,000.00` in `renderField` and all read surfaces · Audit:ALREADY (fmt+MoneyField-on-blur); Decimal residual · Build:(pin-only, see commit) · Test:CF1-T1 money renders grouped
+- [x] Grouped value parses back to raw numeric on edit (round-trip) · Audit:ALREADY by construction; untested · Build:(pin-only, see commit) · Test:CF1-T1 (round-trip half)
 
 ### T2 — Custom-list edit (the "can't edit a list" complaint)
 - [ ] `PUT /custom-lists/{code}` — rename + edit description · Audit:missing (confirmed) · Build:___ · Test:___
