@@ -166,3 +166,53 @@ test('CF1-T5: global search deep-links PR / ASN / Statement to their DETAIL, reg
   await page.waitForTimeout(1200)
   expect(page.url()).toContain(`pos/${pos[0].id}`)
 })
+
+test('CF2-T6: uniform lifecycle on screen — segment value edit/delete, def deactivate/delete, entry-form inactivate', async ({ page, request }) => {
+  // Stage a user segment with two values.
+  const seg = await (await request.post(`${API}/api/segments`, { headers: { ...ADMIN, ...JSON_H },
+    data: { name: `Cost Pool ${STAMP}`, hasHierarchy: false, required: false } })).json()
+  for (const l of ['Pool One', 'Pool Two'])
+    await request.post(`${API}/api/segments/${seg.id}/values`, { headers: { ...ADMIN, ...JSON_H },
+      data: { label: l, parentValueId: null, sort: 0 } })
+
+  await goAs(page, 'u_admin', 'segments')
+  await page.waitForTimeout(1200)
+  await page.getByRole('button', { name: new RegExp(`Cost Pool ${STAMP}.*value`) }).click()   // the rail item (its name carries the hint)
+
+  // EDIT a value on screen (the verb that didn't exist).
+  await page.getByRole('button', { name: 'Edit value Pool One' }).click()
+  await page.getByLabel('Label').fill('Pool One Renamed')
+  await page.getByRole('button', { name: 'Save value' }).click()
+  await page.waitForTimeout(800)
+  await expect(page.getByText('Pool One Renamed')).toBeVisible()
+  await expect(page.getByText('POOL-ONE', { exact: true })).toBeVisible()   // the CODE never re-keys
+
+  // DELETE an unused value on screen.
+  await page.getByRole('button', { name: 'Delete value Pool Two' }).click()
+  await page.waitForTimeout(800)
+  await expect(page.getByText('POOL-TWO')).toHaveCount(0)
+
+  // DEACTIVATE then DELETE the def on screen (clean — cascades).
+  await page.getByRole('button', { name: 'Deactivate segment' }).click()
+  await page.waitForTimeout(600)
+  await page.getByRole('button', { name: 'Reactivate segment' }).click()
+  await page.waitForTimeout(600)
+  await page.getByRole('button', { name: 'Delete segment' }).click()
+  await page.waitForTimeout(800)
+  await expect(page.getByRole('button', { name: new RegExp(`Cost Pool ${STAMP}.*value`) })).toHaveCount(0)
+
+  // ENTRY-FORM inactivate (the missing verb): copy Standard, deactivate, verify via API, delete.
+  const forms = await (await request.get(`${API}/api/entry-forms?recordType=Requisition`, { headers: ADMIN })).json()
+  const std = forms.find((f: { isSystem: boolean }) => f.isSystem)
+  const copy = await (await request.post(`${API}/api/entry-forms`, { headers: { ...ADMIN, ...JSON_H },
+    data: { name: `Lifecycle Form ${STAMP}`, recordType: 'Requisition', fields: std.fields } })).json()
+  await goAs(page, 'u_admin', 'entryforms')
+  await page.waitForTimeout(1200)
+  await page.getByRole('button', { name: new RegExp(`Lifecycle Form ${STAMP}`) }).first().click()
+  await page.getByRole('button', { name: 'Deactivate form' }).click()
+  await page.waitForTimeout(800)
+  const after = await (await request.get(`${API}/api/entry-forms?recordType=Requisition`, { headers: ADMIN })).json()
+  expect(after.find((f: { id: string }) => f.id === copy.id).active).toBe(false)
+  await expect(page.getByRole('button', { name: 'Reactivate form' })).toBeVisible()
+  expect((await request.delete(`${API}/api/entry-forms/${copy.id}`, { headers: ADMIN })).status()).toBe(204)
+})

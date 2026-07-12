@@ -89,6 +89,15 @@ public sealed class EntryFormService(AppDbContext db, IClock clock, ICurrentUser
         return await ToDtoAsync(def, ct);
     }
 
+    public async Task<EntryFormDefDto> SetActiveAsync(Guid id, bool active, CancellationToken ct = default)
+    {
+        var def = await LoadUserForm(id, ct);   // Standard forms refuse (the parity baseline never hides)
+        def.Active = active;
+        def.UpdatedUtc = clock.UtcNow;
+        await db.SaveChangesAsync(ct);
+        return await ToDtoAsync(def, ct);
+    }
+
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {
         var def = await LoadUserForm(id, ct);

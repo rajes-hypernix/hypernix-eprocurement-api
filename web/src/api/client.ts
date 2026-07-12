@@ -212,6 +212,16 @@ export const updateSegmentDef = (id: string, req: SaveSegmentDefRequest) =>
   http<SegmentDefDto>(`/segments/${id}`, { method: 'PUT', body: JSON.stringify(req) })
 export const addSegmentValue = (id: string, req: { label: string; parentValueId?: string | null; sort: number }) =>
   http<SegmentDefDto>(`/segments/${id}/values`, { method: 'POST', body: JSON.stringify(req) })
+// CF2-T6: the uniform lifecycle verbs segments were missing.
+export const updateSegmentValue = (defId: string, valueId: string, req: { label: string; parentValueId?: string | null; sort: number; active: boolean }) =>
+  http<SegmentDefDto>(`/segments/${defId}/values/${valueId}`, { method: 'PUT', body: JSON.stringify(req) })
+export const deleteSegmentValue = (defId: string, valueId: string) =>
+  http<SegmentDefDto>(`/segments/${defId}/values/${valueId}`, { method: 'DELETE' })
+export const setSegmentDefActive = (id: string, active: boolean) =>
+  http<SegmentDefDto>(`/segments/${id}/active`, { method: 'POST', body: JSON.stringify(active) })
+export const deleteSegmentDef = (id: string) => http<undefined>(`/segments/${id}`, { method: 'DELETE' })
+export const setEntryFormActive = (id: string, active: boolean) =>
+  http<EntryFormDefDto>(`/entry-forms/${id}/active`, { method: 'POST', body: JSON.stringify(active) })
 export const applySegment = (id: string, req: { recordType: string; lineLevel: boolean }) =>
   http<SegmentDefDto>(`/segments/${id}/applications`, { method: 'POST', body: JSON.stringify(req) })
 export const unapplySegment = (id: string, recordType: string) =>

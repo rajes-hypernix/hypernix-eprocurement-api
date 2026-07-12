@@ -15,6 +15,10 @@ public sealed record SaveSegmentDefRequest(string Name, bool HasHierarchy, bool 
 
 public sealed record SaveSegmentValueRequest(string Label, Guid? ParentValueId, int Sort);
 
+/// <summary>CF2-T6: value-self edit — label/parent/sort/active. The CODE is immutable (it is
+/// the dimension key stored in assignments; renaming the label never re-keys history).</summary>
+public sealed record UpdateSegmentValueRequest(string Label, Guid? ParentValueId, int Sort, bool Active);
+
 public sealed record ApplySegmentRequest(string RecordType, bool LineLevel);
 
 /// <summary>One segment on one record (or line): def metadata + the assigned value code
@@ -31,6 +35,14 @@ public interface ISegmentService
     Task<SegmentDefDto> CreateDefAsync(SaveSegmentDefRequest req, CancellationToken ct = default);
     Task<SegmentDefDto> UpdateDefAsync(Guid id, SaveSegmentDefRequest req, CancellationToken ct = default);
     Task<SegmentDefDto> AddValueAsync(Guid defId, SaveSegmentValueRequest req, CancellationToken ct = default);
+    Task<SegmentDefDto> UpdateValueAsync(Guid defId, Guid valueId, UpdateSegmentValueRequest req, CancellationToken ct = default);
+    /// <summary>CF2-T6: guarded — a value with assignments DEACTIVATES (never re-keys history);
+    /// a clean one hard-deletes. Returns the def either way.</summary>
+    Task<SegmentDefDto> DeleteValueAsync(Guid defId, Guid valueId, CancellationToken ct = default);
+    Task<SegmentDefDto> SetDefActiveAsync(Guid id, bool active, CancellationToken ct = default);
+    /// <summary>CF2-T6: guarded — refused while ANY assignment or value-in-use exists;
+    /// otherwise cascades applications + registry rows + values. System defs never.</summary>
+    Task DeleteDefAsync(Guid id, CancellationToken ct = default);
     Task<SegmentDefDto> ApplyAsync(Guid defId, ApplySegmentRequest req, CancellationToken ct = default);
     Task<SegmentDefDto> UnapplyAsync(Guid defId, string recordType, CancellationToken ct = default);
     Task<IReadOnlyList<SegmentAssignmentDto>> GetAssignmentsAsync(string recordType, Guid recordId, Guid? lineId, CancellationToken ct = default);

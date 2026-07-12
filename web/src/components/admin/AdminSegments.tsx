@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   getSegmentDefs, createSegmentDef, updateSegmentDef, addSegmentValue, applySegment, unapplySegment,
-  type SegmentDefDto,
+  updateSegmentValue, deleteSegmentValue, setSegmentDefActive, deleteSegmentDef,
+  type SegmentDefDto, type SegmentValueDto,
 } from '../../api/client'
 import { SetupPage } from '../../ui/archetypes/SetupPage'
 import { Modal, Notice } from '../ui'
@@ -61,6 +62,7 @@ export function AdminSegments() {
 function SegmentDetail({ def, onChanged }: { def: SegmentDefDto; onChanged: () => void }) {
   const [editing, setEditing] = useState(false)
   const [addingValue, setAddingValue] = useState(false)
+  const [editingValue, setEditingValue] = useState<SegmentValueDto | null>(null)
   const [error, setError] = useState<string | null>(null)
   const byId = new Map(def.values.map((v) => [v.id, v]))
 
@@ -75,6 +77,22 @@ function SegmentDetail({ def, onChanged }: { def: SegmentDefDto; onChanged: () =
     onSuccess: () => { setError(null); onChanged() },
     onError: (e) => setError(e instanceof Error ? e.message : 'Could not remove the application.'),
   })
+  // CF2-T6: the uniform lifecycle — value edit/delete, def deactivate/delete, all guarded server-side.
+  const removeValue = useMutation({
+    mutationFn: (valueId: string) => deleteSegmentValue(def.id, valueId),
+    onSuccess: () => { setError(null); onChanged() },
+    onError: (e) => setError(e instanceof Error ? e.message : 'Could not delete the value.'),
+  })
+  const toggleDef = useMutation({
+    mutationFn: () => setSegmentDefActive(def.id, !def.active),
+    onSuccess: () => { setError(null); onChanged() },
+    onError: (e) => setError(e instanceof Error ? e.message : 'Could not update the segment.'),
+  })
+  const removeDef = useMutation({
+    mutationFn: () => deleteSegmentDef(def.id),
+    onSuccess: () => { setError(null); onChanged() },
+    onError: (e) => setError(e instanceof Error ? e.message : 'Could not delete the segment.'),
+  })
 
   return (
     <div>
@@ -83,7 +101,15 @@ function SegmentDetail({ def, onChanged }: { def: SegmentDefDto; onChanged: () =
         <div className="spacer" />
         {def.isSystem
           ? <span className="badge b-blue">System — mirrors the PR's dimension columns</span>
-          : <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>Edit</Button>}
+          : (
+            <>
+              <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>Edit</Button>
+              <Button variant="ghost" size="sm" onClick={() => toggleDef.mutate()} ariaLabel={def.active ? 'Deactivate segment' : 'Reactivate segment'}>
+                {def.active ? 'Deactivate' : 'Reactivate'}
+              </Button>
+              <Button variant="ghost" size="sm" red onClick={() => removeDef.mutate()} ariaLabel="Delete segment">Delete</Button>
+            </>
+          )}
       </div>
       {def.isSystem && (
         <p className="hint">
@@ -95,7 +121,7 @@ function SegmentDetail({ def, onChanged }: { def: SegmentDefDto; onChanged: () =
 
       <h4>Values ({def.values.length})</h4>
       <table>
-        <thead><tr><th>Code</th><th>Label</th>{def.hasHierarchy && <th>Parent</th>}<th>Status</th></tr></thead>
+        <thead><tr><th>Code</th><th>Label</th>{def.hasHierarchy && <th>Parent</th>}<th>Status</th><th /></tr></thead>
         <tbody>
           {def.values.map((v) => (
             <tr key={v.id}>
@@ -103,9 +129,17 @@ function SegmentDetail({ def, onChanged }: { def: SegmentDefDto; onChanged: () =
               <td>{v.label}</td>
               {def.hasHierarchy && <td>{v.parentValueId ? byId.get(v.parentValueId)?.label ?? '—' : '—'}</td>}
               <td><span className={`badge ${v.active ? 'b-green' : 'b-grey'}`}>{v.active ? 'Active' : 'Inactive'}</span></td>
+              <td className="amt">
+                {!def.isSystem && (
+                  <>
+                    <Button variant="ghost" size="sm" onClick={() => setEditingValue(v)} ariaLabel={`Edit value ${v.label}`}>Edit</Button>
+                    <Button variant="ghost" size="sm" red onClick={() => removeValue.mutate(v.id)} ariaLabel={`Delete value ${v.label}`}>Delete</Button>
+                  </>
+                )}
+              </td>
             </tr>
           ))}
-          {def.values.length === 0 && <tr><td colSpan={def.hasHierarchy ? 4 : 3} className="hint">No values yet — add the first dimension key.</td></tr>}
+          {def.values.length === 0 && <tr><td colSpan={def.hasHierarchy ? 5 : 4} className="hint">No values yet — add the first dimension key.</td></tr>}
         </tbody>
       </table>
       {!def.isSystem && (
@@ -150,6 +184,9 @@ function SegmentDetail({ def, onChanged }: { def: SegmentDefDto; onChanged: () =
       )}
       {addingValue && (
         <ValueModal def={def} onClose={() => setAddingValue(false)} onSaved={() => { setAddingValue(false); onChanged() }} />
+      )}
+      {editingValue && (
+        <EditValueModal def={def} value={editingValue} onClose={() => setEditingValue(null)} onSaved={() => { setEditingValue(null); onChanged() }} />
       )}
     </div>
   )
@@ -223,6 +260,39 @@ function ValueModal({ def, onClose, onSaved }: { def: SegmentDefDto; onClose: ()
           spec={{ key: 'segv-parent', label: 'Parent value (optional)', dataType: 'select', options: { kind: 'static', options: def.values.map((v) => ({ code: v.id, label: v.label })) } }}
           value={parentId} onChange={(v) => setParentId(String(v ?? ''))} />
       )}
+      {error && <Notice tone="error">{error}</Notice>}
+    </Modal>
+  )
+}
+
+function EditValueModal({ def, value, onClose, onSaved }: {
+  def: SegmentDefDto; value: SegmentValueDto; onClose: () => void; onSaved: () => void
+}) {
+  const [label, setLabel] = useState(value.label)
+  const [parentId, setParentId] = useState(value.parentValueId ?? '')
+  const [active, setActive] = useState(value.active)
+  const [error, setError] = useState<string | null>(null)
+  const save = useMutation({
+    mutationFn: () => updateSegmentValue(def.id, value.id, { label, parentValueId: parentId || null, sort: value.sort, active }),
+    onSuccess: onSaved,
+    onError: (e) => setError(e instanceof Error ? e.message : 'Could not save the value.'),
+  })
+  return (
+    <Modal
+      title={`Edit value — ${value.label}`} icon="edit"
+      footer={<>
+        <button type="button" className="btn btn-out" onClick={onClose}>Cancel</button>
+        <button type="button" className="btn btn-pri" disabled={!label.trim() || save.isPending} onClick={() => save.mutate()}>Save value</button>
+      </>}
+    >
+      <TextField spec={{ key: 'ev-label', label: 'Label', dataType: 'text' }} value={label} onChange={(v) => setLabel(String(v ?? ''))} />
+      {def.hasHierarchy && (
+        <SelectField
+          spec={{ key: 'ev-parent', label: 'Parent value (optional)', dataType: 'select', options: { kind: 'static', options: def.values.filter((x) => x.id !== value.id).map((x) => ({ code: x.id, label: x.label })) } }}
+          value={parentId} onChange={(v) => setParentId(String(v ?? ''))} />
+      )}
+      <CheckboxField spec={{ key: 'ev-active', label: 'Active (offered for new assignment)', dataType: 'boolean' }} value={active} onChange={(v) => setActive(v === true)} />
+      <p className="hint">The code (<span className="mono">{value.code}</span>) is the stored dimension key — it never changes.</p>
       {error && <Notice tone="error">{error}</Notice>}
     </Modal>
   )

@@ -183,3 +183,57 @@ public sealed class SegmentsTests(SegmentsFixture fx) : IClassFixture<SegmentsFi
         defs.Should().NotBeNull();
     }
 }
+
+/// <summary>CF2-T6: the uniform lifecycle verbs segments were missing — value edit (code
+/// immutable), guarded value delete (assigned → deactivate, the A2F-T3 discipline), def
+/// inactivate, guarded def delete (live assignments refuse; clean cascade).</summary>
+public sealed class SegmentLifecycleTests(SegmentsFixture fx) : IClassFixture<SegmentsFixture>
+{
+    [Fact]
+    public async Task Value_edit_changes_label_never_code_and_delete_is_guarded()
+    {
+        var def = await fx.CreateProjectSegment("Alpha Site", "Beta Site");
+        var admin = fx.ClientAs("u_admin");
+        var alpha = def.Values.Single(v => v.Code == "ALPHA-SITE");
+
+        // Edit: label/active change, the CODE (stored dimension key) never does.
+        var resp = await admin.PutAsJsonAsync($"/api/segments/{def.Id}/values/{alpha.Id}",
+            new { label = "Alpha Site Renamed", parentValueId = (Guid?)null, sort = 0, active = true });
+        resp.StatusCode.Should().Be(HttpStatusCode.OK, await resp.Content.ReadAsStringAsync());
+        var updated = (await resp.Content.ReadFromJsonAsync<SegmentDefDto>())!;
+        updated.Values.Single(v => v.Id == alpha.Id).Label.Should().Be("Alpha Site Renamed");
+        updated.Values.Single(v => v.Id == alpha.Id).Code.Should().Be("ALPHA-SITE", "codes are stored keys — immutable");
+
+        // Guarded delete: assign BETA somewhere, then delete → deactivates, not removed.
+        await fx.Assign(fx.PoAId, def.Code, "BETA-SITE");
+        var beta = def.Values.Single(v => v.Code == "BETA-SITE");
+        var del = await admin.DeleteAsync($"/api/segments/{def.Id}/values/{beta.Id}");
+        del.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await del.Content.ReadFromJsonAsync<SegmentDefDto>())!.Values.Single(v => v.Id == beta.Id).Active
+            .Should().BeFalse("assigned values deactivate — history never re-keys");
+
+        // Unassigned value hard-deletes.
+        var del2 = await admin.DeleteAsync($"/api/segments/{def.Id}/values/{alpha.Id}");
+        (await del2.Content.ReadFromJsonAsync<SegmentDefDto>())!.Values.Should().NotContain(v => v.Id == alpha.Id);
+    }
+
+    [Fact]
+    public async Task Def_delete_is_refused_with_live_assignments_and_cascades_when_clean()
+    {
+        var admin = fx.ClientAs("u_admin");
+        var assigned = await fx.CreateProjectSegment("Gamma Site");
+        await fx.Assign(fx.PoBId, assigned.Code, "GAMMA-SITE");
+        (await admin.DeleteAsync($"/api/segments/{assigned.Id}")).StatusCode
+            .Should().Be(HttpStatusCode.Conflict, "live assignments — dimension keys are never silently dropped");
+
+        var clean = await fx.CreateProjectSegment("Delta Site");
+        (await admin.DeleteAsync($"/api/segments/{clean.Id}")).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await admin.GetFromJsonAsync<List<SegmentDefDto>>("/api/segments"))!
+            .Should().NotContain(d => d.Id == clean.Id, "applications + registry rows + values cascade with it");
+
+        // Inactivate verb + system-def protection.
+        var toggled = await admin.PostAsJsonAsync($"/api/segments/{assigned.Id}/active", false);
+        (await toggled.Content.ReadFromJsonAsync<SegmentDefDto>())!.Active.Should().BeFalse();
+        await admin.PostAsJsonAsync($"/api/segments/{assigned.Id}/active", true);   // restore for other tests
+    }
+}

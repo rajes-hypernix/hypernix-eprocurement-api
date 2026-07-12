@@ -47,6 +47,7 @@ public interface IEntryFormService
     Task<EntryFormDefDto> CreateAsync(SaveEntryFormRequest req, CancellationToken ct = default);
     Task<EntryFormDefDto> UpdateAsync(Guid id, SaveEntryFormRequest req, CancellationToken ct = default);
     Task DeleteAsync(Guid id, CancellationToken ct = default);
+    Task<EntryFormDefDto> SetActiveAsync(Guid id, bool active, CancellationToken ct = default);   // CF2-T6: the missing inactivate verb
     Task<EntryFormDefDto> AssignRolesAsync(Guid id, AssignRolesRequest req, CancellationToken ct = default);
     /// <summary>The caller's form for a record type (A71 + dynamic View*): fixed global
     /// role precedence, first held role with an Active mapped form wins, Standard fallback.</summary>

@@ -37,6 +37,11 @@ public sealed class EntryFormsController(IEntryFormService forms) : ControllerBa
         return NoContent();
     }
 
+    [HttpPost("{id:guid}/active")]
+    [Action(ApiActions.ManageEntryForms)]
+    public async Task<ActionResult<EntryFormDefDto>> SetActive(Guid id, [FromBody] bool active, CancellationToken ct) =>
+        Ok(await forms.SetActiveAsync(id, active, ct));
+
     [HttpPut("{id:guid}/roles")]
     [Action(ApiActions.ManageEntryForms)]
     public async Task<ActionResult<EntryFormDefDto>> AssignRoles(Guid id, [FromBody] AssignRolesRequest req, CancellationToken ct) =>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  getEntryForms, createEntryForm, updateEntryForm, deleteEntryForm, assignEntryFormRoles,
+  getEntryForms, createEntryForm, updateEntryForm, deleteEntryForm, assignEntryFormRoles, setEntryFormActive,
   getViewFields, type EntryFormDefDto, type EntryFormFieldDto,
 } from '../../api/client'
 import { SetupPage } from '../../ui/archetypes/SetupPage'
@@ -93,6 +93,11 @@ function FormComposer({ form, onChanged, onDeleted }: {
     onSuccess: () => { setError(null); onChanged() },
     onError: (e) => setError(e instanceof Error ? e.message : 'Could not save the form.'),
   })
+  const toggleActive = useMutation({
+    mutationFn: () => setEntryFormActive(form.id, !form.active),
+    onSuccess: onChanged,
+    onError: (e) => setError(e instanceof Error ? e.message : 'Could not update the form.'),
+  })
   const remove = useMutation({
     mutationFn: () => deleteEntryForm(form.id),
     onSuccess: onDeleted,
@@ -120,6 +125,9 @@ function FormComposer({ form, onChanged, onDeleted }: {
           ? <span className="badge b-blue">Standard — the parity baseline, read-only</span>
           : (
             <>
+              <Button variant="ghost" size="sm" onClick={() => toggleActive.mutate()} ariaLabel={form.active ? 'Deactivate form' : 'Reactivate form'}>
+                {form.active ? 'Deactivate' : 'Reactivate'}
+              </Button>
               <Button variant="ghost" size="sm" red onClick={() => remove.mutate()} ariaLabel={`Delete ${form.name}`}>Delete</Button>
               <Button variant="primary" size="sm" busy={save.isPending} onClick={() => save.mutate()} ariaLabel="Save form">Save form</Button>
             </>

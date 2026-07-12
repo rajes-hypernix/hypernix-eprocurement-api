@@ -62,12 +62,12 @@ Columns: `[ ]`→`[x]` when complete · **Audit** = current-state finding from P
 ## CF2 — Uniform lifecycle  (AUTONOMOUS — build fully)
 
 ### T6 — Lifecycle parity across every custom element
-- [ ] Segment VALUE edit (`PUT`) — currently missing · Audit:missing (confirmed) · Build:___ · Test:___
-- [ ] Segment DEF delete (guarded by live assignments/values) — currently missing · Audit:missing (confirmed) · Build:___ · Test:___
-- [ ] Audit ALL elements (field def, list, list value, segment def, segment value, entry form) for the full create/view/edit/inactivate/delete verb set; fill each gap found · Audit:matrix in FINDINGS: list self-verbs ❌, seg value edit/inact ❌, seg def delete ❌, entry-form inactivate ❌ · Build:___ · Test:___
-- [ ] Every delete/inactivate has a dependency guard (never silently orphans) · Audit:existing guards solid; new verbs must match · Build:___ · Test:___
+- [x] Segment VALUE edit (`PUT`) — currently missing · Audit:missing (confirmed) · Build:CF2-T6 commit · Test:CF2-T6 (edit-value leg) + SegmentLifecycleTests
+- [x] Segment DEF delete (guarded by live assignments/values) — currently missing · Audit:missing (confirmed) · Build:CF2-T6 commit · Test:CF2-T6 (delete-def leg) + SegmentLifecycleTests
+- [x] Audit ALL elements (field def, list, list value, segment def, segment value, entry form) for the full create/view/edit/inactivate/delete verb set; fill each gap found · Audit:matrix in FINDINGS: list self-verbs ❌, seg value edit/inact ❌, seg def delete ❌, entry-form inactivate ❌ · Build:CF2-T6 commit · Test:CF2-T6 (all legs) — matrix now uniform: list CF1-T2, seg value edit/inact/delete + def active/delete + entry-form active THIS task
+- [x] Every delete/inactivate has a dependency guard (never silently orphans) · Audit:existing guards solid; new verbs must match · Build:CF2-T6 commit · Test:SegmentLifecycleTests guards + CF2-T6 (assigned value deactivates; live-assignment def 409)
 
-**CF2 SLICE GATE** — [ ] re-read PLAN §6 lifecycle matrix; every element now has uniform verbs or a logged reason; boxes ticked or in BLOCKERS.
+**CF2 SLICE GATE** — [x] PLAN §6 matrix re-read 2026-07-13: field def ✓✓✓✓ (pre-existing) · list ✓✓✓✓ (CF1-T2) · list value ✓✓✓✓ (pre-existing+A2F) · segment def ✓✓✓✓ (edit pre-existing; active+delete CF2-T6) · segment value ✓✓✓✓ (CF2-T6) · entry form ✓✓✓✓ (inactivate CF2-T6). Uniform verb set achieved, every delete/inactivate guarded. 4/4 boxes [x], zero BLOCKERS.
 
 ---
 

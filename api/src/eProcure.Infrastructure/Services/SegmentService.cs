@@ -93,6 +93,65 @@ public sealed class SegmentService(
         return await ToDtoAsync(def, ct);
     }
 
+    public async Task<SegmentDefDto> UpdateValueAsync(Guid defId, Guid valueId, UpdateSegmentValueRequest req, CancellationToken ct = default)
+    {
+        var def = await LoadUserDef(defId, ct);
+        var value = await db.SegmentValues.FirstOrDefaultAsync(v => v.Id == valueId && v.SegmentDefId == def.Id, ct)
+            ?? throw new NotFoundException($"Segment value {valueId} not found on {def.Name}.");
+        if (string.IsNullOrWhiteSpace(req.Label))
+            throw new SegmentValidationException("A segment value needs a label.");
+        if (req.ParentValueId is { } pid && (pid == valueId ||
+            !await db.SegmentValues.AnyAsync(v => v.Id == pid && v.SegmentDefId == def.Id, ct)))
+            throw new SegmentValidationException("The parent value does not belong to this segment.");
+        // CF2-T6: the CODE is the stored dimension key — label edits never re-key history.
+        value.Label = req.Label.Trim();
+        value.ParentValueId = req.ParentValueId;
+        value.Sort = req.Sort;
+        value.Active = req.Active;
+        await db.SaveChangesAsync(ct);
+        return await ToDtoAsync(def, ct);
+    }
+
+    public async Task<SegmentDefDto> DeleteValueAsync(Guid defId, Guid valueId, CancellationToken ct = default)
+    {
+        var def = await LoadUserDef(defId, ct);
+        var value = await db.SegmentValues.FirstOrDefaultAsync(v => v.Id == valueId && v.SegmentDefId == def.Id, ct)
+            ?? throw new NotFoundException($"Segment value {valueId} not found on {def.Name}.");
+        if (await db.SegmentValues.AnyAsync(v => v.ParentValueId == valueId, ct))
+            throw new DomainRuleException($"'{value.Label}' has child values — repoint or remove them first.");
+        // The list-value discipline (A2F-T3): assigned somewhere → deactivate; clean → hard delete.
+        if (await db.SegmentAssignments.AnyAsync(a => a.SegmentValueId == valueId, ct))
+        {
+            value.Active = false;
+            await db.SaveChangesAsync(ct);
+            return await ToDtoAsync(def, ct);
+        }
+        db.SegmentValues.Remove(value);
+        await db.SaveChangesAsync(ct);
+        return await ToDtoAsync(def, ct);
+    }
+
+    public async Task<SegmentDefDto> SetDefActiveAsync(Guid id, bool active, CancellationToken ct = default)
+    {
+        var def = await LoadUserDef(id, ct);
+        def.Active = active;
+        def.UpdatedUtc = clock.UtcNow;
+        await db.SaveChangesAsync(ct);
+        return await ToDtoAsync(def, ct);
+    }
+
+    public async Task DeleteDefAsync(Guid id, CancellationToken ct = default)
+    {
+        var def = await LoadUserDef(id, ct);   // system defs refuse here (convergence row owns them)
+        if (await db.SegmentAssignments.AnyAsync(a => a.SegmentDefId == def.Id, ct))
+            throw new DomainRuleException($"{def.Name} has live assignments — dimension keys are never silently dropped. Clear the assignments (or deactivate the segment) first.");
+        db.FieldRegistry.RemoveRange(await db.FieldRegistry.Where(r => r.SegmentDefId == def.Id).ToListAsync(ct));
+        db.SegmentApplications.RemoveRange(await db.SegmentApplications.Where(a => a.SegmentDefId == def.Id).ToListAsync(ct));
+        db.SegmentValues.RemoveRange(await db.SegmentValues.Where(v => v.SegmentDefId == def.Id).ToListAsync(ct));
+        db.SegmentDefs.Remove(def);
+        await db.SaveChangesAsync(ct);
+    }
+
     public async Task<SegmentDefDto> ApplyAsync(Guid defId, ApplySegmentRequest req, CancellationToken ct = default)
     {
         var def = await LoadUserDef(defId, ct);

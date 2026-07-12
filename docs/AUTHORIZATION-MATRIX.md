@@ -68,13 +68,13 @@ POST api/onboarding/draft/raise-clarification
 
 ## 4. The matrix — endpoint × action × role (AS RULED)
 
-142 authenticated endpoints (102 at ruling + the permissions read + D3's
+147 authenticated endpoints (102 at ruling + the permissions read + D3's
 seven /api/views endpoints + D4's aggregate/series + eight dashboards/metrics
 endpoints + D5's seven custom-field endpoints + D6's six /api/segments and
 two /api/segment-assignments endpoints + D7's five /api/entry-forms
 endpoints, the resolve read and two /api/numbering endpoints − the retired
 legacy dashboard
-read), grouped into actions A1–A72 (one
+read, + CF2-T6's five lifecycle verbs — segment value PUT/DELETE, segment active/delete, entry-form active — riding the existing A68/A69 manage rows), grouped into actions A1–A72 (one
 action per row, 71 live with A1 retired; the RoleMatrix suite generates one
 test case per action — A72 is the one DYNAMIC-ONLY action, carried by no
 endpoint: it exists solely as the spend metrics' RequiredAction inside
@@ -198,13 +198,13 @@ ViewRunPaginationTests pins scoping across pages).
 | A59–A61 saved views (D3, + D4's aggregate/series) | 9 |
 | A62–A64 dashboards + metrics (D4) | 8 |
 | A65–A67 custom fields (D5) + D6 segment-assignments riding A66/A67 | 9 |
-| A68 segments (D6) | 6 |
+| A68 segments (D6, +4 CF2-T6 lifecycle verbs) | 10 |
 | A69–A70 entry forms + numbering manage (D7) | 7 |
 | A71 entry-form resolve (D7) | 1 |
 | A7–A23 internal reads | 35 |
 | A24–A48 internal writes | 49 |
 | A49–A57 vendor actions | 11 |
-| **Total** | **153 live** (Slice RM's 113 + permissions + D3 views + D4 dashboards/metrics + D5 custom fields + D6 segments/segment-assignments + D7 entry-forms/numbering − the retired A1) — matches the ApiExplorer surface (same enumeration as `AnonymousSweepTests.cs:44-51`). (A1 ViewDashboard retired with the legacy GET /api/dashboard at D4 Phase 4 — sanctioned.) |
+| **Total** | **158 live** (Slice RM's 113 + permissions + D3 views + D4 dashboards/metrics + D5 custom fields + D6 segments/segment-assignments + D7 entry-forms/numbering − the retired A1) — matches the ApiExplorer surface (same enumeration as `AnonymousSweepTests.cs:44-51`). (A1 ViewDashboard retired with the legacy GET /api/dashboard at D4 Phase 4 — sanctioned.) |
 
 ## 5. The Vendor principal's complete action list (as ruled)
 

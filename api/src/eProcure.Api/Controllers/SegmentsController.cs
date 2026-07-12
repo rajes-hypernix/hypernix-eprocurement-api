@@ -30,6 +30,29 @@ public sealed class SegmentsController(ISegmentService segments) : ControllerBas
     public async Task<ActionResult<SegmentDefDto>> AddValue(Guid id, [FromBody] SaveSegmentValueRequest req, CancellationToken ct) =>
         Ok(await segments.AddValueAsync(id, req, ct));
 
+    [HttpPut("{id:guid}/values/{valueId:guid}")]
+    [Action(ApiActions.ManageSegments)]
+    public async Task<ActionResult<SegmentDefDto>> UpdateValue(Guid id, Guid valueId, [FromBody] UpdateSegmentValueRequest req, CancellationToken ct) =>
+        Ok(await segments.UpdateValueAsync(id, valueId, req, ct));
+
+    [HttpDelete("{id:guid}/values/{valueId:guid}")]
+    [Action(ApiActions.ManageSegments)]
+    public async Task<ActionResult<SegmentDefDto>> DeleteValue(Guid id, Guid valueId, CancellationToken ct) =>
+        Ok(await segments.DeleteValueAsync(id, valueId, ct));
+
+    [HttpPost("{id:guid}/active")]
+    [Action(ApiActions.ManageSegments)]
+    public async Task<ActionResult<SegmentDefDto>> SetActive(Guid id, [FromBody] bool active, CancellationToken ct) =>
+        Ok(await segments.SetDefActiveAsync(id, active, ct));
+
+    [HttpDelete("{id:guid}")]
+    [Action(ApiActions.ManageSegments)]
+    public async Task<IActionResult> DeleteDef(Guid id, CancellationToken ct)
+    {
+        await segments.DeleteDefAsync(id, ct);
+        return NoContent();
+    }
+
     [HttpPost("{id:guid}/applications")]
     [Action(ApiActions.ManageSegments)]
     public async Task<ActionResult<SegmentDefDto>> Apply(Guid id, [FromBody] ApplySegmentRequest req, CancellationToken ct) =>
