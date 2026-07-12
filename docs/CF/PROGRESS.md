@@ -23,3 +23,6 @@
 2026-07-13 06:45 LONGRUN P1 COMPLETE — 69/69 inventory boxes evidence-filled; B2/B3 blocked-with-reason; FULL-TEST-REPORT.md written; suites 478/234/65; tagging v1.1-full-test-sweep.
 2026-07-13 06:48 LONGRUN P2 COMPLETE — 12/12 dimensions probed: verdict CLEAN-WITH-NOTES (2 notes: dev-era migration drops → recommend pre-prod squash; e2e fixed sleeps). 0 fixes needed beyond the already-committed warning. Tagging v1.2-backend-clean.
 2026-07-13 06:56 CF5-T1 — EntryFormLayout migration: subtabs+groups as OBJECTS, fields FK groups (subtab derives via group), md5-deterministic backfill matching EntryFormSeed HexGuid. PARITY STOP GATE PASSED: resolve byte-identical for u_faridah/u_lim/u_admin before vs after. Wire contract unchanged (strings resolve from objects). Gates 478/234/08+CF-parity green.
+2026-07-13 07:13 CF5-T2+T3 656821f — layout-object CRUD (subtab hide warn-but-allow per locked D2; guards 409 on populated containers); resolve excludes hidden subtabs; column break exposed.
+2026-07-13 07:13 CF5-T4+T5 07ede4b — composer panel (chips, drag placement, warnings) + two-column canvas (locked D3); guardrails caught raw inputs → rebuilt on FieldSpec primitives. Proofs CF5-T2..T5.
+2026-07-13 07:13 CF5 SLICE GATE — Step 0 T1–T5 all shipped+proven; parity STOP gate passed (byte-identical ×3 roles); full e2e 69/69; AD-1/AD-2 recorded. Tagging v1.3-cf5.
