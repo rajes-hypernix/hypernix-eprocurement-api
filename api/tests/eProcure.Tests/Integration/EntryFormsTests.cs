@@ -189,4 +189,13 @@ public sealed class EntryFormsTests(EntryFormsFixture fx) : IClassFixture<EntryF
             .StatusCode.Should().Be(HttpStatusCode.Conflict, "the segments precedent: system rows are read-only");
         (await admin.DeleteAsync($"/api/entry-forms/{standardId}")).StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
+
+    [Fact]
+    public async Task Copying_a_form_twice_de_dupes_the_derived_code_instead_of_failing()
+    {
+        var a = await fx.CreateForm("Twin Form", EntryFormsFixture.Field("Memo", 0));
+        var b = await fx.CreateForm("Twin Form", EntryFormsFixture.Field("Memo", 0));   // same name → same derived code → suffix, not 400
+        a.Code.Should().NotBe(b.Code);
+        b.Code.Should().StartWith(a.Code);
+    }
 }

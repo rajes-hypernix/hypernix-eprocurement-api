@@ -57,8 +57,14 @@ public sealed class EntryFormService(AppDbContext db, IClock clock, ICurrentUser
         if (string.IsNullOrWhiteSpace(req.Name))
             throw new FormValidationException("A form needs a name.");
         var code = "ef_" + SourcingMapping.DimCode(req.Name).ToLowerInvariant().Replace('-', '_');
+        // SWEEP-FIX-T1: the code is an INTERNAL id — copying "X (copy)" twice is a legitimate
+        // action, so a collision de-dupes with a numeric suffix instead of failing forever.
         if (await db.EntryFormDefs.AnyAsync(d => d.Code == code, ct))
-            throw new FormValidationException($"A form with code '{code}' already exists.");
+        {
+            var n = 2;
+            while (await db.EntryFormDefs.AnyAsync(d => d.Code == $"{code}_{n}", ct)) n++;
+            code = $"{code}_{n}";
+        }
         await ValidateFieldsAsync(type, req.Fields, ct);
 
         var now = clock.UtcNow;

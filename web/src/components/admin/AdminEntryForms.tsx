@@ -36,6 +36,7 @@ export function AdminEntryForms() {
   const qc = useQueryClient()
   const { data: forms = [] } = useQuery({ queryKey: ['entry-form-defs'], queryFn: () => getEntryForms('Requisition') })
   const [selected, setSelected] = useState<string | null>(null)
+  const [listError, setListError] = useState<string | null>(null)
   const form = forms.find((f) => f.id === selected) ?? forms[0]
   const refresh = () => { void qc.invalidateQueries({ queryKey: ['entry-form-defs'] }); void qc.invalidateQueries({ queryKey: ['entry-form'] }) }
 
@@ -43,7 +44,8 @@ export function AdminEntryForms() {
     mutationFn: (source: EntryFormDefDto) => createEntryForm({
       name: `${source.name} (copy)`, recordType: 'Requisition', fields: source.fields,
     }),
-    onSuccess: (d) => { setSelected(d.id); refresh() },
+    onSuccess: (d) => { setSelected(d.id); setListError(null); refresh() },
+    onError: (e) => setListError(e instanceof Error ? e.message : 'Could not copy the form.'),
   })
 
   return (
@@ -61,9 +63,13 @@ export function AdminEntryForms() {
       }))}
       selectedKey={form?.id ?? ''}
       onSelect={setSelected}
-      detail={form
-        ? <FormComposer key={form.id} form={form} onChanged={refresh} onDeleted={() => { setSelected(null); refresh() }} />
-        : <p className="hint">No entry forms yet.</p>}
+      detail={
+        <>
+          {listError && <Notice tone="error">{listError}</Notice>}
+          {form
+            ? <FormComposer key={form.id} form={form} onChanged={refresh} onDeleted={() => { setSelected(null); refresh() }} />
+            : <p className="hint">No entry forms yet.</p>}
+        </>}
     />
   )
 }
