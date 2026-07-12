@@ -140,7 +140,7 @@ Produce a written Step 0 file plan for EACH, saved to file, for operator review 
 ---
 
 ## MORNING HANDOFF
-- [ ] `docs/CF/CF-VERIFICATION.md` written — Table 1 (vs PLAN, every §1–§12 row) + Table 2 (vs `Build_Comments.md`, paragraph by paragraph). Every function ✅-built-and-browser-tested OR deferred/dropped-with-reason.
-- [ ] `docs/CF/PROGRESS.md` — timestamped log of the night's work (one line per task, so the operator sees the timeline at a glance).
-- [ ] `docs/CF/BLOCKERS.md` — anything that couldn't pass, with why (empty is ideal).
-- [ ] Final report posted: built count / browser-tests-added / deferred-with-reason; five-lens review; full-suite pass counts; the three CF5–CF7 Step 0 plans ready for review.
+- [x] `docs/CF/CF-VERIFICATION.md` written — Table 1 (vs PLAN, every §1–§12 row) + Table 2 (vs `Build_Comments.md`, paragraph by paragraph). Every function ✅-built-and-browser-tested OR deferred/dropped-with-reason. — 37 Table-1 rows + 19 Table-2 paragraphs, closing line included.
+- [x] `docs/CF/PROGRESS.md` — timestamped log of the night's work (one line per task, so the operator sees the timeline at a glance). — maintained after every task commit throughout.
+- [x] `docs/CF/BLOCKERS.md` — anything that couldn't pass, with why (empty is ideal). — EMPTY (nothing blocked; one band repair noted for transparency).
+- [x] Final report posted: built count / browser-tests-added / deferred-with-reason; five-lens review; full-suite pass counts; the three CF5–CF7 Step 0 plans ready for review. — posted in-session at handoff.
