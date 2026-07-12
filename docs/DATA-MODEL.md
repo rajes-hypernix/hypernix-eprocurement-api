@@ -316,3 +316,50 @@ machinery as every other field.
 - Group-by (`/aggregate?groupBy=`, `/series?groupBy=`) is part of the D3/D4
   executor pipeline — same visibility, same scoped sources; a grouped
   aggregate reconciles to its total by construction (FoldGroup).
+
+## Entry forms + numbering (D7)
+
+Four typed tables — the last framework engine: forms carry entry BEHAVIOUR
+(which fields, in what groups/subtabs, display type, required-at-submit,
+defaults, sourcing) per role; numbering becomes Setup configuration over the
+Slice G generator. Distinct from `FormTemplates` (RFQ bid questionnaires) —
+"Entry Forms" everywhere, including on the glass.
+
+- **EntryFormDef** — grain: one row per form. `Code` (`ef_*`, UQ) derives
+  from the name (the cf_/seg_ discipline). `IsSystem` marks the seeded
+  Standard forms — read-only (the segments precedent); the composer's "New
+  form" copies one. `RecordType` restricted to Requisition this slice
+  (OD-D7-5: a definition with no consuming surface is a dummy); each entry
+  surface's migration gate widens it (BACKLOG).
+- **EntryFormField** — grain: one row per (form, field); UQ(FormDefId,
+  FieldKey). `FieldKey` addresses the FieldRegistry (all three Kinds) with
+  **NO FK** — liveness is service-validated on save AND at resolve, failing
+  LOUD (an FK would silently convert D5's ruled zero-value hard-delete into
+  blocked deletes). Placeable native keys are derived MECHANICALLY from the
+  write contract (`EntryFormVocabulary`): a key the save DTO doesn't carry
+  (Code, HeaderStatus, Value, CostCentre, Project) is refused. `Subtab` is a
+  pure layout container holding FIELDS only (sublists keep their built-in
+  homes — custom sublists are the recorded L4 boundary). `FullWidth`/
+  `Label`/`Placeholder` are census-derived render overrides (OD-D7-4 —
+  byte-identical parity needs "Job / Cost ref", not the registry's "Job").
+  `DefaultValue` on date fields accepts the shared DateTokens grammar
+  (@today, @startOfMonth, @endOfMonth, @today±Nd), resolved server-side at
+  resolve time, applied to NEW records only.
+- **EntryFormRoleMap** — grain: one row per (record type, role);
+  UQ(RecordType, Role). Resolution follows the FIXED GLOBAL ROLE PRECEDENCE
+  (ruled MODIFIED: never the user record's array order) — Buyer, Approver,
+  TechEvaluator, CommEvaluator, Admin, Vendor — first role the caller holds
+  with an Active mapped form wins; Standard fallback. The server RE-RESOLVES
+  at submit (OD-D7-2): the caller can never name a form.
+- **NumberingScheme** — grain: one row per record type (UQ), the seven
+  registry types seeded reproducing today's formats verbatim (incl. SWK-V,
+  VOB). Consulted at FORMAT time only — the gap-free FOR-UPDATE sequence
+  upsert is untouched, sequences are keyed (prefix, bucket) and NEVER reset:
+  a prefix change starts (or reattaches to) its own counter, digits changes
+  continue the same counter, and YearSegment=false buckets under year 0 so
+  year-less codes cannot collide across years — uniqueness by construction,
+  all four cases pinned (NumberingTests). System-artifact prefixes (GRN,
+  BID, AWD, VU, USR, FORM, DASH, VIEW) stay literal (BACKLOG row).
+- The seeded **Standard PR Form** reproduces PrForm's retired hardcoded
+  HEADER_SECTION exactly (EntryFormSeed = the single source; parity pinned
+  seed-side in EntryFormSeedTests and render-side in the web parity test).

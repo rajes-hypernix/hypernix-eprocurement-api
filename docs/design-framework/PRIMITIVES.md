@@ -172,3 +172,41 @@ any aggregate/series via `groupBy` — every slice carries the NAMED
 `Unassigned` bucket (honest-null applied to dimensions). The sliced KPI
 (AddKpi "Slice by segment") is the UI proof; the stacked view-backed chart
 portlet is BACKLOG, gate-driven.
+
+## Entry forms — behaviour per role (D7)
+
+PrForm renders from the caller's RESOLVED entry form (`/api/entry-forms/
+resolve`, A71 + the record type's dynamic View*): FieldGroup sections,
+3-across rows, FullWidth memo-style, definition-driven SUBTABS through the
+TransactionPage tab slot — all through `renderField`, no second path. The
+seeded Standard form is byte-identical to the markup it replaced (parity-
+pinned both sides). Placed cf_/seg_ fields render inline on edit and save
+via their own A66/A67 endpoints; UNPLACED keys keep their auto-sections —
+D5's zero-deploy promise is preserved by design. Defaults (static values;
+the shared @-token grammar for dates) apply to NEW records only.
+
+**The enforcement boundary (ruled, verbatim).** Write contracts carry no
+form id, and none is wanted: **a client-sent formCode would let a client
+SEND THE STANDARD FORM'S CODE to dodge its role form's required fields —
+server re-resolution isn't just cleaner, it's the only shape that isn't a
+bypass** (OD-D7-2). The server re-resolves the CALLER's form at submit and
+enforces `requiredOnForm` there — at SUBMIT only, never draft save (OD-D7-3:
+drafts are incomplete by nature; D5 def-level required at value-save is
+unchanged). Everything else — displayType (normal/disabled/readOnly/hidden)
+and defaults — is UI-layer: **hidden ≠ forbidden**; a hidden field's value
+still travels in the DTO and the role matrix is unchanged by form layout.
+Per-form write-masking would be a new authorization semantic nobody ruled —
+it is NOT claimed (BACKLOG).
+
+**The L4 sublist boundary (restated).** Admin-defined subtabs are pure
+layout containers holding FIELDS only. Sublists (line grids, activity,
+documents) keep their built-in homes; CUSTOM sublists — admin-defined child
+tables — are the recorded L4 boundary and deliberately out of D7's scope.
+
+## Numbering — Setup configuration (D7)
+
+`AdminNumbering` (SetupPage, A70) edits prefix/year-segment/digits per
+record type with a non-consuming next-code preview. The scheme shapes codes
+at MINT time only; history is never rewritten and counters never reset, so
+no format change can re-issue an existing code (all four cases test-pinned;
+PRG-2 concurrency untouched).
