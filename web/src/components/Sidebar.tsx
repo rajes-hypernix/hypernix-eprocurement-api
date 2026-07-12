@@ -47,7 +47,10 @@ export function Sidebar({
               role="button"
               tabIndex={0}
               aria-current={active === item.key ? 'page' : undefined}
-              aria-label={item.label}
+              // Collapsed rail is icon-only, so the label must be explicit; expanded items
+              // are named by their visible text (and an aria-label here would collide with
+              // same-named form fields for assistive tech and tests alike).
+              aria-label={collapsed ? item.label : undefined}
               title={collapsed ? item.label : undefined}
               onClick={() => onSelect(item.key)}
               onKeyDown={(e) => {
