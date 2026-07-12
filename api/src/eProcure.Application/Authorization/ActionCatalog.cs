@@ -95,6 +95,9 @@ public static class ActionCatalog
             [ApiActions.ReadCustomValues] = [B, Ap, TE, CE, Ad, V],       // A66: + dynamic View* + the record's scoped fetch (vendors read only records they can reach)
             [ApiActions.EditCustomValues] = [B],                          // A67: Buyer only (ruled deny-by-default: Admin per OD-3, vendors pending a concrete need)
 
+            // ---- A68 custom segments (D6, ruled) ----
+            [ApiActions.ManageSegments] = [Ad],                           // A68: defs/values/applications are platform configuration; assignments ride A66/A67 (folded — split only if the role sets ever diverge)
+
             // ---- A49–A57 vendor principal ----
             [ApiActions.ViewMyInvitations] = [V],                         // A49
             [ApiActions.DeclineRfqInvitation] = [V],                      // A50 (REG row 5)

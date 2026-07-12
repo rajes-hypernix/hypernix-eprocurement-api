@@ -41,6 +41,11 @@ public sealed class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionM
             // D5: same loud posture for custom field defs and values.
             await Write(ctx, StatusCodes.Status400BadRequest, "Invalid custom field data", ex.Message);
         }
+        catch (Application.Segments.SegmentValidationException ex)
+        {
+            // D6: same loud posture for segment defs, values and assignments.
+            await Write(ctx, StatusCodes.Status400BadRequest, "Invalid segment data", ex.Message);
+        }
         catch (DomainRuleException ex)
         {
             await Write(ctx, StatusCodes.Status409Conflict, "Rule violation", ex.Message);

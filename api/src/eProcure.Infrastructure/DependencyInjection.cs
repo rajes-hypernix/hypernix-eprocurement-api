@@ -51,6 +51,8 @@ public static class DependencyInjection
         services.AddScoped<Application.Dashboards.ISystemMetricService, SystemMetricService>();   // metric layer (D4)
         services.AddScoped<Application.Dashboards.IDashboardStore, DashboardStoreService>();      // dashboards (D4)
         services.AddScoped<Application.CustomFields.ICustomFieldService, CustomFieldService>();   // custom fields (D5)
+        services.AddScoped<Application.Segments.ISegmentService, SegmentService>();              // segments (D6)
+        services.AddScoped<Application.Segments.ISegmentProjection, SegmentProjection>();        // the (iii-a) projection
 
         return services;
     }

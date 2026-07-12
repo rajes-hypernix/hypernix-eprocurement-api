@@ -63,13 +63,23 @@ public sealed class SavedViewService(
             .GroupBy(v => v.CustomListId)
             .ToDictionary(g => g.Key, g => (IReadOnlyList<string>)g.OrderBy(v => v.Sort).Select(v => v.Code).ToList());
 
+        // D6: Segment-kind rows get options from their values (active), like ListValue fields.
+        var segDefIds = rows.Where(r => r.Kind == FieldKind.Segment && r.SegmentDefId is not null)
+            .Select(r => r.SegmentDefId!.Value).ToList();
+        var segOptions = (await db.SegmentValues.AsNoTracking()
+                .Where(v => segDefIds.Contains(v.SegmentDefId) && v.Active).ToListAsync(ct))
+            .GroupBy(v => v.SegmentDefId)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<string>)g.OrderBy(v => v.Sort).Select(v => v.Code).ToList());
+
         return rows
             .Where(f => f.Kind != FieldKind.Custom || (defByKey.TryGetValue(f.FieldKey, out var d) && d.Active))
             .Select(f => new ViewFieldDto(
                 f.FieldKey, f.Label, f.DataType.ToString(), f.Kind.ToString(),
                 f.Kind == FieldKind.Custom
                     ? (defByKey.TryGetValue(f.FieldKey, out var d) && d.CustomListId is { } lid ? listOptions.GetValueOrDefault(lid) : null)
-                    : (ViewVocabulary.EnumOptions.TryGetValue((type, f.FieldKey), out var opts) ? opts : null)))
+                    : f.Kind == FieldKind.Segment
+                        ? (f.SegmentDefId is { } sdid ? segOptions.GetValueOrDefault(sdid) : null)
+                        : (ViewVocabulary.EnumOptions.TryGetValue((type, f.FieldKey), out var opts) ? opts : null)))
             .ToList();
     }
 
@@ -213,10 +223,30 @@ public sealed class SavedViewService(
     // data ever proves strain, is a per-type IScopedQuerySource<TDto> exposing an IQueryable
     // with the SAME scoping predicate — the switch in SourceRowsAsync is the one seam.
 
-    public async Task<Application.Dashboards.ViewAggregateResult> AggregateAsync(Guid id, string fn, string? fieldKey, CancellationToken ct = default)
+    public async Task<Application.Dashboards.ViewAggregateResult> AggregateAsync(Guid id, string fn, string? fieldKey, string? groupBy = null, CancellationToken ct = default)
     {
         var (view, registry, rows) = await PrepareAsync(id, ct);
         fn = fn.ToLowerInvariant();
+
+        // D6: group-by-segment — one slice per value present + the NAMED Unassigned group
+        // (honest-null applied to dimensions; ruled its own test).
+        if (groupBy is not null)
+        {
+            if (!_segmentValues.TryGetValue(groupBy, out var segMap))
+                throw new ViewValidationException($"'{groupBy}' is not a segment applied to {view.RecordType}.");
+            var labels = _segmentLabels[groupBy];
+            var groups = rows
+                .GroupBy(r => segMap.GetValueOrDefault((Guid)Prop(r, "Id")!) as string)
+                .Select(g => new Application.Dashboards.ViewAggregateGroup(
+                    g.Key ?? "__unassigned", g.Key is null ? "Unassigned" : labels.GetValueOrDefault(g.Key, g.Key),
+                    FoldGroup(fn, fieldKey, registry, g.ToList())))
+                .OrderByDescending(g => g.Value ?? 0).ToList();
+            var total = fn == "count" ? rows.Count : (decimal?)groups.Sum(g => g.Value ?? 0);
+            return new(view.Id, fn, fn == "count" ? null : fieldKey, total,
+                rows.Count == 0 ? 0 : rows.Count(r => Val(r, fieldKey ?? "Id") is null && fn != "count"),
+                groupBy, groups);
+        }
+
         if (fn == "count")
             return new(view.Id, fn, null, rows.Count, 0);
 
@@ -236,7 +266,7 @@ public sealed class SavedViewService(
         return new(view.Id, fn, entry.FieldKey, value, excluded);
     }
 
-    public async Task<Application.Dashboards.ViewSeriesResult> SeriesAsync(Guid id, string fn, string? fieldKey, string bucketField, int months, CancellationToken ct = default)
+    public async Task<Application.Dashboards.ViewSeriesResult> SeriesAsync(Guid id, string fn, string? fieldKey, string bucketField, int months, string? groupBy = null, CancellationToken ct = default)
     {
         var (view, registry, rows) = await PrepareAsync(id, ct);
         fn = fn.ToLowerInvariant();
@@ -272,7 +302,40 @@ public sealed class SavedViewService(
         }
 
         var buckets = keys.Select(k => new Application.Dashboards.SeriesBucketDto(k, ValueOf(groups.GetValueOrDefault(k)))).ToList();
-        return new(view.Id, fn, entry?.FieldKey, bucketField, buckets, unbucketed);
+
+        // D6: grouped series — one series per segment value present + the Unassigned series.
+        List<Application.Dashboards.ViewSeriesGroup>? grouped = null;
+        if (groupBy is not null)
+        {
+            if (!_segmentValues.TryGetValue(groupBy, out var segMap))
+                throw new ViewValidationException($"'{groupBy}' is not a segment applied to {view.RecordType}.");
+            var labels = _segmentLabels[groupBy];
+            grouped = rows
+                .GroupBy(r => segMap.GetValueOrDefault((Guid)Prop(r, "Id")!) as string)
+                .Select(g =>
+                {
+                    var byMonth = g.Select(r => (Key: BucketOf(r), Row: r)).Where(x => x.Key is not null)
+                        .GroupBy(x => x.Key!).ToDictionary(x => x.Key, x => x.Select(y => y.Row).ToList());
+                    return new Application.Dashboards.ViewSeriesGroup(
+                        g.Key ?? "__unassigned", g.Key is null ? "Unassigned" : labels.GetValueOrDefault(g.Key, g.Key),
+                        keys.Select(k => new Application.Dashboards.SeriesBucketDto(k, ValueOf(byMonth.GetValueOrDefault(k)))).ToList());
+                }).ToList();
+        }
+        return new(view.Id, fn, entry?.FieldKey, bucketField, buckets, unbucketed, groupBy, grouped);
+    }
+
+    /// <summary>Fold one group's rows: count, or sum/avg over the field with honest nulls.</summary>
+    private decimal? FoldGroup(string fn, string? fieldKey, IReadOnlyDictionary<string, FieldRegistryEntry> registry, List<object> rows)
+    {
+        if (fn == "count") return rows.Count;
+        var entry = RequireNumericField(fn, fieldKey, registry);
+        var nums = rows.Select(r => Val(r, entry.FieldKey)).Where(v => v is not null).Select(v => ToDecimal(v!)).ToList();
+        return fn switch
+        {
+            "sum" => rows.Count > 0 && nums.Count == 0 ? null : nums.Sum(),
+            "avg" => nums.Count == 0 ? null : Math.Round(nums.Average(), 2),
+            _ => throw new ViewValidationException($"Unknown aggregate fn '{fn}' — count|sum|avg."),
+        };
     }
 
     private static FieldRegistryEntry RequireNumericField(string fn, string? fieldKey, IReadOnlyDictionary<string, FieldRegistryEntry> registry)
@@ -288,6 +351,7 @@ public sealed class SavedViewService(
     /// so every operator/comparison path works unchanged on custom keys.</summary>
     private async Task LoadCustomStateAsync(RecordType type, CancellationToken ct)
     {
+        await LoadSegmentStateAsync(type, ct);
         var defs = await db.CustomFieldDefs.AsNoTracking().Where(d => d.RecordType == type).ToListAsync(ct);
         _inactiveCustomKeys = defs.Where(d => !d.Active).Select(d => d.Code).ToHashSet(StringComparer.OrdinalIgnoreCase);
         if (defs.Count == 0) { _customValues = []; return; }
@@ -309,6 +373,33 @@ public sealed class SavedViewService(
                 _ => null,
             };
             _customValues[code][v.RecordId] = typed;
+        }
+    }
+
+    /// <summary>D6: header-level segment assignments per FieldKey (seg_*) — value CODES, so
+    /// Eq/In/Contains filter semantics match ListValue custom fields. Absent assignment =
+    /// null = the honest Unassigned. Also feeds the group-by capability by def code.</summary>
+    private Dictionary<string, Dictionary<Guid, object?>> _segmentValues = [];
+    private Dictionary<string, Dictionary<string, string>> _segmentLabels = [];   // defCode -> valueCode -> label
+
+    private async Task LoadSegmentStateAsync(RecordType type, CancellationToken ct)
+    {
+        _segmentValues = []; _segmentLabels = [];
+        var apps = await db.SegmentApplications.AsNoTracking().Where(a => a.RecordType == type).ToListAsync(ct);
+        if (apps.Count == 0) return;
+        var defIds = apps.Select(a => a.SegmentDefId).ToList();
+        var defs = await db.SegmentDefs.AsNoTracking().Where(d => defIds.Contains(d.Id)).ToListAsync(ct);
+        var values = await db.SegmentValues.AsNoTracking().Where(v => defIds.Contains(v.SegmentDefId)).ToListAsync(ct);
+        var valueById = values.ToDictionary(v => v.Id);
+        var assignments = await db.SegmentAssignments.AsNoTracking()
+            .Where(a => defIds.Contains(a.SegmentDefId) && a.RecordType == type && a.LineId == null).ToListAsync(ct);
+        foreach (var d in defs)
+        {
+            var map = new Dictionary<Guid, object?>();
+            foreach (var a in assignments.Where(a => a.SegmentDefId == d.Id))
+                map[a.RecordId] = valueById.GetValueOrDefault(a.SegmentValueId)?.Code;
+            _segmentValues[d.Code] = map;
+            _segmentLabels[d.Code] = values.Where(v => v.SegmentDefId == d.Id).ToDictionary(v => v.Code, v => v.Label);
         }
     }
 
@@ -530,6 +621,8 @@ public sealed class SavedViewService(
     {
         if (_customValues.TryGetValue(key, out var map))
             return Prop(row, "Id") is Guid id ? map.GetValueOrDefault(id) : null;
+        if (_segmentValues.TryGetValue(key, out var seg))
+            return Prop(row, "Id") is Guid sid ? seg.GetValueOrDefault(sid) : null;
         return Prop(row, key);
     }
 

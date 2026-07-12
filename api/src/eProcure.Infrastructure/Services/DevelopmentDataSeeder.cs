@@ -57,7 +57,17 @@ public sealed class DevelopmentDataSeeder(
         await SeedFilesAsync(ct);
         await SeedPrLineageDemoAsync(ct);
         await SeedNumberSequencesAsync(ct);
+        await ProjectPrSegmentsAsync(ct);
         logger.LogInformation("DataSeeder complete (Slice 1–8 master + sourcing + full P2P + clarifications).");
+    }
+
+    /// <summary>D6 (iii-a): seeder-created PRs bypass RequisitionService, so the seeder is the
+    /// THIRD projection call site (create/update/seed) — the Postgres probe keeps all honest.</summary>
+    private async Task ProjectPrSegmentsAsync(CancellationToken ct)
+    {
+        var projection = new SegmentProjection(db, clock);
+        foreach (var id in await db.PurchaseRequisitions.AsNoTracking().Select(p => p.Id).ToListAsync(ct))
+            await projection.ProjectRequisitionAsync(id, ct);
     }
 
     // One StoredFile per ownership class, carrying the TYPED ownership that FileAccessPolicy reads

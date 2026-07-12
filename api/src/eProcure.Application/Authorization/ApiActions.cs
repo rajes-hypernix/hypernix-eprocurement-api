@@ -83,6 +83,9 @@ public static class ApiActions
     public const string ReadCustomValues = "ReadCustomValues";
     public const string EditCustomValues = "EditCustomValues";
 
+    // A68 — custom segments (D6, ruled; assignments FOLD into A66/A67 — same species)
+    public const string ManageSegments = "ManageSegments";
+
     // A49–A57 — vendor principal
     public const string ViewMyInvitations = "ViewMyInvitations";
     public const string DeclineRfqInvitation = "DeclineRfqInvitation";

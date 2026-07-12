@@ -62,14 +62,14 @@ public sealed class ViewsController(ISavedViewService views) : ControllerBase
     [HttpGet("{id:guid}/aggregate")]
     [Action(ApiActions.UseSavedViews)]
     public async Task<ActionResult<Application.Dashboards.ViewAggregateResult>> Aggregate(
-        Guid id, [FromQuery] string fn, [FromQuery] string? field, CancellationToken ct) =>
-        Ok(await views.AggregateAsync(id, fn, field, ct));
+        Guid id, [FromQuery] string fn, [FromQuery] string? field, [FromQuery] string? groupBy, CancellationToken ct) =>
+        Ok(await views.AggregateAsync(id, fn, field, groupBy, ct));
 
     /// <summary>Month-bucketed series for chart portlets; null bucket-field rows are excluded
     /// and surfaced as unbucketedCount (the honest-data rule applied to time).</summary>
     [HttpGet("{id:guid}/series")]
     [Action(ApiActions.UseSavedViews)]
     public async Task<ActionResult<Application.Dashboards.ViewSeriesResult>> Series(
-        Guid id, [FromQuery] string fn, [FromQuery] string? field, [FromQuery] string bucket, [FromQuery] int months = 12, CancellationToken ct = default) =>
-        Ok(await views.SeriesAsync(id, fn, field, bucket, months, ct));
+        Guid id, [FromQuery] string fn, [FromQuery] string? field, [FromQuery] string bucket, [FromQuery] int months = 12, [FromQuery] string? groupBy = null, CancellationToken ct = default) =>
+        Ok(await views.SeriesAsync(id, fn, field, bucket, months, groupBy, ct));
 }

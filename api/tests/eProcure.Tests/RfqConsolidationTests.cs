@@ -18,7 +18,7 @@ public class RfqConsolidationTests
     {
         var c = TestContext.New();
         c.User.Roles = [eProcure.Domain.Identity.Roles.Buyer];
-        return (new RequisitionService(c.Db, c.Clock, c.Codes, c.Audit),
+        return (new RequisitionService(c.Db, c.Clock, c.Codes, c.Audit, new SegmentProjection(c.Db, c.Clock)),
                 new RfqService(c.Db, c.Clock, c.Codes, c.Audit, c.User, new eProcure.Infrastructure.Services.CustomListService(c.Db, c.Clock), Microsoft.Extensions.Options.Options.Create(new eProcure.Application.Sourcing.RfqGovernanceOptions()), Microsoft.Extensions.Logging.Abstractions.NullLogger<eProcure.Infrastructure.Services.RfqService>.Instance), c);
     }
 

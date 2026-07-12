@@ -16,7 +16,8 @@ namespace eProcure.Infrastructure.Services;
 /// Confirm-lines read path are unchanged.
 /// </summary>
 public sealed class RequisitionService(
-    AppDbContext db, IClock clock, ICodeGenerator codes, IAuditLog audit) : IRequisitionService
+    AppDbContext db, IClock clock, ICodeGenerator codes, IAuditLog audit,
+    Application.Segments.ISegmentProjection segments) : IRequisitionService
 {
     // HARDENING: PR create/edit + line transitions are RowVersion concurrency-token surfaces (§2.6).
 
@@ -59,6 +60,10 @@ public sealed class RequisitionService(
         await db.SaveChangesAsync(ct);
         await audit.WriteTransitionAsync("PurchaseRequisition", pr.Code,
             submit ? "PR submitted" : "PR draft created", fromState: null, toState: pr.HeaderStatus.ToString(), ct: ct);
+        // D6 (iii-a): project the dimension columns (the single truth) into the system
+        // segments' assignments. Both write paths carry this call — the Postgres probe
+        // (SegmentProjectionProbeTests) goes red if a future path forgets it.
+        await segments.ProjectRequisitionAsync(pr.Id, ct);
         return SourcingMapping.ToDto(pr);
     }
 
@@ -103,6 +108,8 @@ public sealed class RequisitionService(
         pr.UpdatedUtc = clock.UtcNow;
         await db.SaveChangesAsync(ct);
         await audit.WriteAsync("PurchaseRequisition", pr.Code, "PR edited", after: pr.HeaderStatus.ToString(), ct: ct);
+        // D6 (iii-a): the second write path's projection call — see CreateAsync.
+        await segments.ProjectRequisitionAsync(pr.Id, ct);
         return SourcingMapping.ToDto(pr, await NoQuoteLineIdsAsync(pr.Lines.Select(l => l.Id), ct));
     }
 

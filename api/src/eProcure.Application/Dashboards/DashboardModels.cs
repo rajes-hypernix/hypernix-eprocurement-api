@@ -27,9 +27,19 @@ public interface ISystemMetricService
 
 // ---- View aggregation (D4 Step 0(c) — rides the D3 machinery) ----
 
-public sealed record ViewAggregateResult(Guid ViewId, string Fn, string? FieldKey, decimal? Value, int ExcludedNullCount);
+/// <summary>D6 group-by: one slice per segment value present, PLUS the named Unassigned
+/// group — honest-null applied to dimensions, never a silently dropped record.</summary>
+public sealed record ViewAggregateGroup(string Key, string Label, decimal? Value);
 
-public sealed record ViewSeriesResult(Guid ViewId, string Fn, string? FieldKey, string BucketField, IReadOnlyList<SeriesBucketDto> Buckets, int UnbucketedCount);
+public sealed record ViewAggregateResult(
+    Guid ViewId, string Fn, string? FieldKey, decimal? Value, int ExcludedNullCount,
+    string? GroupedBy = null, IReadOnlyList<ViewAggregateGroup>? Groups = null);
+
+public sealed record ViewSeriesGroup(string Key, string Label, IReadOnlyList<SeriesBucketDto> Buckets);
+
+public sealed record ViewSeriesResult(
+    Guid ViewId, string Fn, string? FieldKey, string BucketField, IReadOnlyList<SeriesBucketDto> Buckets, int UnbucketedCount,
+    string? GroupedBy = null, IReadOnlyList<ViewSeriesGroup>? Series = null);
 
 // ---- Dashboards API ----
 

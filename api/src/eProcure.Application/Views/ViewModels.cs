@@ -42,6 +42,6 @@ public interface ISavedViewService
     Task<SavedViewDto> ShareAsync(Guid id, bool isShared, CancellationToken ct = default);
     Task<ViewRunResult> RunAsync(Guid id, CancellationToken ct = default);
     // D4 aggregation seam — same visibility, same View* check, same scoped sources as the run.
-    Task<Dashboards.ViewAggregateResult> AggregateAsync(Guid id, string fn, string? fieldKey, CancellationToken ct = default);
-    Task<Dashboards.ViewSeriesResult> SeriesAsync(Guid id, string fn, string? fieldKey, string bucketField, int months, CancellationToken ct = default);
+    Task<Dashboards.ViewAggregateResult> AggregateAsync(Guid id, string fn, string? fieldKey, string? groupBy = null, CancellationToken ct = default);
+    Task<Dashboards.ViewSeriesResult> SeriesAsync(Guid id, string fn, string? fieldKey, string bucketField, int months, string? groupBy = null, CancellationToken ct = default);
 }
