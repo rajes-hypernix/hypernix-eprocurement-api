@@ -27,14 +27,7 @@ namespace eProcure.Infrastructure.Services;
 public sealed class SegmentService(
     AppDbContext db,
     IClock clock,
-    ICurrentUser user,
-    IRequisitionService requisitions,
-    IRfqService rfqs,
-    IPoService pos,
-    IInvoiceService invoices,
-    IDeliveryService deliveries,
-    IVendorService vendors,
-    IOnboardingService onboarding) : ISegmentService
+    IRecordReachability reachability) : ISegmentService
 {
     // ---------- defs / values / applications (A68) ----------
 
@@ -140,14 +133,14 @@ public sealed class SegmentService(
     public async Task<IReadOnlyList<SegmentAssignmentDto>> GetAssignmentsAsync(string recordType, Guid recordId, Guid? lineId, CancellationToken ct = default)
     {
         var type = Parse(recordType);
-        await RequireReachableRecordAsync(type, recordId, ct);
+        await reachability.RequireReachableAsync(type, recordId, ct);   // A2F-T4: the ONE guard (was a 16-line twin)
         return await MergedAsync(type, recordId, lineId, ct);
     }
 
     public async Task<IReadOnlyList<SegmentAssignmentDto>> SaveAssignmentsAsync(string recordType, Guid recordId, SaveSegmentAssignmentsRequest req, CancellationToken ct = default)
     {
         var type = Parse(recordType);
-        await RequireReachableRecordAsync(type, recordId, ct);
+        await reachability.RequireReachableAsync(type, recordId, ct);   // A2F-T4: the ONE guard (was a 16-line twin)
 
         var apps = await ApplicationsFor(type, ct);
         var defs = apps.Select(a => a.Def).ToDictionary(d => d.Code, StringComparer.OrdinalIgnoreCase);
@@ -224,24 +217,6 @@ public sealed class SegmentService(
             .Select(a => (defs.First(d => d.Id == a.SegmentDefId), a)).ToList();
     }
 
-    private async Task RequireReachableRecordAsync(RecordType type, Guid recordId, CancellationToken ct)
-    {
-        var action = ViewVocabulary.ViewActionFor[type];
-        if (!ActionCatalog.RolesFor(action).Any(user.Roles.Contains))
-            throw new ForbiddenException("Not permitted for your role.");
-        var exists = type switch
-        {
-            RecordType.Requisition => await requisitions.GetAsync(recordId, ct) is not null,
-            RecordType.Rfq => await rfqs.GetAsync(recordId, ct) is not null,
-            RecordType.PurchaseOrder => await pos.GetAsync(recordId, ct) is not null,
-            RecordType.Invoice => await invoices.GetAsync(recordId, ct) is not null,
-            RecordType.Asn => await deliveries.GetAsync(recordId, ct) is not null,
-            RecordType.Vendor => await vendors.GetAsync(recordId, ct) is not null,
-            RecordType.Onboarding => await onboarding.GetApplicationAsync(recordId, ct) is not null,
-            _ => false,
-        };
-        if (!exists) throw new NotFoundException($"{type} {recordId} not found.");
-    }
 
     private async Task<SegmentDef> LoadUserDef(Guid id, CancellationToken ct)
     {

@@ -27,14 +27,7 @@ namespace eProcure.Infrastructure.Services;
 public sealed class CustomFieldService(
     AppDbContext db,
     IClock clock,
-    ICurrentUser user,
-    IRequisitionService requisitions,
-    IRfqService rfqs,
-    IPoService pos,
-    IInvoiceService invoices,
-    IDeliveryService deliveries,
-    IVendorService vendors,
-    IOnboardingService onboarding) : ICustomFieldService
+    IRecordReachability reachability) : ICustomFieldService
 {
     // ---------- defs (A65) ----------
 
@@ -133,14 +126,14 @@ public sealed class CustomFieldService(
     public async Task<IReadOnlyList<CustomValueDto>> GetValuesAsync(string recordType, Guid recordId, CancellationToken ct = default)
     {
         var type = Parse(recordType);
-        await RequireReachableRecordAsync(type, recordId, ct);
+        await reachability.RequireReachableAsync(type, recordId, ct);   // A2F-T4: the ONE guard (was a 16-line twin)
         return await MergedAsync(type, recordId, ct);
     }
 
     public async Task<IReadOnlyList<CustomValueDto>> SaveValuesAsync(string recordType, Guid recordId, SaveCustomValuesRequest req, CancellationToken ct = default)
     {
         var type = Parse(recordType);
-        await RequireReachableRecordAsync(type, recordId, ct);
+        await reachability.RequireReachableAsync(type, recordId, ct);   // A2F-T4: the ONE guard (was a 16-line twin)
 
         var defs = await db.CustomFieldDefs.Where(d => d.RecordType == type && d.Active).ToListAsync(ct);
         var byCode = defs.ToDictionary(d => d.Code, StringComparer.OrdinalIgnoreCase);
@@ -263,27 +256,6 @@ public sealed class CustomFieldService(
         _ => null,
     };
 
-    /// <summary>Layer 2 + 3: the caller must hold the record type's View* action AND the record
-    /// must be reachable through its EXISTING scoped detail source (vendor scoping inherited).</summary>
-    private async Task RequireReachableRecordAsync(RecordType type, Guid recordId, CancellationToken ct)
-    {
-        var action = ViewVocabulary.ViewActionFor[type];
-        if (!ActionCatalog.RolesFor(action).Any(user.Roles.Contains))
-            throw new ForbiddenException("Not permitted for your role.");
-
-        var exists = type switch
-        {
-            RecordType.Requisition => await requisitions.GetAsync(recordId, ct) is not null,
-            RecordType.Rfq => await rfqs.GetAsync(recordId, ct) is not null,          // live-invitation guard rides along
-            RecordType.PurchaseOrder => await pos.GetAsync(recordId, ct) is not null, // EnsureCanAccess rides along
-            RecordType.Invoice => await invoices.GetAsync(recordId, ct) is not null,
-            RecordType.Asn => await deliveries.GetAsync(recordId, ct) is not null,
-            RecordType.Vendor => await vendors.GetAsync(recordId, ct) is not null,
-            RecordType.Onboarding => await onboarding.GetApplicationAsync(recordId, ct) is not null,
-            _ => false,
-        };
-        if (!exists) throw new NotFoundException($"{type} {recordId} not found.");
-    }
 
     private async Task<CustomFieldDef> Load(Guid id, CancellationToken ct) =>
         await db.CustomFieldDefs.FirstOrDefaultAsync(d => d.Id == id, ct)

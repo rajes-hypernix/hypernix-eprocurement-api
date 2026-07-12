@@ -53,6 +53,7 @@ public static class DependencyInjection
         services.AddScoped<Application.CustomFields.ICustomFieldService, CustomFieldService>();   // custom fields (D5)
         services.AddScoped<Application.Segments.ISegmentService, SegmentService>();              // segments (D6)
         services.AddScoped<Application.Segments.ISegmentProjection, SegmentProjection>();        // the (iii-a) projection
+        services.AddScoped<Application.Views.IRecordReachability, RecordReachability>();        // the ONE reachability guard (A2F-T4)
         services.AddScoped<Application.Forms.IEntryFormService, EntryFormService>();             // entry forms (D7)
         services.AddScoped<Application.Forms.IEntryFormSubmitGuard, EntryFormService>();         // the submit-time re-resolution seam
         services.AddScoped<Application.Forms.INumberingService, NumberingService>();             // numbering config (D7)
