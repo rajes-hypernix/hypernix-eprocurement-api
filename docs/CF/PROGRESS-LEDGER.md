@@ -103,14 +103,14 @@ Columns: `[ ]`→`[x]` when complete · **Audit** = current-state finding from P
 ## CF4 — Custom-field authoring parity  (AUTONOMOUS — build fully)
 
 ### T12 — Field authoring surface
-- [ ] Display type (Normal / Disabled / Inline) on the field def + modal · Audit:missing on def (form placement only) · Build:___ · Test:___
-- [ ] Insert-before named-field picker (over the existing integer sort) · Audit:missing (integer sort only) · Build:___ · Test:___
-- [ ] Show-in-list flag — field surfaces as a column in list/saved-views · Audit:missing; registry rows make it feasible · Build:___ · Test:___
-- [ ] Explicitly NOT built: global-search, encrypted (dropped — record in report) · Audit:absent; DROPPED per ruling · Build:___ · Test:___
-- [ ] (Optional if cheap) multiselect + datetime types · Audit:absent; assess at CF4 · Build:___ · Test:___
-- [ ] Browser: create field display=Inline, insert-before an existing field, show-in-list on; renders inline, in position, as a list column · Audit:no test · Build:___ · Test:___
+- [x] Display type (Normal / Disabled / Inline) on the field def + modal · Audit:missing on def (form placement only) · Build:920fb6c (server-enforced: non-Normal rejects user edits) · Test:CF4-T12
+- [x] Insert-before named-field picker (over the existing integer sort) · Audit:missing (integer sort only) · Build:920fb6c (normalizes sibling order — ties resolved) · Test:CF4-T12 + xUnit Insert_before_places_the_def_in_the_target_slot_and_shifts_the_rest
+- [x] Show-in-list flag — field surfaces as a column in list/saved-views · Audit:missing; registry rows make it feasible · Build:920fb6c (appended to SYSTEM view runs only; user views keep authored columns) · Test:CF4-T12 + xUnit Show_in_list_appends_the_column_to_SYSTEM_view_runs_only
+- [x] Explicitly NOT built: global-search, encrypted (dropped — record in report) · Audit:absent; DROPPED per ruling · Build:n/a — dropped, recorded in 920fb6c message + CF-VERIFICATION · Test:n/a
+- [x] (Optional if cheap) multiselect + datetime types · Audit:absent; assess at CF4 · Build:ASSESSED NOT CHEAP — deferred: multiselect breaks the one-populated-column typed-value CHECK design (schema redesign); DateTime has a STANDING D5 ruling (deferred, no consumer — user business dates are DateOnly). Recorded 920fb6c · Test:n/a
+- [x] Browser: create field display=Inline, insert-before an existing field, show-in-list on; renders inline, in position, as a list column · Audit:no test · Build:920fb6c · Test:CF4-T12 (authored on screen; inline text + no input; Star before Anchor; system-view column with value; server 400 on tamper)
 
-**CF4 SLICE GATE** — [ ] re-read PLAN §1 custom-fields table; display-type/insert-before/show-in-list ticked; dropped items noted; boxes ticked or in BLOCKERS.
+**CF4 SLICE GATE** — [x] re-read PLAN §1 custom-fields table; display-type/insert-before/show-in-list ticked; dropped items noted; boxes ticked or in BLOCKERS. — PASSED: the three ❌ rows of §1 are built+proven; global-search/encrypted dropped per the PLAN's own recommendation; multiselect/datetime deferred with recorded reasons; 6/6 boxes ticked, 0 BLOCKERS; gates dotnet 470 · vitest 233 · 10-cf-parity 12/12.
 
 ---
 
