@@ -210,3 +210,35 @@ record type with a non-consuming next-code preview. The scheme shapes codes
 at MINT time only; history is never rewritten and counters never reset, so
 no format change can re-issue an existing code (all four cases test-pinned;
 PRG-2 concurrency untouched).
+
+## Reach & journeys — the D7.5 patterns
+
+D7.5 built no engines; it wired the D3–D7 machinery into four standing
+patterns, each persona-proven in 09-journeys.spec.ts:
+
+- **View → list.** Any list screen consumes a saved view. Two mounts exist:
+  the FLAT mount (`useViewRows` — picker defaulting to the type's seeded
+  system view, paged run, builder, pager; the screen keeps its native
+  columns and maps `run.rows` — RfqList's recipe, now on PO/Vendor/Invoice/
+  ASN) and the ID-INTERSECTION mount (Requisitions: deep rows don't project
+  to view columns, so a picked view filters the typed rows by the run's Id
+  set at the 200 cap; the migration row owns retiring it). Grandfathered
+  pages take either mount WITHOUT archetype migration; their rows stand.
+- **View → reminder → list.** Personalize → "Add reminder" from any view
+  the caller can run (the existing RemindersConfig shape; counts ride
+  aggregate, never rows); clicking lands on `route/view/{id}` — the list
+  with that view selected.
+- **View → KPI.** Unchanged from D4/D6 (Add KPI, slice by segment) — the
+  same view feeds the list, the reminder and the KPI: one definition,
+  three consumptions.
+- **Top-N → View all.** SavedViewList portlets fetch `size=topN` server-
+  side and, when the view holds more, "View all (total) →" opens the paged
+  list with the view selected — the NetSuite pattern.
+
+**Paging** is one contract (`page`/`size`/`Total`, default 50, cap 200,
+slice AFTER filter+sort so scoping holds across pages) with one consumer
+rule: list screens page fully (the shared Pager renders nothing when one
+page suffices), portlets stay top-N, reminders never fetch rows.
+**Saved Views home** (sidebar, A59) is the builder's front door: every view
+across record types, existing ownership rules, "New view" for any type —
+no list screen involved.

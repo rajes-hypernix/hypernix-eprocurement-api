@@ -208,6 +208,10 @@ portlets/reminders/KPIs consume the same engine). No filter blobs anywhere.
   `Application/Views/FieldRegistrySeed.cs` (THE single source: migration loop,
   test seeding, and the reflection drift-test that pins every row's DataType
   to its DTO property type all read it). 67 native rows at D3.
+  **Statements are deliberately NOT a RecordType** (D7.5, ruled): the SOA is a
+  DERIVED per-vendor ledger (see Statement/SOA above), not a stored aggregate —
+  there is no row grain to register, so views/segments/forms cannot address it.
+  If a stored statement entity ever lands, it registers then; do not re-litigate.
 - **SavedView** — grain: one row per view. `Code` from the VIEW sequence
   (system seeds carry literal codes, e.g. VIEW-SYS-0001 "All RFQs").
   `OwnerUserId` null for system views; `IsShared` is publication (flipped only

@@ -77,7 +77,10 @@ test case per action). Every endpoint appears exactly once. Coverage tally
 in §4.6. D4 note: /views/{id}/aggregate and /views/{id}/series ride A59
 (they are view reads with the same dynamic record-type check). D6 note:
 their `groupBy` parameter adds no endpoint and no action — a grouped
-aggregate is still a view read over the same scoped pipeline.
+aggregate is still a view read over the same scoped pipeline. D7.5 note:
+likewise /views/{id}/run's `page`/`size` params — paging an existing A59
+read moves nothing in this matrix (the slice sits above the scoped source;
+ViewRunPaginationTests pins scoping across pages).
 
 ### 4.1 All-principal actions
 
