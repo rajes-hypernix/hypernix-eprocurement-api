@@ -594,7 +594,7 @@ export const setCustomListActive = (code: string, active: boolean) =>
 export const deleteCustomList = (code: string) =>
   http<CustomList | undefined>(`/custom-lists/${code}`, { method: 'DELETE' })
 export const getCustomLists = () => http<CustomList[]>('/custom-lists')
-export const createCustomList = (body: { code: string; name: string; description?: string | null; parentListCode?: string | null }) =>
+export const createCustomList = (body: { code: string; name: string; description?: string | null; parentListCode?: string | null; orderMode?: string }) =>
   http<CustomList>('/custom-lists', { method: 'POST', body: JSON.stringify(body) })
 export const addCustomListValue = (listCode: string, body: { code: string; label: string; parentValueCode?: string | null }) =>
   http<CustomListValue>(`/custom-lists/${encodeURIComponent(listCode)}/values`, { method: 'POST', body: JSON.stringify(body) })

@@ -194,9 +194,10 @@ function NewListModal({ lists, onClose, onCreated, onErr }: {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [parentListCode, setParentListCode] = useState('')
+  const [orderMode, setOrderMode] = useState('Entered')   // CF-FIX1-T3: choosable at create
 
   const create = useMutation({
-    mutationFn: () => createCustomList({ code: code.trim().toUpperCase(), name: name.trim(), description: description.trim() || null, parentListCode: parentListCode || null }),
+    mutationFn: () => createCustomList({ code: code.trim().toUpperCase(), name: name.trim(), description: description.trim() || null, parentListCode: parentListCode || null, orderMode }),
     onSuccess: (l) => onCreated(l.code), onError: onErr,
   })
   const submit = () => { if (!code.trim() || !name.trim()) { onErr(new Error('Enter both a code and a name.')); return } create.mutate() }
@@ -219,6 +220,13 @@ function NewListModal({ lists, onClose, onCreated, onErr }: {
           options: { kind: 'static', options: lists.map((l) => ({ code: l.code, label: l.name })) },
         }}
         value={parentListCode} onChange={setParentListCode}
+      />
+      <SelectField
+        spec={{ key: 'lorder', label: 'Show options in', dataType: 'select',
+          options: { kind: 'static', options: [
+            { code: 'Entered', label: 'The order entered' }, { code: 'Alphabetical', label: 'Alphabetical order' },
+          ] } }}
+        value={orderMode} onChange={(v) => setOrderMode(String(v ?? 'Entered'))}
       />
     </Modal>
   )

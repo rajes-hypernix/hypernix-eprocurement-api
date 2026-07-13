@@ -164,3 +164,18 @@ public sealed class CustomListSelfLifecycleTests
             .Should().ThrowAsync<eProcure.Domain.DomainRuleException>();
     }
 }
+
+// CF-FIX1-T3: order-mode is choosable at CREATE (was edit-only) and applies immediately.
+public sealed class CustomListCreateOrderModeTests
+{
+    [Fact]
+    public async Task Create_with_alphabetical_stores_the_mode_and_bad_modes_are_rejected()
+    {
+        var c = TestContext.New();
+        var svc = new CustomListService(c.Db, c.Clock);
+        var dto = await svc.CreateListAsync(new("FIX1AB", "Fix1 AB", null, null, "Alphabetical"));
+        dto.OrderMode.Should().Be("Alphabetical");
+        var bad = async () => await svc.CreateListAsync(new("FIX1BAD", "Fix1 Bad", null, null, "Randomly"));
+        await bad.Should().ThrowAsync<eProcure.Domain.DomainRuleException>();
+    }
+}

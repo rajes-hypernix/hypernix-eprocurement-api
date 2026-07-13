@@ -31,8 +31,10 @@ public sealed class CustomListService(AppDbContext db, IClock clock) : ICustomLi
         if (await db.CustomLists.AnyAsync(l => l.Code == code, ct))
             throw new DomainRuleException($"A custom list with code '{code}' already exists.");
 
+        if (req.OrderMode is not ("Entered" or "Alphabetical"))
+            throw new DomainRuleException("OrderMode must be Entered or Alphabetical.");
         var now = clock.UtcNow;
-        var list = new CustomList { Code = code, Name = req.Name.Trim(), Description = req.Description, ParentListCode = req.ParentListCode, IsSystem = false, CreatedUtc = now, UpdatedUtc = now };
+        var list = new CustomList { Code = code, Name = req.Name.Trim(), Description = req.Description, ParentListCode = req.ParentListCode, OrderMode = req.OrderMode, IsSystem = false, CreatedUtc = now, UpdatedUtc = now };
         db.CustomLists.Add(list);
         await db.SaveChangesAsync(ct);
         return ToDto(list);

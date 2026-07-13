@@ -10,7 +10,8 @@ public sealed record CustomListDto(
 /// list"). Code stays immutable (it's the tag fields bind to); OrderMode ∈ Entered|Alphabetical.</summary>
 public sealed record UpdateCustomListRequest(string Name, string? Description, string OrderMode);
 
-public sealed record CreateCustomListRequest(string Code, string Name, string? Description, string? ParentListCode);
+public sealed record CreateCustomListRequest(string Code, string Name, string? Description, string? ParentListCode,
+    string OrderMode = "Entered");   // CF-FIX1-T3: order-mode choosable at CREATE, not just edit
 public sealed record AddCustomListValueRequest(string Code, string Label, string? ParentValueCode);
 public sealed record UpdateCustomListValueRequest(string Label, string? ParentValueCode, int Sort, bool Active);
 

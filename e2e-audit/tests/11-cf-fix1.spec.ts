@@ -45,3 +45,19 @@ test('CF-FIX1-T2: Insert Before is gone; creating a field still works and lands 
   const def = defs.find((d: { label: string }) => d.label === `Fix1 Plain ${STAMP}`)
   expect((await request.delete(`${API}/api/custom-fields/${def.id}`, { headers: ADMIN })).status()).toBe(204)
 })
+
+test('CF-FIX1-T3: order-mode is choosable at CREATE — Alphabetical from birth', async ({ page, request }) => {
+  const CODE = `F1T3${STAMP}`
+  await goAs(page, 'u_admin', 'lists')
+  await page.waitForTimeout(1200)
+  await page.getByRole('button', { name: 'New list' }).click()
+  await page.getByLabel('Code', { exact: true }).fill(CODE)
+  await page.getByLabel('Name', { exact: true }).fill(`Fix1 Order ${STAMP}`)
+  await page.getByLabel('Show options in', { exact: true }).selectOption('Alphabetical')   // on CREATE (was edit-only)
+  await page.getByRole('button', { name: 'Create list' }).click()
+  await page.waitForTimeout(1000)
+  await expect(page.getByText('A→Z')).toBeVisible()   // the badge shows the mode took at birth
+  const list = await (await request.get(`${API}/api/custom-lists/${CODE}`, { headers: ADMIN })).json()
+  expect(list.orderMode).toBe('Alphabetical')
+  expect((await request.delete(`${API}/api/custom-lists/${CODE}`, { headers: ADMIN })).status()).toBe(204)
+})

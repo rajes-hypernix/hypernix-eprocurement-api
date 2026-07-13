@@ -311,8 +311,8 @@ public sealed class SavedViewsTests(SavedViewsFixture fx) : IClassFixture<SavedV
     public async Task Grouped_OR_ors_within_the_group_and_ANDs_between_groups()
     {
         var buyer = fx.ClientAs("u_faridah");
-        var all = await buyer.GetFromJsonAsync<List<System.Text.Json.JsonElement>>("/api/rfqs");
-        var statuses = all!.Select(r => r.GetProperty("status").GetString()!).Distinct().Take(2).ToList();
+        var all = (await buyer.GetFromJsonAsync<List<System.Text.Json.JsonElement>>("/api/rfqs"))!;
+        var statuses = all.Select(r => r.GetProperty("status").GetString()!).Distinct().Take(2).ToList();
         statuses.Should().HaveCountGreaterThan(1, "the seed carries at least two RFQ statuses");
         var expected = all.Count(r => statuses.Contains(r.GetProperty("status").GetString()!));
 
