@@ -151,10 +151,10 @@ function DefModal({ recordType, def, onClose, onSaved }: {
         ? <p className="hint">Type ({def.dataType}) and code (<span className="mono">{def.code}</span>) are immutable — create a new field to change them.</p>
         : (
           <>
-            <SelectField spec={spec('cf-type', 'Data type', 'select', DATA_TYPES)} value={dataType} onChange={(v) => setDataType(String(v ?? 'Text'))} />
+            <SelectField spec={{ ...spec('cf-type', 'Data type', 'select', DATA_TYPES), searchable: true }} value={dataType} onChange={(v) => setDataType(String(v ?? 'Text'))} />
             {dataType === 'ListValue' && (
               <SelectField
-                spec={{ key: 'cf-list', label: 'Custom list', dataType: 'select', options: { kind: 'static', options: lists.map((l) => ({ code: l.id ?? '', label: l.name ?? l.code ?? '' })) } }}
+                spec={{ key: 'cf-list', label: 'Custom list', dataType: 'select', searchable: true, options: { kind: 'static', options: lists.map((l) => ({ code: l.id ?? '', label: l.name ?? l.code ?? '' })) } }}
                 value={listId} onChange={(v) => setListId(String(v ?? ''))} />
             )}
             <SelectField spec={spec('cf-scope', 'Scope (header field or line column)', 'select', ['Header', 'Line'])}

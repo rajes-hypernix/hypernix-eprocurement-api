@@ -3,6 +3,7 @@ import { TextField } from './TextField'
 import { TextAreaField } from './TextAreaField'
 import { CodeField } from './CodeField'
 import { SelectField } from './SelectField'
+import { SearchSelectField } from './SearchSelectField'
 import { MultiSelectField } from './MultiSelectField'
 import { YesNoField } from './YesNoField'
 import { SegmentedField } from './SegmentedField'
@@ -30,8 +31,8 @@ export function renderField(
   switch (spec.dataType) {
     case 'longText': return <TextAreaField {...p} />
     case 'code': return <CodeField {...p} />
-    case 'select': return <SelectField {...p} />
-    case 'multiSelect': return <MultiSelectField {...p} />
+    case 'select': return spec.searchable ? <SearchSelectField {...p} /> : <SelectField {...p} />
+    case 'multiSelect': return spec.searchable ? <SearchSelectField {...p} /> : <MultiSelectField {...p} />
     case 'yesNo': return <YesNoField {...p} />
     case 'segmented': return <SegmentedField {...p} />
     case 'number': case 'percent': return <NumberField {...p} />

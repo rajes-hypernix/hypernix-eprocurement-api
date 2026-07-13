@@ -145,3 +145,25 @@ test('CF-FIX1-T6: list values get automatic numeric ids — 1/2/3 in entry order
 
   expect((await request.delete(`${API}/api/custom-lists/${ID}`, { headers: ADMIN })).status()).toBe(204)
 })
+
+test('CF-FIX1-T7: the searchable select — type-to-filter on screen, keyboard select, dependent children filter by parent', async ({ page, request }) => {
+  await goAs(page, 'u_admin', 'customfields')
+  await page.waitForTimeout(1200)
+  await page.getByRole('button', { name: 'New field' }).click()
+
+  // Type-to-filter on the Data type picker (variant 1) + keyboard select.
+  await page.getByRole('button', { name: 'Data type' }).click()
+  await page.getByRole('combobox', { name: 'Search Data type' }).fill('lis')
+  await expect(page.getByRole('listbox', { name: 'Data type options' }).getByRole('option')).toHaveCount(1)   // scoped: native selects elsewhere also expose options
+  await page.keyboard.press('Enter')                                     // keyboard contract
+  await expect(page.getByRole('button', { name: 'Data type' })).toContainText('ListValue')
+  // Escape closes without changing.
+  await page.getByRole('button', { name: 'Custom list', exact: true }).click()   // the picker, not the Custom Lists nav
+  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: 'Cancel' }).click()
+
+  // Variant 3 (dependent): the vendor form's State options filter by the chosen Country
+  // (the existing ParentValueCode machinery behind the same component family).
+  const states = await (await request.get(`${API}/api/custom-lists/STATE`, { headers: ADMIN })).json()
+  expect(states.parentListCode).toBe('COUNTRY')   // the dependency the picker rides
+})

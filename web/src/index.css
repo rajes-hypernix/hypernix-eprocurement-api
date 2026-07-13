@@ -911,3 +911,19 @@ table.da-pos td:last-child, table.da-pos th:last-child { text-align: right; }
 .qv-anchor { position: relative; display: block; }
 .qv-card { position: absolute; left: 100%; top: 0; margin-left: 8px; width: 260px; background: #fff; border: 1px solid var(--line); box-shadow: var(--shadow-l); border-radius: var(--radius-control); padding: 10px 12px; z-index: 130; display: block; }
 .qv-title { display: block; font-weight: 700; font-size: 13px; margin-bottom: 6px; }
+
+/* CF-FIX1-T7 — the standardized searchable select (Ledger tokens, square corners) */
+.sselect { position: relative; }
+.sselect-control { display: flex; justify-content: space-between; align-items: center; width: 100%;
+  background: #fff; border: 1px solid var(--line); padding: 8px 10px; font: inherit; cursor: pointer; text-align: left; }
+.sselect-control:disabled { background: var(--cream, #faf7f0); color: var(--muted); cursor: default; }
+.sselect-placeholder { color: var(--muted); }
+.sselect-caret { color: var(--muted); margin-left: 8px; }
+.sselect-pop { position: absolute; z-index: 40; top: 0; left: 0; right: 0; background: #fff;
+  border: 1px solid var(--teal, #336374); box-shadow: 0 6px 18px rgba(0,0,0,.12); }
+.sselect-search { width: 100%; border: 0; border-bottom: 1px solid var(--line); padding: 8px 10px; font: inherit; outline: none; }
+.sselect-list { list-style: none; margin: 0; padding: 0; max-height: 240px; overflow-y: auto; }
+.sselect-opt { padding: 7px 10px; cursor: pointer; display: flex; gap: 8px; align-items: center; }
+.sselect-opt.hi { background: var(--cream, #f4efe3); }
+.sselect-opt.on { font-weight: 600; }
+.sselect-empty { padding: 10px; color: var(--muted); }

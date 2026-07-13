@@ -214,7 +214,7 @@ function NewListModal({ lists, onClose, onCreated, onErr }: {
       <TextField spec={{ key: 'ldesc', label: 'Description', dataType: 'text', placeholder: 'Optional' }} value={description} onChange={setDescription} />
       <SelectField
         spec={{
-          key: 'lparent', label: 'Depends on (parent list)', dataType: 'select', placeholder: 'None — a flat list',
+          key: 'lparent', label: 'Depends on (parent list)', dataType: 'select', searchable: true, placeholder: 'None — a flat list',
           help: 'A dependent list scopes each value to a parent value (e.g. City depends on State).',
           options: { kind: 'static', options: lists.map((l) => ({ code: l.code, label: l.name })) },
         }}

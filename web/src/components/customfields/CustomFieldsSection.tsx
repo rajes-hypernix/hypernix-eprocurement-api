@@ -27,6 +27,7 @@ const toSpec = (v: CustomValueDto): FieldSpec => ({
   required: v.required,
   help: v.helpText || undefined,
   ...(v.displayType === 'Disabled' ? { displayType: 'disabled' } : {}),
+  ...(v.dataType === 'ListValue' ? { searchable: true } : {}),   // CF-FIX1-T7: list fields use the searchable select
   ...(v.dataType === 'ListValue' && v.customListCode
     ? { options: { kind: 'customList', listCode: v.customListCode } }
     : {}),

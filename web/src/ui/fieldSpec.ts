@@ -56,6 +56,8 @@ export interface FieldSpec {
   defaultValue?: string | number | boolean | null
   /** select / multiSelect / segmented */
   options?: FieldOptionsSource
+  /** CF-FIX1-T7: select/multiSelect render as the SEARCHABLE list (type-to-filter, keyboard-navigable) */
+  searchable?: boolean
   validation?: FieldValidation
   /** suffix affordance: %, weeks, months, RM’000 */
   unit?: string
