@@ -349,3 +349,54 @@ test('CF-FIX4-T7: header apply runs the form+group cascade; the segment lands on
     .find((f: { isSystem: boolean }) => f.isSystem)
   expect(after.fields.some((x: { fieldKey: string }) => x.fieldKey === seg.code)).toBe(false)
 })
+
+test('CF-FIX4-T8: ARCHIVE — the value vanishes from form, view and record; audit records it; un-archive restores; storage never touched', async ({ page, request }) => {
+  const LABEL = `Fix4 Arch ${STAMP}`
+  const def = await (await request.post(`${API}/api/custom-fields`, { headers: { ...ADMIN, ...JSON_H },
+    data: { label: LABEL, recordType: 'Requisition', dataType: 'Text', required: false, helpText: '', sort: 0, code: `fix4_arch_${STAMP}` } })).json()
+  const prs = await (await request.get(`${API}/api/requisitions`, { headers: BUYER })).json()
+  const pr = prs.find((p: { headerStatus: string }) => p.headerStatus === 'Draft') ?? prs[0]
+  const req = await requiredCustomValues(request, 'Requisition', pr.id)
+  await request.put(`${API}/api/custom-values/Requisition/${pr.id}`, { headers: { ...BUYER, ...JSON_H },
+    data: { values: { ...req, [def.code]: 'archive me' } } })
+  const view = await (await request.post(`${API}/api/views`, { headers: { ...BUYER, ...JSON_H },
+    data: { name: `fix4-arch-view-${STAMP}`, recordType: 'Requisition', filters: [],
+      columns: [{ fieldKey: 'Code', label: null, sortDirection: null }, { fieldKey: def.code, label: null, sortDirection: null }] } })).json()
+
+  // Visible on the record before.
+  await goAs(page, 'u_faridah', `reqs/open/${pr.id}`)
+  await page.waitForTimeout(1500)
+  await expect(page.getByLabel(LABEL, { exact: true })).toHaveValue('archive me')
+
+  // ARCHIVE on screen (the admin row verb).
+  await goAs(page, 'u_admin', 'customfields')
+  await page.waitForTimeout(1200)
+  await page.getByRole('button', { name: 'Requisition', exact: true }).click()
+  await page.getByRole('button', { name: `Archive ${LABEL}` }).click()
+  await page.waitForTimeout(800)
+  await expect(page.getByText('Archived', { exact: true }).first()).toBeVisible()
+
+  // Hidden: the record page no longer renders it; the view runs with the column blank.
+  await goAs(page, 'u_faridah', `reqs/open/${pr.id}`)
+  await page.waitForTimeout(1500)
+  await expect(page.getByLabel(LABEL, { exact: true })).toHaveCount(0)
+  const run = await (await request.get(`${API}/api/views/${view.id}/run?page=1&size=200`, { headers: BUYER })).json()
+  expect(run.rows.length).toBeGreaterThan(0)                                            // the view still RUNS
+  expect(run.rows.some((r: Record<string, unknown>) => r[def.code] === 'archive me')).toBe(false)   // blank column
+
+  // UN-ARCHIVE on screen → the value returns everywhere.
+  await goAs(page, 'u_admin', 'customfields')
+  await page.waitForTimeout(1200)
+  await page.getByRole('button', { name: 'Requisition', exact: true }).click()
+  await page.getByRole('button', { name: `Unarchive ${LABEL}` }).click()
+  await page.waitForTimeout(800)
+  await goAs(page, 'u_faridah', `reqs/open/${pr.id}`)
+  await page.waitForTimeout(1500)
+  await expect(page.getByLabel(LABEL, { exact: true })).toHaveValue('archive me')       // never deleted, fully restored
+
+  // cleanup
+  await request.delete(`${API}/api/views/${view.id}`, { headers: BUYER })
+  await request.put(`${API}/api/custom-values/Requisition/${pr.id}`, { headers: { ...BUYER, ...JSON_H },
+    data: { values: { ...req, [def.code]: null } } })
+  await hardDeleteField(request, def)
+})

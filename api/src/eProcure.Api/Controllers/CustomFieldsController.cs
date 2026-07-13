@@ -47,6 +47,17 @@ public sealed class CustomFieldsController(ICustomFieldService fields) : Control
     public async Task<ActionResult<ImpactReportDto>> References(Guid id, CancellationToken ct) =>
         Ok(await fields.GetReferencesAsync(id, ct));
 
+    // CF-FIX4-T8: the reversible ARCHIVE tier — admin-tier (it reverses; Purge does not).
+    [HttpPost("{id:guid}/archive")]
+    [Action(ApiActions.ManageCustomFields)]
+    public async Task<ActionResult<CustomFieldDefDto>> Archive(Guid id, CancellationToken ct) =>
+        Ok(await fields.SetArchivedAsync(id, true, ct));
+
+    [HttpPost("{id:guid}/unarchive")]
+    [Action(ApiActions.ManageCustomFields)]
+    public async Task<ActionResult<CustomFieldDefDto>> Unarchive(Guid id, CancellationToken ct) =>
+        Ok(await fields.SetArchivedAsync(id, false, ct));
+
     // CF-FIX3-T3 Tier 3: the governed purge — the DISTINCT higher-tier action (A73), never
     // implied by ManageCustomFields. Transactional + snapshotted in the service.
     [HttpPost("{id:guid}/purge")]

@@ -6,6 +6,7 @@ using eProcure.Application.Onboarding;
 using eProcure.Application.Procurement;
 using eProcure.Application.Sourcing;
 using eProcure.Application.Suppliers;
+using eProcure.Application.CustomFields;
 using eProcure.Application.Views;
 using eProcure.Domain;
 using eProcure.Domain.Views;
@@ -73,7 +74,7 @@ public sealed class SavedViewService(
             .ToDictionary(g => g.Key, g => (IReadOnlyList<string>)g.OrderBy(v => v.Sort).Select(v => v.Code).ToList());
 
         return rows
-            .Where(f => f.Kind != FieldKind.Custom || (defByKey.TryGetValue(f.FieldKey, out var d) && d.Active))
+            .Where(f => f.Kind != FieldKind.Custom || (defByKey.TryGetValue(f.FieldKey, out var d) && d.Active && CustomFieldVisibility.ValueVisible(d)))   // T8
             .Select(f => new ViewFieldDto(
                 f.FieldKey, f.Label, f.DataType.ToString(), f.Kind.ToString(),
                 f.Kind == FieldKind.Custom
@@ -377,6 +378,11 @@ public sealed class SavedViewService(
         var defs = await db.CustomFieldDefs.AsNoTracking()
             .Where(d => db.CustomFieldDefApplications.Any(a => a.FieldDefId == d.Id && a.RecordType == type)).ToListAsync(ct);
         _inactiveCustomKeys = defs.Where(d => !d.Active).Select(d => d.Code).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        // CF-FIX4-T8: ARCHIVED defs' values are excluded from the run's value cache — the
+        // ONE central predicate again. Referencing views keep running (archive is
+        // reversible; a shared view must not break): columns render blank, filters match
+        // nothing, until un-archive restores visibility.
+        var archivedIds = defs.Where(d => !CustomFieldVisibility.ValueVisible(d)).Select(d => d.Id).ToHashSet();
         if (defs.Count == 0) { _customValues = []; return; }
 
         var byId = defs.ToDictionary(d => d.Id, d => d.Code);
@@ -384,6 +390,7 @@ public sealed class SavedViewService(
         _customValues = defs.ToDictionary(d => d.Code, _ => new Dictionary<Guid, object?>(), StringComparer.OrdinalIgnoreCase);
         foreach (var v in values)
         {
+            if (archivedIds.Contains(v.FieldDefId)) continue;   // T8: archived values never enter the cache
             if (!byId.TryGetValue(v.FieldDefId, out var code)) continue;
             object? typed = v switch
             {

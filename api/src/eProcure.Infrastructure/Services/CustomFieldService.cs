@@ -269,6 +269,26 @@ public sealed class CustomFieldService(
         return ToDto(def, await db.CustomFieldValues.CountAsync(v => v.FieldDefId == def.Id, ct), await AppliedTypesAsync(def.Id, ct));
     }
 
+    /// <summary>CF-FIX4-T8: the reversible ARCHIVE tier. Values are HIDDEN from every live
+    /// surface by the central predicate — never touched in storage; un-archive restores.
+    /// Admin-tier (ManageCustomFields): reversible, unlike Purge (A73). Both directions audit.</summary>
+    public async Task<CustomFieldDefDto> SetArchivedAsync(Guid id, bool archived, CancellationToken ct = default)
+    {
+        var def = await Load(id, ct);
+        if ((def.ArchivedUtc != null) != archived)
+        {
+            def.ArchivedUtc = archived ? clock.UtcNow : null;
+            def.UpdatedUtc = clock.UtcNow;
+            var count = await db.CustomFieldValues.CountAsync(v => v.FieldDefId == def.Id, ct);
+            await audit.WriteAsync("CustomField", def.Code,
+                archived ? "Archived" : "Un-archived",
+                before: archived ? $"{count} stored value(s) hidden from all live surfaces (preserved verbatim)" : null,
+                after: archived ? null : $"{count} stored value(s) restored to visibility", ct: ct);
+            await db.SaveChangesAsync(ct);
+        }
+        return ToDto(def, await db.CustomFieldValues.CountAsync(v => v.FieldDefId == def.Id, ct), await AppliedTypesAsync(def.Id, ct));
+    }
+
     public async Task<CustomFieldDefDto> SetDefActiveAsync(Guid id, bool active, CancellationToken ct = default)
     {
         var def = await Load(id, ct);
@@ -378,7 +398,7 @@ public sealed class CustomFieldService(
         var type = Parse(recordType);
         await reachability.RequireReachableAsync(type, recordId, ct);   // A2F-T4: the ONE guard (was a 16-line twin)
 
-        var defs = await DefsFor(type).Where(d => d.Active).ToListAsync(ct);
+        var defs = await DefsFor(type).Where(d => d.Active).Where(CustomFieldVisibility.ValueVisibleExpr).ToListAsync(ct);   // T8: archived fields reject writes
         var byCode = defs.ToDictionary(d => d.Code, StringComparer.OrdinalIgnoreCase);
         foreach (var key in req.Values.Keys)
         {
@@ -583,7 +603,7 @@ public sealed class CustomFieldService(
     private async Task<IReadOnlyList<CustomValueDto>> MergedAsync(RecordType type, Guid recordId, CancellationToken ct)
     {
         var defs = await DefsFor(type).AsNoTracking()
-            .Where(d => d.Active && d.Scope == "Header")
+            .Where(d => d.Active && d.Scope == "Header").Where(CustomFieldVisibility.ValueVisibleExpr)   // T8: the central archived-hiding filter
             .OrderBy(d => d.Sort).ThenBy(d => d.Label).ToListAsync(ct);
         var values = await db.CustomFieldValues.AsNoTracking()
             .Where(v => v.RecordType == type && v.RecordId == recordId && v.LineId == null).ToListAsync(ct);
@@ -620,7 +640,7 @@ public sealed class CustomFieldService(
         var type = Parse(recordType);
         await reachability.RequireReachableAsync(type, recordId, ct);
         var defs = await DefsFor(type).AsNoTracking()
-            .Where(d => d.Active && d.Scope == "Line")
+            .Where(d => d.Active && d.Scope == "Line").Where(CustomFieldVisibility.ValueVisibleExpr)
             .OrderBy(d => d.Sort).ThenBy(d => d.Label).ToListAsync(ct);
         if (defs.Count == 0) return new Dictionary<Guid, IReadOnlyList<CustomValueDto>>();
         var values = await db.CustomFieldValues.AsNoTracking()
@@ -642,7 +662,7 @@ public sealed class CustomFieldService(
     {
         var type = Parse(recordType);
         var defs = await DefsFor(type).AsNoTracking()
-            .Where(d => d.Active && d.Scope == "Line")
+            .Where(d => d.Active && d.Scope == "Line").Where(CustomFieldVisibility.ValueVisibleExpr)
             .OrderBy(d => d.Sort).ThenBy(d => d.Label).ToListAsync(ct);
         var listIds = defs.Where(d => d.CustomListId is not null).Select(d => d.CustomListId!.Value).ToList();
         var listCodes = await db.CustomLists.AsNoTracking().Where(l => listIds.Contains(l.Id))
@@ -663,7 +683,8 @@ public sealed class CustomFieldService(
 
     private static CustomFieldDefDto ToDto(CustomFieldDef d, int valueCount, IReadOnlyList<string>? recordTypes = null) => new(
         d.Id, d.Code, d.Label, recordTypes is { Count: > 0 } ? recordTypes[0] : "", d.DataType.ToString(), d.CustomListId,
-        d.Required, d.HelpText, d.Active, d.Sort, valueCount, d.DisplayType, d.ShowInList, d.Scope, recordTypes ?? []);
+        d.Required, d.HelpText, d.Active, d.Sort, valueCount, d.DisplayType, d.ShowInList, d.Scope, recordTypes ?? [],
+        d.ArchivedUtc != null);
 
     private static readonly string[] DisplayTypes = ["Normal", "Disabled", "Inline"];
 

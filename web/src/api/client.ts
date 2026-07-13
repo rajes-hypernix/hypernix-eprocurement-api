@@ -173,6 +173,7 @@ export type CustomFieldDefDto = {
   id: string; code: string; label: string; recordType: string; dataType: string
   customListId?: string | null; required: boolean; helpText: string; active: boolean; sort: number; valueCount: number
   displayType?: string; showInList?: boolean; scope?: string; recordTypes?: string[]
+  archived?: boolean   // CF-FIX4-T8: values hidden everywhere, reversibly
 }
 export type FieldPlacementRequest = { recordType: string; formId: string; groupId?: string | null }
 export type SaveCustomFieldDefRequest = {
@@ -205,6 +206,8 @@ export type ImpactReportDto = {
   configReferences: FieldReferenceDto[]; data: DataReferenceSummaryDto[]
   liveCount: number; historicalCount: number; canDelete: boolean; canPurge: boolean; blockedReason?: string | null
 }
+export const archiveCustomField = (id: string) => http<CustomFieldDefDto>(`/custom-fields/${id}/archive`, { method: 'POST' })
+export const unarchiveCustomField = (id: string) => http<CustomFieldDefDto>(`/custom-fields/${id}/unarchive`, { method: 'POST' })
 export const getCustomFieldReferences = (id: string) => http<ImpactReportDto>(`/custom-fields/${id}/references`)
 export const purgeCustomField = (id: string) => http<undefined>(`/custom-fields/${id}/purge`, { method: 'POST' })
 export const getListValueReferences = (valueId: string) => http<ImpactReportDto>(`/custom-lists/values/${valueId}/references`)

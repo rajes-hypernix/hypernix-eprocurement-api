@@ -8,7 +8,8 @@ public sealed record CustomFieldDefDto(
     bool Required, string HelpText, bool Active, int Sort, int ValueCount,
     string DisplayType = "Normal", bool ShowInList = false,
     string Scope = "Header",    // CF6-T1: Header | Line (immutable)
-    IReadOnlyList<string>? RecordTypes = null);   // CF-FIX2-T3: the applies-to set (RecordType = first, wire-compat)
+    IReadOnlyList<string>? RecordTypes = null,
+    bool Archived = false);   // CF-FIX2-T3: the applies-to set (RecordType = first, wire-compat)
 
 // CF-FIX1-T2: InsertBeforeId REMOVED (operator ruling — placement belongs to the form
 // layout editor, CF5). The plain Sort integer remains the default order.
@@ -54,6 +55,8 @@ public interface ICustomFieldService
     // CF-FIX3: impact report + Tier-3 purge (T2/T3)
     Task<ImpactReportDto> GetReferencesAsync(Guid id, CancellationToken ct = default);
     Task PurgeAsync(Guid id, CancellationToken ct = default);
+    // CF-FIX4-T8: the reversible ARCHIVE tier (admin-tier — reversible, unlike Purge/A73).
+    Task<CustomFieldDefDto> SetArchivedAsync(Guid id, bool archived, CancellationToken ct = default);
     // Defs (the Admin Setup surface — A65)
     Task<IReadOnlyList<CustomFieldDefDto>> ListDefsAsync(string? recordType, CancellationToken ct = default);
     Task<CustomFieldDefDto> CreateDefAsync(SaveCustomFieldDefRequest req, CancellationToken ct = default);

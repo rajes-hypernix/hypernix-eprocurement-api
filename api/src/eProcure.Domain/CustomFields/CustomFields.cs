@@ -35,6 +35,11 @@ public class CustomFieldDef
                                                           // lifecycle transitions this slice (D7 form-engine territory)
     public string HelpText { get; set; } = "";
     public bool Active { get; set; } = true;
+    // CF-FIX4-T8: the ARCHIVE tier — reversible middle ground between Inactivate (hidden
+    // from NEW entry, values visible) and Purge (irreversible). Archived = values HIDDEN
+    // from every live surface (records, views, palette, forms) but preserved verbatim;
+    // un-archive restores. Enforced by ONE central predicate (CustomFieldVisibility).
+    public DateTime? ArchivedUtc { get; set; }
     public int Sort { get; set; }
     // CF4-T12 authoring parity: display type is DEF-level default rendering everywhere the
     // field appears (Normal = editable; Disabled = greyed input; Inline = plain text). Non-

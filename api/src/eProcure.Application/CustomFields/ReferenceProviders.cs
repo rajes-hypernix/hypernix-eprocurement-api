@@ -85,3 +85,18 @@ public interface ISegmentDataProvider
     Task<DataReferenceSummary> CountAssignmentsAsync(Guid segmentDefId, Guid? valueId, CancellationToken ct = default);
     Task<PurgeSnapshot> PurgeHistoricalAsync(Guid segmentDefId, Guid? valueId, CancellationToken ct = default);
 }
+
+/// <summary>CF-FIX4-T8 — THE central archived-hiding predicate (anti-rot: ONE filter, every
+/// value-reading surface applies it; a future surface reading through the standard paths
+/// inherits the hiding with no extra work — the same discipline as the provider registries).
+/// Admin/manage surfaces deliberately do NOT use it: archived defs must stay visible there,
+/// or they could never be un-archived.</summary>
+public static class CustomFieldVisibility
+{
+    /// <summary>True when the def's VALUES may appear on live surfaces.</summary>
+    public static bool ValueVisible(Domain.CustomFields.CustomFieldDef d) => d.ArchivedUtc == null;
+
+    /// <summary>The EF-translatable form of the same predicate.</summary>
+    public static readonly System.Linq.Expressions.Expression<Func<Domain.CustomFields.CustomFieldDef, bool>> ValueVisibleExpr =
+        d => d.ArchivedUtc == null;
+}

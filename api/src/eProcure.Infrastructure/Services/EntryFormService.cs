@@ -268,8 +268,12 @@ public sealed class EntryFormService(AppDbContext db, IClock clock, ICurrentUser
             List<SegmentOptionDto>? options = null;
             if (reg.Kind == FieldKind.Custom && reg.CustomFieldDefId is { } cfId)
             {
-                var listId = (await db.CustomFieldDefs.AsNoTracking().SingleAsync(d => d.Id == cfId, ct)).CustomListId;
-                if (listId is { } lid)
+                var cfDef = await db.CustomFieldDefs.AsNoTracking().SingleAsync(d => d.Id == cfId, ct);
+                // CF-FIX4-T8: an ARCHIVED field's values are hidden from EVERY live surface —
+                // the placement stays (archive is reversible; un-archive restores the render),
+                // but the resolved form skips it. The one central predicate.
+                if (!Application.CustomFields.CustomFieldVisibility.ValueVisible(cfDef)) continue;
+                if (cfDef.CustomListId is { } lid)
                     listCode = (await db.CustomLists.AsNoTracking().SingleAsync(l => l.Id == lid, ct)).Code;
             }
             else if (reg.Kind == FieldKind.Segment && reg.SegmentDefId is { } segId)
@@ -347,8 +351,10 @@ public sealed class EntryFormService(AppDbContext db, IClock clock, ICurrentUser
             var satisfied = reg.Kind switch
             {
                 FieldKind.Native => nativeValues.TryGetValue(f.FieldKey, out var v) && !string.IsNullOrWhiteSpace(v),
+                // T8: an archived required field can never be filled — it must not gate submit.
                 FieldKind.Custom => reg.CustomFieldDefId is { } cfId
-                    && await db.CustomFieldValues.AsNoTracking().AnyAsync(v => v.FieldDefId == cfId && v.RecordId == recordId, ct),
+                    && (await db.CustomFieldDefs.AsNoTracking().AnyAsync(d => d.Id == cfId && d.ArchivedUtc != null, ct)
+                        || await db.CustomFieldValues.AsNoTracking().AnyAsync(v => v.FieldDefId == cfId && v.RecordId == recordId, ct)),
                 FieldKind.Segment => reg.SegmentDefId is { } segId
                     && await db.SegmentAssignments.AsNoTracking().AnyAsync(a =>
                         a.SegmentDefId == segId && a.RecordType == type && a.RecordId == recordId && a.LineId == null, ct),

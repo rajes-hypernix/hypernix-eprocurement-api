@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   getCustomFieldDefs, createCustomFieldDef, updateCustomFieldDef, setCustomFieldActive, deleteCustomFieldDef,
-  getCustomFieldReferences, purgeCustomField, getEntryForms,
+  getCustomFieldReferences, purgeCustomField, getEntryForms, archiveCustomField, unarchiveCustomField,
   getCustomLists, type CustomFieldDefDto, type FieldPlacementRequest,
 } from '../../api/client'
 import { ImpactReportDialog } from './ImpactReportDialog'
@@ -64,6 +64,13 @@ export function AdminCustomFields() {
     mutationFn: (d: CustomFieldDefDto) => setCustomFieldActive(d.id, !d.active),
     onSuccess: refresh,
   })
+  // CF-FIX4-T8: the reversible ARCHIVE tier — values hidden from every live surface,
+  // preserved verbatim; un-archive restores. Distinct from Deactivate (values stay
+  // visible) and Purge (irreversible).
+  const archive = useMutation({
+    mutationFn: (d: CustomFieldDefDto) => (d.archived ? unarchiveCustomField(d.id) : archiveCustomField(d.id)),
+    onSuccess: refresh,
+  })
 
   return (
     <SetupPage
@@ -85,11 +92,20 @@ export function AdminCustomFields() {
                   <td className="mono">{d.code}</td>
                   <td>{dataTypeLabel(d.dataType)}{d.scope === 'Line' && <span className="badge b-grey" style={{ marginLeft: 6 }}>line</span>}</td>
                   <td className="amt">{d.valueCount}</td>
-                  <td><span className={`badge ${d.active ? 'b-green' : 'b-grey'}`}>{d.active ? 'Active' : 'Deactivated'}</span></td>
+                  <td>
+                    <span className={`badge ${d.archived ? 'b-grey' : d.active ? 'b-green' : 'b-grey'}`}>
+                      {d.archived ? 'Archived' : d.active ? 'Active' : 'Deactivated'}
+                    </span>
+                  </td>
                   <td className="amt">
                     <Button variant="ghost" size="sm" onClick={() => setEditing({ def: d })}>Edit</Button>
                     <Button variant="ghost" size="sm" onClick={() => toggle.mutate(d)} ariaLabel={`${d.active ? 'Deactivate' : 'Reactivate'} ${d.label}`}>
                       {d.active ? 'Deactivate' : 'Reactivate'}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => archive.mutate(d)}
+                      ariaLabel={`${d.archived ? 'Unarchive' : 'Archive'} ${d.label}`}
+                      title={d.archived ? 'Restore the values to every surface' : 'Hide the values from every surface, reversibly — they stay in storage and the audit trail'}>
+                      {d.archived ? 'Unarchive' : 'Archive'}
                     </Button>
                     <Button variant="ghost" size="sm" red onClick={() => setImpact(d)} ariaLabel={`Delete ${d.label}`}>Delete</Button>
                   </td>
