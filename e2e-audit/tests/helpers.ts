@@ -62,3 +62,32 @@ export async function pickSearch(page: Page, label: string, filter: string) {
   await page.getByRole('listbox', { name: `${label} options` }).getByRole('option').first().waitFor()
   await page.keyboard.press('Enter')
 }
+
+// CF-FIX-3 era: admins can author REQUIRED custom fields at any time (e.g. the operator's
+// shared 'Partner' field). Tests that save custom values must satisfy required-and-empty
+// defs GENERICALLY rather than assume none exist (established precedent — 'Remarks').
+export async function requiredCustomValues(
+  request: APIRequestContext, recordType: string, recordId: string, persona = 'u_faridah',
+): Promise<Record<string, string>> {
+  const res = await request.get(`http://localhost:5260/api/custom-values/${recordType}/${recordId}`,
+    { headers: { 'X-Demo-User': persona } })
+  const out: Record<string, string> = {}
+  for (const d of await res.json()) if (d.required && !d.value) out[d.code] = 'e2e'
+  return out
+}
+
+// Same, but on-screen: fill any required-and-empty custom inputs before clicking Save.
+export async function fillRequiredCustomFields(
+  page: Page, request: APIRequestContext, recordType: string, recordId: string, persona = 'u_faridah',
+) {
+  const needed = await requiredCustomValues(request, recordType, recordId, persona)
+  const res = await request.get(`http://localhost:5260/api/custom-values/${recordType}/${recordId}`,
+    { headers: { 'X-Demo-User': persona } })
+  const defs = await res.json()
+  for (const code of Object.keys(needed)) {
+    const label = defs.find((d: { code: string }) => d.code === code)?.label
+    if (!label) continue
+    const el = page.getByLabel(label, { exact: true }).first()
+    if (await el.count()) await el.fill('e2e')
+  }
+}

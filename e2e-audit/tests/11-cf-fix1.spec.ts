@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { goAs, pickSearch } from './helpers'
+import { goAs, pickSearch , requiredCustomValues, fillRequiredCustomFields } from './helpers'
 
 // CF-FIX-1 browser proofs — one test per task, mirroring the operator's testing notes
 // (Custom_Fields.docx / Custom_List.docx). Names match the CF-FIX1-Tn commits.
@@ -191,8 +191,9 @@ test('CF-FIX1-T8: new types on screen — full names in the picker; Date rejects
   // On a PO: server rejects garbage + US-format dates and bad emails; Hyperlink renders its label.
   const pos = await (await request.get(`${API}/api/pos`, { headers: BUYER })).json()
   const po = pos[0]
+  const req = await requiredCustomValues(request, 'PurchaseOrder', po.id)   // e.g. the operator's required 'Partner'
   const put = (values: Record<string, string>) => request.put(`${API}/api/custom-values/PurchaseOrder/${po.id}`,
-    { headers: { ...BUYER, ...JSON_H }, data: { values } })
+    { headers: { ...BUYER, ...JSON_H }, data: { values: { ...req, ...values } } })
   expect((await put({ [dateDef.code]: '2026-13-40' })).status()).toBe(400)
   expect((await put({ [dateDef.code]: '03/15/2026' })).status()).toBe(400)      // US-format rejected
   expect((await put({ [dateDef.code]: '15/03/2026' })).status()).toBe(200)      // dd/mm/yyyy accepted
@@ -204,6 +205,7 @@ test('CF-FIX1-T8: new types on screen — full names in the picker; Date rejects
   await expect(page.getByRole('link', { name: 'Tender Portal' })).toBeVisible()   // the label, not the raw URL
 
   // Invalid entry rejected ON SCREEN too (server message surfaces).
+  await fillRequiredCustomFields(page, request, 'PurchaseOrder', po.id)
   await page.getByLabel(`Fix1 Mail ${STAMP}`, { exact: true }).fill('notanemail')
   await page.getByRole('button', { name: 'Save custom fields' }).click()
   await expect(page.getByText(/valid email address/)).toBeVisible()

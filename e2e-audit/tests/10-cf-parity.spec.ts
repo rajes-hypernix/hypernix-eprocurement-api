@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { goAs, pickSearch } from './helpers'
+import { goAs, pickSearch , requiredCustomValues, fillRequiredCustomFields } from './helpers'
 
 // CF programme browser proofs — ONE growing spec; each test name matches a ledger Test column
 // entry. A ledger box only ticks when its test here drives the capability on screen and passes.
@@ -34,6 +34,7 @@ test('CF1-T1: money renders grouped 100,000.00 on read surfaces and round-trips 
   await field.focus()
   await expect(field).toHaveValue('123456.5')            // raw numeric back on focus (round-trip)
   await field.blur()
+  await fillRequiredCustomFields(page, request, 'PurchaseOrder', big.id)   // e.g. the operator's required 'Partner'
   await page.getByRole('button', { name: 'Save custom fields' }).click()
   await page.waitForTimeout(1000)
   const values = await (await request.get(`${API}/api/custom-values/PurchaseOrder/${big.id}`, { headers: BUYER })).json()
@@ -422,7 +423,8 @@ test('CF4-T12: field authoring — display=Inline renders as text, show-in-list 
   const anchor = defs.find((d: { label: string }) => d.label === ANCHOR)
   expect(anchor, 'both fields authored').toBeTruthy()   // (insert-before ordering removed by CF-FIX1-T2)
   await request.put(`${API}/api/custom-values/PurchaseOrder/${po.id}`, {
-    headers: { ...BUYER, ...JSON_H }, data: { values: { [star.code]: `starval${STAMP}` } } })
+    headers: { ...BUYER, ...JSON_H },
+    data: { values: { ...(await requiredCustomValues(request, 'PurchaseOrder', po.id)), [star.code]: `starval${STAMP}` } } })
 
   // Flip Star to Inline ON SCREEN via Edit (display type is def-mutable, unlike code/type).
   await page.reload({ waitUntil: 'networkidle' })
