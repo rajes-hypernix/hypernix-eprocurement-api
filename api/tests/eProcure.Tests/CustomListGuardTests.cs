@@ -168,6 +168,19 @@ public sealed class CustomListSelfLifecycleTests
 // CF-FIX1-T3: order-mode is choosable at CREATE (was edit-only) and applies immediately.
 public sealed class CustomListCreateOrderModeTests
 {
+    // CF-FIX1-T6: blank code → auto-numbered 1,2,3… per list; explicit codes (seeds) untouched.
+    [Fact]
+    public async Task Values_auto_number_in_entry_order_and_explicit_codes_stay()
+    {
+        var c = TestContext.New();
+        var svc = new CustomListService(c.Db, c.Clock);
+        await svc.CreateListAsync(new("FIX1NUM", "Fix1 Numbers", null, null));
+        (await svc.AddValueAsync("FIX1NUM", new(null, "First", null))).Code.Should().Be("1");
+        (await svc.AddValueAsync("FIX1NUM", new("", "Second", null))).Code.Should().Be("2");
+        (await svc.AddValueAsync("FIX1NUM", new("LEGACY", "Seeded-style", null))).Code.Should().Be("LEGACY");
+        (await svc.AddValueAsync("FIX1NUM", new(null, "Third", null))).Code.Should().Be("3");
+    }
+
     [Fact]
     public async Task Create_with_alphabetical_stores_the_mode_and_bad_modes_are_rejected()
     {

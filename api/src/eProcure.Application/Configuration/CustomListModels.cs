@@ -12,7 +12,7 @@ public sealed record UpdateCustomListRequest(string Name, string? Description, s
 
 public sealed record CreateCustomListRequest(string Code, string Name, string? Description, string? ParentListCode,
     string OrderMode = "Entered");   // CF-FIX1-T3: order-mode choosable at CREATE, not just edit
-public sealed record AddCustomListValueRequest(string Code, string Label, string? ParentValueCode);
+public sealed record AddCustomListValueRequest(string? Code, string Label, string? ParentValueCode);   // CF-FIX1-T6: Code null/blank → auto-numbered 1,2,3… (entry order)
 public sealed record UpdateCustomListValueRequest(string Label, string? ParentValueCode, int Sort, bool Active);
 
 /// <summary>

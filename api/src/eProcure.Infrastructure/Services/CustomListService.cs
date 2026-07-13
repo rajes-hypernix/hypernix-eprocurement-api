@@ -100,8 +100,17 @@ public sealed class CustomListService(AppDbContext db, IClock clock) : ICustomLi
     public async Task<CustomListValueDto> AddValueAsync(string listCode, AddCustomListValueRequest req, CancellationToken ct = default)
     {
         var list = await LoadList(listCode, ct);
-        var code = req.Code.Trim();
-        if (string.IsNullOrWhiteSpace(code)) throw new DomainRuleException("A list value needs a code.");
+        // CF-FIX1-T6: value internal ids are AUTOMATIC — 1, 2, 3… in entry order. The user types
+        // only the label. Explicit codes remain accepted (seeds/system lists keep their string
+        // codes like "MY"/"NET30" — nothing stored is ever renumbered, so no orphaned references).
+        var code = req.Code?.Trim();
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            var next = list.Values
+                .Select(v => int.TryParse(v.Code, out var n) ? n : 0)
+                .DefaultIfEmpty(0).Max() + 1;
+            code = next.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        }
         if (list.Values.Any(v => v.Code == code)) throw new DomainRuleException($"Value '{code}' already exists in {list.Name}.");
 
         var value = new CustomListValue

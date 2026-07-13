@@ -114,3 +114,34 @@ test('CF-FIX1-T5: field Internal ID is user-input — auto-suggested, overridabl
   const def = defs.find((d: { code: string }) => d.code === `cf_chosen_${STAMP}`)
   expect((await request.delete(`${API}/api/custom-fields/${def.id}`, { headers: ADMIN })).status()).toBe(204)
 })
+
+test('CF-FIX1-T6: list values get automatic numeric ids — 1/2/3 in entry order, read-only', async ({ page, request }) => {
+  const ID = `F1T6${STAMP}`
+  await request.post(`${API}/api/custom-lists`, { headers: { ...ADMIN, ...JSON_H },
+    data: { code: ID, name: `Fix1 Values ${STAMP}`, description: null, parentListCode: null } })
+  await goAs(page, 'u_admin', 'lists')
+  await page.waitForTimeout(1200)
+  await page.getByRole('button', { name: new RegExp(`Fix1 Values ${STAMP}`) }).click()
+
+  for (const label of ['Alpha', 'Bravo', 'Charlie']) {
+    await page.getByLabel('Label', { exact: true }).fill(label)
+    await page.getByRole('button', { name: 'Add value' }).click()
+    await page.waitForTimeout(500)
+  }
+  // Ids read 1/2/3 in entry order; there is no id input (system-assigned).
+  const rows = page.locator('table tbody tr')
+  await expect(rows.nth(0)).toContainText('1')
+  await expect(rows.nth(0)).toContainText('Alpha')
+  await expect(rows.nth(1)).toContainText('2')
+  await expect(rows.nth(2)).toContainText('3')
+  await expect(page.getByLabel('Code (stored)')).toHaveCount(0)
+
+  // The id is read-only in Edit.
+  await rows.nth(0).getByRole('button', { name: 'Edit' }).click()
+  const idField = page.getByLabel('ID', { exact: true })
+  await expect(idField).toHaveValue('1')
+  await expect(idField).not.toBeEditable()   // readOnly spec renders a readonly input
+  await page.getByRole('button', { name: 'Cancel' }).click()
+
+  expect((await request.delete(`${API}/api/custom-lists/${ID}`, { headers: ADMIN })).status()).toBe(204)
+})

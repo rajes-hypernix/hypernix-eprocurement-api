@@ -97,14 +97,14 @@ const parentOptions = (parentList: CustomList): FieldOption[] =>
 function ListValues({ list, parentList, onRefresh, onErr, clearErr }: {
   list: CustomList; parentList?: CustomList; onRefresh: () => void; onErr: (e: Error) => void; clearErr: () => void
 }) {
-  const [code, setCode] = useState('')
   const [label, setLabel] = useState('')
   const [parentValue, setParentValue] = useState('')
   const [editing, setEditing] = useState<CustomListValue | null>(null)
 
   const add = useMutation({
-    mutationFn: () => addCustomListValue(list.code, { code: code.trim(), label: label.trim(), parentValueCode: parentList ? (parentValue || null) : null }),
-    onSuccess: () => { setCode(''); setLabel(''); setParentValue(''); onRefresh() }, onError: onErr,
+    // CF-FIX1-T6: the id is system-assigned (1,2,3… entry order) — the user types only the label.
+    mutationFn: () => addCustomListValue(list.code, { code: null, label: label.trim(), parentValueCode: parentList ? (parentValue || null) : null }),
+    onSuccess: () => { setLabel(''); setParentValue(''); onRefresh() }, onError: onErr,
   })
   const update = useMutation({
     mutationFn: (v: CustomListValue) => updateCustomListValue(v.id, { label: v.label, parentValueCode: v.parentValueCode, sort: v.sort, active: v.active }),
@@ -113,7 +113,7 @@ function ListValues({ list, parentList, onRefresh, onErr, clearErr }: {
   const remove = useMutation({ mutationFn: (id: string) => deleteCustomListValue(id), onSuccess: onRefresh, onError: onErr })
 
   const parentLabel = (pc: string | null) => pc ? (parentList?.values.find((x) => x.code === pc)?.label ?? pc) : '—'
-  const submitAdd = () => { clearErr(); if (!code.trim() || !label.trim()) { onErr(new Error('Enter both a code and a label.')); return } add.mutate() }
+  const submitAdd = () => { clearErr(); if (!label.trim()) { onErr(new Error('Enter a label.')); return } add.mutate() }
 
   return (
     <div className="card">
@@ -125,7 +125,7 @@ function ListValues({ list, parentList, onRefresh, onErr, clearErr }: {
       </div>
       <table>
         <thead>
-          <tr><th>Code</th><th>Label</th>{parentList && <th>{parentList.name}</th>}<th>Active</th><th /></tr>
+          <tr><th>ID</th><th>Label</th>{parentList && <th>{parentList.name}</th>}<th>Active</th><th /></tr>
         </thead>
         <tbody>
           {[...list.values].sort((a, b) => a.sort - b.sort || a.label.localeCompare(b.label)).map((v) => (
@@ -149,8 +149,7 @@ function ListValues({ list, parentList, onRefresh, onErr, clearErr }: {
       <div className="cbody" style={{ borderTop: '1px solid var(--line)' }}>
         <div className="hint" style={{ fontWeight: 700, marginBottom: 8 }}>Add a value</div>
         <div className="grid g3">
-          <CodeField spec={{ key: 'code', label: 'Code (stored)', dataType: 'code', placeholder: 'e.g. NET30' }} value={code} onChange={setCode} />
-          <TextField spec={{ key: 'label', label: 'Label (shown)', dataType: 'text', placeholder: 'e.g. 30 days' }} value={label} onChange={setLabel} />
+          <TextField spec={{ key: 'label', label: 'Label', dataType: 'text', placeholder: 'e.g. 30 days', help: 'The ID is assigned automatically (1, 2, 3… in entry order).' }} value={label} onChange={setLabel} />
           {parentList && (
             <SelectField
               spec={{ key: 'parentValue', label: parentList.name, dataType: 'select', placeholder: `Select ${parentList.name.toLowerCase()}`, options: { kind: 'static', options: parentOptions(parentList) } }}
@@ -169,7 +168,7 @@ function ListValues({ list, parentList, onRefresh, onErr, clearErr }: {
             <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
             <Button variant="primary" icon="check" busy={update.isPending} onClick={() => update.mutate(editing)}>Save</Button>
           </>}>
-          <CodeField spec={{ key: 'ecode', label: 'Code', dataType: 'code', readOnly: true }} value={editing.code} onChange={() => {}} />
+          <CodeField spec={{ key: 'ecode', label: 'ID', dataType: 'code', readOnly: true }} value={editing.code} onChange={() => {}} />
           <TextField spec={{ key: 'elabel', label: 'Label', dataType: 'text' }} value={editing.label} onChange={(v) => setEditing({ ...editing, label: v })} />
           {parentList && (
             <SelectField

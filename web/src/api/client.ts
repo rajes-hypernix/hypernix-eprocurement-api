@@ -596,7 +596,7 @@ export const deleteCustomList = (code: string) =>
 export const getCustomLists = () => http<CustomList[]>('/custom-lists')
 export const createCustomList = (body: { code: string; name: string; description?: string | null; parentListCode?: string | null; orderMode?: string }) =>
   http<CustomList>('/custom-lists', { method: 'POST', body: JSON.stringify(body) })
-export const addCustomListValue = (listCode: string, body: { code: string; label: string; parentValueCode?: string | null }) =>
+export const addCustomListValue = (listCode: string, body: { code?: string | null; label: string; parentValueCode?: string | null }) =>
   http<CustomListValue>(`/custom-lists/${encodeURIComponent(listCode)}/values`, { method: 'POST', body: JSON.stringify(body) })
 export const updateCustomListValue = (id: string, body: { label: string; parentValueCode?: string | null; sort: number; active: boolean }) =>
   http<CustomListValue>(`/custom-lists/values/${id}`, { method: 'PUT', body: JSON.stringify(body) })

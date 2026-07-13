@@ -30,14 +30,13 @@ describe('AdminCustomLists (NetSuite-style custom lists)', () => {
     expect(screen.getByText('30 days')).toBeInTheDocument()
   })
 
-  it('adds a value to the selected list (stores code + label)', async () => {
-    const add = vi.spyOn(client, 'addCustomListValue').mockResolvedValue(val('NET90', '90 days', null, 2))
+  it('adds a value with a system-assigned id (CF-FIX1-T6: the user types only the label)', async () => {
+    const add = vi.spyOn(client, 'addCustomListValue').mockResolvedValue(val('3', '90 days', null, 2))
     renderWithQuery(<AdminCustomLists />)
     await screen.findByRole('button', { name: /Payment terms/ })
-    await userEvent.type(screen.getByLabelText('Code (stored)'), 'NET90')
-    await userEvent.type(screen.getByLabelText('Label (shown)'), '90 days')
+    await userEvent.type(screen.getByLabelText('Label'), '90 days')
     await userEvent.click(screen.getByRole('button', { name: /Add value/ }))
-    await waitFor(() => expect(add).toHaveBeenCalledWith('PAYMENT_TERMS', { code: 'NET90', label: '90 days', parentValueCode: null }))
+    await waitFor(() => expect(add).toHaveBeenCalledWith('PAYMENT_TERMS', { code: null, label: '90 days', parentValueCode: null }))
   })
 
   it('a dependent list exposes the parent-value picker', async () => {
@@ -56,9 +55,9 @@ describe('AdminCustomLists (NetSuite-style custom lists)', () => {
     renderWithQuery(<AdminCustomLists />)
     await screen.findByRole('button', { name: /Payment terms/ })
     await userEvent.click(screen.getByRole('button', { name: /New list/ }))
-    await userEvent.type(screen.getByLabelText('Code'), 'incoterm')
+    await userEvent.type(screen.getByLabelText('Internal ID'), 'incoterm')
     await userEvent.type(screen.getByLabelText('Name'), 'Incoterms')
     await userEvent.click(screen.getByRole('button', { name: /Create list/ }))
-    await waitFor(() => expect(create).toHaveBeenCalledWith({ code: 'INCOTERM', name: 'Incoterms', description: null, parentListCode: null }))
+    await waitFor(() => expect(create).toHaveBeenCalledWith({ code: 'INCOTERM', name: 'Incoterms', description: null, parentListCode: null, orderMode: 'Entered' }))
   })
 })
