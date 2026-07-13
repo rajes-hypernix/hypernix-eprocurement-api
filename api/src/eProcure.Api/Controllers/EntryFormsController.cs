@@ -52,8 +52,8 @@ public sealed class EntryFormsController(IEntryFormService forms) : ControllerBa
     /// name a form (OD-D7-2: server-side resolution is the anti-bypass, not just hygiene).</summary>
     [HttpGet("resolve")]
     [Action(ApiActions.ReadEntryForms)]
-    public async Task<ActionResult<ResolvedFormDto>> Resolve([FromQuery] string recordType, CancellationToken ct) =>
-        Ok(await forms.ResolveAsync(recordType, ct));
+    public async Task<ActionResult<ResolvedFormDto>> Resolve([FromQuery] string recordType, [FromQuery] Guid? formId, CancellationToken ct) =>
+        Ok(await forms.ResolveAsync(recordType, formId, ct));
 
     // ---------- CF5-T2/T3: layout-object CRUD (A69, same guard as the composer) ----------
 

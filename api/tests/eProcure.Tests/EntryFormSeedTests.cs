@@ -70,7 +70,11 @@ public sealed class EntryFormSeedTests
         var def = await db.EntryFormDefs.AsNoTracking().SingleAsync(d => d.Id == formId);
         def.IsSystem.Should().BeTrue();
         def.RecordType.Should().Be(RecordType.Requisition);
-        (await db.EntryFormFields.AsNoTracking().CountAsync(x => x.FormDefId == formId)).Should().Be(7);
-        (await db.NumberingSchemes.AsNoTracking().CountAsync()).Should().Be(7);
+        // CF-FIX4-T4: cascade placements onto the standard form are LEGITIMATE, so the pin
+        // is 'the 7 seeded natives are present', never an exact count.
+        var keys = await db.EntryFormFields.AsNoTracking().Where(x => x.FormDefId == formId)
+            .Select(x => x.FieldKey).ToListAsync();
+        keys.Should().Contain(EntryFormSeed.StandardPrFields.Select(x => x.FieldKey));
+        (await db.NumberingSchemes.AsNoTracking().CountAsync()).Should().Be(8);   // CF-FIX4-T2: +Grn
     }
 }

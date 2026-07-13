@@ -51,10 +51,15 @@ public sealed record ResolvedFormFieldDto(
 
 public sealed record SegmentOptionDto(string Code, string Label);
 
+public sealed record FormChoiceDto(Guid Id, string Name);
+
 public sealed record ResolvedFormDto(
     Guid FormId, string FormCode, string FormName, string RecordType,
     IReadOnlyList<ResolvedFormFieldDto> Fields,
-    IReadOnlyList<string>? SublistColumns = null);   // CF-FIX4-T3: the lines table renders this order
+    IReadOnlyList<string>? SublistColumns = null,    // CF-FIX4-T3: the lines table renders this order
+    // CF-FIX4-T5: the picker's options (>1 → a visible form picker on the transaction).
+    // Rides the resolve response — the admin-scoped forms list is not a buyer surface.
+    IReadOnlyList<FormChoiceDto>? AvailableForms = null);
 
 public sealed record NumberingSchemeDto(string RecordType, string Prefix, bool YearSegment, int Digits, string NextPreview);
 
@@ -84,7 +89,7 @@ public interface IEntryFormService
     Task<EntryFormDefDto> RemoveFieldAsync(Guid formId, string fieldKey, CancellationToken ct = default);
     /// <summary>The caller's form for a record type (A71 + dynamic View*): fixed global
     /// role precedence, first held role with an Active mapped form wins, Standard fallback.</summary>
-    Task<ResolvedFormDto> ResolveAsync(string recordType, CancellationToken ct = default);
+    Task<ResolvedFormDto> ResolveAsync(string recordType, Guid? formId = null, CancellationToken ct = default);
 }
 
 /// <summary>The narrow seam RequisitionService uses at submit — server-side re-resolution

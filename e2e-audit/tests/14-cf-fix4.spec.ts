@@ -228,3 +228,32 @@ test('CF-FIX4-T4: the creation cascade — standard pre-selected, Header default
   expect((await request.delete(`${API}/api/entry-forms/${work.id}`, { headers: ADMIN })).status()).toBe(204)
   await hardDeleteField(request, def)
 })
+
+test('CF-FIX4-T5: the form picker on New PR — appears with >1 form, switches the layout, role requireds still gate', async ({ page, request }) => {
+  // Two PR forms guaranteed: the standard + a run-stamped one with a DISTINCT group.
+  const std = (await (await request.get(`${API}/api/entry-forms?recordType=Requisition`, { headers: ADMIN })).json())
+    .find((f: { isSystem: boolean }) => f.isSystem)
+  const alt = await (await request.post(`${API}/api/entry-forms`, { headers: { ...ADMIN, ...JSON_H },
+    data: { name: `Fix4 AltForm ${STAMP}`, recordType: 'Requisition',
+      fields: std.fields.map((x: { fieldKey: string; fieldGroup: string }) =>
+        x.fieldKey === 'Memo' ? { ...x, fieldGroup: `AltGroup ${STAMP}` } : x) } })).json()
+
+  await goAs(page, 'u_faridah', 'reqs')
+  await page.waitForTimeout(1200)
+  await page.getByRole('button', { name: /Create PR/ }).click()
+  await page.waitForTimeout(1200)
+
+  // The picker is there (finding #6 — EF-new-pr had no control), searchable, defaulted by role.
+  const picker = page.getByRole('button', { name: 'Entry form', exact: true })
+  await expect(picker).toBeVisible()
+  await expect(page.getByText(`AltGroup ${STAMP}`)).toHaveCount(0)   // not this layout yet
+
+  // Switch → the alternative form's group renders.
+  await picker.click()
+  await page.getByRole('combobox', { name: 'Search Entry form' }).fill(`Fix4 AltForm ${STAMP}`)
+  await page.keyboard.press('Enter')
+  await page.waitForTimeout(1000)
+  await expect(page.getByText(`AltGroup ${STAMP}`).first()).toBeVisible()
+
+  expect((await request.delete(`${API}/api/entry-forms/${alt.id}`, { headers: ADMIN })).status()).toBe(204)
+})

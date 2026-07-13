@@ -282,7 +282,12 @@ export type ResolvedFormFieldDto = {
   options?: { code: string; label: string }[] | null
   groupColumnBreak?: boolean
 }
-export type ResolvedFormDto = { formId: string; formCode: string; formName: string; recordType: string; fields: ResolvedFormFieldDto[]; sublistColumns?: string[] | null }
+export type FormChoiceDto = { id: string; name: string }
+export type ResolvedFormDto = {
+  formId: string; formCode: string; formName: string; recordType: string; fields: ResolvedFormFieldDto[]
+  sublistColumns?: string[] | null
+  availableForms?: FormChoiceDto[] | null   // CF-FIX4-T5: >1 → the transaction shows a form picker
+}
 export type NumberingSchemeDto = { recordType: string; prefix: string; yearSegment: boolean; digits: number; nextPreview: string }
 
 export const getEntryForms = (recordType?: string) =>
@@ -311,8 +316,8 @@ export const removeEntryFormField = (formId: string, fieldKey: string) =>
   http<EntryFormDefDto>(`/entry-forms/${formId}/fields/${encodeURIComponent(fieldKey)}`, { method: 'DELETE' })
 export const saveEntryFormSublist = (formId: string, fieldKeys: string[]) =>
   http<EntryFormDefDto>(`/entry-forms/${formId}/sublist`, { method: 'PUT', body: JSON.stringify({ fieldKeys }) })
-export const resolveEntryForm = (recordType: string) =>
-  http<ResolvedFormDto>(`/entry-forms/resolve?recordType=${encodeURIComponent(recordType)}`)
+export const resolveEntryForm = (recordType: string, formId?: string | null) =>
+  http<ResolvedFormDto>(`/entry-forms/resolve?recordType=${encodeURIComponent(recordType)}${formId ? `&formId=${formId}` : ''}`)
 export const getNumberingSchemes = () => http<NumberingSchemeDto[]>('/numbering')
 export const updateNumberingScheme = (recordType: string, req: { prefix: string; yearSegment: boolean; digits: number }) =>
   http<NumberingSchemeDto>(`/numbering/${recordType}`, { method: 'PUT', body: JSON.stringify(req) })

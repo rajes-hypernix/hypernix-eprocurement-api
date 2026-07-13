@@ -12,6 +12,7 @@ import { Icon } from '../Icon'
 import { Modal, Spinner } from '../ui'
 import { PrHeaderBadge } from '../../lib/prStatus'
 import type { FieldSpec } from '../../ui/fieldSpec'
+import { SelectField } from '../../ui/SelectField'
 import { TextField } from '../../ui/TextField'
 import { TextAreaField } from '../../ui/TextAreaField'
 import { NumberField } from '../../ui/NumberField'
@@ -62,7 +63,10 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
   const qc = useQueryClient()
   const isNew = id === null
   const { data: pr, isPending } = useQuery({ queryKey: ['requisition', id], queryFn: () => getRequisition(id!), enabled: !isNew })
-  const { data: form } = useQuery({ queryKey: ['entry-form', 'Requisition'], queryFn: () => resolveEntryForm('Requisition') })
+  // CF-FIX4-T5: the form picker — an explicit choice re-resolves the LAYOUT; the server
+  // still enforces the ROLE form's required fields at submit (OD-D7-2).
+  const [chosenFormId, setChosenFormId] = useState<string | null>(null)
+  const { data: form } = useQuery({ queryKey: ['entry-form', 'Requisition', chosenFormId], queryFn: () => resolveEntryForm('Requisition', chosenFormId) })
   // CF-FIX4-T3 (L4): the lines table renders the resolved form's flat sublist order;
   // unknown/missing keys fall back to the standard order (parity when no config exists).
   const NATIVE_LINE_COLS = ['ItemCode', 'Description', 'Qty', 'Uom', 'EstUnitPrice']
@@ -259,6 +263,16 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
       dirty={dirty}
       onGuardReady={(fn) => { markClean.current = fn }}
     >
+      {(form?.availableForms?.length ?? 0) > 1 && (
+        <div className="card" style={{ padding: 12, marginBottom: 12, maxWidth: 420 }}>
+          <SelectField
+            spec={{ key: 'pr-form-picker', label: 'Entry form', dataType: 'select', searchable: true,
+              help: 'Layout only — required fields of your role\u2019s form still apply at submit.',
+              options: { kind: 'static', options: (form?.availableForms ?? []).map((f) => ({ code: f.id, label: f.name })) } }}
+            value={form?.formId ?? ''}
+            onChange={(v) => setChosenFormId(String(v ?? '') || null)} />
+        </div>
+      )}
       <div className="card" style={{ padding: 18, marginBottom: 16 }}>
         <h3 style={{ marginTop: 0 }}>Lines</h3>
         <table>

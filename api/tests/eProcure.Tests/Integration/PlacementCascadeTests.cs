@@ -153,6 +153,39 @@ public sealed class PlacementCascadeTests(EntryFormsFixture fx) : IClassFixture<
         values!.Single(v => v.Code == def.Code).Value.Should().Be("pinning value", "the value stayed visible throughout");
     }
 
+    // CF-FIX4-T5: the form picker — layout only, never a required-fields dodge (OD-D7-2).
+    [Fact]
+    public async Task Resolve_honors_an_explicit_formId_but_submit_still_enforces_the_ROLE_forms_requireds()
+    {
+        var suffix = S;
+        var admin = fx.ClientAs("u_admin");
+        // The buyer's ROLE form requires Department; a second form doesn't even carry it.
+        var strict = (await (await admin.PostAsJsonAsync("/api/entry-forms", new SaveEntryFormRequest(
+            $"T5 Strict {suffix}", "Requisition", [EntryFormsFixture.Field("Department", 0, null, true)])))
+            .Content.ReadFromJsonAsync<EntryFormDefDto>())!;
+        await fx.AssignRoles(strict.Id, "Buyer");
+        var loose = (await (await admin.PostAsJsonAsync("/api/entry-forms", new SaveEntryFormRequest(
+            $"T5 Loose {suffix}", "Requisition", [EntryFormsFixture.Field("Requestor", 0)])))
+            .Content.ReadFromJsonAsync<EntryFormDefDto>())!;
+
+        var buyer = fx.ClientAs("u_faridah");
+        // Explicit choice switches the LAYOUT…
+        var resolved = await buyer.GetFromJsonAsync<ResolvedFormDto>($"/api/entry-forms/resolve?recordType=Requisition&formId={loose.Id}");
+        resolved!.FormId.Should().Be(loose.Id);
+        resolved.AvailableForms.Should().NotBeNull("more than one active form exists — the picker has options");
+        // …but a submit with the role form's required missing is STILL refused (OD-D7-2).
+        var pr = EntryFormsFixture.Pr(department: "");
+        (await buyer.PostAsJsonAsync("/api/requisitions?submit=true", pr)).StatusCode
+            .Should().Be(System.Net.HttpStatusCode.BadRequest, "the chosen form can never dodge the role form's requireds");
+
+        // A formId of the wrong type / inactive → 400.
+        (await buyer.GetAsync($"/api/entry-forms/resolve?recordType=Requisition&formId={Guid.NewGuid()}")).StatusCode
+            .Should().Be(System.Net.HttpStatusCode.BadRequest);
+
+        await admin.DeleteAsync($"/api/entry-forms/{strict.Id}");
+        await admin.DeleteAsync($"/api/entry-forms/{loose.Id}");
+    }
+
     [Fact]
     public async Task A_placement_naming_a_wrong_form_or_foreign_group_is_refused()
     {

@@ -210,14 +210,20 @@ public sealed class EntryFormService(AppDbContext db, IClock clock, ICurrentUser
 
     // ---------- resolve (A71 + dynamic View*) ----------
 
-    public async Task<ResolvedFormDto> ResolveAsync(string recordType, CancellationToken ct = default)
+    public async Task<ResolvedFormDto> ResolveAsync(string recordType, Guid? formId = null, CancellationToken ct = default)
     {
         var type = Parse(recordType);
         var viewAction = ViewVocabulary.ViewActionFor[type];
         if (!ActionCatalog.RolesFor(viewAction).Any(user.Roles.Contains))
             throw new ForbiddenException("Not permitted for your role.");
 
-        var def = await ResolveDefAsync(type, ct);
+        // CF-FIX4-T5: an EXPLICIT form choice changes LAYOUT ONLY — submit re-resolves by
+        // role (EnsureSubmittableAsync, OD-D7-2), so a chosen form can never dodge the role
+        // form's required fields.
+        var def = formId is { } fid
+            ? await db.EntryFormDefs.FirstOrDefaultAsync(d => d.Id == fid && d.RecordType == type && d.Active, ct)
+                ?? throw new FormValidationException("The chosen form is not an active form of this record type.")
+            : await ResolveDefAsync(type, ct);
         var fields = await db.EntryFormFields.AsNoTracking()
             .Where(f => f.FormDefId == def.Id).OrderBy(f => f.Sort).ToListAsync(ct);
         var placement = await PlacementAsync(def.Id, ct);   // CF5: group/subtab objects → the wire strings
@@ -263,8 +269,13 @@ public sealed class EntryFormService(AppDbContext db, IClock clock, ICurrentUser
         }
         var sublist = await db.EntryFormSublistColumns.AsNoTracking()
             .Where(c => c.FormDefId == def.Id).OrderBy(c => c.Sort).Select(c => c.FieldKey).ToListAsync(ct);
+        var available = await db.EntryFormDefs.AsNoTracking()
+            .Where(d => d.RecordType == type && d.Active)
+            .OrderByDescending(d => d.IsSystem).ThenBy(d => d.Name)
+            .Select(d => new FormChoiceDto(d.Id, d.Name)).ToListAsync(ct);
         return new ResolvedFormDto(def.Id, def.Code, def.Name, type.ToString(), resolved,
-            sublist.Count > 0 ? sublist : null);
+            sublist.Count > 0 ? sublist : null,
+            available.Count > 1 ? available : null);   // picker only when there IS a choice
     }
 
     private async Task<EntryFormDef> ResolveDefAsync(RecordType type, CancellationToken ct)
