@@ -103,6 +103,9 @@ public static class ActionCatalog
             [ApiActions.ManageNumbering] = [Ad],                          // A70: numbering schemes likewise; reads ride the manage row (A65 precedent)
             [ApiActions.ReadEntryForms] = [B, Ap, TE, CE, Ad, V],         // A71: every principal resolves ITS OWN form; + dynamic record-type View* inside (4th use of the convention)
 
+            // ---- A73 CF-FIX3: Tier-3 purge — Admin ONLY, never implied by ManageCustomFields ----
+            [ApiActions.PurgeCustomFieldHistory] = [Ad],
+
             // ---- A72 org spend analytics (A2F-T1, AUTHZ-1) ----
             [ApiActions.ViewSpendAnalytics] = [B, Ap, Ad],                // A72: org-wide spend aggregates are INTERNAL (OD-3 posture) — vendors hold ViewInvoices for their OWN records, which is exactly why it must not gate these (the AUTHZ-1 bug)
 

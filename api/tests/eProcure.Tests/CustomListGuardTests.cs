@@ -24,7 +24,12 @@ public sealed class CustomListGuardTests
     private static (TestContext C, CustomListService Svc) New()
     {
         var c = TestContext.New();
-        return (c, new CustomListService(c.Db, c.Clock));
+        // CF-FIX3: the tiered delete consults the REGISTERED providers — wire the real ones.
+        var refProviders = new Application.CustomFields.ICustomListValueReferenceProvider[]
+            { new eProcure.Infrastructure.Referencing.SavedViewReferenceProvider(c.Db), new eProcure.Infrastructure.Referencing.SegmentReferenceProvider() };
+        var dataProviders = new Application.CustomFields.ICustomListValueDataProvider[]
+            { new eProcure.Infrastructure.Referencing.CustomValueDataProvider(c.Db), new eProcure.Infrastructure.Referencing.NativeCodeColumnDataProvider(c.Db) };
+        return (c, new CustomListService(c.Db, c.Clock, refProviders, dataProviders, c.Audit));
     }
 
     private static async Task<(CustomList List, CustomListValue Keep, CustomListValue Loose)> SeedList(
@@ -69,15 +74,16 @@ public sealed class CustomListGuardTests
         });
         await c.Db.SaveChangesAsync();
 
-        var result = await svc.DeleteValueAsync(keep.Id);
+        // CF-FIX3-T4: delete now REFUSES loudly (no silent fallback) — the value is held
+        // by a record (Live: the PO id is unknown → fail-closed Live).
+        var del = async () => await svc.DeleteValueAsync(keep.Id);
+        (await del.Should().ThrowAsync<eProcure.Domain.DomainRuleException>()).WithMessage("*live*");
 
-        result.Should().NotBeNull("a referenced value is never silently dropped");
-        result!.Active.Should().BeFalse("it deactivates instead");
-        var row = await c.Db.CustomListValues.SingleAsync(v => v.Id == keep.Id);
-        row.Active.Should().BeFalse();
-        row.Label.Should().Be("Red", "the stored code still resolves for display — history never degrades to a raw code");
-
-        // Reactivation is the EXISTING update path (mirrored, not invented).
+        // Deactivation is the admin's EXPLICIT Tier-1 choice — and history keeps its label.
+        var deactivated = await svc.UpdateValueAsync(keep.Id, new UpdateCustomListValueRequest("Red", null, 0, false));
+        deactivated.Active.Should().BeFalse();
+        (await c.Db.CustomListValues.SingleAsync(v => v.Id == keep.Id)).Label
+            .Should().Be("Red", "the stored code still resolves for display — history never degrades to a raw code");
         var reactivated = await svc.UpdateValueAsync(keep.Id, new UpdateCustomListValueRequest("Red", null, 0, true));
         reactivated.Active.Should().BeTrue();
     }
@@ -93,11 +99,11 @@ public sealed class CustomListGuardTests
         c.Db.Vendors.Add(new Vendor { Code = "V-1", Name = "V", RegisteredName = "V Sdn Bhd", Country = "MY" });
         await c.Db.SaveChangesAsync();
 
-        var result = await svc.DeleteValueAsync(my.Id);
-
-        result.Should().NotBeNull("Vendor.Country holds the ISO-2 code — the native probe catches it");
-        result!.Active.Should().BeFalse();
-        (await c.Db.CustomListValues.AnyAsync(v => v.Id == my.Id)).Should().BeTrue();
+        // CF-FIX3-T4: Vendor.Country holds the code — master data is ALWAYS Live, so
+        // delete REFUSES (the native probe now lives in NativeCodeColumnDataProvider).
+        var del = async () => await svc.DeleteValueAsync(my.Id);
+        (await del.Should().ThrowAsync<eProcure.Domain.DomainRuleException>()).WithMessage("*live*");
+        (await c.Db.CustomListValues.AnyAsync(v => v.Id == my.Id)).Should().BeTrue("nothing was silently dropped");
     }
 }
 
@@ -227,9 +233,10 @@ public sealed class DependsOnHardeningTests
         await svc.CreateListAsync(new("T9S2", "T9 State2", null, "CUSTLIST_T9C2"));
         await svc.AddValueAsync("CUSTLIST_T9S2", new("SGR", "Selangor", "MY"));
 
-        var result = await svc.DeleteValueAsync(my.Id);
-        result.Should().NotBeNull("a parent with children DEACTIVATES (never-silently-orphan)");
-        result!.Active.Should().BeFalse();
+        // CF-FIX3-T4: a parent with children REFUSES deletion with the reason on screen
+        // (never-silently-orphan, now loud instead of a hidden deactivate).
+        var del = async () => await svc.DeleteValueAsync(my.Id);
+        (await del.Should().ThrowAsync<eProcure.Domain.DomainRuleException>()).WithMessage("*point at this one*");
         c.Db.CustomListValues.Count(v => v.Code == "MY").Should().Be(1, "the row survives — Selangor still resolves its parent");
     }
 
@@ -276,10 +283,9 @@ public sealed class ValueTreeTests
         var dangling = async () => await svc.AddValueAsync("CUSTLIST_T10CAT", new(null, "Ghost", "999"));
         (await dangling.Should().ThrowAsync<eProcure.Domain.DomainRuleException>()).WithMessage("*previously-entered*");
 
-        // Deleting a parent with tree children — deactivates, never orphans.
-        var del = await svc.DeleteValueAsync(rotating.Id);
-        del.Should().NotBeNull();
-        del!.Active.Should().BeFalse("a tree parent deactivates while children point at it");
+        // CF-FIX3-T4: deleting a parent with tree children REFUSES loudly — never orphans.
+        var delParent = async () => await svc.DeleteValueAsync(rotating.Id);
+        (await delParent.Should().ThrowAsync<eProcure.Domain.DomainRuleException>()).WithMessage("*point at this one*");
     }
 
     [Fact]

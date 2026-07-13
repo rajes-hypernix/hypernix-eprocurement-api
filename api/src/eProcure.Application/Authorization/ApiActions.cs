@@ -104,4 +104,8 @@ public static class ApiActions
     public const string CreateAsn = "CreateAsn";
     public const string SubmitInvoice = "SubmitInvoice";
     public const string ViewMyStatement = "ViewMyStatement";
+
+    // A73 — CF-FIX3-T3: Tier-3 purge of a retired field's HISTORICAL values. Deliberately a
+    // DISTINCT, higher tier than ManageCustomFields — it removes stored data (snapshotted).
+    public const string PurgeCustomFieldHistory = "PurgeCustomFieldHistory";
 }

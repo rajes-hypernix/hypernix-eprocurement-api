@@ -37,4 +37,7 @@ public interface ICustomListService
     /// (the custom-field-def rule: a stored code is never silently dropped). Reactivation
     /// already exists via UpdateValueAsync(active: true).</summary>
     Task<CustomListValueDto?> DeleteValueAsync(Guid valueId, CancellationToken ct = default);
+    // CF-FIX3-T4: impact report + Tier-3 purge for list VALUES
+    Task<CustomFields.ImpactReportDto> GetValueReferencesAsync(Guid valueId, CancellationToken ct = default);
+    Task PurgeValueAsync(Guid valueId, CancellationToken ct = default);
 }

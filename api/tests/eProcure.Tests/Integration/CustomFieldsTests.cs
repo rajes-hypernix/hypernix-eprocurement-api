@@ -461,4 +461,87 @@ public sealed class CustomFieldsTests(CustomFieldsFixture fx) : IClassFixture<Cu
             new SaveCustomValuesRequest(new(), new() { [lineId] = new() { [line.Code] = "L1" } })))
             .StatusCode.Should().Be(HttpStatusCode.OK, "the header grain is enforced when the header grain is WRITTEN");
     }
+
+    // ---- CF-FIX3-T3: the three tiers + the OLD-BUG reproduction ----
+
+    [Fact]
+    public async Task The_old_bug_a_zero_value_field_that_is_a_view_column_no_longer_hard_deletes()
+    {
+        var buyer = fx.ClientAs("u_faridah");
+        var def = await fx.CreateDef("Fix3 Old Bug", "Text");
+        // Zero values — but a saved view uses it as a COLUMN (the pre-CF-FIX3 guard only
+        // checked values and deleted this, breaking the view loudly at run time).
+        await buyer.PostAsJsonAsync("/api/views", new SaveViewRequest(
+            "fix3-oldbug", "PurchaseOrder", [], [new SavedViewColumnDto(def.Code, null, null)]));
+
+        var del = await fx.ClientAs("u_admin").DeleteAsync($"/api/custom-fields/{def.Id}");
+        del.StatusCode.Should().Be(HttpStatusCode.Conflict, "a config reference now blocks delete even with zero values");
+        (await del.Content.ReadAsStringAsync()).Should().Contain("Saved Views");
+    }
+
+    [Fact]
+    public async Task Tier2_delete_refuses_on_live_values_and_Tier3_purge_removes_only_historical_with_a_snapshot()
+    {
+        var admin = fx.ClientAs("u_admin");
+        var def = await fx.CreateDef("Fix3 Tiers", "Text");
+        Guid closedPoId = default;
+        await fx.Factory.SeedAsync(db =>
+        {
+            var closed = new PurchaseOrder { Code = "PO-FIX3-H", VendorId = Guid.NewGuid(), CreatedUtc = DateTime.UtcNow, UpdatedUtc = DateTime.UtcNow }.SeededAs(PoStatus.Closed);
+            db.PurchaseOrders.Add(closed);
+            closedPoId = closed.Id;
+            return Task.CompletedTask;
+        });
+        await fx.SetValue("u_faridah", fx.PoAId, def.Code, "live value");        // PoA is Draft → LIVE
+        await fx.Factory.SeedAsync(db =>
+        {
+            db.CustomFieldValues.Add(new eProcure.Domain.CustomFields.CustomFieldValue
+            {
+                FieldDefId = def.Id, RecordType = eProcure.Domain.Views.RecordType.PurchaseOrder,
+                RecordId = closedPoId, DataType = eProcure.Domain.CustomFields.CustomFieldDataType.Text,
+                ValueText = "historical value", UpdatedUtc = DateTime.UtcNow,
+            });
+            return Task.CompletedTask;
+        });
+
+        // Live value blocks BOTH delete and purge.
+        (await admin.DeleteAsync($"/api/custom-fields/{def.Id}")).StatusCode.Should().Be(HttpStatusCode.Conflict);
+        (await admin.PostAsync($"/api/custom-fields/{def.Id}/purge", null)).StatusCode.Should().Be(HttpStatusCode.Conflict);
+
+        // Clear the live value → delete still refuses (historical remains) → purge succeeds.
+        await fx.SetValue("u_faridah", fx.PoAId, def.Code, null);
+        var report = (await admin.GetFromJsonAsync<ImpactReportDto>($"/api/custom-fields/{def.Id}/references"))!;
+        report.CanDelete.Should().BeFalse();
+        report.CanPurge.Should().BeTrue();
+        (await admin.PostAsync($"/api/custom-fields/{def.Id}/purge", null)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        // The field is gone, the live record was never touched, and the SNAPSHOT is in the audit.
+        (await admin.GetAsync($"/api/custom-fields/{def.Id}/references")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        await fx.Factory.SeedAsync(db =>
+        {
+            var entries = db.AuditEntries.Where(a => a.EntityId == def.Code).ToList();
+            entries.Should().Contain(a => a.Action == "Purged historical value" && a.After == "historical value",
+                "every removed value is snapshotted — record + rendered value");
+            entries.Should().Contain(a => a.Action == "Purged and deleted");
+            return Task.CompletedTask;
+        });
+
+        // Leave the shared fixture as we found it (the seeded closed PO would skew
+        // aggregate tests that count across all POs).
+        await fx.Factory.SeedAsync(db =>
+        {
+            db.PurchaseOrders.Remove(db.PurchaseOrders.Single(p => p.Id == closedPoId));
+            return Task.CompletedTask;
+        });
+    }
+
+    // CF-FIX3-T5: type immutability is a SERVER guarantee, pinned at the API boundary.
+    [Fact]
+    public async Task Type_change_past_the_UI_returns_400()
+    {
+        var def = await fx.CreateDef("Fix3 Immutable", "Text");
+        (await fx.ClientAs("u_admin").PutAsJsonAsync($"/api/custom-fields/{def.Id}", new SaveCustomFieldDefRequest(
+            def.Label, "PurchaseOrder", "Int", null, false, "", def.Sort)))
+            .StatusCode.Should().Be(HttpStatusCode.BadRequest, "change-type = inactivate & recreate; the API is the guarantee");
+    }
 }

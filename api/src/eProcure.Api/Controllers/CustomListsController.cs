@@ -54,6 +54,20 @@ public sealed class CustomListsController(ICustomListService lists) : Controller
     public async Task<ActionResult<CustomListValueDto>> UpdateValue(Guid valueId, UpdateCustomListValueRequest req, CancellationToken ct) =>
         Ok(await lists.UpdateValueAsync(valueId, req, ct));
 
+    // CF-FIX3-T4: value impact report (ADMIN-scoped) + governed purge (A73).
+    [HttpGet("values/{valueId:guid}/references")]
+    [Action(ApiActions.ManageCustomLists)]
+    public async Task<ActionResult<eProcure.Application.CustomFields.ImpactReportDto>> ValueReferences(Guid valueId, CancellationToken ct) =>
+        Ok(await lists.GetValueReferencesAsync(valueId, ct));
+
+    [HttpPost("values/{valueId:guid}/purge")]
+    [Action(ApiActions.PurgeCustomFieldHistory)]
+    public async Task<IActionResult> PurgeValue(Guid valueId, CancellationToken ct)
+    {
+        await lists.PurgeValueAsync(valueId, ct);
+        return NoContent();
+    }
+
     [HttpDelete("values/{valueId:guid}")]
     [Action(ApiActions.ManageCustomLists)]
     public async Task<IActionResult> DeleteValue(Guid valueId, CancellationToken ct)

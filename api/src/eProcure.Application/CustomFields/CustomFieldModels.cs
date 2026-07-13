@@ -32,8 +32,19 @@ public sealed record SaveCustomValuesRequest(
     Dictionary<string, string?> Values,
     Dictionary<Guid, Dictionary<string, string?>>? Lines = null);
 
+/// <summary>CF-FIX3-T2: the impact report — every registered consumer's references plus
+/// the data summary. What the admin sees before ANY destructive action.</summary>
+public sealed record ImpactReportDto(
+    IReadOnlyList<FieldReference> ConfigReferences,
+    IReadOnlyList<DataReferenceSummary> Data,
+    int LiveCount, int HistoricalCount,
+    bool CanDelete, bool CanPurge, string? BlockedReason);
+
 public interface ICustomFieldService
 {
+    // CF-FIX3: impact report + Tier-3 purge (T2/T3)
+    Task<ImpactReportDto> GetReferencesAsync(Guid id, CancellationToken ct = default);
+    Task PurgeAsync(Guid id, CancellationToken ct = default);
     // Defs (the Admin Setup surface — A65)
     Task<IReadOnlyList<CustomFieldDefDto>> ListDefsAsync(string? recordType, CancellationToken ct = default);
     Task<CustomFieldDefDto> CreateDefAsync(SaveCustomFieldDefRequest req, CancellationToken ct = default);

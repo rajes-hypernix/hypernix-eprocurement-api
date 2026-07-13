@@ -8,7 +8,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace eProcure.Infrastructure.Services;
 
-public sealed class CustomListService(AppDbContext db, IClock clock) : ICustomListService
+public sealed class CustomListService(
+    AppDbContext db, IClock clock,
+    IEnumerable<Application.CustomFields.ICustomListValueReferenceProvider>? valueRefProviders = null,
+    IEnumerable<Application.CustomFields.ICustomListValueDataProvider>? valueDataProviders = null,
+    Application.Abstractions.IAuditLog? audit = null) : ICustomListService
 {
     public async Task<IReadOnlyList<CustomListDto>> ListAsync(CancellationToken ct = default)
     {
@@ -156,29 +160,93 @@ public sealed class CustomListService(AppDbContext db, IClock clock) : ICustomLi
             ?? throw new NotFoundException($"List value {valueId} not found.");
         var list = await db.CustomLists.AsNoTracking().FirstAsync(l => l.Id == value.CustomListId, ct);
 
-        // A2F-T3 (GAP-5): the "never silently drop a referenced value" discipline (the D5
-        // custom-field-def rule, the D6 unapply rule). A referenced value DEACTIVATES —
-        // gone from new-entry options (lookups filter Active), still resolving for display
-        // of the records that hold its code. Only an unreferenced value hard-deletes.
-        if (await IsReferencedAsync(list.Code, value.Code, ct))
-        {
-            value.Active = false;
-            await db.SaveChangesAsync(ct);
-            return ToDto(value);
-        }
-
-        // CF-FIX1-T9/T10: a value other values POINT AT (dependent-list children, or same-list
-        // tree children) is never silently orphaned — it deactivates instead.
+        // CF-FIX3-T4: the three-tier rule replaces the silent deactivate-fallback. Delete
+        // requires zero config references (every registered provider), zero LIVE usage,
+        // zero historical usage (historical → the governed Purge) and no dependent children.
+        // The old IsReferencedAsync probes now live inside the registered data providers.
+        var report = await GetValueReferencesForAsync(list, value, ct);
+        if (!report.CanDelete)
+            throw new DomainRuleException(report.BlockedReason ?? "This value cannot be deleted — check its impact report.");
         if (await HasDependentChildrenAsync(list, value.Code, ct))
-        {
-            value.Active = false;
-            await db.SaveChangesAsync(ct);
-            return ToDto(value);
-        }
+            throw new DomainRuleException("Other values point at this one (dependent or tree children) — repoint or delete them first, or deactivate this value.");
 
         db.CustomListValues.Remove(value);
         await db.SaveChangesAsync(ct);
         return null;
+    }
+
+    public async Task<Application.CustomFields.ImpactReportDto> GetValueReferencesAsync(Guid valueId, CancellationToken ct = default)
+    {
+        var value = await db.CustomListValues.AsNoTracking().FirstOrDefaultAsync(v => v.Id == valueId, ct)
+            ?? throw new NotFoundException($"List value {valueId} not found.");
+        var list = await db.CustomLists.AsNoTracking().FirstAsync(l => l.Id == value.CustomListId, ct);
+        return await GetValueReferencesForAsync(list, value, ct);
+    }
+
+    private async Task<Application.CustomFields.ImpactReportDto> GetValueReferencesForAsync(
+        CustomList list, CustomListValue value, CancellationToken ct)
+    {
+        var refs = new List<Application.CustomFields.FieldReference>();
+        foreach (var p in valueRefProviders ?? [])
+            refs.AddRange(await p.FindReferencesAsync(list.Id, list.Code, value.Code, ct));
+        var data = new List<Application.CustomFields.DataReferenceSummary>();
+        foreach (var p in valueDataProviders ?? [])
+            data.Add(await p.CountValueUsageAsync(list.Id, list.Code, value.Code, ct));
+        var live = data.Sum(d => d.LiveCount);
+        var historical = data.Sum(d => d.HistoricalCount);
+        var blocked =
+            refs.Count > 0 ? $"Still referenced by {string.Join(", ", refs.Select(r => r.ConsumerName).Distinct())} — clear those first."
+            : live > 0 ? $"Held by {live} live record(s)/master rows — a value in live use is never deleted."
+            : null;
+        return new Application.CustomFields.ImpactReportDto(refs, data, live, historical,
+            CanDelete: refs.Count == 0 && live == 0 && historical == 0,
+            CanPurge: refs.Count == 0 && live == 0 && historical > 0,
+            blocked ?? (historical > 0 ? $"{historical} value(s) remain on closed/historical records — Purge (governed) removes them with a snapshot." : null));
+    }
+
+    /// <summary>CF-FIX3-T4 Tier 3 for a LIST VALUE — same contract as the field purge:
+    /// one transaction, re-verified INSIDE it, a snapshot per removed value, then the value
+    /// row itself goes. Gated on PurgeCustomFieldHistory (A73) at the endpoint.</summary>
+    public async Task PurgeValueAsync(Guid valueId, CancellationToken ct = default)
+    {
+        var value = await db.CustomListValues.FirstOrDefaultAsync(v => v.Id == valueId, ct)
+            ?? throw new NotFoundException($"List value {valueId} not found.");
+        var list = await db.CustomLists.AsNoTracking().FirstAsync(l => l.Id == value.CustomListId, ct);
+        var log = audit ?? throw new InvalidOperationException("Purge requires the audit log.");
+        var tx = db.Database.IsRelational() ? await db.Database.BeginTransactionAsync(ct) : null;
+        try
+        {
+            var report = await GetValueReferencesForAsync(list, value, ct);
+            if (!report.CanPurge)
+                throw new DomainRuleException(report.BlockedReason ?? "Purge needs clear references, no live usage and historical usage present.");
+            if (await HasDependentChildrenAsync(list, value.Code, ct))
+                throw new DomainRuleException("Other values point at this one — repoint or delete them first.");
+
+            var totalRemoved = 0;
+            foreach (var p in valueDataProviders ?? [])
+            {
+                var snapshot = await p.PurgeHistoricalAsync(list.Id, list.Code, value.Code, ct);
+                foreach (var v in snapshot.Removed)
+                    await log.WriteAsync("CustomListValue", $"{list.Code}:{value.Code}", "Purged historical value",
+                        before: $"{v.RecordType} {v.RecordLabel}{(v.LineId is not null ? $" line {v.LineId}" : "")}",
+                        after: v.Value, ct: ct);
+                totalRemoved += snapshot.Removed.Count;
+            }
+            db.CustomListValues.Remove(value);
+            await db.SaveChangesAsync(ct);
+            await log.WriteAsync("CustomListValue", $"{list.Code}:{value.Code}", "Purged and deleted",
+                after: $"{totalRemoved} historical value(s) removed (snapshotted above); value '{value.Label}' deleted", ct: ct);
+            if (tx is not null) await tx.CommitAsync(ct);
+        }
+        catch
+        {
+            if (tx is not null) await tx.RollbackAsync(ct);
+            throw;
+        }
+        finally
+        {
+            if (tx is not null) await tx.DisposeAsync();
+        }
     }
 
     /// <summary>Every store a list value's CODE can live in — the universal custom-field

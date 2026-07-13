@@ -27,7 +27,10 @@ namespace eProcure.Infrastructure.Services;
 public sealed class CustomFieldService(
     AppDbContext db,
     IClock clock,
-    IRecordReachability reachability) : ICustomFieldService
+    IRecordReachability reachability,
+    IEnumerable<ICustomFieldReferenceProvider> referenceProviders,
+    IEnumerable<ICustomFieldDataProvider> dataProviders,
+    IAuditLog audit) : ICustomFieldService
 {
     // ---------- defs (A65) ----------
 
@@ -201,16 +204,90 @@ public sealed class CustomFieldService(
         return ToDto(def, await db.CustomFieldValues.CountAsync(v => v.FieldDefId == def.Id, ct), await AppliedTypesAsync(def.Id, ct));
     }
 
+    /// <summary>CF-FIX3-T2: the impact report — LOOPS the registered providers, never names
+    /// a consumer (the anti-rot contract, pinned by ExtensibilityProofTests).</summary>
+    public async Task<ImpactReportDto> GetReferencesAsync(Guid id, CancellationToken ct = default)
+    {
+        var def = await Load(id, ct);
+        var refs = new List<FieldReference>();
+        foreach (var p in referenceProviders)
+            refs.AddRange(await p.FindReferencesAsync(def.Id, def.Code, ct));
+        var data = new List<DataReferenceSummary>();
+        foreach (var p in dataProviders)
+            data.Add(await p.CountValuesAsync(def.Id, ct));
+        var live = data.Sum(d => d.LiveCount);
+        var historical = data.Sum(d => d.HistoricalCount);
+        var blocked =
+            refs.Count > 0 ? $"Still referenced by {string.Join(", ", refs.Select(r => r.ConsumerName).Distinct())} — clear those first (the list below is the to-do)."
+            : live > 0 ? $"{live} value(s) live on OPEN records — a field in live use is never deleted."
+            : null;
+        return new ImpactReportDto(refs, data, live, historical,
+            CanDelete: refs.Count == 0 && live == 0 && historical == 0,
+            CanPurge: refs.Count == 0 && live == 0 && historical > 0,
+            blocked ?? (historical > 0 ? $"{historical} value(s) remain on closed/historical records — Purge (governed) removes them with a snapshot." : null));
+    }
+
+    /// <summary>CF-FIX3-T3 Tier 2. Delete requires ZERO config references (every registered
+    /// provider) AND zero data values. Closes the pre-CF-FIX3 bug where a zero-value field
+    /// that was still a saved-view column hard-deleted.</summary>
     public async Task DeleteDefAsync(Guid id, CancellationToken ct = default)
     {
         var def = await Load(id, ct);
-        // Ruled: any values EVER written → deactivate-only, forever.
-        if (await db.CustomFieldValues.AnyAsync(v => v.FieldDefId == def.Id, ct))
-            throw new Domain.DomainRuleException("This field has values — deactivate it instead; fields with data are never deleted.");
+        var report = await GetReferencesAsync(id, ct);
+        if (!report.CanDelete)
+            throw new Domain.DomainRuleException(report.BlockedReason
+                ?? "This field cannot be deleted — check its impact report.");
         var reg = await db.FieldRegistry.Where(r => r.CustomFieldDefId == def.Id).ToListAsync(ct);
         db.FieldRegistry.RemoveRange(reg);
+        db.CustomFieldDefApplications.RemoveRange(await db.CustomFieldDefApplications.Where(a => a.FieldDefId == def.Id).ToListAsync(ct));
         db.CustomFieldDefs.Remove(def);
         await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>CF-FIX3-T3 Tier 3 — the governed purge. ONE transaction: re-verify inside it
+    /// (no check-then-act race), snapshot EVERY removed value to the audit log (record,
+    /// line, rendered value), remove only allowlisted-HISTORICAL values via the registered
+    /// data providers, then delete the field. Live/unknown values are untouchable —
+    /// providers fail closed. Gated on PurgeCustomFieldHistory (A73) at the endpoint.</summary>
+    public async Task PurgeAsync(Guid id, CancellationToken ct = default)
+    {
+        var def = await Load(id, ct);
+        var tx = db.Database.IsRelational() ? await db.Database.BeginTransactionAsync(ct) : null;
+        try
+        {
+            var report = await GetReferencesAsync(id, ct);   // RE-verified inside the transaction
+            if (!report.CanPurge)
+                throw new Domain.DomainRuleException(report.BlockedReason
+                    ?? "Purge is only available when config references are clear, no live values remain, and historical values exist.");
+
+            var totalRemoved = 0;
+            foreach (var p in dataProviders)
+            {
+                var snapshot = await p.PurgeHistoricalAsync(def.Id, ct);
+                foreach (var v in snapshot.Removed)
+                    await audit.WriteAsync("CustomField", def.Code, "Purged historical value",
+                        before: $"{v.RecordType} {v.RecordLabel}{(v.LineId is not null ? $" line {v.LineId}" : "")}",
+                        after: v.Value, ct: ct);
+                totalRemoved += snapshot.Removed.Count;
+            }
+            var reg = await db.FieldRegistry.Where(r => r.CustomFieldDefId == def.Id).ToListAsync(ct);
+            db.FieldRegistry.RemoveRange(reg);
+            db.CustomFieldDefApplications.RemoveRange(await db.CustomFieldDefApplications.Where(a => a.FieldDefId == def.Id).ToListAsync(ct));
+            db.CustomFieldDefs.Remove(def);
+            await db.SaveChangesAsync(ct);
+            await audit.WriteAsync("CustomField", def.Code, "Purged and deleted",
+                after: $"{totalRemoved} historical value(s) removed (snapshotted above); field '{def.Label}' deleted", ct: ct);
+            if (tx is not null) await tx.CommitAsync(ct);
+        }
+        catch
+        {
+            if (tx is not null) await tx.RollbackAsync(ct);
+            throw;
+        }
+        finally
+        {
+            if (tx is not null) await tx.DisposeAsync();
+        }
     }
 
     // ---------- values (A66/A67) ----------

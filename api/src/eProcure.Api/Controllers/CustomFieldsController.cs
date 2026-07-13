@@ -40,6 +40,23 @@ public sealed class CustomFieldsController(ICustomFieldService fields) : Control
         await fields.DeleteDefAsync(id, ct);
         return NoContent();
     }
+
+    // CF-FIX3-T2: the impact report — ADMIN-scoped (it maps system structure).
+    [HttpGet("{id:guid}/references")]
+    [Action(ApiActions.ManageCustomFields)]
+    public async Task<ActionResult<ImpactReportDto>> References(Guid id, CancellationToken ct) =>
+        Ok(await fields.GetReferencesAsync(id, ct));
+
+    // CF-FIX3-T3 Tier 3: the governed purge — the DISTINCT higher-tier action (A73), never
+    // implied by ManageCustomFields. Transactional + snapshotted in the service.
+    [HttpPost("{id:guid}/purge")]
+    [Action(ApiActions.PurgeCustomFieldHistory)]
+    public async Task<IActionResult> Purge(Guid id, CancellationToken ct)
+    {
+        await fields.PurgeAsync(id, ct);
+        return NoContent();
+    }
+
 }
 
 /// <summary>
