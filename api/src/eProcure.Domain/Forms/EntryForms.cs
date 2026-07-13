@@ -61,6 +61,11 @@ public class EntryFormGroup
     public string Title { get; set; } = default!;
     public int Sort { get; set; }
     public bool ColumnBreak { get; set; }
+    // CF-FIX4-T1 (L3, the Header invariant): every form has exactly one IsHeader group, on
+    // the BODY, that can never be deleted (and never renamed on system forms). It is the
+    // guaranteed landing zone for the field-creation cascade — placement can never reach
+    // an impossible state. Enforced in EntryFormService, not the UI.
+    public bool IsHeader { get; set; }
 }
 
 public class EntryFormField

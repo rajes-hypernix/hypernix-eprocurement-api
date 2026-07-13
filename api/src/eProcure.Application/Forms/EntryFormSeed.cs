@@ -86,6 +86,7 @@ public static class EntryFormSeed
                 Id = GroupId(formId, g.Subtab, g.FieldGroup), FormDefId = formId,
                 SubtabId = g.Subtab is null ? null : SubtabId(formId, g.Subtab),
                 Title = g.FieldGroup, Sort = i, ColumnBreak = false,
+                IsHeader = g.Subtab is null && g.FieldGroup == "Header",   // L3: the invariant group
             }).ToList();
         var fields = StandardPrFields.Select(f => new Domain.Forms.EntryFormField
         {

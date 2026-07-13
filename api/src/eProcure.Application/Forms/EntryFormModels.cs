@@ -16,7 +16,7 @@ public sealed record EntryFormFieldDto(
 // placement on each field stays the composer's wire language; these carry the object
 // state the strings cannot: Hidden, ColumnBreak, explicit empty containers, Sort).
 public sealed record EntryFormSubtabDto(Guid Id, string Name, int Sort, bool Hidden);
-public sealed record EntryFormGroupDto(Guid Id, Guid? SubtabId, string Title, int Sort, bool ColumnBreak);
+public sealed record EntryFormGroupDto(Guid Id, Guid? SubtabId, string Title, int Sort, bool ColumnBreak, bool IsHeader);
 public sealed record SaveSubtabRequest(string Name, int Sort, bool Hidden);
 public sealed record SaveGroupRequest(string Title, Guid? SubtabId, int Sort, bool ColumnBreak);
 

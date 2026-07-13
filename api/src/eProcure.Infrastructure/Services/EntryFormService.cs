@@ -334,6 +334,7 @@ public sealed class EntryFormService(AppDbContext db, IClock clock, ICurrentUser
                 {
                     Id = Guid.NewGuid(), FormDefId = formId, SubtabId = subtab?.Id,
                     Title = title, Sort = groups.Count, ColumnBreak = false,
+                    IsHeader = subtab is null && title == "Header",
                 };
                 groups[gKey] = group;
             }
@@ -346,6 +347,15 @@ public sealed class EntryFormService(AppDbContext db, IClock clock, ICurrentUser
                 Label = Norm(f.Label), Placeholder = Norm(f.Placeholder),
             });
         }
+        // L3 (CF-FIX4-T1): a form can NEVER persist without its Header group — even when no
+        // field lands in it, the invariant group is materialized so the placement cascade
+        // always has a valid landing zone.
+        if (!groups.Values.Any(g => g.IsHeader) && (existingGroups ?? []).All(g => !g.IsHeader))
+            groups[(null, "Header")] = new EntryFormGroup
+            {
+                Id = Guid.NewGuid(), FormDefId = formId, SubtabId = null,
+                Title = "Header", Sort = -1, ColumnBreak = false, IsHeader = true,
+            };
         db.EntryFormSubtabs.AddRange(subtabs.Values.Where(s => (existingSubtabs ?? []).All(x => x.Id != s.Id)));
         db.EntryFormGroups.AddRange(groups.Values.Where(g => (existingGroups ?? []).All(x => x.Id != g.Id)));
         _ = (preexistingSubtabs, preexistingGroups);   // sort counters seeded from the dictionaries
@@ -376,7 +386,7 @@ public sealed class EntryFormService(AppDbContext db, IClock clock, ICurrentUser
             .Select(s => new EntryFormSubtabDto(s.Id, s.Name, s.Sort, s.Hidden)).ToListAsync(ct);
         var groups = await db.EntryFormGroups.AsNoTracking().Where(g => g.FormDefId == def.Id)
             .OrderBy(g => g.Sort).ThenBy(g => g.Title)
-            .Select(g => new EntryFormGroupDto(g.Id, g.SubtabId, g.Title, g.Sort, g.ColumnBreak)).ToListAsync(ct);
+            .Select(g => new EntryFormGroupDto(g.Id, g.SubtabId, g.Title, g.Sort, g.ColumnBreak, g.IsHeader)).ToListAsync(ct);
         return new EntryFormDefDto(def.Id, def.Code, def.Name, def.RecordType.ToString(), def.IsSystem, def.Active,
             fields.Select(f => new EntryFormFieldDto(f.FieldKey, placement[f.GroupId].Subtab, placement[f.GroupId].Group, f.Sort,
                 f.DisplayType.ToString(), f.RequiredOnForm, f.DefaultValue, f.SourceFieldKey,
@@ -455,6 +465,11 @@ public sealed class EntryFormService(AppDbContext db, IClock clock, ICurrentUser
         var title = Norm(req.Title) ?? throw new FormValidationException("A field group needs a title.");
         if (req.SubtabId is { } sid && !await db.EntryFormSubtabs.AnyAsync(s => s.Id == sid && s.FormDefId == formId, ct))
             throw new FormValidationException("The target subtab does not exist on this form.");
+        // L3: Header stays on the BODY, always — it is the cascade's guaranteed landing zone,
+        // and a subtab can be hidden. (Rename is fine on non-system forms; system forms never
+        // reach here — LoadUserForm refuses them wholesale.)
+        if (group.IsHeader && req.SubtabId is not null)
+            throw new DomainRuleException("The Header group is the form's fixed landing zone — it cannot move into a subtab.");
         group.Title = title; group.SubtabId = req.SubtabId; group.Sort = req.Sort; group.ColumnBreak = req.ColumnBreak;
         def.UpdatedUtc = clock.UtcNow;
         await db.SaveChangesAsync(ct);
@@ -466,6 +481,8 @@ public sealed class EntryFormService(AppDbContext db, IClock clock, ICurrentUser
         var def = await LoadUserForm(formId, ct);
         var group = await db.EntryFormGroups.FirstOrDefaultAsync(g => g.Id == groupId && g.FormDefId == formId, ct)
             ?? throw new NotFoundException("Field group not found on this form.");
+        if (group.IsHeader)
+            throw new DomainRuleException("The Header group cannot be deleted — every form keeps it so field placement always has a valid target (L3).");
         if (await db.EntryFormFields.AnyAsync(f => f.GroupId == groupId, ct))
             throw new DomainRuleException("This group still holds fields — move them first.");
         db.EntryFormGroups.Remove(group);
