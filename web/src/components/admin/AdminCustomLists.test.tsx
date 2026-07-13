@@ -51,6 +51,40 @@ describe('AdminCustomLists (NetSuite-style custom lists)', () => {
     expect(screen.getByRole('option', { name: 'Malaysia' })).toBeInTheDocument()
   })
 
+  // CF-FIX3-T4: the X never deletes directly — it opens the impact report.
+  it('the value X opens the impact report; a live-usage block disables Delete and NAMES the store', async () => {
+    vi.spyOn(client, 'getListValueReferences').mockResolvedValue({
+      configReferences: [], liveCount: 3, historicalCount: 0, canDelete: false, canPurge: false,
+      data: [{ storeName: 'Master data columns', liveCount: 3, historicalCount: 0, byRecordType: [{ recordType: 'Vendor', live: 3, historical: 0 }] }],
+      blockedReason: '3 live record(s) hold this value — deactivate it instead.',
+    })
+    const del = vi.spyOn(client, 'deleteCustomListValue')
+    renderWithQuery(<AdminCustomLists />)
+    await screen.findByRole('button', { name: /Payment terms/ })
+    await userEvent.click(screen.getByRole('button', { name: 'Delete NET30' }))
+
+    expect(await screen.findByText(/3 live record\(s\) hold this value/)).toBeInTheDocument()
+    expect(screen.getByText('Master data columns')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Delete list value' })).toBeDisabled()
+    expect(del).not.toHaveBeenCalled()
+    // Tier 1 is always on offer
+    expect(screen.getByRole('button', { name: 'Deactivate instead' })).toBeEnabled()
+  })
+
+  it('an unreferenced value deletes through the dialog', async () => {
+    vi.spyOn(client, 'getListValueReferences').mockResolvedValue({
+      configReferences: [], data: [], liveCount: 0, historicalCount: 0, canDelete: true, canPurge: false, blockedReason: null,
+    })
+    const del = vi.spyOn(client, 'deleteCustomListValue').mockResolvedValue(undefined)
+    renderWithQuery(<AdminCustomLists />)
+    await screen.findByRole('button', { name: /Payment terms/ })
+    await userEvent.click(screen.getByRole('button', { name: 'Delete NET60' }))
+    const btn = await screen.findByRole('button', { name: 'Delete list value' })
+    await waitFor(() => expect(btn).toBeEnabled())
+    await userEvent.click(btn)
+    await waitFor(() => expect(del).toHaveBeenCalledWith('v-NET60'))
+  })
+
   it('creates a new list', async () => {
     const create = vi.spyOn(client, 'createCustomList').mockResolvedValue({
       id: 'l9', code: 'INCOTERM', name: 'Incoterms', description: null, parentListCode: null, isSystem: false, values: [],

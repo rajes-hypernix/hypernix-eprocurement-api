@@ -2,8 +2,10 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   getCustomLists, createCustomList, addCustomListValue, updateCustomListValue, updateCustomList, setCustomListActive, deleteCustomList, deleteCustomListValue,
+  getListValueReferences, purgeListValue,
   type CustomList, type CustomListValue,
 } from '../../api/client'
+import { ImpactReportDialog } from './ImpactReportDialog'
 import { Modal, Spinner } from '../ui'
 import { SetupPage } from '../../ui/archetypes/SetupPage'
 import type { FieldOption } from '../../ui/fieldSpec'
@@ -102,6 +104,9 @@ function ListValues({ list, parentList, onRefresh, onErr, clearErr }: {
   const [label, setLabel] = useState('')
   const [parentValue, setParentValue] = useState('')
   const [editing, setEditing] = useState<CustomListValue | null>(null)
+  // CF-FIX3-T4: the X no longer deletes (or silently deactivates) — it opens the impact
+  // report, which offers only the tier the value is actually eligible for.
+  const [impact, setImpact] = useState<CustomListValue | null>(null)
   // CF-FIX2-T5: values STAGE locally — add several, then ONE Save commits them all
   // (operator ruling: no auto-save). A staged value may parent another staged value
   // (referenced as staged:<idx>, resolved to the real system-assigned id on save).
@@ -122,7 +127,6 @@ function ListValues({ list, parentList, onRefresh, onErr, clearErr }: {
     mutationFn: (v: CustomListValue) => updateCustomListValue(v.id, { label: v.label, parentValueCode: v.parentValueCode, sort: v.sort, active: v.active }),
     onSuccess: () => { setEditing(null); onRefresh() }, onError: onErr,
   })
-  const remove = useMutation({ mutationFn: (id: string) => deleteCustomListValue(id), onSuccess: onRefresh, onError: onErr })
 
   const parentLabel = (pc: string | null) => pc ? (parentList?.values.find((x) => x.code === pc)?.label ?? pc) : '—'
   const stagedParentLabel = (p: string) =>
@@ -157,7 +161,7 @@ function ListValues({ list, parentList, onRefresh, onErr, clearErr }: {
               <td className="amt">
                 <div className="rowactions">
                   <Button variant="outline" size="sm" icon="edit" onClick={() => setEditing(v)}>Edit</Button>
-                  <Button variant="ghost" size="sm" icon="x" busy={remove.isPending} onClick={() => remove.mutate(v.id)} ariaLabel={`Delete ${v.code}`} />
+                  <Button variant="ghost" size="sm" icon="x" onClick={() => { clearErr(); setImpact(v) }} ariaLabel={`Delete ${v.code}`} />
                 </div>
               </td>
             </tr>
@@ -213,6 +217,19 @@ function ListValues({ list, parentList, onRefresh, onErr, clearErr }: {
         </div>
       </div>
 
+      {impact && (
+        <ImpactReportDialog
+          title={`Delete value — ${impact.label} (${impact.code})`}
+          kind="value"
+          load={() => getListValueReferences(impact.id)}
+          onDeactivate={impact.active
+            ? () => updateCustomListValue(impact.id, { label: impact.label, parentValueCode: impact.parentValueCode, sort: impact.sort, active: false })
+            : undefined}
+          onDelete={() => deleteCustomListValue(impact.id)}
+          onPurge={() => purgeListValue(impact.id)}
+          onClose={(changed) => { setImpact(null); if (changed) onRefresh() }}
+        />
+      )}
       {editing && (
         <Modal title={`Edit — ${editing.code}`} icon="edit"
           footer={<>
