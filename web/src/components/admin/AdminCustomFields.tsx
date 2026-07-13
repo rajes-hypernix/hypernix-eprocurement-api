@@ -93,6 +93,10 @@ function DefModal({ recordType, def, onClose, onSaved }: {
   onClose: () => void; onSaved: () => void
 }) {
   const [label, setLabel] = useState(def?.label ?? '')
+  // CF-FIX1-T5: user-set Internal ID — auto-suggested from the label until the user edits it.
+  const [internalId, setInternalId] = useState('')
+  const [idTouched, setIdTouched] = useState(false)
+  const suggestId = (l: string) => l.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
   const [dataType, setDataType] = useState(def?.dataType ?? 'Text')
   const [listId, setListId] = useState(def?.customListId ?? '')
   const [required, setRequired] = useState(def?.required ?? false)
@@ -111,6 +115,7 @@ function DefModal({ recordType, def, onClose, onSaved }: {
         customListId: dataType === 'ListValue' ? (listId || null) : null,
         required, helpText: help, sort: def?.sort ?? 0,
         displayType, showInList, scope,
+        code: def ? null : (internalId.trim() || null),
       }
       return def ? updateCustomFieldDef(def.id, req) : createCustomFieldDef(req)
     },
@@ -131,7 +136,17 @@ function DefModal({ recordType, def, onClose, onSaved }: {
         </>
       }
     >
-      <TextField spec={spec('cf-label', 'Label', 'text')} value={label} onChange={(v) => setLabel(String(v ?? ''))} />
+      <TextField spec={spec('cf-label', 'Label', 'text')} value={label}
+        onChange={(v) => { const l = String(v ?? ''); setLabel(l); if (!idTouched) setInternalId(suggestId(l)) }} />
+      {!def && (
+        <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end' }}>
+          <span className="mono hint" style={{ paddingBottom: 9 }}>cf_</span>
+          <div style={{ flex: 1 }}>
+            <TextField spec={{ ...spec('cf-id', 'Internal ID', 'text'), placeholder: 'auto-suggested from the label', help: 'Letters, digits, underscores. Immutable after create.' }}
+              value={internalId} onChange={(v) => { setIdTouched(true); setInternalId(String(v ?? '')) }} />
+          </div>
+        </div>
+      )}
       {def
         ? <p className="hint">Type ({def.dataType}) and code (<span className="mono">{def.code}</span>) are immutable — create a new field to change them.</p>
         : (

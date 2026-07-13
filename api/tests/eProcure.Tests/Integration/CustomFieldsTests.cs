@@ -355,4 +355,23 @@ public sealed class CustomFieldsTests(CustomFieldsFixture fx) : IClassFixture<Cu
             def.Label, "PurchaseOrder", "Text", null, false, "", def.Sort, Scope: "Header")))
             .StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
+
+    // CF-FIX1-T5: the Internal ID is user-set — duplicates and illegal characters are
+    // rejected with clear messages; the cf_ namespace is system-guaranteed either way.
+    [Fact]
+    public async Task User_set_internal_id_is_honoured_and_validated()
+    {
+        var admin = fx.ClientAs("u_admin");
+        var resp = await admin.PostAsJsonAsync("/api/custom-fields", new SaveCustomFieldDefRequest(
+            "Fix1 Chosen", "Vendor", "Text", null, false, "", 0, Code: "my_chosen_id"));
+        resp.StatusCode.Should().Be(HttpStatusCode.OK, await resp.Content.ReadAsStringAsync());
+        (await resp.Content.ReadFromJsonAsync<CustomFieldDefDto>())!.Code.Should().Be("cf_my_chosen_id");
+
+        (await admin.PostAsJsonAsync("/api/custom-fields", new SaveCustomFieldDefRequest(
+            "Fix1 Dup", "Vendor", "Text", null, false, "", 0, Code: "cf_my_chosen_id")))
+            .StatusCode.Should().Be(HttpStatusCode.BadRequest, "duplicate Internal ID is a clear 400, not an auto-suffix");
+        (await admin.PostAsJsonAsync("/api/custom-fields", new SaveCustomFieldDefRequest(
+            "Fix1 Bad", "Vendor", "Text", null, false, "", 0, Code: "no spaces!")))
+            .StatusCode.Should().Be(HttpStatusCode.BadRequest, "illegal characters are rejected");
+    }
 }

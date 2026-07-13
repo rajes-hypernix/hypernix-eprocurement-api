@@ -177,7 +177,7 @@ export type CustomFieldDefDto = {
 export type SaveCustomFieldDefRequest = {
   label: string; recordType: string; dataType: string; customListId?: string | null
   required: boolean; helpText: string; sort: number
-  displayType?: string; showInList?: boolean; scope?: string
+  displayType?: string; showInList?: boolean; scope?: string; code?: string | null
 }
 export type CustomValueDto = {
   code: string; label: string; dataType: string; required: boolean; helpText: string

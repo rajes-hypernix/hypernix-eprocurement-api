@@ -55,11 +55,28 @@ public sealed class CustomFieldService(
         if (req.CustomListId is { } listId && !await db.CustomLists.AnyAsync(l => l.Id == listId, ct))
             throw new CustomFieldValidationException("The bound custom list does not exist.");
 
-        var code = "cf_" + new string(req.Label.Trim().ToLowerInvariant()
-            .Select(ch => char.IsLetterOrDigit(ch) ? ch : '_').ToArray()).Trim('_');
+        // CF-FIX1-T5: the Internal ID is USER-SET (NetSuite-style) — the user controls the
+        // meaningful part, the system guarantees the cf_ namespace. Absent → derived from the
+        // label (API/back-compat path). Same immutability as before.
+        string code;
+        if (!string.IsNullOrWhiteSpace(req.Code))
+        {
+            var part = req.Code.Trim().ToLowerInvariant();
+            if (part.StartsWith("cf_")) part = part[3..];
+            if (part.Length == 0)
+                throw new CustomFieldValidationException("The Internal ID needs a value after the cf_ prefix.");
+            if (!System.Text.RegularExpressions.Regex.IsMatch(part, "^[a-z0-9_]+$"))
+                throw new CustomFieldValidationException("The Internal ID may only use letters, digits and underscores.");
+            code = "cf_" + part;
+        }
+        else
+        {
+            code = "cf_" + new string(req.Label.Trim().ToLowerInvariant()
+                .Select(ch => char.IsLetterOrDigit(ch) ? ch : '_').ToArray()).Trim('_');
+        }
         if (code.Length > 60) code = code[..60];
         if (await db.CustomFieldDefs.AnyAsync(d => d.Code == code, ct))
-            throw new CustomFieldValidationException($"A custom field with code '{code}' already exists.");
+            throw new CustomFieldValidationException($"A custom field with Internal ID '{code}' already exists — choose another.");
         if (FieldRegistrySeed.Rows.Any(r => r.RecordType == type && string.Equals(r.FieldKey, code, StringComparison.OrdinalIgnoreCase)))
             throw new CustomFieldValidationException($"'{code}' collides with a native field key.");
 

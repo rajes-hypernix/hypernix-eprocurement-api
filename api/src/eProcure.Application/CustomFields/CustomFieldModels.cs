@@ -14,7 +14,8 @@ public sealed record CustomFieldDefDto(
 public sealed record SaveCustomFieldDefRequest(
     string Label, string RecordType, string DataType, Guid? CustomListId, bool Required, string HelpText, int Sort,
     string DisplayType = "Normal", bool ShowInList = false,
-    string Scope = "Header");       // CF6-T1: Header | Line
+    string Scope = "Header",        // CF6-T1: Header | Line
+    string? Code = null);           // CF-FIX1-T5: user-set Internal ID (system enforces cf_ prefix); null → derived from label
 
 /// <summary>One field on one record, def metadata + the value as a STRING in the stored
 /// formats the FieldSpec pipeline already uses (ISO dates, raw numerics, 'true'/'false',

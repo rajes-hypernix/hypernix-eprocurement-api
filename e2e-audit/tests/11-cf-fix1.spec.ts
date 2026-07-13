@@ -83,3 +83,34 @@ test('CF-FIX1-T4: lists carry ONE Internal ID — labelled as such, duplicate bl
 
   expect((await request.delete(`${API}/api/custom-lists/${ID}`, { headers: ADMIN })).status()).toBe(204)
 })
+
+test('CF-FIX1-T5: field Internal ID is user-input — auto-suggested, overridable; duplicate and illegal ids blocked', async ({ page, request }) => {
+  await goAs(page, 'u_admin', 'customfields')
+  await page.waitForTimeout(1200)
+  await page.getByRole('button', { name: 'New field' }).click()
+  await page.getByLabel('Label', { exact: true }).fill(`Fix1 Own Id ${STAMP}`)
+  // Auto-suggested from the label…
+  await expect(page.getByLabel('Internal ID', { exact: true })).toHaveValue(`fix1_own_id_${STAMP}`)
+  // …but user-overridable.
+  await page.getByLabel('Internal ID', { exact: true }).fill(`chosen_${STAMP}`)
+  await page.getByRole('button', { name: 'Create field' }).click()
+  await page.waitForTimeout(800)
+  await expect(page.getByText(`cf_chosen_${STAMP}`)).toBeVisible()   // the cf_ namespace is system-applied
+
+  // Duplicate → clear message.
+  await page.getByRole('button', { name: 'New field' }).click()
+  await page.getByLabel('Label', { exact: true }).fill('Dup attempt')
+  await page.getByLabel('Internal ID', { exact: true }).fill(`chosen_${STAMP}`)
+  await page.getByRole('button', { name: 'Create field' }).click()
+  await expect(page.getByText(/Internal ID 'cf_chosen_.*already exists/)).toBeVisible()
+
+  // Illegal characters → blocked.
+  await page.getByLabel('Internal ID', { exact: true }).fill('bad id!')
+  await page.getByRole('button', { name: 'Create field' }).click()
+  await expect(page.getByText('letters, digits and underscores')).toBeVisible()
+  await page.getByRole('button', { name: 'Cancel' }).click()
+
+  const defs = await (await request.get(`${API}/api/custom-fields?recordType=PurchaseOrder`, { headers: ADMIN })).json()
+  const def = defs.find((d: { code: string }) => d.code === `cf_chosen_${STAMP}`)
+  expect((await request.delete(`${API}/api/custom-fields/${def.id}`, { headers: ADMIN })).status()).toBe(204)
+})
