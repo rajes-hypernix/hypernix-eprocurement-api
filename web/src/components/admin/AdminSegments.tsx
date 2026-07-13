@@ -7,6 +7,7 @@ import {
   type SegmentDefDto, type SegmentValueDto,
 } from '../../api/client'
 import { ImpactReportDialog } from './ImpactReportDialog'
+import { getEntryForms } from '../../api/client'
 import { SetupPage } from '../../ui/archetypes/SetupPage'
 import { Modal, Notice } from '../ui'
 import { Button } from '../../ui/Button'
@@ -68,12 +69,15 @@ function SegmentDetail({ def, onChanged }: { def: SegmentDefDto; onChanged: () =
   // blocks (forms, views, live/historical assignments) and only eligible tiers are offered.
   const [impactDef, setImpactDef] = useState(false)
   const [impactValue, setImpactValue] = useState<SegmentValueDto | null>(null)
+  // CF-FIX4-T7: a HEADER apply runs the form+group cascade (the field-creation flow);
+  // a LINE apply stays flat (L4 — no groups on lines).
+  const [applying, setApplying] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const byId = new Map(def.values.map((v) => [v.id, v]))
 
   const apply = useMutation({
-    mutationFn: ({ recordType, lineLevel }: { recordType: string; lineLevel: boolean }) =>
-      applySegment(def.id, { recordType, lineLevel }),
+    mutationFn: (req: { recordType: string; lineLevel: boolean; placements?: { formId: string; groupId?: string | null }[] }) =>
+      applySegment(def.id, req),
     onSuccess: () => { setError(null); onChanged() },
     onError: (e) => setError(e instanceof Error ? e.message : 'Could not apply the segment.'),
   })
@@ -153,7 +157,7 @@ function SegmentDetail({ def, onChanged }: { def: SegmentDefDto; onChanged: () =
                     ? <span className={`badge ${app ? 'b-green' : 'b-grey'}`}>{app ? 'Applied' : '—'}</span>
                     : app
                       ? <Button variant="ghost" size="sm" onClick={() => unapply.mutate(rt)} ariaLabel={`Remove ${def.name} from ${rt}`}>Remove</Button>
-                      : <Button variant="ghost" size="sm" onClick={() => apply.mutate({ recordType: rt, lineLevel: false })} ariaLabel={`Apply ${def.name} to ${rt}`}>Apply</Button>}
+                      : <Button variant="ghost" size="sm" onClick={() => setApplying(rt)} ariaLabel={`Apply ${def.name} to ${rt}`}>Apply</Button>}
                 </td>
                 <td>
                   {/* Line-level is fixed at apply time (an application is immutable once live). */}
@@ -177,6 +181,11 @@ function SegmentDetail({ def, onChanged }: { def: SegmentDefDto; onChanged: () =
       )}
       {editingValue && (
         <EditValueModal def={def} value={editingValue} onClose={() => setEditingValue(null)} onSaved={() => { setEditingValue(null); onChanged() }} />
+      )}
+      {applying && (
+        <ApplyCascadeModal def={def} recordType={applying}
+          onClose={() => setApplying(null)}
+          onApply={(placements) => { apply.mutate({ recordType: applying, lineLevel: false, ...(placements ? { placements } : {}) }); setApplying(null) }} />
       )}
       {impactDef && (
         <ImpactReportDialog
@@ -242,6 +251,59 @@ function DefModal({ def, onClose, onSaved }: {
       <CheckboxField spec={spec('seg-req', 'Required (enforced at assignment-save)', 'boolean')}
         value={required} onChange={(v) => setRequired(v === true)} />
       {error && <Notice tone="error">{error}</Notice>}
+    </Modal>
+  )
+}
+
+/**
+ * CF-FIX4-T7: the header-apply cascade — form(s) with the STANDARD form pre-selected
+ * (option c, the T4 convention) and a group per chosen form (Header default). Types
+ * without forms apply plainly (nothing to place).
+ */
+function ApplyCascadeModal({ def, recordType, onClose, onApply }: {
+  def: SegmentDefDto; recordType: string
+  onClose: () => void
+  onApply: (placements: { formId: string; groupId?: string | null }[] | null) => void
+}) {
+  const { data: allForms = [] } = useQuery({ queryKey: ['entry-form-defs'], queryFn: () => getEntryForms() })
+  const forms = allForms.filter((f) => f.recordType === recordType && f.active)
+  const [chosen, setChosen] = useState<string | undefined>(undefined)
+  const [groups, setGroups] = useState<Record<string, string>>({})
+  const selected = chosen !== undefined
+    ? (chosen ? chosen.split('|') : [])
+    : (forms.find((f) => f.isSystem) ? [forms.find((f) => f.isSystem)!.id] : [])
+
+  return (
+    <Modal title={`Apply ${def.name} to ${recordType}`} icon="edit"
+      footer={<>
+        <Button variant="outline" onClick={onClose}>Cancel</Button>
+        <Button variant="primary" icon="check" disabled={forms.length > 0 && selected.length === 0}
+          onClick={() => onApply(forms.length === 0 ? null : selected.map((fid) => ({ formId: fid, groupId: groups[fid] || null })))}
+          ariaLabel="Apply segment">Apply</Button>
+      </>}>
+      {forms.length === 0
+        ? <p className="hint">{recordType} has no entry forms yet — the segment applies without a form placement.</p>
+        : (
+          <>
+            <SelectField
+              spec={{ key: 'seg-apply-forms', label: `${recordType} — form(s)`, dataType: 'multiSelect', searchable: true,
+                help: 'The segment appears on these forms — the standard form is pre-selected; the group defaults to Header.',
+                options: { kind: 'static', options: forms.map((f) => ({ code: f.id, label: f.name })) } }}
+              value={selected.join('|')}
+              onChange={(v) => setChosen(String(v ?? ''))} />
+            {selected.map((fid) => {
+              const form = forms.find((f) => f.id === fid)
+              if (!form) return null
+              return (
+                <SelectField key={fid}
+                  spec={{ key: `seg-apply-group-${fid}`, label: `${form.name} — field group`, dataType: 'select', searchable: true,
+                    options: { kind: 'static', options: (form.groups ?? []).map((g) => ({ code: g.id, label: g.title })) } }}
+                  value={groups[fid] ?? (form.groups ?? []).find((g) => g.isHeader)?.id ?? ''}
+                  onChange={(v) => setGroups((cur) => ({ ...cur, [fid]: String(v ?? '') }))} />
+              )
+            })}
+          </>
+        )}
     </Modal>
   )
 }

@@ -254,7 +254,8 @@ export const getSegmentValueReferences = (valueId: string) => http<ImpactReportD
 export const purgeSegmentValue = (valueId: string) => http<undefined>(`/segments/values/${valueId}/purge`, { method: 'POST' })
 export const setEntryFormActive = (id: string, active: boolean) =>
   http<EntryFormDefDto>(`/entry-forms/${id}/active`, { method: 'POST', body: JSON.stringify(active) })
-export const applySegment = (id: string, req: { recordType: string; lineLevel: boolean }) =>
+export type SegmentPlacementRequest = { formId: string; groupId?: string | null }
+export const applySegment = (id: string, req: { recordType: string; lineLevel: boolean; placements?: SegmentPlacementRequest[] | null }) =>
   http<SegmentDefDto>(`/segments/${id}/applications`, { method: 'POST', body: JSON.stringify(req) })
 export const unapplySegment = (id: string, recordType: string) =>
   http<SegmentDefDto>(`/segments/${id}/applications/${recordType}`, { method: 'DELETE' })

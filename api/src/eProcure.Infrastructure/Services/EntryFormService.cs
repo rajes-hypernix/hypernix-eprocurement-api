@@ -144,8 +144,28 @@ public sealed class EntryFormService(AppDbContext db, IClock clock, ICurrentUser
         var changed = false;
         foreach (var key in removedKeys.Distinct(StringComparer.OrdinalIgnoreCase))
         {
+            // CF-FIX4-T7 (direction B, segment grain): a segment losing its LAST placement
+            // on a type's forms drops its application + registry row — unless ASSIGNMENTS
+            // pin it (the data-safety rule, same as values pin custom-field applications).
+            var segDef = await db.SegmentDefs.FirstOrDefaultAsync(d => d.Code == key, ct);
+            if (segDef is not null)
+            {
+                var segStillPlaced = await db.EntryFormFields.AnyAsync(x => x.FieldKey == key
+                    && db.EntryFormDefs.Any(d2 => d2.Id == x.FormDefId && d2.RecordType == type), ct);
+                if (segStillPlaced) continue;
+                var segApp = await db.SegmentApplications
+                    .FirstOrDefaultAsync(a => a.SegmentDefId == segDef.Id && a.RecordType == type, ct);
+                if (segApp is null) continue;
+                if (await db.SegmentAssignments.AnyAsync(a => a.SegmentDefId == segDef.Id && a.RecordType == type, ct))
+                    continue;   // assignments pin the application
+                db.SegmentApplications.Remove(segApp);
+                db.FieldRegistry.RemoveRange(await db.FieldRegistry
+                    .Where(r => r.SegmentDefId == segDef.Id && r.RecordType == type).ToListAsync(ct));
+                changed = true;
+                continue;
+            }
             var fieldDef = await db.CustomFieldDefs.FirstOrDefaultAsync(d => d.Code == key, ct);
-            if (fieldDef is null) continue;   // native/segment keys are not applications
+            if (fieldDef is null) continue;   // native keys are not applications
             var stillPlaced = await db.EntryFormFields.AnyAsync(x => x.FieldKey == key
                 && db.EntryFormDefs.Any(d2 => d2.Id == x.FormDefId && d2.RecordType == type), ct);
             if (stillPlaced) continue;

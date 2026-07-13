@@ -19,7 +19,11 @@ public sealed record SaveSegmentValueRequest(string Label, Guid? ParentValueId, 
 /// the dimension key stored in assignments; renaming the label never re-keys history).</summary>
 public sealed record UpdateSegmentValueRequest(string Label, Guid? ParentValueId, int Sort, bool Active);
 
-public sealed record ApplySegmentRequest(string RecordType, bool LineLevel);
+/// <summary>CF-FIX4-T7: one requested form placement for a HEADER apply — the same L1
+/// unit as FieldPlacementRequest (GroupId null → the form's Header group).</summary>
+public sealed record SegmentPlacementRequest(Guid FormId, Guid? GroupId);
+
+public sealed record ApplySegmentRequest(string RecordType, bool LineLevel, IReadOnlyList<SegmentPlacementRequest>? Placements = null);
 
 /// <summary>One segment on one record (or line): def metadata + the assigned value code
 /// (null = unassigned — the honest null; the Unassigned bucket in group-by).</summary>

@@ -129,4 +129,57 @@ public sealed class SegmentLifecycleTierTests(EntryFormsFixture fx) : IClassFixt
             "a view filtering on THIS VALUE is a config reference at the value grain");
         (await admin.DeleteAsync($"/api/segments/{segId}/values/{valueId}")).StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
+
+    // ---- CF-FIX4-T7: segment placement mirrors field placement ----
+
+    [Fact]
+    public async Task Header_apply_with_a_placement_writes_THE_EntryFormField_row_and_unapply_takes_it_away()
+    {
+        var admin = fx.ClientAs("u_admin");
+        var seg = await NewSegment($"T7 Place {S}");
+        var segId = seg.GetProperty("id").GetGuid();
+        var segCode = seg.GetProperty("code").GetString()!;
+        var forms = await admin.GetFromJsonAsync<List<EntryFormDefDto>>("/api/entry-forms?recordType=Requisition");
+        var std = forms!.Single(f => f.IsSystem);
+        var headerId = std.Groups.Single(g => g.IsHeader).Id;
+
+        (await admin.PostAsJsonAsync($"/api/segments/{segId}/applications",
+            new { recordType = "Requisition", lineLevel = false, placements = new[] { new { formId = std.Id, groupId = (Guid?)null } } }))
+            .EnsureSuccessStatusCode();
+        await fx.Factory.SeedAsync(db =>
+        {
+            var row = db.EntryFormFields.Single(x => x.FieldKey == segCode);
+            row.FormDefId.Should().Be(std.Id);
+            row.GroupId.Should().Be(headerId, "null group resolves to Header (L3) — the same rule as the field cascade");
+            return Task.CompletedTask;
+        });
+        // The buyer's resolved form carries the segment inline, in Header.
+        var resolved = await fx.ClientAs("u_faridah").GetFromJsonAsync<ResolvedFormDto>("/api/entry-forms/resolve?recordType=Requisition");
+        resolved!.Fields.Should().Contain(f => f.FieldKey == segCode && f.FieldGroup == "Header" && f.Kind == "Segment");
+
+        // Unapply (no assignments) → the placement row leaves with the application (direction A).
+        (await admin.DeleteAsync($"/api/segments/{segId}/applications/Requisition")).EnsureSuccessStatusCode();
+        await fx.Factory.SeedAsync(db =>
+        {
+            db.EntryFormFields.Any(x => x.FieldKey == segCode).Should().BeFalse();
+            return Task.CompletedTask;
+        });
+        (await admin.DeleteAsync($"/api/segments/{segId}")).StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
+    public async Task A_line_apply_is_FLAT_placements_are_refused()
+    {
+        var admin = fx.ClientAs("u_admin");
+        var seg = await NewSegment($"T7 Line {S}");
+        var segId = seg.GetProperty("id").GetGuid();
+        var forms = await admin.GetFromJsonAsync<List<EntryFormDefDto>>("/api/entry-forms?recordType=Requisition");
+        var std = forms!.Single(f => f.IsSystem);
+
+        var resp = await admin.PostAsJsonAsync($"/api/segments/{segId}/applications",
+            new { recordType = "PurchaseOrder", lineLevel = true, placements = new[] { new { formId = std.Id, groupId = (Guid?)null } } });
+        resp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await resp.Content.ReadAsStringAsync()).Should().Contain("flat");
+        (await admin.DeleteAsync($"/api/segments/{segId}")).StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
 }

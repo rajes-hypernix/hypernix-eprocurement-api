@@ -290,6 +290,37 @@ public sealed class SegmentService(
             Id = Guid.NewGuid(), RecordType = type, FieldKey = def.Code, Kind = FieldKind.Segment,
             Label = def.Name, DataType = FieldDataType.Enum, SegmentDefId = def.Id,
         });
+        // CF-FIX4-T7: a HEADER apply may carry form placements — the SAME L1 EntryFormField
+        // rows the T4 cascade writes and the designer drags. A LINE apply is FLAT (L4 — no
+        // groups on lines) and must not carry any.
+        if (req.Placements is { Count: > 0 })
+        {
+            if (req.LineLevel)
+                throw new SegmentValidationException("A line-level application is flat — line dimensions have no form/group placement (L4).");
+            if (req.Placements.Select(p => p.FormId).Distinct().Count() != req.Placements.Count)
+                throw new SegmentValidationException("A segment is placed at most once per form.");
+            foreach (var p in req.Placements)
+            {
+                var form = await db.EntryFormDefs.FirstOrDefaultAsync(x => x.Id == p.FormId, ct)
+                    ?? throw new SegmentValidationException("A placement names a form that does not exist.");
+                if (form.RecordType != type || !form.Active)
+                    throw new SegmentValidationException($"'{form.Name}' is not an active {type} form.");
+                var group = p.GroupId is { } gid
+                    ? await db.EntryFormGroups.FirstOrDefaultAsync(g => g.Id == gid && g.FormDefId == form.Id, ct)
+                        ?? throw new SegmentValidationException($"The chosen group does not belong to '{form.Name}'.")
+                    : await db.EntryFormGroups.FirstAsync(g => g.FormDefId == form.Id && g.IsHeader, ct);   // L3: cannot miss
+                if (await db.EntryFormFields.AnyAsync(x => x.FormDefId == form.Id && x.FieldKey == def.Code, ct))
+                    continue;
+                var maxSort = await db.EntryFormFields.Where(x => x.FormDefId == form.Id)
+                    .Select(x => (int?)x.Sort).MaxAsync(ct) ?? -1;
+                db.EntryFormFields.Add(new Domain.Forms.EntryFormField
+                {
+                    Id = Guid.NewGuid(), FormDefId = form.Id, FieldKey = def.Code, GroupId = group.Id,
+                    Sort = maxSort + 1, DisplayType = Domain.Forms.EntryFormDisplayType.Normal,
+                    RequiredOnForm = false,
+                });
+            }
+        }
         await db.SaveChangesAsync(ct);
         return await ToDtoAsync(def, ct);
     }
@@ -305,6 +336,11 @@ public sealed class SegmentService(
         db.SegmentApplications.Remove(app);
         db.FieldRegistry.RemoveRange(await db.FieldRegistry
             .Where(r => r.SegmentDefId == def.Id && r.RecordType == type).ToListAsync(ct));
+        // CF-FIX4-T7 (direction A, segment grain): un-applying a type takes its form
+        // placements with it — pure layout (L6), assignments already guarded above.
+        db.EntryFormFields.RemoveRange(await db.EntryFormFields
+            .Where(x => x.FieldKey == def.Code
+                && db.EntryFormDefs.Any(d2 => d2.Id == x.FormDefId && d2.RecordType == type)).ToListAsync(ct));
         await db.SaveChangesAsync(ct);
         return await ToDtoAsync(def, ct);
     }
