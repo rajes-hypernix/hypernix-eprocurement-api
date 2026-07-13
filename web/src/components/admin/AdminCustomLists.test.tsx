@@ -30,12 +30,15 @@ describe('AdminCustomLists (NetSuite-style custom lists)', () => {
     expect(screen.getByText('30 days')).toBeInTheDocument()
   })
 
-  it('adds a value with a system-assigned id (CF-FIX1-T6: the user types only the label)', async () => {
+  it('STAGES values then commits on one Save (CF-FIX2-T5: no auto-save)', async () => {
     const add = vi.spyOn(client, 'addCustomListValue').mockResolvedValue(val('3', '90 days', null, 2))
     renderWithQuery(<AdminCustomLists />)
     await screen.findByRole('button', { name: /Payment terms/ })
     await userEvent.type(screen.getByLabelText('Label'), '90 days')
     await userEvent.click(screen.getByRole('button', { name: /Add value/ }))
+    expect(add).not.toHaveBeenCalled()                                  // staged, NOT persisted
+    expect(screen.getByText('1 unsaved value')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Save values' }))
     await waitFor(() => expect(add).toHaveBeenCalledWith('PAYMENT_TERMS', { code: null, label: '90 days', parentValueCode: null }))
   })
 

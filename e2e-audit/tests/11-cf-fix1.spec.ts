@@ -126,8 +126,9 @@ test('CF-FIX1-T6: list values get automatic numeric ids — 1/2/3 in entry order
   for (const label of ['Alpha', 'Bravo', 'Charlie']) {
     await page.getByLabel('Label', { exact: true }).fill(label)
     await page.getByRole('button', { name: 'Add value' }).click()
-    await page.waitForTimeout(500)
   }
+  await page.getByRole('button', { name: 'Save values' }).click()   // CF-FIX2-T5: staged → one Save
+  await page.waitForTimeout(1000)
   // Ids read 1/2/3 in entry order; there is no id input (system-assigned).
   const rows = page.locator('table tbody tr')
   await expect(rows.nth(0)).toContainText('1')
@@ -251,16 +252,16 @@ test('CF-FIX1-T10: value-level parent-child on screen — build a 2-level tree; 
   await page.waitForTimeout(1200)
   await page.getByRole('button', { name: new RegExp(`T10 Tree ${STAMP}`) }).click()
 
-  // Top-level value, then a CHILD via the parent picker (previously-entered values of THIS list).
+  // Top-level value, then a CHILD via the parent picker — staged, committed by ONE Save (T5).
   await page.getByLabel('Label', { exact: true }).fill('Rotating Equipment')
   await page.getByRole('button', { name: 'Add value' }).click()
-  await page.waitForTimeout(600)
   await page.getByLabel('Label', { exact: true }).fill('Pumps')
   await page.getByRole('button', { name: 'Parent (optional)' }).click()          // the searchable select
   await page.getByRole('combobox', { name: 'Search Parent (optional)' }).fill('rot')
   await page.keyboard.press('Enter')
   await page.getByRole('button', { name: 'Add value' }).click()
-  await page.waitForTimeout(600)
+  await page.getByRole('button', { name: 'Save values' }).click()
+  await page.waitForTimeout(1000)
   await expect(page.getByRole('row', { name: /Pumps/ })).toContainText('Rotating Equipment')   // the Parent column
 
   // Self-parent (same line) — blocked by the server, surfaced on screen.

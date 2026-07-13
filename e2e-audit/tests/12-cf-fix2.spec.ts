@@ -91,3 +91,50 @@ test('CF-FIX2-T2: the searchable select is the standard everywhere — a record 
 
   expect((await request.delete(`${API}/api/custom-fields/${def.id}`, { headers: ADMIN })).status()).toBe(204)
 })
+
+test('CF-FIX2-T5: values stage until ONE Save — reload-before-save shows none; Cancel discards; staged parenting resolves', async ({ page, request }) => {
+  const ID = `T5${STAMP}`
+  await request.post(`${API}/api/custom-lists`, { headers: { ...ADMIN, ...JSON_H },
+    data: { code: ID, name: `Fix2 Staged ${STAMP}`, description: null, parentListCode: null } })
+  const CODE = `CUSTLIST_${ID}`
+  await goAs(page, 'u_admin', 'lists')
+  await page.waitForTimeout(1200)
+  await page.getByRole('button', { name: new RegExp(`Fix2 Staged ${STAMP}`) }).click()
+
+  // Stage three values — one parenting a STAGED sibling — nothing persists yet.
+  const stage = async (label: string) => {
+    await page.getByLabel('Label', { exact: true }).fill(label)
+    await page.getByRole('button', { name: 'Add value' }).click()
+  }
+  await stage('Root A')
+  await page.getByLabel('Label', { exact: true }).fill('Child of A')
+  await page.getByRole('button', { name: 'Parent (optional)' }).click()
+  await page.getByRole('combobox', { name: 'Search Parent (optional)' }).fill('Root A')
+  await page.keyboard.press('Enter')
+  await page.getByRole('button', { name: 'Add value' }).click()
+  await stage('Root B')
+  await expect(page.getByText('3 unsaved values')).toBeVisible()
+  expect((await (await request.get(`${API}/api/custom-lists/${CODE}`, { headers: ADMIN })).json()).values).toHaveLength(0)   // NOT persisted
+
+  // One Save commits all three; staged parent resolved to the real sibling id.
+  await page.getByRole('button', { name: 'Save values' }).click()
+  await page.waitForTimeout(1200)
+  const vals = (await (await request.get(`${API}/api/custom-lists/${CODE}`, { headers: ADMIN })).json()).values
+  expect(vals).toHaveLength(3)
+  const rootA = vals.find((v: { label: string }) => v.label === 'Root A')
+  expect(vals.find((v: { label: string }) => v.label === 'Child of A').parentValueCode).toBe(rootA.code)
+
+  // Cancel discards staged rows.
+  await stage('Never Saved')
+  await expect(page.getByText('1 unsaved value')).toBeVisible()
+  await page.getByRole('button', { name: 'Discard unsaved values' }).click()
+  await expect(page.getByText('unsaved value')).toHaveCount(0)
+  expect((await (await request.get(`${API}/api/custom-lists/${CODE}`, { headers: ADMIN })).json()).values).toHaveLength(3)
+
+  // cleanup (children first)
+  for (const label of ['Child of A', 'Root A', 'Root B']) {
+    const v = (await (await request.get(`${API}/api/custom-lists/${CODE}`, { headers: ADMIN })).json()).values.find((x: { label: string }) => x.label === label)
+    await request.delete(`${API}/api/custom-lists/values/${v.id}`, { headers: ADMIN })
+  }
+  expect((await request.delete(`${API}/api/custom-lists/${CODE}`, { headers: ADMIN })).status()).toBe(204)
+})

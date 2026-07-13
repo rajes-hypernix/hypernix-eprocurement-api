@@ -100,11 +100,21 @@ function ListValues({ list, parentList, onRefresh, onErr, clearErr }: {
   const [label, setLabel] = useState('')
   const [parentValue, setParentValue] = useState('')
   const [editing, setEditing] = useState<CustomListValue | null>(null)
+  // CF-FIX2-T5: values STAGE locally — add several, then ONE Save commits them all
+  // (operator ruling: no auto-save). A staged value may parent another staged value
+  // (referenced as staged:<idx>, resolved to the real system-assigned id on save).
+  const [staged, setStaged] = useState<{ label: string; parent: string }[]>([])
 
-  const add = useMutation({
-    // CF-FIX1-T6: the id is system-assigned (1,2,3… entry order) — the user types only the label.
-    mutationFn: () => addCustomListValue(list.code, { code: null, label: label.trim(), parentValueCode: parentValue || null }),
-    onSuccess: () => { setLabel(''); setParentValue(''); onRefresh() }, onError: onErr,
+  const save = useMutation({
+    mutationFn: async () => {
+      const codes: string[] = []
+      for (const s of staged) {
+        const parent = s.parent.startsWith('staged:') ? codes[Number(s.parent.slice(7))] : (s.parent || null)
+        const created = await addCustomListValue(list.code, { code: null, label: s.label, parentValueCode: parent ?? null })
+        codes.push(created.code ?? '')
+      }
+    },
+    onSuccess: () => { setStaged([]); onRefresh() }, onError: onErr,
   })
   const update = useMutation({
     mutationFn: (v: CustomListValue) => updateCustomListValue(v.id, { label: v.label, parentValueCode: v.parentValueCode, sort: v.sort, active: v.active }),
@@ -113,7 +123,14 @@ function ListValues({ list, parentList, onRefresh, onErr, clearErr }: {
   const remove = useMutation({ mutationFn: (id: string) => deleteCustomListValue(id), onSuccess: onRefresh, onError: onErr })
 
   const parentLabel = (pc: string | null) => pc ? (parentList?.values.find((x) => x.code === pc)?.label ?? pc) : '—'
-  const submitAdd = () => { clearErr(); if (!label.trim()) { onErr(new Error('Enter a label.')); return } add.mutate() }
+  const stagedParentLabel = (p: string) =>
+    p.startsWith('staged:') ? `${staged[Number(p.slice(7))]?.label} (unsaved)` : p ? (list.values.find((x) => x.code === p)?.label ?? parentLabel(p)) : '—'
+  const submitAdd = () => {
+    clearErr()
+    if (!label.trim()) { onErr(new Error('Enter a label.')); return }
+    setStaged((s) => [...s, { label: label.trim(), parent: parentValue }])
+    setLabel(''); setParentValue('')
+  }
 
   return (
     <div className="card">
@@ -143,7 +160,19 @@ function ListValues({ list, parentList, onRefresh, onErr, clearErr }: {
               </td>
             </tr>
           ))}
-          {list.values.length === 0 && <tr><td colSpan={5}><span className="hint">No values yet — add the first below.</span></td></tr>}
+          {staged.map((s, i) => (
+            <tr key={`staged-${i}`} style={{ background: 'var(--soft)' }}>
+              <td className="mono hint">•</td>
+              <td style={{ fontWeight: 600 }}>{s.label} <span className="badge b-grey">unsaved</span></td>
+              {parentList && <td className="hint">{stagedParentLabel(s.parent)}</td>}
+              {!parentList && <td className="hint">{stagedParentLabel(s.parent)}</td>}
+              <td className="hint">—</td>
+              <td className="amt">
+                <Button variant="ghost" size="sm" icon="x" onClick={() => setStaged((x) => x.filter((_, j) => j !== i))} ariaLabel={`Discard staged ${s.label}`} />
+              </td>
+            </tr>
+          ))}
+          {list.values.length === 0 && staged.length === 0 && <tr><td colSpan={5}><span className="hint">No values yet — add the first below.</span></td></tr>}
         </tbody>
       </table>
 
@@ -157,17 +186,28 @@ function ListValues({ list, parentList, onRefresh, onErr, clearErr }: {
               value={parentValue} onChange={setParentValue}
             />
           )}
-          {!parentList && list.values.length > 0 && (
+          {!parentList && (list.values.length > 0 || staged.length > 0) && (
             <SelectField
               spec={{ key: 'parentValue', label: 'Parent (optional)', dataType: 'select', searchable: true, placeholder: 'None — top level',
                 help: 'Build a tree: pick a previously-entered value of this list as the parent.',
-                options: { kind: 'static', options: list.values.map((v) => ({ code: v.code, label: v.label })) } }}
+                options: { kind: 'static', options: [
+                  ...list.values.map((v) => ({ code: v.code, label: v.label })),
+                  ...staged.map((s, i) => ({ code: `staged:${i}`, label: `${s.label} (unsaved)` })),
+                ] } }}
               value={parentValue} onChange={setParentValue}
             />
           )}
         </div>
-        <div style={{ marginTop: 12 }}>
-          <Button variant="primary" size="sm" icon="plus" busy={add.isPending} onClick={submitAdd}>Add value</Button>
+        <div style={{ marginTop: 12, display: 'flex', gap: 8, alignItems: 'center' }}>
+          <Button variant="outline" size="sm" icon="plus" onClick={submitAdd}>Add value</Button>
+          <Button variant="primary" size="sm" icon="check" busy={save.isPending} disabled={staged.length === 0}
+            onClick={() => save.mutate()} ariaLabel="Save values">Save</Button>
+          {staged.length > 0 && (
+            <>
+              <span className="hint">{staged.length} unsaved value{staged.length === 1 ? '' : 's'}</span>
+              <Button variant="ghost" size="sm" onClick={() => setStaged([])} ariaLabel="Discard unsaved values">Cancel</Button>
+            </>
+          )}
         </div>
       </div>
 
