@@ -61,7 +61,6 @@ test('entry-forms gate: standard → admin composes role form → buyer gets it;
   await page.getByRole('button', { name: 'Remove Job' }).click()                       // hidden by removal
   await page.getByLabel('Category display').selectOption('Hidden')                     // hidden by display type
   await page.getByLabel('Department required at submit').check()
-  await page.getByLabel('RequiredDate default').fill('@today+7d')
   // CF-FIX4-T3: the add-field picker is the standardized SearchSelectField, and subtab
   // placement is create-the-object + drag (no free-text cells).
   await pickSearch(page, 'Add field', CF_LABEL)
@@ -76,6 +75,14 @@ test('entry-forms gate: standard → admin composes role form → buyer gets it;
   await shot(page, 'D7-gate-2-compose')
   await page.getByRole('button', { name: 'Save form' }).click()
   await page.waitForTimeout(1200)
+
+  // T3-FIX(3): the default-value CONTROL is gone from the editor (operator ruling) — the
+  // model + resolver still honour defaults, so the gate sets @today+7d via the API.
+  const composed = (await (await request.get(`${API}/api/entry-forms?recordType=Requisition`, { headers: ADMIN })).json())
+    .find((x: { name: string }) => x.name === FORM_NAME)
+  await request.put(`${API}/api/entry-forms/${composed.id}`, { headers: { ...ADMIN, ...JSON_H },
+    data: { name: FORM_NAME, recordType: 'Requisition',
+      fields: composed.fields.map((x: { fieldKey: string }) => x.fieldKey === 'RequiredDate' ? { ...x, defaultValue: '@today+7d' } : x) } })
 
   // ---- 3. AFTER: the buyer reloads and gets the composed form automatically ----
   await goAs(page, 'u_faridah', 'reqs')

@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   getEntryForms, createEntryForm, updateEntryForm, deleteEntryForm, assignEntryFormRoles, setEntryFormActive,
   saveEntryFormSubtab, deleteEntryFormSubtab, saveEntryFormGroup, deleteEntryFormGroup,
-  moveEntryFormField, saveEntryFormSublist,
+  saveEntryFormSublist,
   getViewFields, type EntryFormDefDto, type EntryFormFieldDto, type EntryFormGroupDto,
 } from '../../api/client'
 import { SetupPage } from '../../ui/archetypes/SetupPage'
@@ -151,26 +151,77 @@ function FormDesigner({ form, onChanged, onDeleted }: {
     setFields((fs) => fs.filter((f) => f.fieldKey !== key))
   }
 
-  // THE drag-drop write (L1): re-point the shared placement row; persists immediately.
+  // T3-FIX(4): ALL placement moves persist through the whole-form save — the string→object
+  // seam re-points the SAME EntryFormField row (L1) and, unlike the surgical endpoint,
+  // works identically for STAGED (not-yet-saved) and persisted fields. Sorts normalize 0..n.
+  const persistFields = (next: EntryFormFieldDto[]) => {
+    setFields(next)
+    void updateEntryForm(form.id, {
+      name: form.name, recordType: form.recordType,
+      fields: next.map((f, i) => ({ ...f, sort: i })),
+    }).then(() => { staged.current = { added: [], removed: new Set(), patched: new Map() }; ok() }, fail)
+  }
+  const groupContainer = (g: EntryFormGroupDto) => subtabs.find((s) => s.id === g.subtabId)?.name ?? null
+  /** Reposition `key` to the END of group `g` (array order = global Sort on save). */
+  const moveIntoGroup = (key: string, g: EntryFormGroupDto) => {
+    const mine = fields.find((f) => f.fieldKey === key)
+    if (!mine) return
+    const moved = { ...mine, fieldGroup: g.title, subtab: groupContainer(g), groupId: g.id }
+    const rest = fields.filter((f) => f.fieldKey !== key)
+    const lastIdx = rest.map((f) => f.groupId === g.id
+      || (!f.groupId && (f.subtab ?? null) === groupContainer(g) && (f.fieldGroup || 'Header') === g.title)).lastIndexOf(true)
+    // An EMPTY target group appends at the END — array order drives section order on the
+    // rendered form, and a leading splice would hoist the group above Header.
+    rest.splice(lastIdx >= 0 ? lastIdx + 1 : rest.length, 0, moved)
+    persistFields(rest)
+  }
   const dropOnGroup = (g: EntryFormGroupDto) => (e: React.DragEvent) => {
     e.preventDefault()
     const key = e.dataTransfer.getData('text/field-key')
-    if (!key) return
-    // Sort is the GLOBAL form order — append the moved field after everything so the
-    // target group's screen position (group Sort) decides where it renders, not the field.
-    const nextSort = Math.max(0, ...fields.map((f) => f.sort)) + 1
-    void moveEntryFormField(form.id, key, g.id, nextSort).then(ok, fail)
+    if (key) moveIntoGroup(key, g)
   }
-  // Dropping on a subtab chip: land in that container's FIRST group (create "Header"-titled
-  // container group via the string seam if the subtab is empty).
+  // Dropping on a subtab chip: land in that container (Header-titled group via the seam).
   const dropOnSubtab = (subtabName: string | null) => (e: React.DragEvent) => {
     e.preventDefault()
     const key = e.dataTransfer.getData('text/field-key')
     if (!key) return
-    void updateEntryForm(form.id, {
-      name: form.name, recordType: form.recordType,
-      fields: fields.map((f, i) => ({ ...f, sort: i, ...(f.fieldKey === key ? { subtab: subtabName } : {}) })),
-    }).then(ok, fail)
+    persistFields(fields.map((f) => (f.fieldKey === key ? { ...f, subtab: subtabName, groupId: null } : f)))
+  }
+  // T3-FIX(5): the always-works arrows. Within a group: swap with the neighbour. At a group
+  // edge: cross into the adjacent group of the SAME container (placement follows position).
+  const arrowMove = (key: string, dir: -1 | 1) => {
+    const mine = fields.find((f) => f.fieldKey === key)
+    if (!mine) return
+    const g = tabGroups.find((x) => x.id === mine.groupId)
+      ?? tabGroups.find((x) => x.title === (mine.fieldGroup || 'Header') && groupContainer(x) === (mine.subtab ?? null))
+    if (!g) return
+    const inGroup = (f: EntryFormFieldDto) => f.groupId === g.id
+      || (!f.groupId && (f.subtab ?? null) === groupContainer(g) && (f.fieldGroup || 'Header') === g.title)
+    const siblings = fields.filter(inGroup)
+    const pos = siblings.findIndex((f) => f.fieldKey === key)
+    const next = [...fields]
+    const at = next.findIndex((f) => f.fieldKey === key)
+    if (dir === -1 && pos > 0) {
+      const swapWith = next.indexOf(siblings[pos - 1])
+      ;[next[at], next[swapWith]] = [next[swapWith], next[at]]
+      persistFields(next)
+    } else if (dir === 1 && pos < siblings.length - 1) {
+      const swapWith = next.indexOf(siblings[pos + 1])
+      ;[next[at], next[swapWith]] = [next[swapWith], next[at]]
+      persistFields(next)
+    } else {
+      const gi = tabGroups.indexOf(g)
+      const target = tabGroups[gi + dir]
+      if (target) moveIntoGroup(key, target)
+    }
+  }
+  const groupArrow = (g: EntryFormGroupDto, dir: -1 | 1) => {
+    const gi = tabGroups.indexOf(g)
+    const other = tabGroups[gi + dir]
+    if (!other) return
+    void saveEntryFormGroup(form.id, { title: g.title, subtabId: g.subtabId ?? null, sort: other.sort, columnBreak: g.columnBreak }, g.id)
+      .then(() => saveEntryFormGroup(form.id, { title: other.title, subtabId: other.subtabId ?? null, sort: g.sort, columnBreak: other.columnBreak }, other.id))
+      .then(ok, fail)
   }
 
   const ro = form.isSystem
@@ -225,9 +276,11 @@ function FormDesigner({ form, onChanged, onDeleted }: {
               // placement so it is visible and draggable before the first save.
               || (!f.groupId
                 && (f.subtab ?? null) === (subtabs.find((s) => s.id === g.subtabId)?.name ?? null)
-                && (f.fieldGroup || 'Header') === g.title)).sort((a, b) => a.sort - b.sort)}
+                && (f.fieldGroup || 'Header') === g.title))}
+            labelFor={(key) => registry.find((r) => r.fieldKey === key)?.label ?? key}
             onDrop={dropOnGroup(g)} onFieldChange={setField}
             onRemoveField={removeField}
+            onArrow={arrowMove} onGroupArrow={(dir) => groupArrow(g, dir)}
             onOk={ok} onFail={fail} />
         ))}
         {tabGroups.length === 0 && <p className="hint">No field groups in this container yet.</p>}
@@ -294,12 +347,15 @@ function FormDesigner({ form, onChanged, onDeleted }: {
   )
 }
 
-function GroupCard({ form, group, ro, fields, onDrop, onFieldChange, onRemoveField, onOk, onFail }: {
+function GroupCard({ form, group, ro, fields, labelFor, onDrop, onFieldChange, onRemoveField, onArrow, onGroupArrow, onOk, onFail }: {
   form: EntryFormDefDto; group: EntryFormGroupDto; ro: boolean
   fields: EntryFormFieldDto[]
+  labelFor: (key: string) => string
   onDrop: (e: React.DragEvent) => void
   onFieldChange: (key: string, patch: Partial<EntryFormFieldDto>) => void
   onRemoveField: (key: string) => void
+  onArrow: (key: string, dir: -1 | 1) => void
+  onGroupArrow: (dir: -1 | 1) => void
   onOk: () => void; onFail: (e: unknown) => void
 }) {
   const [title, setTitle] = useState(group.title)
@@ -307,7 +363,8 @@ function GroupCard({ form, group, ro, fields, onDrop, onFieldChange, onRemoveFie
   const renameBlocked = ro   // Header rename allowed on non-system forms (L3); system forms are wholly read-only
 
   return (
-    <div className="card" style={{ padding: 12 }} onDragOver={(e) => e.preventDefault()} onDrop={onDrop}
+    <div className="card" style={{ padding: 12 }} onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }}
+      onDragEnter={(e) => e.preventDefault()} onDrop={onDrop}
       aria-label={`Field group ${group.title}`}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
         {renameBlocked
@@ -322,6 +379,8 @@ function GroupCard({ form, group, ro, fields, onDrop, onFieldChange, onRemoveFie
         <div className="spacer" style={{ flex: 1 }} />
         {!ro && (
           <>
+            <button type="button" className="btn btn-sm btn-out" aria-label={`Move group ${group.title} up`} onClick={() => onGroupArrow(-1)}>↑</button>
+            <button type="button" className="btn btn-sm btn-out" aria-label={`Move group ${group.title} down`} onClick={() => onGroupArrow(1)}>↓</button>
             {title.trim() !== group.title && (
               <Button variant="outline" size="sm" ariaLabel={`Rename group ${group.title}`}
                 onClick={() => void saveEntryFormGroup(form.id,
@@ -343,25 +402,35 @@ function GroupCard({ form, group, ro, fields, onDrop, onFieldChange, onRemoveFie
       {fields.length === 0 && <p className="hint" style={{ margin: 4 }}>Empty — drop a field here.</p>}
       {fields.length > 0 && (
         <table>
-          <thead><tr><th>Field</th><th>Display</th><th>Required</th><th>Default</th><th /></tr></thead>
+          <thead><tr><th>Field</th><th>Display</th><th>Required</th><th /></tr></thead>
           <tbody>
             {fields.map((f) => (
               <tr key={f.fieldKey}
                 draggable={!ro}
-                onDragStart={(e) => e.dataTransfer.setData('text/field-key', f.fieldKey)}
+                onDragStart={(e) => { e.dataTransfer.setData('text/field-key', f.fieldKey); e.dataTransfer.effectAllowed = 'move' }}
                 style={!ro ? { cursor: 'grab' } : undefined}
                 aria-label={`Field row ${f.fieldKey}`}>
-                <td className="mono">{f.fieldKey}{f.label ? ` · ${f.label}` : ''}{f.fullWidth ? ' · full-width' : ''}</td>
+                {/* T3-FIX(2): the NAME is the display; the internal id is secondary/muted. */}
+                <td>
+                  <span style={{ fontWeight: 600 }}>{f.label ?? labelFor(f.fieldKey)}</span>
+                  {f.fullWidth ? <span className="hint"> · full-width</span> : null}
+                  <div className="mono hint" style={{ fontSize: 11 }}>{f.fieldKey}</div>
+                </td>
                 <td>{ro ? f.displayType : <SelectField chrome="bare" spec={spec(`ef-${f.fieldKey}-display`, `${f.fieldKey} display`, 'select', DISPLAY_TYPES)} value={f.displayType} onChange={(v) => onFieldChange(f.fieldKey, { displayType: String(v ?? 'Normal') })} />}</td>
                 <td>{ro ? (f.requiredOnForm ? '✓' : '—') : (
                   <CheckboxField chrome="bare" spec={spec(`ef-${f.fieldKey}-req`, `${f.fieldKey} required at submit`, 'boolean')} value={f.requiredOnForm} onChange={(v) => onFieldChange(f.fieldKey, { requiredOnForm: v === true })} />
                 )}</td>
-                <td>{ro ? f.defaultValue ?? '—' : <TextField chrome="bare" spec={{ ...spec(`ef-${f.fieldKey}-default`, `${f.fieldKey} default`, 'text'), placeholder: '@today+7d …' }} value={f.defaultValue ?? ''} onChange={(v) => onFieldChange(f.fieldKey, { defaultValue: String(v ?? '') || null })} />}</td>
                 <td className="amt">
                   {!ro && (
-                    <button type="button" className="btn btn-sm btn-out" aria-label={`Remove ${f.fieldKey}`}
-                      title="Removes the PLACEMENT only — stored values are never touched (L6)"
-                      onClick={() => onRemoveField(f.fieldKey)}>✕</button>
+                    <>
+                      <button type="button" className="btn btn-sm btn-out" aria-label={`Move ${f.fieldKey} up`}
+                        title="Up — crossing a group boundary re-groups the field" onClick={() => onArrow(f.fieldKey, -1)}>↑</button>
+                      <button type="button" className="btn btn-sm btn-out" aria-label={`Move ${f.fieldKey} down`}
+                        title="Down — crossing a group boundary re-groups the field" onClick={() => onArrow(f.fieldKey, 1)}>↓</button>
+                      <button type="button" className="btn btn-sm btn-out" aria-label={`Remove ${f.fieldKey}`}
+                        title="Removes the PLACEMENT only — stored values are never touched (L6)"
+                        onClick={() => onRemoveField(f.fieldKey)}>✕</button>
+                    </>
                   )}
                 </td>
               </tr>

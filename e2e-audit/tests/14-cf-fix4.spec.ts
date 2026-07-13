@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { goAs, requiredCustomValues } from './helpers'
+import { goAs, requiredCustomValues, pickSearch } from './helpers'
 
 // CF-FIX-4 browser proofs. T1 Header invariant · T2 standard forms · T3 designer + L6
 // data-safety (the operator's hardest check: remove-from-form deletes placement ONLY).
@@ -123,4 +123,54 @@ test('CF-FIX4-T3/L6: remove-from-form is DATA-SAFE — the value survives on the
   await request.put(`${API}/api/custom-values/Requisition/${pr.id}`, { headers: { ...BUYER, ...JSON_H }, data: { values: { ...req, [def.code]: null } } })
   await request.delete(`${API}/api/entry-forms/${form.id}`, { headers: ADMIN })
   expect((await request.delete(`${API}/api/custom-fields/${def.id}`, { headers: ADMIN })).status()).toBe(204)
+})
+
+
+test('CF-FIX4-T3fix: labels not ids, searchable add-field, NO default control, arrows re-group, staged drag persists', async ({ page, request }) => {
+  const std = (await (await request.get(`${API}/api/entry-forms?recordType=Requisition`, { headers: ADMIN })).json())
+    .find((f: { isSystem: boolean }) => f.isSystem)
+  const form = await (await request.post(`${API}/api/entry-forms`, { headers: { ...ADMIN, ...JSON_H },
+    data: { name: `Fix4 T3fix ${STAMP}`, recordType: 'Requisition', fields: std.fields } })).json()
+
+  await goAs(page, 'u_admin', 'entryforms')
+  await page.waitForTimeout(1200)
+  await page.getByRole('button', { name: new RegExp(`Fix4 T3fix ${STAMP}`) }).click()
+
+  // (2) label leads, id is secondary: the Job row shows its census label, not just the key.
+  const jobRow = page.locator('[aria-label="Field row Job"]')
+  await expect(jobRow).toContainText('Job / Cost ref')
+  // (3) no default-value control anywhere in the editor.
+  await expect(page.getByLabel(/default$/)).toHaveCount(0)
+  await expect(page.getByText('Default', { exact: true })).toHaveCount(0)
+
+  // (1) the add-field picker is the standardized SearchSelectField: type-to-filter by LABEL.
+  //     'Partner' (custbody_partner) — picked by its name, never its internal id.
+  await pickSearch(page, 'Add field', 'Partner')
+  await expect(page.locator('[aria-label="Field row custbody_partner"]')).toContainText('Partner')
+
+  // (4) drag the STAGED (unsaved) field into a new group — the exact case the operator hit.
+  await page.getByLabel('New group title', { exact: true }).fill('Partners')
+  await page.getByRole('button', { name: 'Add group' }).click()
+  await page.waitForTimeout(600)
+  const dt = await page.evaluateHandle(() => new DataTransfer())
+  await page.dispatchEvent('[aria-label="Field row custbody_partner"]', 'dragstart', { dataTransfer: dt })
+  await page.dispatchEvent('[aria-label="Field group Partners"]', 'drop', { dataTransfer: dt })
+  await page.waitForTimeout(1000)
+  await expect(page.locator('[aria-label="Field group Partners"]')).toContainText('Partner')
+  // …and it PERSISTED (no 'is not placed on this form' error, the placement row exists).
+  await expect(page.getByText(/is not placed on this form/)).toHaveCount(0)
+  let state = (await (await request.get(`${API}/api/entry-forms?recordType=Requisition`, { headers: ADMIN })).json())
+    .find((x: { id: string }) => x.id === form.id)
+  const partnersGroup = state.groups.find((g: { title: string }) => g.title === 'Partners')
+  expect(state.fields.find((x: { fieldKey: string }) => x.fieldKey === 'custbody_partner').groupId).toBe(partnersGroup.id)
+
+  // (5) arrows: move the field UP out of Partners — it crosses back into Header, persisted.
+  await page.getByRole('button', { name: 'Move custbody_partner up' }).click()
+  await page.waitForTimeout(1000)
+  state = (await (await request.get(`${API}/api/entry-forms?recordType=Requisition`, { headers: ADMIN })).json())
+    .find((x: { id: string }) => x.id === form.id)
+  const headerGroup = state.groups.find((g: { isHeader: boolean }) => g.isHeader)
+  expect(state.fields.find((x: { fieldKey: string }) => x.fieldKey === 'custbody_partner').groupId).toBe(headerGroup.id)
+
+  expect((await request.delete(`${API}/api/entry-forms/${form.id}`, { headers: ADMIN })).status()).toBe(204)
 })
