@@ -51,7 +51,7 @@ test('CF-FIX1-T3: order-mode is choosable at CREATE — Alphabetical from birth'
   await goAs(page, 'u_admin', 'lists')
   await page.waitForTimeout(1200)
   await page.getByRole('button', { name: 'New list' }).click()
-  await page.getByLabel('Code', { exact: true }).fill(CODE)
+  await page.getByLabel('Internal ID', { exact: true }).fill(CODE)   // T4 renamed the id field
   await page.getByLabel('Name', { exact: true }).fill(`Fix1 Order ${STAMP}`)
   await page.getByLabel('Show options in', { exact: true }).selectOption('Alphabetical')   // on CREATE (was edit-only)
   await page.getByRole('button', { name: 'Create list' }).click()
@@ -156,7 +156,7 @@ test('CF-FIX1-T7: the searchable select — type-to-filter on screen, keyboard s
   await page.getByRole('combobox', { name: 'Search Data type' }).fill('lis')
   await expect(page.getByRole('listbox', { name: 'Data type options' }).getByRole('option')).toHaveCount(1)   // scoped: native selects elsewhere also expose options
   await page.keyboard.press('Enter')                                     // keyboard contract
-  await expect(page.getByRole('button', { name: 'Data type' })).toContainText('ListValue')
+  await expect(page.getByRole('button', { name: 'Data type' })).toContainText('List/Record')   // T8's full professional name
   // Escape closes without changing.
   await page.getByRole('button', { name: 'Custom list', exact: true }).click()   // the picker, not the Custom Lists nav
   await page.keyboard.press('Escape')

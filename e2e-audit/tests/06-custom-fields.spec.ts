@@ -21,7 +21,10 @@ test('custom-field gate: admin defines → buyer populates → view filters → 
   await page.waitForTimeout(1200)
   await page.getByRole('button', { name: 'New field' }).click()
   await page.getByLabel('Label').fill(FIELD_LABEL)
-  await page.getByLabel('Data type').selectOption('Date')
+  // CF-FIX1-T7/T8: the type picker is the searchable select with full names now.
+  await page.getByRole('button', { name: 'Data type' }).click()
+  await page.getByRole('combobox', { name: 'Search Data type' }).fill('Date')
+  await page.getByRole('listbox', { name: 'Data type options' }).getByRole('option', { name: 'Date', exact: true }).click()
   await shot(page, 'D5-gate-1-def')
   await page.getByRole('button', { name: 'Create field' }).click()
   await page.waitForTimeout(1000)

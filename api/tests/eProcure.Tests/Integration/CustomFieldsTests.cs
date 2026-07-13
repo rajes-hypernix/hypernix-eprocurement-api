@@ -444,4 +444,21 @@ public sealed class CustomFieldsTests(CustomFieldsFixture fx) : IClassFixture<Cu
             new SaveCustomValuesRequest(new() { [doc.Code] = $"{Guid.NewGuid()}::ghost.pdf" })))
             .StatusCode.Should().Be(HttpStatusCode.BadRequest, "a Document field refuses a dangling file reference");
     }
+
+    // CF-FIX1 repair: a lines-only write must not police header-required fields it isn't
+    // touching (found by the operator's required 'Remarks' header field blocking PR saves).
+    [Fact]
+    public async Task A_lines_only_write_is_not_blocked_by_an_unmet_required_header_field()
+    {
+        var admin = fx.ClientAs("u_admin");
+        await admin.PostAsJsonAsync("/api/custom-fields", new SaveCustomFieldDefRequest(
+            "Fix1 Required Header", "PurchaseOrder", "Text", null, true, "", 0));
+        var line = (await (await admin.PostAsJsonAsync("/api/custom-fields", new SaveCustomFieldDefRequest(
+            "Fix1 Line Only", "PurchaseOrder", "Text", null, false, "", 0, Scope: "Line")))
+            .Content.ReadFromJsonAsync<CustomFieldDefDto>())!;
+        var lineId = await fx.Factory.LineIdOf(fx.PoAId);
+        (await fx.ClientAs("u_faridah").PutAsJsonAsync($"/api/custom-values/PurchaseOrder/{fx.PoAId}",
+            new SaveCustomValuesRequest(new(), new() { [lineId] = new() { [line.Code] = "L1" } })))
+            .StatusCode.Should().Be(HttpStatusCode.OK, "the header grain is enforced when the header grain is WRITTEN");
+    }
 }

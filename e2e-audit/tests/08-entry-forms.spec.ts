@@ -125,7 +125,9 @@ test('entry-forms gate: standard → admin composes role form → buyer gets it;
   await page.getByLabel('Digits (3–6)').fill('5')
   await page.getByRole('button', { name: 'Save format' }).click()
   await page.waitForTimeout(1000)
-  await expect(page.getByText(new RegExp(`SP${STAMP.slice(-2)}-2026-00001`)).first()).toBeVisible()
+  // Not 00001: a 2-char run-stamp prefix can collide with an earlier run's, and counters
+  // are never re-issued (NumberingTests pins fresh-start/reattach). The FORMAT is the proof.
+  await expect(page.getByText(new RegExp(`SP${STAMP.slice(-2)}-2026-\\d{5}`)).first()).toBeVisible()
   await shot(page, 'D7-gate-5-numbering')
 
   // ---- 5. The next PO proves it — minted through the REAL award-approval path ----

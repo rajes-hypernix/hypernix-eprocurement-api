@@ -219,6 +219,12 @@ public sealed class CustomFieldService(
         var existing = await db.CustomFieldValues
             .Where(v => v.RecordType == type && v.RecordId == recordId && v.LineId == null).ToListAsync(ct);
 
+        // CF-FIX1 repair (found by the operator's required 'Remarks' field): a LINES-ONLY
+        // write must not police header-required fields it isn't touching — the header grain
+        // is enforced when the header grain is written.
+        if (req.Values.Count == 0 && req.Lines is { Count: > 0 })
+            { await db.SaveChangesAsync(ct); return await MergedAsync(type, recordId, ct); }
+
         foreach (var def in defs.Where(d => d.Scope == "Header"))
         {
             var supplied = req.Values.TryGetValue(def.Code, out var raw);

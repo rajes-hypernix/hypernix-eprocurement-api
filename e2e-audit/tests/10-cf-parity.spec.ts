@@ -74,9 +74,12 @@ test('CF1-T2: edit a custom list — rename, alphabetical order-mode, guarded de
   const pos = await (await request.get(`${API}/api/pos`, { headers: BUYER })).json()
   await goAs(page, 'u_faridah', `pos/${pos[0].id}`)
   await page.waitForTimeout(1500)
-  const opts = await page.getByLabel(`Pick ${STAMP}`).locator('option').allTextContents()
-  const labels = opts.filter((o) => o === 'Zebra' || o === 'Aardvark')
-  expect(labels).toEqual(['Aardvark', 'Zebra'])                        // alphabetical, not entered order
+  // CF-FIX1-T7: ListValue fields render the searchable select — open it and read the list.
+  await page.getByRole('button', { name: `Pick ${STAMP}`, exact: true }).click()
+  const opts = await page.getByRole('listbox', { name: `Pick ${STAMP} options` }).getByRole('option').allTextContents()
+  await page.keyboard.press('Escape')
+  const labels = opts.filter((o) => o.includes('Zebra') || o.includes('Aardvark'))
+  expect(labels.map((l) => l.trim())).toEqual(['Aardvark', 'Zebra'])   // alphabetical, not entered order
 
   // Guarded delete: the bound list DEACTIVATES (badge), never vanishes under the field.
   await goAs(page, 'u_admin', 'lists')
@@ -609,6 +612,13 @@ test('CF5-T5: guards — required-on-hidden warns (allow), populated containers 
 
 test('CF6: line field end-to-end — admin authors a Line-scope field on screen, buyer enters a per-line value on a draft PR, it persists', async ({ page, request }) => {
   const LABEL = `Batch Ref ${STAMP}`
+  // Self-healing (the 08 pattern): a mid-test failure strands run-stamped line defs whose
+  // columns then crowd every later run's lines table — sweep them first.
+  const stale = await (await request.get(`${API}/api/custom-fields?recordType=Requisition`, { headers: ADMIN })).json()
+  for (const d of stale.filter((x: { label: string }) => /^Batch Ref \d+$/.test(x.label))) {
+    await request.post(`${API}/api/custom-fields/${d.id}/active`, { headers: { ...ADMIN, ...JSON_H }, data: 'false' })
+    await request.delete(`${API}/api/custom-fields/${d.id}`, { headers: ADMIN })
+  }
 
   // Admin authors the LINE field through the def modal (Scope select).
   await goAs(page, 'u_admin', 'customfields')
