@@ -187,7 +187,7 @@ function SoaReconciliation({ invoices, onReupload }: { invoices: { code?: string
             </tr>
           </tbody>
         </table>
-        <div className="cbody"><div style={{ background: '#fbeded', color: '#9c3a30', borderRadius: 10, padding: '10px 12px', fontSize: 12.5 }}><Icon name="flag" size={14} /> Variances and unmatched items are flagged to the buyer's AP team for resolution before payment.</div></div>
+        <div className="cbody"><div style={{ background: '#fbeded', color: '#9c3a30', padding: '10px 12px', fontSize: 12.5 }}><Icon name="flag" size={14} /> Variances and unmatched items are flagged to the buyer's AP team for resolution before payment.</div></div>
       </div>
     </>
   )

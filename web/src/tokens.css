@@ -142,9 +142,11 @@
      controls/modals/pills carry the prototype's rounded values — named here,
      unchanged. ---- */
   --radius: 0;
-  --radius-control: 9px;    /* inputs, buttons, health chip */
-  --radius-modal: 16px;
-  --radius-pill: 20px;
+  /* CF-FIX2-T4 (operator ruling): SQUARE corners everywhere — controls, modals, even
+     pills. The ONLY sanctioned rounding is border-radius: 50% (avatars, status dots). */
+  --radius-control: 0;
+  --radius-modal: 0;
+  --radius-pill: 0;
 
   /* ---- Elevation & focus ---- */
   --shadow: 0 2px 10px rgba(51, 99, 119, 0.08);

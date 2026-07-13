@@ -271,7 +271,7 @@ function PoDetailView({ id, onBack, onNavigate }: { id: string; onBack: () => vo
           <MatchRow label="Quantity · goods receipt vs invoice" value={hasInv ? `${recvQty} vs ${invQty}` : '—'} state={hasInv ? recvQty === invQty : null} />
           <MatchRow label="Value · PO vs invoice" value={hasInv ? `RM ${fmt(po.total)} vs RM ${fmt(invAmt)}` : '—'} state={hasInv ? valueOk : null} />
           {hasInv && !valueOk && (
-            <div style={{ background: '#fbeded', color: '#9c3a30', borderRadius: 10, padding: '10px 12px', marginTop: 10, fontSize: 12.5 }}>
+            <div style={{ background: '#fbeded', color: '#9c3a30', padding: '10px 12px', marginTop: 10, fontSize: 12.5 }}>
               <Icon name="flag" size={15} /> Invoice variance — blocked from payment, routed for exception approval.
             </div>
           )}
