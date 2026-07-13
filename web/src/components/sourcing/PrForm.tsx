@@ -24,6 +24,8 @@ import { SegmentsSection } from '../segments/SegmentsSection'
 const LINE_SPEC_TYPE: Record<string, FieldSpec['dataType']> = {
   Text: 'text', LongText: 'text', Int: 'number', Decimal: 'number',
   Money: 'money', Date: 'date', Bool: 'yesNo', ListValue: 'select',
+  DateTime: 'dateTime', Percent: 'percent', Email: 'text', Telephone: 'text',
+  Hyperlink: 'text', Image: 'attachment', Document: 'attachment',
 }
 
 type PrLine = NonNullable<RequisitionDto['lines']>[number]

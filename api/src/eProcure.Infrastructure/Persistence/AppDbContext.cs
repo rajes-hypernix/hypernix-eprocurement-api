@@ -661,18 +661,22 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             e.ToTable("CustomFieldValues", t =>
             {
+                // CF-FIX1-T8: ExactlyOne counts every VALUE column (ValueDateTime included).
+                // ValueLabel is deliberately EXCLUDED — it is Hyperlink's companion label, not a value.
                 t.HasCheckConstraint("CK_CustomFieldValues_ExactlyOne",
                     "(CASE WHEN \"ValueText\" IS NOT NULL THEN 1 ELSE 0 END + " +
                     "CASE WHEN \"ValueNumber\" IS NOT NULL THEN 1 ELSE 0 END + " +
                     "CASE WHEN \"ValueMoney\" IS NOT NULL THEN 1 ELSE 0 END + " +
                     "CASE WHEN \"ValueDate\" IS NOT NULL THEN 1 ELSE 0 END + " +
                     "CASE WHEN \"ValueBool\" IS NOT NULL THEN 1 ELSE 0 END + " +
-                    "CASE WHEN \"ValueListCode\" IS NOT NULL THEN 1 ELSE 0 END) = 1");
+                    "CASE WHEN \"ValueListCode\" IS NOT NULL THEN 1 ELSE 0 END + " +
+                    "CASE WHEN \"ValueDateTime\" IS NOT NULL THEN 1 ELSE 0 END) = 1");
                 t.HasCheckConstraint("CK_CustomFieldValues_KindMatch",
-                    "(\"DataType\" IN ('Text','LongText') AND \"ValueText\" IS NOT NULL) OR " +
-                    "(\"DataType\" IN ('Int','Decimal') AND \"ValueNumber\" IS NOT NULL) OR " +
+                    "(\"DataType\" IN ('Text','LongText','Email','Telephone','Hyperlink','Image','Document') AND \"ValueText\" IS NOT NULL) OR " +
+                    "(\"DataType\" IN ('Int','Decimal','Percent') AND \"ValueNumber\" IS NOT NULL) OR " +
                     "(\"DataType\" = 'Money' AND \"ValueMoney\" IS NOT NULL) OR " +
                     "(\"DataType\" = 'Date' AND \"ValueDate\" IS NOT NULL) OR " +
+                    "(\"DataType\" = 'DateTime' AND \"ValueDateTime\" IS NOT NULL) OR " +
                     "(\"DataType\" = 'Bool' AND \"ValueBool\" IS NOT NULL) OR " +
                     "(\"DataType\" = 'ListValue' AND \"ValueListCode\" IS NOT NULL)");
             });
@@ -689,6 +693,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.ValueNumber).HasColumnType("numeric(18,4)");
             e.Property(x => x.ValueMoney).HasColumnType("numeric(18,2)");
             e.Property(x => x.ValueListCode).HasMaxLength(50);
+            e.Property(x => x.ValueLabel).HasMaxLength(200);
             e.HasOne<Domain.CustomFields.CustomFieldDef>().WithMany().HasForeignKey(x => x.FieldDefId).OnDelete(DeleteBehavior.Restrict);
         });
 

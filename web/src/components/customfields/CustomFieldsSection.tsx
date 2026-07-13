@@ -18,6 +18,17 @@ import { Notice } from '../ui'
 const SPEC_TYPE: Record<string, FieldDataType> = {
   Text: 'text', LongText: 'longText', Int: 'number', Decimal: 'number',
   Money: 'money', Date: 'date', Bool: 'yesNo', ListValue: 'select',
+  // CF-FIX1-T8 — client hints only; the SERVER is the validation guarantee.
+  DateTime: 'dateTime', Percent: 'percent', Email: 'text', Telephone: 'text',
+  Image: 'attachment', Document: 'attachment',
+}
+const TYPE_HINTS: Record<string, Partial<FieldSpec>> = {
+  Date: { placeholder: 'dd/mm/yyyy' },
+  DateTime: { placeholder: 'dd/mm/yyyy hh:mm' },
+  Percent: { unit: '%' },
+  Email: { placeholder: 'name@company.com' },
+  Telephone: { placeholder: '+60 3-1234 5678' },
+  Image: { config: { filetypes: 'png,jpg,jpeg,gif,webp,svg' } },
 }
 
 const toSpec = (v: CustomValueDto): FieldSpec => ({
@@ -28,6 +39,7 @@ const toSpec = (v: CustomValueDto): FieldSpec => ({
   help: v.helpText || undefined,
   ...(v.displayType === 'Disabled' ? { displayType: 'disabled' } : {}),
   ...(v.dataType === 'ListValue' ? { searchable: true } : {}),   // CF-FIX1-T7: list fields use the searchable select
+  ...TYPE_HINTS[v.dataType],
   ...(v.dataType === 'ListValue' && v.customListCode
     ? { options: { kind: 'customList', listCode: v.customListCode } }
     : {}),
@@ -82,7 +94,10 @@ export function CustomFieldsSection({ recordType, recordId, excludeKeys = [] }: 
       {error && <Notice tone="error">{error}</Notice>}
       <div className="grid g2">
         {values.map((v) =>
-          v.displayType === 'Inline'
+          v.dataType === 'Hyperlink' && v.displayType !== 'Inline'
+            ? <HyperlinkPair key={v.code} v={v} value={draft[v.code] ?? ''} canEdit={canEdit}
+                onChange={(next) => canEdit && setDraft((d) => ({ ...d, [v.code]: next }))} />
+            : v.displayType === 'Inline'
             ? (
               <div key={v.code} className="field">
                 <label>{v.label}</label>
@@ -95,6 +110,23 @@ export function CustomFieldsSection({ recordType, recordId, excludeKeys = [] }: 
               (next) => canEdit && setDraft((d) => ({ ...d, [v.code]: next })),
             ))}
       </div>
+    </div>
+  )
+}
+
+/** CF-FIX1-T8: Hyperlink = url + display label — wire format "url\nlabel" (ValueLabel server-side). */
+function HyperlinkPair({ v, value, canEdit, onChange }: {
+  v: CustomValueDto; value: string; canEdit: boolean; onChange: (next: string) => void
+}) {
+  const [url = '', label = ''] = value.split('\n')
+  const emit = (u: string, l: string) => onChange(l ? `${u}\n${l}` : u)
+  return (
+    <div>
+      {renderField({ key: `${v.code}`, label: v.label, dataType: 'text', placeholder: 'https://…', help: v.helpText || undefined },
+        url, (u) => canEdit && emit(u, label))}
+      {renderField({ key: `${v.code}-label`, label: `${v.label} — link text`, dataType: 'text', placeholder: 'shown instead of the URL' },
+        label, (l) => canEdit && emit(url, l))}
+      {url && <a href={url} target="_blank" rel="noreferrer" className="lnk">{label || url}</a>}
     </div>
   )
 }

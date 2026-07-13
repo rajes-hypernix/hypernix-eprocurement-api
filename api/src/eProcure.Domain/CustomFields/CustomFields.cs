@@ -7,7 +7,10 @@ namespace eProcure.Domain.CustomFields;
 /// no consumer exists — every user-entered business date is DateOnly (Slice H), and L4
 /// custom records will be RecordRef's first honest consumer.
 /// </summary>
-public enum CustomFieldDataType { Text, LongText, Int, Decimal, Money, Date, Bool, ListValue }
+// CF-FIX1-T8: the operator's full type set (NetSuite parity). New members REUSE the sparse
+// columns (Percent→ValueNumber; Email/Telephone/Hyperlink/Image/Document→ValueText) except
+// DateTime (new ValueDateTime). Display labels live client-side (Free-Form Text, …).
+public enum CustomFieldDataType { Text, LongText, Int, Decimal, Money, Date, Bool, ListValue, DateTime, Percent, Email, Telephone, Hyperlink, Image, Document }
 
 /// <summary>
 /// A custom field definition — the D3 registry's Kind=Custom rows point here. Code
@@ -68,12 +71,16 @@ public class CustomFieldValue
     // locked ruling (NULLS NOT DISTINCT is PG15+ and prod's version is unverified).
     public Guid? LineId { get; set; }
 
-    public string? ValueText { get; set; }                // Text + LongText
+    public string? ValueText { get; set; }                // Text/LongText + Email/Telephone/Hyperlink(url)/Image/Document(file ref)
     public decimal? ValueNumber { get; set; }             // Int + Decimal — numeric(18,4)
     public decimal? ValueMoney { get; set; }              // numeric(18,2), golden rule 3
     public DateOnly? ValueDate { get; set; }
     public bool? ValueBool { get; set; }
     public string? ValueListCode { get; set; }            // the CustomListValue CODE, like built-in selects
+    public DateTime? ValueDateTime { get; set; }          // CF-FIX1-T8: Date/Time (timestamptz)
+    /// <summary>CF-FIX1-T8: Hyperlink display label — a COMPANION to ValueText's url, NOT a
+    /// value column (excluded from the ExactlyOne CHECK).</summary>
+    public string? ValueLabel { get; set; }
 
     public DateTime UpdatedUtc { get; set; }
 }

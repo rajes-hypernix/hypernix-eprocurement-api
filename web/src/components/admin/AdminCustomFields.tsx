@@ -22,7 +22,25 @@ import { recordTypeLabel } from '../../lib/recordTypeLabel'
  */
 
 const RECORD_TYPES = ['Requisition', 'Rfq', 'PurchaseOrder', 'Invoice', 'Asn', 'Vendor', 'Onboarding']
-const DATA_TYPES = ['Text', 'LongText', 'Int', 'Decimal', 'Money', 'Date', 'Bool', 'ListValue']
+// CF-FIX1-T8: full professional type names (the operator's NetSuite set) ↔ enum codes.
+const DATA_TYPES: { code: string; label: string }[] = [
+  { code: 'Text', label: 'Free-Form Text' },
+  { code: 'LongText', label: 'Long Text' },
+  { code: 'Int', label: 'Integer Number' },
+  { code: 'Decimal', label: 'Decimal Number' },
+  { code: 'Money', label: 'Currency' },
+  { code: 'Percent', label: 'Percent' },
+  { code: 'Bool', label: 'Check Box' },
+  { code: 'Date', label: 'Date' },
+  { code: 'DateTime', label: 'Date/Time' },
+  { code: 'ListValue', label: 'List/Record' },
+  { code: 'Email', label: 'Email Address' },
+  { code: 'Telephone', label: 'Phone Number' },
+  { code: 'Hyperlink', label: 'Hyperlink' },
+  { code: 'Image', label: 'Image' },
+  { code: 'Document', label: 'Document' },
+]
+export const dataTypeLabel = (code: string): string => DATA_TYPES.find((d) => d.code === code)?.label ?? code
 const DISPLAY_TYPES = ['Normal', 'Disabled', 'Inline']   // CF4-T12: def-level display (Inline = plain text, not user-editable)
 
 const spec = (key: string, label: string, dataType: FieldSpec['dataType'], options?: string[]): FieldSpec => ({
@@ -59,7 +77,7 @@ export function AdminCustomFields() {
                 <tr key={d.id}>
                   <td>{d.label}{d.required && <span title="Required at value-save"> *</span>}</td>
                   <td className="mono">{d.code}</td>
-                  <td>{d.dataType}{d.scope === 'Line' && <span className="badge b-grey" style={{ marginLeft: 6 }}>line</span>}</td>
+                  <td>{dataTypeLabel(d.dataType)}{d.scope === 'Line' && <span className="badge b-grey" style={{ marginLeft: 6 }}>line</span>}</td>
                   <td className="amt">{d.valueCount}</td>
                   <td><span className={`badge ${d.active ? 'b-green' : 'b-grey'}`}>{d.active ? 'Active' : 'Deactivated'}</span></td>
                   <td className="amt">
@@ -148,10 +166,11 @@ function DefModal({ recordType, def, onClose, onSaved }: {
         </div>
       )}
       {def
-        ? <p className="hint">Type ({def.dataType}) and code (<span className="mono">{def.code}</span>) are immutable — create a new field to change them.</p>
+        ? <p className="hint">Type ({dataTypeLabel(def.dataType)}) and Internal ID (<span className="mono">{def.code}</span>) are immutable — create a new field to change them.</p>
         : (
           <>
-            <SelectField spec={{ ...spec('cf-type', 'Data type', 'select', DATA_TYPES), searchable: true }} value={dataType} onChange={(v) => setDataType(String(v ?? 'Text'))} />
+            <SelectField spec={{ key: 'cf-type', label: 'Data type', dataType: 'select', searchable: true,
+              options: { kind: 'static', options: DATA_TYPES } }} value={dataType} onChange={(v) => setDataType(String(v ?? 'Text'))} />
             {dataType === 'ListValue' && (
               <SelectField
                 spec={{ key: 'cf-list', label: 'Custom list', dataType: 'select', searchable: true, options: { kind: 'static', options: lists.map((l) => ({ code: l.id ?? '', label: l.name ?? l.code ?? '' })) } }}

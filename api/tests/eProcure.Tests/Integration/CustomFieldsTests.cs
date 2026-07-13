@@ -374,4 +374,74 @@ public sealed class CustomFieldsTests(CustomFieldsFixture fx) : IClassFixture<Cu
             "Fix1 Bad", "Vendor", "Text", null, false, "", 0, Code: "no spaces!")))
             .StatusCode.Should().Be(HttpStatusCode.BadRequest, "illegal characters are rejected");
     }
+
+    // ---- CF-FIX1-T8: the per-type validation matrix — valid saves; each invalid form 400s ----
+
+    [Theory]
+    [InlineData("Date", "15/03/2026", "2026-13-40")]
+    [InlineData("Date", "2026-03-15", "03/15/2026")]          // picker-ISO ok; US-format text rejected
+    [InlineData("DateTime", "15/03/2026 14:30", "15/03/2026")]
+    [InlineData("DateTime", "2026-03-15T14:30", "3pm tomorrow")]
+    [InlineData("Percent", "42.5", "142")]
+    [InlineData("Percent", "0", "-1")]
+    [InlineData("Email", "buyer@spsb.com.my", "notanemail")]
+    [InlineData("Telephone", "+60 3-2161 0000", "call me maybe")]
+    [InlineData("Hyperlink", "https://spsb.com.my/tenders", "notaurl")]
+    [InlineData("Int", "42", "2.5")]
+    [InlineData("Decimal", "3.14", "abc")]
+    public async Task Each_type_accepts_its_valid_form_and_rejects_the_invalid_one(string type, string good, string bad)
+    {
+        var def = await fx.CreateDef($"Fix1 {type} {good.GetHashCode():x}", type);
+        var buyer = fx.ClientAs("u_faridah");
+        (await buyer.PutAsJsonAsync($"/api/custom-values/PurchaseOrder/{fx.PoAId}",
+            new SaveCustomValuesRequest(new() { [def.Code] = good })))
+            .StatusCode.Should().Be(HttpStatusCode.OK, $"{type} accepts '{good}'");
+        (await buyer.PutAsJsonAsync($"/api/custom-values/PurchaseOrder/{fx.PoAId}",
+            new SaveCustomValuesRequest(new() { [def.Code] = bad })))
+            .StatusCode.Should().Be(HttpStatusCode.BadRequest, $"{type} rejects '{bad}'");
+    }
+
+    [Fact]
+    public async Task Hyperlink_round_trips_url_and_label_and_dates_read_back_canonically()
+    {
+        var link = await fx.CreateDef("Fix1 Link RT", "Hyperlink");
+        var date = await fx.CreateDef("Fix1 Date RT", "Date");
+        var buyer = fx.ClientAs("u_faridah");
+        (await buyer.PutAsJsonAsync($"/api/custom-values/PurchaseOrder/{fx.PoBId}",
+            new SaveCustomValuesRequest(new()
+            {
+                [link.Code] = "https://spsb.com.my\nTender portal",
+                [date.Code] = "15/03/2026",                    // dd/MM/yyyy text form
+            }))).StatusCode.Should().Be(HttpStatusCode.OK);
+        var read = (await buyer.GetFromJsonAsync<List<CustomValueDto>>($"/api/custom-values/PurchaseOrder/{fx.PoBId}"))!;
+        read.Single(v => v.Code == link.Code).Value.Should().Be("https://spsb.com.my\nTender portal");
+        read.Single(v => v.Code == date.Code).Value.Should().Be("2026-03-15", "stored canonically as the typed DateOnly");
+    }
+
+    [Fact]
+    public async Task Image_requires_an_image_file_and_document_requires_an_existing_file()
+    {
+        Guid pngId = default, pdfId = default;
+        await fx.Factory.SeedAsync(db =>
+        {
+            var png = new eProcure.Domain.Files.StoredFile { Name = "site.png", ContentType = "image/png", Content = [1], Size = 1, CreatedUtc = DateTime.UtcNow, OwnerKind = eProcure.Domain.Files.FileOwnerKind.Internal };
+            var pdf = new eProcure.Domain.Files.StoredFile { Name = "spec.pdf", ContentType = "application/pdf", Content = [1], Size = 1, CreatedUtc = DateTime.UtcNow, OwnerKind = eProcure.Domain.Files.FileOwnerKind.Internal };
+            db.StoredFiles.AddRange(png, pdf);
+            pngId = png.Id; pdfId = pdf.Id;
+            return Task.CompletedTask;
+        });
+        var image = await fx.CreateDef("Fix1 Image", "Image");
+        var doc = await fx.CreateDef("Fix1 Doc", "Document");
+        var buyer = fx.ClientAs("u_faridah");
+
+        (await buyer.PutAsJsonAsync($"/api/custom-values/PurchaseOrder/{fx.PoAId}",
+            new SaveCustomValuesRequest(new() { [image.Code] = $"{pngId}::site.png", [doc.Code] = $"{pdfId}::spec.pdf" })))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+        (await buyer.PutAsJsonAsync($"/api/custom-values/PurchaseOrder/{fx.PoAId}",
+            new SaveCustomValuesRequest(new() { [image.Code] = $"{pdfId}::spec.pdf" })))
+            .StatusCode.Should().Be(HttpStatusCode.BadRequest, "an Image field refuses a PDF");
+        (await buyer.PutAsJsonAsync($"/api/custom-values/PurchaseOrder/{fx.PoAId}",
+            new SaveCustomValuesRequest(new() { [doc.Code] = $"{Guid.NewGuid()}::ghost.pdf" })))
+            .StatusCode.Should().Be(HttpStatusCode.BadRequest, "a Document field refuses a dangling file reference");
+    }
 }

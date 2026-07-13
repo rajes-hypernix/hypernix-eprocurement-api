@@ -167,3 +167,48 @@ test('CF-FIX1-T7: the searchable select — type-to-filter on screen, keyboard s
   const states = await (await request.get(`${API}/api/custom-lists/STATE`, { headers: ADMIN })).json()
   expect(states.parentListCode).toBe('COUNTRY')   // the dependency the picker rides
 })
+
+test('CF-FIX1-T8: new types on screen — full names in the picker; Date rejects garbage and US-format; Email rejects notanemail; Hyperlink shows its label', async ({ page, request }) => {
+  const mk = async (label: string, dataType: string) =>
+    (await (await request.post(`${API}/api/custom-fields`, { headers: { ...ADMIN, ...JSON_H },
+      data: { label, recordType: 'PurchaseOrder', dataType, customListId: null, required: false, helpText: '', sort: 0 } })).json())
+  const dateDef = await mk(`Fix1 Due ${STAMP}`, 'Date')
+  const emailDef = await mk(`Fix1 Mail ${STAMP}`, 'Email')
+  const linkDef = await mk(`Fix1 Link ${STAMP}`, 'Hyperlink')
+
+  // The type picker speaks full professional names.
+  await goAs(page, 'u_admin', 'customfields')
+  await page.waitForTimeout(1200)
+  await page.getByRole('button', { name: 'New field' }).click()
+  await page.getByRole('button', { name: 'Data type' }).click()
+  const list = page.getByRole('listbox', { name: 'Data type options' })
+  for (const name of ['Free-Form Text', 'Integer Number', 'Currency', 'Check Box', 'Date/Time', 'Email Address', 'Phone Number', 'Hyperlink'])
+    await expect(list.getByRole('option', { name, exact: true })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: 'Cancel' }).click()
+
+  // On a PO: server rejects garbage + US-format dates and bad emails; Hyperlink renders its label.
+  const pos = await (await request.get(`${API}/api/pos`, { headers: BUYER })).json()
+  const po = pos[0]
+  const put = (values: Record<string, string>) => request.put(`${API}/api/custom-values/PurchaseOrder/${po.id}`,
+    { headers: { ...BUYER, ...JSON_H }, data: { values } })
+  expect((await put({ [dateDef.code]: '2026-13-40' })).status()).toBe(400)
+  expect((await put({ [dateDef.code]: '03/15/2026' })).status()).toBe(400)      // US-format rejected
+  expect((await put({ [dateDef.code]: '15/03/2026' })).status()).toBe(200)      // dd/mm/yyyy accepted
+  expect((await put({ [emailDef.code]: 'notanemail' })).status()).toBe(400)
+  expect((await put({ [linkDef.code]: 'https://spsb.com.my\nTender Portal' })).status()).toBe(200)
+
+  await goAs(page, 'u_faridah', `pos/${po.id}`)
+  await page.waitForTimeout(1500)
+  await expect(page.getByRole('link', { name: 'Tender Portal' })).toBeVisible()   // the label, not the raw URL
+
+  // Invalid entry rejected ON SCREEN too (server message surfaces).
+  await page.getByLabel(`Fix1 Mail ${STAMP}`, { exact: true }).fill('notanemail')
+  await page.getByRole('button', { name: 'Save custom fields' }).click()
+  await expect(page.getByText(/valid email address/)).toBeVisible()
+
+  // cleanup
+  await put({ [dateDef.code]: '', [linkDef.code]: '' })
+  for (const d of [dateDef, emailDef, linkDef])
+    expect((await request.delete(`${API}/api/custom-fields/${d.id}`, { headers: ADMIN })).status()).toBe(204)
+})

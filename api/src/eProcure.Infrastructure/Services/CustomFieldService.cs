@@ -262,10 +262,18 @@ public sealed class CustomFieldService(
         return await MergedAsync(type, recordId, ct);
     }
 
+    // CF-FIX1-T8 wire formats (server-side, AUTHORITATIVE — client hints are convenience only):
+    //   Date       ISO yyyy-MM-dd (the picker) OR exact dd/MM/yyyy text — nothing else.
+    //   DateTime   ISO yyyy-MM-ddTHH:mm OR exact "dd/MM/yyyy HH:mm".
+    //   Hyperlink  "url" or "url\nlabel" — absolute http(s) url; label → ValueLabel (companion).
+    //   Image/Doc  "<fileId>::<name>" (AttachmentField's format) — file must EXIST in the
+    //              store; Image additionally requires an image/* content type. Rides the
+    //              existing FileStore + FileAccessPolicy — no new upload pipeline.
     private async Task WriteTypedAsync(CustomFieldValue row, CustomFieldDef def, string value, CancellationToken ct)
     {
         row.ValueText = null; row.ValueNumber = null; row.ValueMoney = null;
         row.ValueDate = null; row.ValueBool = null; row.ValueListCode = null;
+        row.ValueDateTime = null; row.ValueLabel = null;
         switch (def.DataType)
         {
             case CustomFieldDataType.Text:
@@ -288,10 +296,57 @@ public sealed class CustomFieldService(
                 row.ValueMoney = Math.Round(m, 2, MidpointRounding.AwayFromZero);
                 break;
             case CustomFieldDataType.Date:
-                if (!DateOnly.TryParseExact(value, "yyyy-MM-dd", out var dt))
-                    throw new CustomFieldValidationException($"'{def.Label}' must be an ISO date (yyyy-MM-dd).");
+                if (!DateOnly.TryParseExact(value, "yyyy-MM-dd", out var dt)
+                    && !DateOnly.TryParseExact(value, "dd/MM/yyyy", out dt))
+                    throw new CustomFieldValidationException($"'{def.Label}' must be a date in dd/mm/yyyy format.");
                 row.ValueDate = dt;
                 break;
+            case CustomFieldDataType.DateTime:
+                if (!System.DateTime.TryParseExact(value, "yyyy-MM-ddTHH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dtt)
+                    && !System.DateTime.TryParseExact(value, "dd/MM/yyyy HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out dtt))
+                    throw new CustomFieldValidationException($"'{def.Label}' must be a date and time in dd/mm/yyyy hh:mm format.");
+                row.ValueDateTime = System.DateTime.SpecifyKind(dtt, DateTimeKind.Utc);
+                break;
+            case CustomFieldDataType.Percent:
+                if (!decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out var pct) || pct < 0 || pct > 100)
+                    throw new CustomFieldValidationException($"'{def.Label}' must be a percentage between 0 and 100.");
+                row.ValueNumber = pct;
+                break;
+            case CustomFieldDataType.Email:
+                if (!System.Text.RegularExpressions.Regex.IsMatch(value, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+                    throw new CustomFieldValidationException($"'{def.Label}' must be a valid email address.");
+                row.ValueText = value;
+                break;
+            case CustomFieldDataType.Telephone:
+                if (!System.Text.RegularExpressions.Regex.IsMatch(value, @"^[+()0-9\-\s]{5,25}$")
+                    || value.Count(char.IsDigit) < 5)
+                    throw new CustomFieldValidationException($"'{def.Label}' must be a valid phone number (digits, spaces, +, -, parentheses).");
+                row.ValueText = value;
+                break;
+            case CustomFieldDataType.Hyperlink:
+            {
+                var parts = value.Split('\n', 2);
+                var url = parts[0].Trim();
+                if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https"))
+                    throw new CustomFieldValidationException($"'{def.Label}' must be a valid absolute http(s) URL.");
+                row.ValueText = url;
+                row.ValueLabel = parts.Length > 1 && !string.IsNullOrWhiteSpace(parts[1]) ? parts[1].Trim() : null;
+                break;
+            }
+            case CustomFieldDataType.Image:
+            case CustomFieldDataType.Document:
+            {
+                var refParts = value.Split("::", 2);
+                if (!Guid.TryParse(refParts[0], out var fileId))
+                    throw new CustomFieldValidationException($"'{def.Label}' must reference an uploaded file.");
+                var stored = await db.StoredFiles.AsNoTracking().FirstOrDefaultAsync(s => s.Id == fileId, ct)
+                    ?? throw new CustomFieldValidationException($"'{def.Label}' references a file that does not exist.");
+                if (def.DataType == CustomFieldDataType.Image
+                    && !(stored.ContentType?.StartsWith("image/", StringComparison.OrdinalIgnoreCase) ?? false))
+                    throw new CustomFieldValidationException($"'{def.Label}' only accepts image files (got {stored.ContentType ?? "unknown"}).");
+                row.ValueText = value;
+                break;
+            }
             case CustomFieldDataType.Bool:
                 row.ValueBool = value.ToLowerInvariant() switch
                 {
@@ -333,7 +388,9 @@ public sealed class CustomFieldService(
     internal static string? Render(CustomFieldValue? v) => v switch
     {
         null => null,
+        { ValueText: { } t, ValueLabel: { } lbl } => t + "\n" + lbl,   // Hyperlink round-trips url\nlabel
         { ValueText: { } t } => t,
+        { ValueDateTime: { } dtv } => dtv.ToString("yyyy-MM-ddTHH:mm", CultureInfo.InvariantCulture),
         { ValueNumber: { } n } => n % 1 == 0 ? ((long)n).ToString(CultureInfo.InvariantCulture) : n.ToString(CultureInfo.InvariantCulture),
         { ValueMoney: { } m } => m.ToString(CultureInfo.InvariantCulture),
         { ValueDate: { } d } => d.ToString("yyyy-MM-dd"),
@@ -410,8 +467,12 @@ public sealed class CustomFieldService(
 
     internal static FieldDataType RegistryTypeOf(CustomFieldDataType t) => t switch
     {
-        CustomFieldDataType.Text or CustomFieldDataType.LongText => FieldDataType.Text,
-        CustomFieldDataType.Int or CustomFieldDataType.Decimal => FieldDataType.Number,
+        CustomFieldDataType.Text or CustomFieldDataType.LongText
+            or CustomFieldDataType.Email or CustomFieldDataType.Telephone
+            or CustomFieldDataType.Hyperlink or CustomFieldDataType.Image
+            or CustomFieldDataType.Document => FieldDataType.Text,
+        CustomFieldDataType.DateTime => FieldDataType.Instant,
+        CustomFieldDataType.Int or CustomFieldDataType.Decimal or CustomFieldDataType.Percent => FieldDataType.Number,
         CustomFieldDataType.Money => FieldDataType.Money,
         CustomFieldDataType.Date => FieldDataType.Date,
         CustomFieldDataType.Bool => FieldDataType.Bool,
