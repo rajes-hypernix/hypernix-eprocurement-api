@@ -51,6 +51,17 @@ public static class DependencyInjection
         services.AddScoped<Application.Dashboards.ISystemMetricService, SystemMetricService>();   // metric layer (D4)
         services.AddScoped<Application.Dashboards.IDashboardStore, DashboardStoreService>();      // dashboards (D4)
         services.AddScoped<Application.CustomFields.ICustomFieldService, CustomFieldService>();   // custom fields (D5)
+        // CF-FIX3 — the anti-rot registries: consumers register providers; lifecycle code only
+        // loops the collections. Adding a consumer = one interface + ONE line here, never a
+        // guard edit (pinned by ExtensibilityProofTests).
+        services.AddScoped<Application.CustomFields.ICustomFieldReferenceProvider, Referencing.EntryFormReferenceProvider>();
+        services.AddScoped<Application.CustomFields.ICustomFieldReferenceProvider, Referencing.SavedViewReferenceProvider>();
+        services.AddScoped<Application.CustomFields.ICustomFieldReferenceProvider, Referencing.SegmentReferenceProvider>();
+        services.AddScoped<Application.CustomFields.ICustomFieldDataProvider, Referencing.CustomValueDataProvider>();
+        services.AddScoped<Application.CustomFields.ICustomListValueReferenceProvider, Referencing.SavedViewReferenceProvider>();
+        services.AddScoped<Application.CustomFields.ICustomListValueReferenceProvider, Referencing.SegmentReferenceProvider>();
+        services.AddScoped<Application.CustomFields.ICustomListValueDataProvider, Referencing.CustomValueDataProvider>();
+        services.AddScoped<Application.CustomFields.ICustomListValueDataProvider, Referencing.NativeCodeColumnDataProvider>();
         services.AddScoped<Application.Segments.ISegmentService, SegmentService>();              // segments (D6)
         services.AddScoped<Application.Segments.ISegmentProjection, SegmentProjection>();        // the (iii-a) projection
         services.AddScoped<Application.Views.IRecordReachability, RecordReachability>();        // the ONE reachability guard (A2F-T4)
