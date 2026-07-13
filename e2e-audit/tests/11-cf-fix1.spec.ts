@@ -212,3 +212,33 @@ test('CF-FIX1-T8: new types on screen — full names in the picker; Date rejects
   for (const d of [dateDef, emailDef, linkDef])
     expect((await request.delete(`${API}/api/custom-fields/${d.id}`, { headers: ADMIN })).status()).toBe(204)
 })
+
+test('CF-FIX1-T9: depends-on works and is hardened — child filters by parent; dangling parent blocked on screen', async ({ page, request }) => {
+  // The standing COUNTRY→STATE dependency drives the vendor form's cascading pickers.
+  const V = `T9${STAMP}`
+  await request.post(`${API}/api/custom-lists`, { headers: { ...ADMIN, ...JSON_H },
+    data: { code: V, name: `T9 Region ${STAMP}`, description: null, parentListCode: 'COUNTRY' } })
+
+  await goAs(page, 'u_admin', 'lists')
+  await page.waitForTimeout(1200)
+  await page.getByRole('button', { name: new RegExp(`T9 Region ${STAMP}`) }).click()
+
+  // Child value entry offers the PARENT list's values; pick one and it lands.
+  await page.getByLabel('Label', { exact: true }).fill('North Zone')
+  await page.getByLabel('Country', { exact: true }).selectOption({ label: 'Malaysia' })
+  await page.getByRole('button', { name: 'Add value' }).click()
+  await page.waitForTimeout(600)
+  await expect(page.getByRole('row', { name: /North Zone/ })).toContainText('Malaysia')
+
+  // A dangling parent value is refused by the SERVER.
+  const bad = await request.post(`${API}/api/custom-lists/${V}/values`, { headers: { ...ADMIN, ...JSON_H },
+    data: { code: null, label: 'Ghost Zone', parentValueCode: 'NO_SUCH' } })
+  expect(bad.status()).toBe(409)   // DomainRuleException → conflict, the app's standing error contract
+
+  // A dangling parent LIST is refused at create.
+  const badList = await request.post(`${API}/api/custom-lists`, { headers: { ...ADMIN, ...JSON_H },
+    data: { code: `T9X${STAMP}`, name: 'Ghost', description: null, parentListCode: 'NO_SUCH_LIST' } })
+  expect(badList.status()).toBe(409)
+
+  expect((await request.delete(`${API}/api/custom-lists/${V}`, { headers: ADMIN })).status()).toBe(204)
+})

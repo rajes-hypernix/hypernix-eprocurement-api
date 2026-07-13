@@ -34,6 +34,12 @@ public sealed class CustomListService(AppDbContext db, IClock clock) : ICustomLi
             throw new DomainRuleException("The Internal ID may only use letters, digits and underscores.");
         if (await db.CustomLists.AnyAsync(l => l.Code == code, ct))
             throw new DomainRuleException($"A custom list with Internal ID '{code}' already exists.");
+        // CF-FIX1-T9: a dangling list-level dependency is rejected at create. Reparenting has
+        // NO api path (UpdateCustomListRequest carries no ParentListCode) — so list-level
+        // dependency CYCLES are impossible BY CONSTRUCTION: a parent must already exist when
+        // its child is created, and neither end can be re-pointed afterwards.
+        if (req.ParentListCode is { } plc && !await db.CustomLists.AnyAsync(l => l.Code == plc, ct))
+            throw new DomainRuleException($"Parent list '{plc}' does not exist.");
 
         if (req.OrderMode is not ("Entered" or "Alphabetical"))
             throw new DomainRuleException("OrderMode must be Entered or Alphabetical.");
@@ -112,6 +118,7 @@ public sealed class CustomListService(AppDbContext db, IClock clock) : ICustomLi
             code = next.ToString(System.Globalization.CultureInfo.InvariantCulture);
         }
         if (list.Values.Any(v => v.Code == code)) throw new DomainRuleException($"Value '{code}' already exists in {list.Name}.");
+        await ValidateParentValueAsync(list, req.ParentValueCode, selfCode: null, ct);
 
         var value = new CustomListValue
         {
@@ -129,6 +136,9 @@ public sealed class CustomListService(AppDbContext db, IClock clock) : ICustomLi
         var value = await db.CustomListValues.FirstOrDefaultAsync(v => v.Id == valueId, ct)
             ?? throw new NotFoundException($"List value {valueId} not found.");
         value.Label = req.Label.Trim();
+        var ownerList = await db.CustomLists.AsNoTracking().Include(l => l.Values)
+            .FirstAsync(l => l.Id == value.CustomListId, ct);
+        await ValidateParentValueAsync(ownerList, req.ParentValueCode, selfCode: value.Code, ct);
         value.ParentValueCode = req.ParentValueCode;
         value.Sort = req.Sort;
         value.Active = req.Active;
@@ -153,6 +163,15 @@ public sealed class CustomListService(AppDbContext db, IClock clock) : ICustomLi
             return ToDto(value);
         }
 
+        // CF-FIX1-T9/T10: a value other values POINT AT (dependent-list children, or same-list
+        // tree children) is never silently orphaned — it deactivates instead.
+        if (await HasDependentChildrenAsync(list, value.Code, ct))
+        {
+            value.Active = false;
+            await db.SaveChangesAsync(ct);
+            return ToDto(value);
+        }
+
         db.CustomListValues.Remove(value);
         await db.SaveChangesAsync(ct);
         return null;
@@ -165,6 +184,52 @@ public sealed class CustomListService(AppDbContext db, IClock clock) : ICustomLi
     /// added here. Onboarding questionnaire ANSWERS are deliberately not probed: they store
     /// free values per question order, not typed list references (matching on raw string
     /// equality would over-claim every coincidental text answer).</summary>
+    /// <summary>CF-FIX1-T9/T10: the ONE parent-value validation — BOTH meanings of
+    /// ParentValueCode (mutually exclusive by construction):
+    ///   • DEPENDENT list (list has ParentListCode): the parent value must exist in the
+    ///     PARENT list (B3 — Selangor points at COUNTRY's MY).
+    ///   • FLAT list (no ParentListCode): the parent must be another value of the SAME list
+    ///     (B5 — a category tree). Self-parent and cycles (walked to the root) reject.</summary>
+    private async Task ValidateParentValueAsync(CustomList list, string? parentValueCode, string? selfCode, CancellationToken ct)
+    {
+        if (parentValueCode is null) return;
+        if (list.ParentListCode is { } plc)
+        {
+            var parentList = await db.CustomLists.AsNoTracking().Include(l => l.Values)
+                .FirstOrDefaultAsync(l => l.Code == plc, ct)
+                ?? throw new DomainRuleException($"Parent list '{plc}' does not exist.");
+            if (!parentList.Values.Any(v => v.Code == parentValueCode))
+                throw new DomainRuleException($"'{parentValueCode}' is not a value of the parent list {parentList.Name}.");
+            return;
+        }
+        if (selfCode is not null && string.Equals(parentValueCode, selfCode, StringComparison.Ordinal))
+            throw new DomainRuleException("A value cannot be its own parent.");
+        var byCode = list.Values.ToDictionary(v => v.Code, v => v.ParentValueCode);
+        if (!byCode.ContainsKey(parentValueCode))
+            throw new DomainRuleException($"'{parentValueCode}' is not an existing value of this list — pick a previously-entered value.");
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var cursor = (string?)parentValueCode;
+        while (cursor is not null)
+        {
+            if (selfCode is not null && cursor == selfCode)
+                throw new DomainRuleException("That parent would create a cycle — a value cannot be its own ancestor.");
+            if (!seen.Add(cursor))
+                throw new DomainRuleException("That parent chain already contains a cycle — fix the list values first.");
+            cursor = byCode.GetValueOrDefault(cursor);
+        }
+    }
+
+    /// <summary>Values that point AT this code: same-list tree children (B5), or — when a
+    /// child list depends on this one — the child list's values (B3).</summary>
+    private async Task<bool> HasDependentChildrenAsync(CustomList list, string valueCode, CancellationToken ct)
+    {
+        if (await db.CustomListValues.AnyAsync(v => v.CustomListId == list.Id && v.ParentValueCode == valueCode, ct))
+            return true;
+        var childListIds = await db.CustomLists.Where(l => l.ParentListCode == list.Code).Select(l => l.Id).ToListAsync(ct);
+        return childListIds.Count > 0
+            && await db.CustomListValues.AnyAsync(v => childListIds.Contains(v.CustomListId) && v.ParentValueCode == valueCode, ct);
+    }
+
     private async Task<bool> IsReferencedAsync(string listCode, string valueCode, CancellationToken ct)
     {
         // Custom-field values: defs bound to this list, storing this code (D5's ValueListCode).

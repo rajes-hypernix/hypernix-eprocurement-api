@@ -192,3 +192,55 @@ public sealed class CustomListCreateOrderModeTests
         await bad.Should().ThrowAsync<eProcure.Domain.DomainRuleException>();
     }
 }
+
+// CF-FIX1-T9: the depends-on mechanism, hardened — every scenario the operator asked about.
+public sealed class DependsOnHardeningTests
+{
+    private static (TestContext C, CustomListService Svc) New()
+    {
+        var c = TestContext.New();
+        return (c, new CustomListService(c.Db, c.Clock));
+    }
+
+    [Fact]
+    public async Task Dangling_parent_list_and_dangling_parent_value_are_rejected()
+    {
+        var (_, svc) = New();
+        var badList = async () => await svc.CreateListAsync(new("T9ORPH", "T9 Orphan", null, "NO_SUCH_LIST"));
+        await badList.Should().ThrowAsync<eProcure.Domain.DomainRuleException>();
+
+        await svc.CreateListAsync(new("T9CTRY", "T9 Country", null, null));
+        await svc.AddValueAsync("T9CTRY", new("MY", "Malaysia", null));
+        await svc.CreateListAsync(new("T9STATE", "T9 State", null, "T9CTRY"));
+        var badValue = async () => await svc.AddValueAsync("T9STATE", new("SGR", "Selangor", "XX"));
+        await badValue.Should().ThrowAsync<eProcure.Domain.DomainRuleException>("the parent value must exist in the parent list");
+        (await svc.AddValueAsync("T9STATE", new("SGR", "Selangor", "MY"))).ParentValueCode.Should().Be("MY");
+    }
+
+    [Fact]
+    public async Task Deleting_a_parent_value_with_dependent_children_deactivates_instead_of_orphaning()
+    {
+        var (c, svc) = New();
+        await svc.CreateListAsync(new("T9C2", "T9 Country2", null, null));
+        var my = await svc.AddValueAsync("T9C2", new("MY", "Malaysia", null));
+        await svc.CreateListAsync(new("T9S2", "T9 State2", null, "T9C2"));
+        await svc.AddValueAsync("T9S2", new("SGR", "Selangor", "MY"));
+
+        var result = await svc.DeleteValueAsync(my.Id);
+        result.Should().NotBeNull("a parent with children DEACTIVATES (never-silently-orphan)");
+        result!.Active.Should().BeFalse();
+        c.Db.CustomListValues.Count(v => v.Code == "MY").Should().Be(1, "the row survives — Selangor still resolves its parent");
+    }
+
+    [Fact]
+    public async Task List_level_reparenting_has_no_api_path_so_cycles_are_impossible_by_construction()
+    {
+        var (_, svc) = New();
+        await svc.CreateListAsync(new("T9A", "T9 A", null, null));
+        await svc.CreateListAsync(new("T9B", "T9 B", null, "T9A"));
+        // UpdateCustomListRequest carries Name/Description/OrderMode ONLY — the compiler is
+        // the guard: there is no way to point T9A at T9B after the fact.
+        typeof(eProcure.Application.Configuration.UpdateCustomListRequest).GetProperty("ParentListCode")
+            .Should().BeNull("reparenting is not in the update contract — cycles cannot be formed");
+    }
+}
