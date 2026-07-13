@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { goAs, pickSearch , requiredCustomValues, fillRequiredCustomFields } from './helpers'
+import { goAs, pickSearch , requiredCustomValues, fillRequiredCustomFields, hardDeleteField } from './helpers'
 
 // CF programme browser proofs — ONE growing spec; each test name matches a ledger Test column
 // entry. A ledger box only ticks when its test here drives the capability on screen and passes.
@@ -471,8 +471,8 @@ test('CF4-T12: field authoring — display=Inline renders as text, show-in-list 
     data: { label: STAR, recordType: 'PurchaseOrder', dataType: 'Text', customListId: null, required: false, helpText: '', sort: star.sort, displayType: 'Normal', showInList: false } })
   await request.put(`${API}/api/custom-values/PurchaseOrder/${po.id}`, {
     headers: { ...BUYER, ...JSON_H }, data: { values: { [star.code]: null } } })
-  expect((await request.delete(`${API}/api/custom-fields/${star.id}`, { headers: ADMIN })).status()).toBe(204)
-  expect((await request.delete(`${API}/api/custom-fields/${anchor.id}`, { headers: ADMIN })).status()).toBe(204)
+  await hardDeleteField(request, star)     // CF-FIX4-T4: UI-created fields are placed — unplace, then delete
+  await hardDeleteField(request, anchor)
 })
 
 // ── CF5 — Entry-form layout editor ───────────────────────────────────────────
@@ -655,6 +655,11 @@ test('CF6: line field end-to-end — admin authors a Line-scope field on screen,
   await page.waitForTimeout(1500)
   await expect(page.locator('th', { hasText: LABEL })).toBeVisible()
   await page.getByLabel(`${LABEL} line 1`, { exact: true }).fill(`LOT-${STAMP}`)
+  // Required header defs (e.g. the operator's 'Partner') must be STORED before the PR
+  // save's line-values PUT — they ride a different card/save on this page.
+  const reqVals = await requiredCustomValues(request, 'Requisition', draft.id)
+  if (Object.keys(reqVals).length > 0)
+    await request.put(`${API}/api/custom-values/Requisition/${draft.id}`, { headers: { ...BUYER, ...JSON_H }, data: { values: reqVals } })
   await page.getByRole('button', { name: 'Save changes' }).first().click()
   // Saving navigates back to the list (leave()) — wait for THAT before re-opening, or the
   // late navigation yanks the reopened form back to the list.

@@ -135,8 +135,65 @@ public sealed class CustomFieldService(
                     Label = def.Label, DataType = RegistryTypeOf(dataType), CustomFieldDefId = def.Id,
                 });
         }
+        // CF-FIX4-T4: the mandatory cascade (cascade-aware callers only — Placements null is
+        // the legacy applied-but-unplaced seam). Writes the SOLE placement authority:
+        // EntryFormField rows, the exact rows the designer drags and L6 removes.
+        await ApplyPlacementsAsync(def, applied, req.Placements, ct);
         await db.SaveChangesAsync(ct);
         return ToDto(def, 0, applied.Select(a => a.ToString()).OrderBy(x => x).ToList());
+    }
+
+    /// <summary>CF-FIX4-T4. Validates the cascade and writes EntryFormField placement rows +
+    /// the DefaultGroupTitle HINT on each application (a title, never placement storage).
+    /// Rules: placements are Header-scope only; every placement's type must be applied; the
+    /// form must be active and of that type; the group must belong to the form (null → the
+    /// form's IsHeader group, which L3 guarantees); every APPLIED form-bearing type needs
+    /// ≥1 placement when the caller is cascade-aware.</summary>
+    private async Task ApplyPlacementsAsync(CustomFieldDef def, IReadOnlyList<RecordType> applied,
+        IReadOnlyList<FieldPlacementRequest>? placements, CancellationToken ct, IReadOnlyList<RecordType>? onlyTypes = null)
+    {
+        if (placements is null) return;
+        if (def.Scope == "Line" && placements.Count > 0)
+            throw new CustomFieldValidationException("Line fields are sublist columns — they have no group placement (L4).");
+        var wanted = placements.Select(p => (Type: Parse(p.RecordType), p.FormId, p.GroupId)).ToList();
+        if (wanted.Select(w => w.FormId).Distinct().Count() != wanted.Count)
+            throw new CustomFieldValidationException("A field is placed at most once per form.");
+        var scopeTypes = (onlyTypes ?? applied).ToList();
+        foreach (var w in wanted)
+            if (!applied.Contains(w.Type))
+                throw new CustomFieldValidationException($"A placement names {w.Type}, which is not in the applies-to set — placement and applies-to can never disagree.");
+        foreach (var t2 in scopeTypes)
+        {
+            var hasForms = await db.EntryFormDefs.AnyAsync(f => f.RecordType == t2 && f.Active, ct);
+            if (hasForms && def.Scope == "Header" && wanted.All(w => w.Type != t2))
+                throw new CustomFieldValidationException($"{t2} needs a form placement — pick which form(s) this field appears on (the group defaults to Header).");
+        }
+        foreach (var w in wanted.Where(x => scopeTypes.Contains(x.Type)))
+        {
+            var form = await db.EntryFormDefs.FirstOrDefaultAsync(f => f.Id == w.FormId, ct)
+                ?? throw new CustomFieldValidationException("A placement names a form that does not exist.");
+            if (form.RecordType != w.Type || !form.Active)
+                throw new CustomFieldValidationException($"'{form.Name}' is not an active {w.Type} form.");
+            var group = w.GroupId is { } gid
+                ? await db.EntryFormGroups.FirstOrDefaultAsync(g => g.Id == gid && g.FormDefId == form.Id, ct)
+                    ?? throw new CustomFieldValidationException($"The chosen group does not belong to '{form.Name}'.")
+                : await db.EntryFormGroups.FirstAsync(g => g.FormDefId == form.Id && g.IsHeader, ct);   // L3: cannot miss
+            if (await db.EntryFormFields.AnyAsync(x => x.FormDefId == form.Id && x.FieldKey == def.Code, ct))
+                continue;   // already placed there (idempotent for update-adds)
+            var maxSort = await db.EntryFormFields.Where(x => x.FormDefId == form.Id)
+                .Select(x => (int?)x.Sort).MaxAsync(ct) ?? -1;
+            db.EntryFormFields.Add(new Domain.Forms.EntryFormField
+            {
+                Id = Guid.NewGuid(), FormDefId = form.Id, FieldKey = def.Code, GroupId = group.Id,
+                Sort = maxSort + 1, DisplayType = Domain.Forms.EntryFormDisplayType.Normal,
+                RequiredOnForm = false,
+            });
+            var app = db.CustomFieldDefApplications.Local.FirstOrDefault(a => a.FieldDefId == def.Id && a.RecordType == w.Type)
+                ?? await db.CustomFieldDefApplications.FirstOrDefaultAsync(a => a.FieldDefId == def.Id && a.RecordType == w.Type, ct);
+            if (app is not null && app.DefaultGroupTitle is null) app.DefaultGroupTitle = group.Title;   // the HINT
+            await audit.WriteAsync("CustomField", def.Code, "Placed on form",
+                before: null, after: $"{form.Name} · {group.Title}", ct: ct);
+        }
     }
 
     public async Task<CustomFieldDefDto> UpdateDefAsync(Guid id, SaveCustomFieldDefRequest req, CancellationToken ct = default)
@@ -166,12 +223,14 @@ public sealed class CustomFieldService(
         {
             var wanted = req.RecordTypes.Select(Parse).Distinct().ToList();
             var current = await db.CustomFieldDefApplications.Where(a => a.FieldDefId == def.Id).ToListAsync(ct);
+            var added = new List<RecordType>();
             foreach (var t2 in wanted)
             {
                 if (def.Scope == "Line" && !LineOwnership.SupportedTypes.Contains(t2))
                     throw new CustomFieldValidationException($"Line fields aren't supported on {t2} yet.");
                 if (current.All(a => a.RecordType != t2))
                 {
+                    added.Add(t2);
                     db.CustomFieldDefApplications.Add(new CustomFieldDefApplication { FieldDefId = def.Id, RecordType = t2 });
                     if (def.Scope == "Header" && !await db.FieldRegistry.AnyAsync(r => r.CustomFieldDefId == def.Id && r.RecordType == t2, ct))
                         db.FieldRegistry.Add(new FieldRegistryEntry
@@ -189,7 +248,22 @@ public sealed class CustomFieldService(
                 db.CustomFieldDefApplications.Remove(gone);
                 var regGone = await db.FieldRegistry.FirstOrDefaultAsync(r => r.CustomFieldDefId == def.Id && r.RecordType == gone.RecordType, ct);
                 if (regGone is not null) db.FieldRegistry.Remove(regGone);
+                // CF-FIX4-T4 (bidirectional invariant, direction A): a type leaving the
+                // applies-to set takes its PLACEMENT rows with it — a pure L6 layout op
+                // (zero values here, guarded above), audited per form.
+                var placements = await db.EntryFormFields
+                    .Where(x => x.FieldKey == def.Code
+                        && db.EntryFormDefs.Any(d2 => d2.Id == x.FormDefId && d2.RecordType == gone.RecordType))
+                    .ToListAsync(ct);
+                foreach (var p in placements)
+                {
+                    db.EntryFormFields.Remove(p);
+                    await audit.WriteAsync("CustomField", def.Code, "Unplaced (applies-to removed)",
+                        before: gone.RecordType.ToString(), after: null, ct: ct);
+                }
             }
+            // Newly-added types run the SAME cascade (cascade-aware callers must place them).
+            await ApplyPlacementsAsync(def, wanted, req.Placements, ct, onlyTypes: added);
         }
         await db.SaveChangesAsync(ct);
         return ToDto(def, await db.CustomFieldValues.CountAsync(v => v.FieldDefId == def.Id, ct), await AppliedTypesAsync(def.Id, ct));

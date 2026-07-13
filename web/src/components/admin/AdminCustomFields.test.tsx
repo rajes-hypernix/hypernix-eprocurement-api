@@ -16,6 +16,41 @@ const report = (over: Partial<ImpactReportDto>): ImpactReportDto => ({
   canDelete: false, canPurge: false, blockedReason: null, ...over,
 })
 
+describe('AdminCustomFields — CF-FIX4-T4 placement cascade', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks()
+    vi.spyOn(client, 'getCustomFieldDefs').mockResolvedValue([])
+    vi.spyOn(client, 'getCustomLists').mockResolvedValue([])
+    vi.spyOn(client, 'getEntryForms').mockResolvedValue([
+      { id: 'f-std', code: 'ef_standard_po_form', name: 'Standard PO Form', recordType: 'PurchaseOrder', isSystem: true, active: true, roles: [], fields: [],
+        groups: [{ id: 'g-h', subtabId: null, title: 'Header', sort: 0, columnBreak: false, isHeader: true }] },
+    ])
+  })
+
+  it('creating a field pre-selects the STANDARD form (option c) and sends the cascade with Header default', async () => {
+    const create = vi.spyOn(client, 'createCustomFieldDef').mockResolvedValue(DEF)
+    renderWithQuery(<AdminCustomFields />)
+    await userEvent.click(await screen.findByRole('button', { name: 'New field' }))
+    await screen.findByText(/Placement — where this field appears/)
+    expect(screen.getByLabelText('Purchase Order — form(s)')).toBeInTheDocument()
+    await userEvent.type(screen.getByLabelText('Label'), 'Cascade Probe')
+    await userEvent.click(screen.getByRole('button', { name: 'Create field' }))
+    await waitFor(() => expect(create).toHaveBeenCalled())
+    expect(create.mock.calls[0][0].placements).toEqual([
+      { recordType: 'PurchaseOrder', formId: 'f-std', groupId: null },   // standard pre-selected, Header default
+    ])
+  })
+
+  it('a LINE-scope field skips placement (L4 — sublist columns have no groups)', async () => {
+    renderWithQuery(<AdminCustomFields />)
+    await userEvent.click(await screen.findByRole('button', { name: 'New field' }))
+    await screen.findByText(/Placement — where this field appears/)
+    const { pickSearchable } = await import('../../test/utils')
+    await pickSearchable('Scope (header field or line column)', 'Line')
+    expect(screen.queryByText(/Placement — where this field appears/)).toBeNull()
+  })
+})
+
 describe('AdminCustomFields — CF-FIX3 three-tier lifecycle dialog', () => {
   beforeEach(() => {
     vi.restoreAllMocks()

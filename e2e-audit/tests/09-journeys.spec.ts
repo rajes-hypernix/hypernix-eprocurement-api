@@ -112,7 +112,9 @@ test('the journey: home → view → reminder + KPI → dashboard live → filte
   expect((await request.delete(`${API}/api/dashboards/mine`, { headers: BUYER })).status()).toBe(204)
   expect((await request.delete(`${API}/api/views/${view.id}`, { headers: BUYER })).status()).toBe(204)
   expect((await request.delete(`${API}/api/entry-forms/${roleForm.id}`, { headers: ADMIN })).status()).toBe(204)
-  const defs = await (await request.get(`${API}/api/custom-fields?recordType=Requisition`, { headers: ADMIN })).json()
+  // CF-FIX4-T4 direction B: deleting the role form dropped the def's LAST placement, so
+  // its Requisition application reconciled away — list WITHOUT the type filter to find it.
+  const defs = await (await request.get(`${API}/api/custom-fields`, { headers: ADMIN })).json()
   const cf = defs.find((d: { code: string }) => d.code === CF_CODE)
   expect((await request.delete(`${API}/api/custom-fields/${cf.id}`, { headers: ADMIN })).status()).toBe(204)
 })

@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   getCustomFieldDefs, createCustomFieldDef, updateCustomFieldDef, setCustomFieldActive, deleteCustomFieldDef,
-  getCustomFieldReferences, purgeCustomField,
-  getCustomLists, type CustomFieldDefDto,
+  getCustomFieldReferences, purgeCustomField, getEntryForms,
+  getCustomLists, type CustomFieldDefDto, type FieldPlacementRequest,
 } from '../../api/client'
 import { ImpactReportDialog } from './ImpactReportDialog'
 import { SetupPage } from '../../ui/archetypes/SetupPage'
@@ -148,6 +148,27 @@ function DefModal({ recordType, def, replacing, onClose, onSaved, onReplace }: {
 
   const [error, setError] = useState<string | null>(null)
   const { data: lists = [] } = useQuery({ queryKey: ['custom-lists'], queryFn: getCustomLists })
+  // CF-FIX4-T4: the mandatory cascade — per chosen form-bearing record type, form(s) with
+  // the STANDARD form pre-selected (option c, locked) and a group per form (Header default).
+  const { data: allForms = [] } = useQuery({ queryKey: ['entry-form-defs'], queryFn: () => getEntryForms() })
+  const [placeForms, setPlaceForms] = useState<Record<string, string>>({})        // recordType -> 'formId|formId'
+  const [placeGroups, setPlaceGroups] = useState<Record<string, string>>({})      // formId -> groupId
+  const chosenTypes = (appliesTo ? appliesTo.split('|') : [recordType])
+  const newTypes = def ? chosenTypes.filter((t) => !(def.recordTypes ?? []).includes(t)) : chosenTypes
+  const placementTypes = scope === 'Line' ? [] : newTypes.filter((t) => allForms.some((f) => f.recordType === t && f.active))
+  const formsFor = (t: string) => allForms.filter((f) => f.recordType === t && f.active)
+  const selectedFormIds = (t: string) => {
+    const cur = placeForms[t]
+    if (cur !== undefined) return cur ? cur.split('|') : []
+    const std = formsFor(t).find((f) => f.isSystem)
+    return std ? [std.id] : []            // option (c): standard pre-selected
+  }
+  const buildPlacements = (): FieldPlacementRequest[] | null => {
+    if (placementTypes.length === 0) return null   // legacy seam: nothing to place (or Line scope)
+    return placementTypes.flatMap((t) => selectedFormIds(t).map((fid) => ({
+      recordType: t, formId: fid, groupId: placeGroups[fid] || null,
+    })))
+  }
 
   const save = useMutation({
     mutationFn: () => {
@@ -158,6 +179,7 @@ function DefModal({ recordType, def, replacing, onClose, onSaved, onReplace }: {
         displayType, showInList, scope,
         code: def ? null : (internalId.trim() || null),
         recordTypes: appliesTo ? appliesTo.split('|') : [recordType],
+        placements: buildPlacements(),
       }
       return def ? updateCustomFieldDef(def.id, req) : createCustomFieldDef(req)
     },
@@ -214,6 +236,32 @@ function DefModal({ recordType, def, replacing, onClose, onSaved, onReplace }: {
           help: 'The record types this ONE field applies to — its value can carry between them (PR → PO).',
           options: { kind: 'static', options: recordTypeOptions(RECORD_TYPES) } }}
         value={appliesTo} onChange={(v) => setAppliesTo(String(v ?? ''))} />
+      {placementTypes.length > 0 && (
+        <div className="card" style={{ padding: 10, marginBottom: 10 }}>
+          <div className="hint" style={{ fontWeight: 700, marginBottom: 6 }}>Placement — where this field appears (record → form → group)</div>
+          {placementTypes.map((t) => (
+            <div key={t} style={{ marginBottom: 8 }}>
+              <SelectField
+                spec={{ key: `cf-place-form-${t}`, label: `${recordTypeLabel(t)} — form(s)`, dataType: 'multiSelect', searchable: true,
+                  help: 'Mandatory. The standard form is pre-selected; the group defaults to Header.',
+                  options: { kind: 'static', options: formsFor(t).map((f) => ({ code: f.id, label: f.name })) } }}
+                value={selectedFormIds(t).join('|')}
+                onChange={(v) => setPlaceForms((cur) => ({ ...cur, [t]: String(v ?? '') }))} />
+              {selectedFormIds(t).map((fid) => {
+                const form = allForms.find((f) => f.id === fid)
+                if (!form) return null
+                return (
+                  <SelectField key={fid}
+                    spec={{ key: `cf-place-group-${fid}`, label: `${form.name} — field group`, dataType: 'select', searchable: true,
+                      options: { kind: 'static', options: (form.groups ?? []).map((g) => ({ code: g.id, label: g.title })) } }}
+                    value={placeGroups[fid] ?? (form.groups ?? []).find((g) => g.isHeader)?.id ?? ''}
+                    onChange={(v) => setPlaceGroups((cur) => ({ ...cur, [fid]: String(v ?? '') }))} />
+                )
+              })}
+            </div>
+          ))}
+        </div>
+      )}
       <SelectField spec={{ ...spec('cf-display', 'Display type', 'select', DISPLAY_TYPES), searchable: true }} value={displayType} onChange={(v) => setDisplayType(String(v ?? 'Normal'))} />
       {displayType !== 'Normal' && <p className="hint">Disabled and Inline fields render read-only and reject user edits — values arrive via defaults or imports.</p>}
       <CheckboxField spec={spec('cf-showinlist', 'Show On Default List', 'boolean')} value={showInList} onChange={(v) => setShowInList(v === true)} />

@@ -174,10 +174,12 @@ export type CustomFieldDefDto = {
   customListId?: string | null; required: boolean; helpText: string; active: boolean; sort: number; valueCount: number
   displayType?: string; showInList?: boolean; scope?: string; recordTypes?: string[]
 }
+export type FieldPlacementRequest = { recordType: string; formId: string; groupId?: string | null }
 export type SaveCustomFieldDefRequest = {
   label: string; recordType: string; dataType: string; customListId?: string | null
   required: boolean; helpText: string; sort: number
   displayType?: string; showInList?: boolean; scope?: string; code?: string | null; recordTypes?: string[] | null
+  placements?: FieldPlacementRequest[] | null   // CF-FIX4-T4: the mandatory cascade (null = legacy unplaced)
 }
 export type CustomValueDto = {
   code: string; label: string; dataType: string; required: boolean; helpText: string
@@ -305,6 +307,8 @@ export const deleteEntryFormGroup = (formId: string, groupId: string) =>
 // CF-FIX4-T3: the drag-drop placement move (ONE shared placement row, L1) + sublist order (L4).
 export const moveEntryFormField = (formId: string, fieldKey: string, groupId: string, sort: number) =>
   http<EntryFormDefDto>(`/entry-forms/${formId}/fields/${encodeURIComponent(fieldKey)}/placement`, { method: 'PUT', body: JSON.stringify({ groupId, sort }) })
+export const removeEntryFormField = (formId: string, fieldKey: string) =>
+  http<EntryFormDefDto>(`/entry-forms/${formId}/fields/${encodeURIComponent(fieldKey)}`, { method: 'DELETE' })
 export const saveEntryFormSublist = (formId: string, fieldKeys: string[]) =>
   http<EntryFormDefDto>(`/entry-forms/${formId}/sublist`, { method: 'PUT', body: JSON.stringify({ fieldKeys }) })
 export const resolveEntryForm = (recordType: string) =>

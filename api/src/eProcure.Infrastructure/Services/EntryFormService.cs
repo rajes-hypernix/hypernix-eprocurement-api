@@ -98,12 +98,68 @@ public sealed class EntryFormService(AppDbContext db, IClock clock, ICurrentUser
         // existing objects (their Hidden/ColumnBreak/Sort state and explicitly-created empty
         // containers survive). Containers are DELETED only through their explicit endpoints,
         // where the guards live (CF5-T2/T3).
+        var beforeKeys = await db.EntryFormFields.Where(f => f.FormDefId == def.Id)
+            .Select(f => f.FieldKey).ToListAsync(ct);
         db.EntryFormFields.RemoveRange(await db.EntryFormFields.Where(f => f.FormDefId == def.Id).ToListAsync(ct));
         var existingSubtabs = await db.EntryFormSubtabs.Where(s => s.FormDefId == def.Id).ToListAsync(ct);
         var existingGroups = await db.EntryFormGroups.Where(g => g.FormDefId == def.Id).ToListAsync(ct);
         AddLayout(def.Id, req.Fields, existingSubtabs, existingGroups);
         await db.SaveChangesAsync(ct);
+        var removed = beforeKeys.Except(req.Fields.Select(x => x.FieldKey), StringComparer.OrdinalIgnoreCase).ToList();
+        await ReconcileCustomFieldApplicationsAsync(def.RecordType, removed, ct);
         return await ToDtoAsync(def, ct);
+    }
+
+    /// <summary>CF-FIX4-T4: surgical UNPLACE (L6 — deletes the placement row, never values).
+    /// System forms allow it for Custom/Segment keys only: the cascade may place onto a
+    /// standard form, so removal must be possible there too — otherwise a placed field
+    /// could never satisfy the CF-FIX-3 delete guard. Native structure stays frozen.</summary>
+    public async Task<EntryFormDefDto> RemoveFieldAsync(Guid formId, string fieldKey, CancellationToken ct = default)
+    {
+        var def = await db.EntryFormDefs.FirstOrDefaultAsync(d => d.Id == formId, ct)
+            ?? throw new NotFoundException($"Entry form {formId} not found.");
+        var field = await db.EntryFormFields.FirstOrDefaultAsync(f => f.FormDefId == formId && f.FieldKey == fieldKey, ct)
+            ?? throw new NotFoundException($"'{fieldKey}' is not placed on this form.");
+        if (def.IsSystem)
+        {
+            var reg = await db.FieldRegistry.FirstOrDefaultAsync(r => r.RecordType == def.RecordType && r.FieldKey == fieldKey, ct);
+            if (reg is null || reg.Kind == Domain.Views.FieldKind.Native)
+                throw new DomainRuleException("Standard forms are read-only for native structure — only custom/segment placements can be removed.");
+        }
+        db.EntryFormFields.Remove(field);
+        def.UpdatedUtc = clock.UtcNow;
+        await db.SaveChangesAsync(ct);
+        await ReconcileCustomFieldApplicationsAsync(def.RecordType, [fieldKey], ct);
+        return await ToDtoAsync(def, ct);
+    }
+
+    /// <summary>CF-FIX4-T4 (bidirectional invariant, direction B): when a custom field's
+    /// LAST placement on a record type's forms disappears, the applies-to application (and
+    /// its registry row) drops with it — placement and applies-to never disagree. DATA
+    /// SAFETY OUTRANKS TIDINESS: if stored values exist under that type, the application
+    /// stays (applied-but-unplaced) so the values remain visible — L6 is the higher law.</summary>
+    private async Task ReconcileCustomFieldApplicationsAsync(RecordType type, IReadOnlyCollection<string> removedKeys, CancellationToken ct)
+    {
+        if (removedKeys.Count == 0) return;
+        var changed = false;
+        foreach (var key in removedKeys.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            var fieldDef = await db.CustomFieldDefs.FirstOrDefaultAsync(d => d.Code == key, ct);
+            if (fieldDef is null) continue;   // native/segment keys are not applications
+            var stillPlaced = await db.EntryFormFields.AnyAsync(x => x.FieldKey == key
+                && db.EntryFormDefs.Any(d2 => d2.Id == x.FormDefId && d2.RecordType == type), ct);
+            if (stillPlaced) continue;
+            var app = await db.CustomFieldDefApplications
+                .FirstOrDefaultAsync(a => a.FieldDefId == fieldDef.Id && a.RecordType == type, ct);
+            if (app is null) continue;
+            if (await db.CustomFieldValues.AnyAsync(v => v.FieldDefId == fieldDef.Id && v.RecordType == type, ct))
+                continue;   // values pin the application — the field stays applied-but-unplaced
+            db.CustomFieldDefApplications.Remove(app);
+            var reg = await db.FieldRegistry.FirstOrDefaultAsync(r => r.CustomFieldDefId == fieldDef.Id && r.RecordType == type, ct);
+            if (reg is not null) db.FieldRegistry.Remove(reg);
+            changed = true;
+        }
+        if (changed) await db.SaveChangesAsync(ct);
     }
 
     public async Task<EntryFormDefDto> SetActiveAsync(Guid id, bool active, CancellationToken ct = default)
@@ -118,12 +174,15 @@ public sealed class EntryFormService(AppDbContext db, IClock clock, ICurrentUser
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {
         var def = await LoadUserForm(id, ct);
+        var deletedKeys = await db.EntryFormFields.Where(f => f.FormDefId == def.Id)
+            .Select(f => f.FieldKey).ToListAsync(ct);
         db.EntryFormRoleMaps.RemoveRange(await db.EntryFormRoleMaps.Where(m => m.FormDefId == def.Id).ToListAsync(ct));
         db.EntryFormFields.RemoveRange(await db.EntryFormFields.Where(f => f.FormDefId == def.Id).ToListAsync(ct));
         db.EntryFormGroups.RemoveRange(await db.EntryFormGroups.Where(g => g.FormDefId == def.Id).ToListAsync(ct));
         db.EntryFormSubtabs.RemoveRange(await db.EntryFormSubtabs.Where(s => s.FormDefId == def.Id).ToListAsync(ct));
         db.EntryFormDefs.Remove(def);
         await db.SaveChangesAsync(ct);
+        await ReconcileCustomFieldApplicationsAsync(def.RecordType, deletedKeys, ct);   // CF-FIX4-T4 direction B
     }
 
     public async Task<EntryFormDefDto> AssignRolesAsync(Guid id, AssignRolesRequest req, CancellationToken ct = default)

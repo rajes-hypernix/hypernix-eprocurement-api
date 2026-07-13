@@ -57,6 +57,10 @@ public class CustomFieldDefApplication
     public Guid Id { get; private set; } = Guid.NewGuid();
     public Guid FieldDefId { get; set; }
     public RecordType RecordType { get; set; }
+    // CF-FIX4-T4 (locked): a default-group HINT only — a TITLE (group ids are per-form),
+    // resolved per-form and falling back to Header (L3). Placement itself lives in
+    // EntryFormField rows, the SOLE placement authority; this never stores placement.
+    public string? DefaultGroupTitle { get; set; }
 }
 
 /// <summary>

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { goAs, requiredCustomValues, pickSearch } from './helpers'
+import { goAs, requiredCustomValues, pickSearch, hardDeleteField } from './helpers'
 
 // CF-FIX-4 browser proofs. T1 Header invariant · T2 standard forms · T3 designer + L6
 // data-safety (the operator's hardest check: remove-from-form deletes placement ONLY).
@@ -173,4 +173,58 @@ test('CF-FIX4-T3fix: labels not ids, searchable add-field, NO default control, a
   expect(state.fields.find((x: { fieldKey: string }) => x.fieldKey === 'custbody_partner').groupId).toBe(headerGroup.id)
 
   expect((await request.delete(`${API}/api/entry-forms/${form.id}`, { headers: ADMIN })).status()).toBe(204)
+})
+
+test('CF-FIX4-T4: the creation cascade — standard pre-selected, Header default, ONE row the designer then re-groups', async ({ page, request }) => {
+  const LABEL = `Fix4 Cascade ${STAMP}`
+  // A non-system PR form so the rearrange half can run in the designer.
+  const std = (await (await request.get(`${API}/api/entry-forms?recordType=Requisition`, { headers: ADMIN })).json())
+    .find((f: { isSystem: boolean }) => f.isSystem)
+  const work = await (await request.post(`${API}/api/entry-forms`, { headers: { ...ADMIN, ...JSON_H },
+    data: { name: `Fix4 Cascade Form ${STAMP}`, recordType: 'Requisition', fields: std.fields } })).json()
+
+  await goAs(page, 'u_admin', 'customfields')
+  await page.waitForTimeout(1200)
+  await page.getByRole('button', { name: 'Requisition', exact: true }).click()
+  await page.getByRole('button', { name: 'New field' }).click()
+  await page.getByLabel('Label', { exact: true }).fill(LABEL)
+
+  // The cascade block is THERE, standard pre-selected (option c) — switch to the work form.
+  await expect(page.getByText(/Placement — where this field appears/)).toBeVisible()
+  const formPicker = page.getByRole('button', { name: 'Requisition — form(s)' })
+  await expect(formPicker).toContainText('Standard PR Form')
+  await formPicker.click()
+  await page.getByRole('combobox', { name: 'Search Requisition — form(s)' }).fill(`Fix4 Cascade Form ${STAMP}`)
+  await page.keyboard.press('Enter')   // ADD the work form (standard stays selected — both get the placement)
+  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: 'Create field' }).click()
+  await page.waitForTimeout(1000)
+
+  // The placement row exists on the chosen form, in Header (group defaulted).
+  const defs = await (await request.get(`${API}/api/custom-fields?recordType=Requisition`, { headers: ADMIN })).json()
+  const def = defs.find((d: { label: string }) => d.label === LABEL)
+  let state = (await (await request.get(`${API}/api/entry-forms?recordType=Requisition`, { headers: ADMIN })).json())
+    .find((f: { id: string }) => f.id === work.id)
+  const header = state.groups.find((g: { isHeader: boolean }) => g.isHeader)
+  expect(state.fields.find((x: { fieldKey: string }) => x.fieldKey === def.code).groupId).toBe(header.id)
+
+  // Rearrange in the designer — the SAME row moves (L1, one object two surfaces).
+  await goAs(page, 'u_admin', 'entryforms')
+  await page.waitForTimeout(1200)
+  await page.getByRole('button', { name: new RegExp(`Fix4 Cascade Form ${STAMP}`) }).click()
+  await page.getByLabel('New group title', { exact: true }).fill('Cascade Landing')
+  await page.getByRole('button', { name: 'Add group' }).click()
+  await page.waitForTimeout(600)
+  const dt = await page.evaluateHandle(() => new DataTransfer())
+  await page.dispatchEvent(`[aria-label="Field row ${def.code}"]`, 'dragstart', { dataTransfer: dt })
+  await page.dispatchEvent('[aria-label="Field group Cascade Landing"]', 'drop', { dataTransfer: dt })
+  await page.waitForTimeout(1000)
+  state = (await (await request.get(`${API}/api/entry-forms?recordType=Requisition`, { headers: ADMIN })).json())
+    .find((f: { id: string }) => f.id === work.id)
+  const landing = state.groups.find((g: { title: string }) => g.title === 'Cascade Landing')
+  expect(state.fields.find((x: { fieldKey: string }) => x.fieldKey === def.code).groupId).toBe(landing.id)
+
+  // cleanup: drop the work form, unplace from the standard form, delete the def.
+  expect((await request.delete(`${API}/api/entry-forms/${work.id}`, { headers: ADMIN })).status()).toBe(204)
+  await hardDeleteField(request, def)
 })

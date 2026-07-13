@@ -78,6 +78,10 @@ public interface IEntryFormService
     // CF-FIX4-T3: the surgical placement move (drag-drop) + the flat sublist order (L4).
     Task<EntryFormDefDto> MoveFieldAsync(Guid formId, string fieldKey, MoveFieldRequest req, CancellationToken ct = default);
     Task<EntryFormDefDto> SaveSublistAsync(Guid formId, SaveSublistRequest req, CancellationToken ct = default);
+    // CF-FIX4-T4: remove ONE placement row (L6 — layout only). Allowed on SYSTEM forms for
+    // Custom/Segment keys ONLY (membership is mutable there, structure never — the exact
+    // symmetry of the cascade being allowed to place onto standard forms).
+    Task<EntryFormDefDto> RemoveFieldAsync(Guid formId, string fieldKey, CancellationToken ct = default);
     /// <summary>The caller's form for a record type (A71 + dynamic View*): fixed global
     /// role precedence, first held role with an Active mapped form wins, Standard fallback.</summary>
     Task<ResolvedFormDto> ResolveAsync(string recordType, CancellationToken ct = default);

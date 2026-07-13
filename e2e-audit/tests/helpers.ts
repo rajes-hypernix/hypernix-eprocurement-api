@@ -91,3 +91,18 @@ export async function fillRequiredCustomFields(
     if (await el.count()) await el.fill('e2e')
   }
 }
+
+// CF-FIX4-T4: UI-created header fields are cascade-PLACED on forms, and CF-FIX-3's guard
+// rightly blocks deleting a placed field. Cleanups unplace first (the governed path),
+// then delete. Uses the surgical unplace endpoint (works on system forms for custom keys).
+export async function hardDeleteField(
+  request: APIRequestContext, def: { id: string; code: string }, expectStatus = 204,
+) {
+  const H = { 'X-Demo-User': 'u_admin' }
+  const report = await (await request.get(`http://localhost:5260/api/custom-fields/${def.id}/references`, { headers: H })).json()
+  for (const ref of report.configReferences ?? [])
+    if (ref.consumerName === 'Entry Forms' && ref.targetId)
+      await request.delete(`http://localhost:5260/api/entry-forms/${ref.targetId}/fields/${encodeURIComponent(def.code)}`, { headers: H })
+  const res = await request.delete(`http://localhost:5260/api/custom-fields/${def.id}`, { headers: H })
+  expect(res.status(), `hard-delete ${def.code}`).toBe(expectStatus)
+}

@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import type { APIRequestContext, Page } from '@playwright/test'
-import { goAs, pickSearch } from './helpers'
+import { goAs, pickSearch, hardDeleteField } from './helpers'
 
 // CF-FIX-3 browser proofs — the impact report + three-tier lifecycle (round 3).
 // Tier 1 Deactivate (always) · Tier 2 Delete (zero refs AND zero values) ·
@@ -160,7 +160,7 @@ test('CF-FIX3-T5: type is immutable in the edit modal; Create replacement prefil
   expect(repl.dataType).toBe('Int')
   expect(repl.label).toBe(LABEL)
 
-  // cleanup both
+  // cleanup both (the replacement was UI-created → cascade-placed → unplace first)
   expect((await request.delete(`${API}/api/custom-fields/${def.id}`, { headers: ADMIN })).status()).toBe(204)
-  expect((await request.delete(`${API}/api/custom-fields/${repl.id}`, { headers: ADMIN })).status()).toBe(204)
+  await hardDeleteField(request, repl)
 })

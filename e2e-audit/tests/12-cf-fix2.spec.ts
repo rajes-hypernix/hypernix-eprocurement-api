@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { goAs, pickSearch } from './helpers'
+import { goAs, pickSearch, hardDeleteField } from './helpers'
 
 // CF-FIX-2 browser proofs — one test per finding (round 2 of the operator's testing).
 
@@ -62,7 +62,7 @@ test('CF-FIX2-T1: contextual prefixes — custbody_/custcol_/CUSTLIST_ with the 
   // cleanup
   const defs = await (await request.get(`${API}/api/custom-fields?recordType=PurchaseOrder`, { headers: ADMIN })).json()
   const def = defs.find((d: { code: string }) => d.code === `custbody_customer_${STAMP}`)
-  expect((await request.delete(`${API}/api/custom-fields/${def.id}`, { headers: ADMIN })).status()).toBe(204)
+  await hardDeleteField(request, def)   // CF-FIX4-T4: UI-created fields are placed — unplace, then delete
   expect((await request.delete(`${API}/api/custom-lists/CUSTLIST_FIX2${STAMP}`, { headers: ADMIN })).status()).toBe(204)
 })
 
@@ -207,5 +207,5 @@ test('CF-FIX2-T3: ONE shared field applied to PR + PO — appears under both rai
   // cleanup: clear both grains then delete the def
   await request.put(`${API}/api/custom-values/PurchaseOrder/${po.id}`, { headers: { ...BUYER, ...JSON_H }, data: { values: { [def[0].code]: null } } })
   await request.put(`${API}/api/custom-values/Requisition/${pr.id}`, { headers: { ...BUYER, ...JSON_H }, data: { values: { [def[0].code]: null } } })
-  expect((await request.delete(`${API}/api/custom-fields/${def[0].id}`, { headers: ADMIN })).status()).toBe(204)
+  await hardDeleteField(request, def[0])   // CF-FIX4-T4: UI-created shared fields are placed — unplace, then delete
 })

@@ -94,6 +94,11 @@ public sealed class EntryFormsController(IEntryFormService forms) : ControllerBa
     public async Task<ActionResult<EntryFormDefDto>> MoveField(Guid id, string fieldKey, [FromBody] MoveFieldRequest req, CancellationToken ct) =>
         Ok(await forms.MoveFieldAsync(id, fieldKey, req, ct));
 
+    [HttpDelete("{id:guid}/fields/{fieldKey}")]
+    [Action(ApiActions.ManageEntryForms)]
+    public async Task<ActionResult<EntryFormDefDto>> RemoveField(Guid id, string fieldKey, CancellationToken ct) =>
+        Ok(await forms.RemoveFieldAsync(id, fieldKey, ct));
+
     [HttpPut("{id:guid}/sublist")]
     [Action(ApiActions.ManageEntryForms)]
     public async Task<ActionResult<EntryFormDefDto>> SaveSublist(Guid id, [FromBody] SaveSublistRequest req, CancellationToken ct) =>

@@ -12,12 +12,21 @@ public sealed record CustomFieldDefDto(
 
 // CF-FIX1-T2: InsertBeforeId REMOVED (operator ruling — placement belongs to the form
 // layout editor, CF5). The plain Sort integer remains the default order.
+/// <summary>CF-FIX4-T4: one requested placement — the cascade's unit. GroupId null
+/// resolves to the form's Header group (L3 guarantees it exists).</summary>
+public sealed record FieldPlacementRequest(string RecordType, Guid FormId, Guid? GroupId);
+
 public sealed record SaveCustomFieldDefRequest(
     string Label, string RecordType, string DataType, Guid? CustomListId, bool Required, string HelpText, int Sort,
     string DisplayType = "Normal", bool ShowInList = false,
     string Scope = "Header",        // CF6-T1: Header | Line
-    string? Code = null,            // CF-FIX1-T5: user-set Internal ID (namespace system-enforced); null → derived from label
-    List<string>? RecordTypes = null);   // CF-FIX2-T3: applies-to set; null → [RecordType] (back-compat)
+    string? Code = null,            // CF-FIX1-T5: user-set Internal ID (namespace system-enforced, null → derived from label)
+    List<string>? RecordTypes = null,    // CF-FIX2-T3: applies-to set; null → [RecordType] (back-compat)
+    // CF-FIX4-T4: the mandatory cascade rides here. NON-NULL = cascade-aware caller (the
+    // UI always sends it): every form-bearing applied type must include ≥1 placement.
+    // NULL = legacy caller: applied-but-unplaced, today's behavior (the CF-FIX-2
+    // RecordTypes wire-compat seam, same pattern).
+    IReadOnlyList<FieldPlacementRequest>? Placements = null);
 
 /// <summary>One field on one record, def metadata + the value as a STRING in the stored
 /// formats the FieldSpec pipeline already uses (ISO dates, raw numerics, 'true'/'false',

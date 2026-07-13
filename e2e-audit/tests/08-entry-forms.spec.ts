@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { goAs, shot, pickSearch } from './helpers'
+import { goAs, shot, pickSearch, hardDeleteField } from './helpers'
 
 // D7 GATE (as ruled, OD-D7-1 option ii): the persona BEFORE/AFTER. A BUYER loads the PR
 // form and gets the seeded Standard layout; an ADMIN composes a role form in the Setup
@@ -196,9 +196,11 @@ test('entry-forms gate: standard → admin composes role form → buyer gets it;
   const forms = await (await request.get(`${API}/api/entry-forms?recordType=Requisition`, { headers: ADMIN })).json()
   const roleForm = forms.find((f: { name: string }) => f.name === FORM_NAME)
   expect((await request.delete(`${API}/api/entry-forms/${roleForm.id}`, { headers: ADMIN })).status()).toBe(204)
-  const defs = await (await request.get(`${API}/api/custom-fields?recordType=Requisition`, { headers: ADMIN })).json()
+  // CF-FIX4-T4 direction B: the role form's deletion dropped the def's last placement and
+  // its application reconciled away — list unfiltered, then hard-delete (unplace-safe).
+  const defs = await (await request.get(`${API}/api/custom-fields`, { headers: ADMIN })).json()
   const cfDef = defs.find((d: { code: string }) => d.code === CF_CODE)
-  expect((await request.delete(`${API}/api/custom-fields/${cfDef.id}`, { headers: ADMIN })).status()).toBe(204)
+  await hardDeleteField(request, cfDef)
   for (const pid of [gatePr.id, draftPr.id])
     expect((await request.post(`${API}/api/requisitions/${pid}/cancel`, {
       headers: { ...BUYER, ...JSON_H }, data: { reason: 'd7 gate cleanup' },

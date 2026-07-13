@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { goAs, pickSearch , requiredCustomValues, fillRequiredCustomFields } from './helpers'
+import { goAs, pickSearch , requiredCustomValues, fillRequiredCustomFields, hardDeleteField } from './helpers'
 
 // CF-FIX-1 browser proofs — one test per task, mirroring the operator's testing notes
 // (Custom_Fields.docx / Custom_List.docx). Names match the CF-FIX1-Tn commits.
@@ -43,7 +43,7 @@ test('CF-FIX1-T2: Insert Before is gone; creating a field still works and lands 
   await expect(page.getByRole('row', { name: new RegExp(`Fix1 Plain ${STAMP}`) })).toBeVisible()
   const defs = await (await request.get(`${API}/api/custom-fields?recordType=PurchaseOrder`, { headers: ADMIN })).json()
   const def = defs.find((d: { label: string }) => d.label === `Fix1 Plain ${STAMP}`)
-  expect((await request.delete(`${API}/api/custom-fields/${def.id}`, { headers: ADMIN })).status()).toBe(204)
+  await hardDeleteField(request, def)   // CF-FIX4-T4: UI-created fields are placed
 })
 
 test('CF-FIX1-T3: order-mode is choosable at CREATE — Alphabetical from birth', async ({ page, request }) => {
@@ -112,7 +112,7 @@ test('CF-FIX1-T5: field Internal ID is user-input — auto-suggested, overridabl
 
   const defs = await (await request.get(`${API}/api/custom-fields?recordType=PurchaseOrder`, { headers: ADMIN })).json()
   const def = defs.find((d: { code: string }) => d.code === `custbody_chosen_${STAMP}`)
-  expect((await request.delete(`${API}/api/custom-fields/${def.id}`, { headers: ADMIN })).status()).toBe(204)
+  await hardDeleteField(request, def)   // CF-FIX4-T4: UI-created fields are placed — unplace, then delete
 })
 
 test('CF-FIX1-T6: list values get automatic numeric ids — 1/2/3 in entry order, read-only', async ({ page, request }) => {
