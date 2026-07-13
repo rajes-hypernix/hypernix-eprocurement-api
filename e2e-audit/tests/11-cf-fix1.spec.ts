@@ -242,3 +242,50 @@ test('CF-FIX1-T9: depends-on works and is hardened — child filters by parent; 
 
   expect((await request.delete(`${API}/api/custom-lists/${V}`, { headers: ADMIN })).status()).toBe(204)
 })
+
+test('CF-FIX1-T10: value-level parent-child on screen — build a 2-level tree; self-parent and cycles blocked', async ({ page, request }) => {
+  const ID = `T10${STAMP}`
+  await request.post(`${API}/api/custom-lists`, { headers: { ...ADMIN, ...JSON_H },
+    data: { code: ID, name: `T10 Tree ${STAMP}`, description: null, parentListCode: null } })
+  await goAs(page, 'u_admin', 'lists')
+  await page.waitForTimeout(1200)
+  await page.getByRole('button', { name: new RegExp(`T10 Tree ${STAMP}`) }).click()
+
+  // Top-level value, then a CHILD via the parent picker (previously-entered values of THIS list).
+  await page.getByLabel('Label', { exact: true }).fill('Rotating Equipment')
+  await page.getByRole('button', { name: 'Add value' }).click()
+  await page.waitForTimeout(600)
+  await page.getByLabel('Label', { exact: true }).fill('Pumps')
+  await page.getByRole('button', { name: 'Parent (optional)' }).click()          // the searchable select
+  await page.getByRole('combobox', { name: 'Search Parent (optional)' }).fill('rot')
+  await page.keyboard.press('Enter')
+  await page.getByRole('button', { name: 'Add value' }).click()
+  await page.waitForTimeout(600)
+  await expect(page.getByRole('row', { name: /Pumps/ })).toContainText('Rotating Equipment')   // the Parent column
+
+  // Self-parent (same line) — blocked by the server, surfaced on screen.
+  const vals = (await (await request.get(`${API}/api/custom-lists/${ID}`, { headers: ADMIN })).json()).values
+  const pumps = vals.find((v: { label: string }) => v.label === 'Pumps')
+  const rot = vals.find((v: { label: string }) => v.label === 'Rotating Equipment')
+  await page.getByRole('row', { name: /Pumps/ }).getByRole('button', { name: 'Edit' }).click()
+  const dlg = page.getByRole('dialog')
+  await dlg.getByRole('button', { name: 'Parent (optional)' }).click()   // the edit modal's picker (the add form has one too)
+  await dlg.getByRole('combobox', { name: 'Search Parent (optional)' }).fill('pum')
+  await expect(dlg.getByRole('listbox', { name: 'Parent (optional) options' }).getByText('No matches.')).toBeVisible()   // self excluded from the picker
+  await page.keyboard.press('Escape')
+  await dlg.getByRole('button', { name: 'Cancel' }).click()
+  const selfTry = await request.put(`${API}/api/custom-lists/values/${pumps.id}`, { headers: { ...ADMIN, ...JSON_H },
+    data: { label: 'Pumps', parentValueCode: pumps.code, sort: pumps.sort, active: true } })
+  expect(selfTry.status()).toBe(409)   // and the SERVER blocks it even past the UI
+
+  // Cycle — blocked with a clear message.
+  const cycleTry = await request.put(`${API}/api/custom-lists/values/${rot.id}`, { headers: { ...ADMIN, ...JSON_H },
+    data: { label: 'Rotating Equipment', parentValueCode: pumps.code, sort: rot.sort, active: true } })
+  expect(cycleTry.status()).toBe(409)
+  expect((await cycleTry.json()).detail).toContain('cycle')
+
+  // Cleanup: children first, then the parent (which now hard-deletes), then the list.
+  await request.delete(`${API}/api/custom-lists/values/${pumps.id}`, { headers: ADMIN })
+  await request.delete(`${API}/api/custom-lists/values/${rot.id}`, { headers: ADMIN })
+  expect((await request.delete(`${API}/api/custom-lists/${ID}`, { headers: ADMIN })).status()).toBe(204)
+})

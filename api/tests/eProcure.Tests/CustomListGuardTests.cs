@@ -244,3 +244,52 @@ public sealed class DependsOnHardeningTests
             .Should().BeNull("reparenting is not in the update contract — cycles cannot be formed");
     }
 }
+
+// CF-FIX1-T10: same-list value trees — the operator's sketch, with every guard analysed.
+public sealed class ValueTreeTests
+{
+    private static (TestContext C, CustomListService Svc) New()
+    {
+        var c = TestContext.New();
+        return (c, new CustomListService(c.Db, c.Clock));
+    }
+
+    [Fact]
+    public async Task A_two_level_tree_builds_and_every_bad_parent_is_rejected()
+    {
+        var (_, svc) = New();
+        await svc.CreateListAsync(new("T10CAT", "T10 Categories", null, null));
+        var rotating = await svc.AddValueAsync("T10CAT", new(null, "Rotating Equipment", null));
+        var pumps = await svc.AddValueAsync("T10CAT", new(null, "Pumps", rotating.Code));
+        pumps.ParentValueCode.Should().Be(rotating.Code, "a value parents another value of the SAME list");
+
+        // Self-parent (same line) — rejected.
+        var self = async () => await svc.UpdateValueAsync(pumps.Id, new("Pumps", pumps.Code, pumps.Sort, true));
+        (await self.Should().ThrowAsync<eProcure.Domain.DomainRuleException>()).WithMessage("*own parent*");
+
+        // Cycle (A→B→A) — rejected with a clear message.
+        var cycle = async () => await svc.UpdateValueAsync(rotating.Id, new("Rotating Equipment", pumps.Code, rotating.Sort, true));
+        (await cycle.Should().ThrowAsync<eProcure.Domain.DomainRuleException>()).WithMessage("*cycle*");
+
+        // Dangling parent — rejected.
+        var dangling = async () => await svc.AddValueAsync("T10CAT", new(null, "Ghost", "999"));
+        (await dangling.Should().ThrowAsync<eProcure.Domain.DomainRuleException>()).WithMessage("*previously-entered*");
+
+        // Deleting a parent with tree children — deactivates, never orphans.
+        var del = await svc.DeleteValueAsync(rotating.Id);
+        del.Should().NotBeNull();
+        del!.Active.Should().BeFalse("a tree parent deactivates while children point at it");
+    }
+
+    [Fact]
+    public async Task A_deeper_cycle_is_caught_by_the_ancestor_walk()
+    {
+        var (_, svc) = New();
+        await svc.CreateListAsync(new("T10DEEP", "T10 Deep", null, null));
+        var a = await svc.AddValueAsync("T10DEEP", new(null, "A", null));
+        var b = await svc.AddValueAsync("T10DEEP", new(null, "B", a.Code));
+        var c2 = await svc.AddValueAsync("T10DEEP", new(null, "C", b.Code));
+        var cycle = async () => await svc.UpdateValueAsync(a.Id, new("A", c2.Code, a.Sort, true));   // A→C→B→A
+        (await cycle.Should().ThrowAsync<eProcure.Domain.DomainRuleException>()).WithMessage("*cycle*");
+    }
+}

@@ -103,7 +103,7 @@ function ListValues({ list, parentList, onRefresh, onErr, clearErr }: {
 
   const add = useMutation({
     // CF-FIX1-T6: the id is system-assigned (1,2,3… entry order) — the user types only the label.
-    mutationFn: () => addCustomListValue(list.code, { code: null, label: label.trim(), parentValueCode: parentList ? (parentValue || null) : null }),
+    mutationFn: () => addCustomListValue(list.code, { code: null, label: label.trim(), parentValueCode: parentValue || null }),
     onSuccess: () => { setLabel(''); setParentValue(''); onRefresh() }, onError: onErr,
   })
   const update = useMutation({
@@ -125,7 +125,7 @@ function ListValues({ list, parentList, onRefresh, onErr, clearErr }: {
       </div>
       <table>
         <thead>
-          <tr><th>ID</th><th>Label</th>{parentList && <th>{parentList.name}</th>}<th>Active</th><th /></tr>
+          <tr><th>ID</th><th>Label</th>{parentList && <th>{parentList.name}</th>}{!parentList && <th>Parent</th>}<th>Active</th><th /></tr>
         </thead>
         <tbody>
           {[...list.values].sort((a, b) => a.sort - b.sort || a.label.localeCompare(b.label)).map((v) => (
@@ -133,6 +133,7 @@ function ListValues({ list, parentList, onRefresh, onErr, clearErr }: {
               <td className="mono">{v.code}</td>
               <td style={{ fontWeight: 600 }}>{v.label}</td>
               {parentList && <td className="hint">{parentLabel(v.parentValueCode)}</td>}
+              {!parentList && <td className="hint">{v.parentValueCode ? (list.values.find((x) => x.code === v.parentValueCode)?.label ?? v.parentValueCode) : '—'}</td>}
               <td><StatusBadge tone={v.active ? 'green' : 'grey'}>{v.active ? 'Active' : 'Hidden'}</StatusBadge></td>
               <td className="amt">
                 <div className="rowactions">
@@ -142,7 +143,7 @@ function ListValues({ list, parentList, onRefresh, onErr, clearErr }: {
               </td>
             </tr>
           ))}
-          {list.values.length === 0 && <tr><td colSpan={parentList ? 5 : 4}><span className="hint">No values yet — add the first below.</span></td></tr>}
+          {list.values.length === 0 && <tr><td colSpan={5}><span className="hint">No values yet — add the first below.</span></td></tr>}
         </tbody>
       </table>
 
@@ -153,6 +154,14 @@ function ListValues({ list, parentList, onRefresh, onErr, clearErr }: {
           {parentList && (
             <SelectField
               spec={{ key: 'parentValue', label: parentList.name, dataType: 'select', placeholder: `Select ${parentList.name.toLowerCase()}`, options: { kind: 'static', options: parentOptions(parentList) } }}
+              value={parentValue} onChange={setParentValue}
+            />
+          )}
+          {!parentList && list.values.length > 0 && (
+            <SelectField
+              spec={{ key: 'parentValue', label: 'Parent (optional)', dataType: 'select', searchable: true, placeholder: 'None — top level',
+                help: 'Build a tree: pick a previously-entered value of this list as the parent.',
+                options: { kind: 'static', options: list.values.map((v) => ({ code: v.code, label: v.label })) } }}
               value={parentValue} onChange={setParentValue}
             />
           )}
@@ -173,6 +182,13 @@ function ListValues({ list, parentList, onRefresh, onErr, clearErr }: {
           {parentList && (
             <SelectField
               spec={{ key: 'eparent', label: parentList.name, dataType: 'select', placeholder: `Select ${parentList.name.toLowerCase()}`, options: { kind: 'static', options: parentOptions(parentList) } }}
+              value={editing.parentValueCode ?? ''} onChange={(v) => setEditing({ ...editing, parentValueCode: v || null })}
+            />
+          )}
+          {!parentList && (
+            <SelectField
+              spec={{ key: 'eparent', label: 'Parent (optional)', dataType: 'select', searchable: true, placeholder: 'None — top level',
+                options: { kind: 'static', options: list.values.filter((x) => x.code !== editing.code).map((x) => ({ code: x.code, label: x.label })) } }}
               value={editing.parentValueCode ?? ''} onChange={(v) => setEditing({ ...editing, parentValueCode: v || null })}
             />
           )}
