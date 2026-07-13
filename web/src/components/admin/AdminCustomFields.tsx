@@ -2,8 +2,10 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   getCustomFieldDefs, createCustomFieldDef, updateCustomFieldDef, setCustomFieldActive, deleteCustomFieldDef,
+  getCustomFieldReferences, purgeCustomField,
   getCustomLists, type CustomFieldDefDto,
 } from '../../api/client'
+import { ImpactReportDialog } from './ImpactReportDialog'
 import { SetupPage } from '../../ui/archetypes/SetupPage'
 import { Modal, Notice } from '../ui'
 import { Button } from '../../ui/Button'
@@ -51,7 +53,10 @@ const spec = (key: string, label: string, dataType: FieldSpec['dataType'], optio
 export function AdminCustomFields() {
   const qc = useQueryClient()
   const [recordType, setRecordType] = useState('PurchaseOrder')
-  const [editing, setEditing] = useState<{ def: CustomFieldDefDto | null } | null>(null)
+  const [editing, setEditing] = useState<{ def: CustomFieldDefDto | null; replacing?: CustomFieldDefDto } | null>(null)
+  // CF-FIX3-T3: Delete opens the impact report — the admin sees WHAT blocks (or what
+  // a purge would remove) before any destructive verb; the server re-enforces all tiers.
+  const [impact, setImpact] = useState<CustomFieldDefDto | null>(null)
   const { data: defs = [] } = useQuery({ queryKey: ['custom-field-defs', recordType], queryFn: () => getCustomFieldDefs(recordType) })
   const refresh = () => { void qc.invalidateQueries({ queryKey: ['custom-field-defs'] }) }
 
@@ -59,7 +64,6 @@ export function AdminCustomFields() {
     mutationFn: (d: CustomFieldDefDto) => setCustomFieldActive(d.id, !d.active),
     onSuccess: refresh,
   })
-  const remove = useMutation({ mutationFn: (id: string) => deleteCustomFieldDef(id), onSuccess: refresh })
 
   return (
     <SetupPage
@@ -87,9 +91,7 @@ export function AdminCustomFields() {
                     <Button variant="ghost" size="sm" onClick={() => toggle.mutate(d)} ariaLabel={`${d.active ? 'Deactivate' : 'Reactivate'} ${d.label}`}>
                       {d.active ? 'Deactivate' : 'Reactivate'}
                     </Button>
-                    {d.valueCount === 0 && (
-                      <Button variant="ghost" size="sm" red onClick={() => remove.mutate(d.id)} ariaLabel={`Delete ${d.label}`}>Delete</Button>
-                    )}
+                    <Button variant="ghost" size="sm" red onClick={() => setImpact(d)} ariaLabel={`Delete ${d.label}`}>Delete</Button>
                   </td>
                 </tr>
               ))}
@@ -100,32 +102,49 @@ export function AdminCustomFields() {
       }
     >
       {editing && (
-        <DefModal recordType={recordType} def={editing.def}
+        <DefModal key={editing.def?.id ?? (editing.replacing ? `repl-${editing.replacing.id}` : 'new')}
+          recordType={recordType} def={editing.def} replacing={editing.replacing}
           onClose={() => setEditing(null)}
-          onSaved={() => { setEditing(null); refresh() }} />
+          onSaved={() => { setEditing(null); refresh() }}
+          onReplace={(d) => setEditing({ def: null, replacing: d })} />
+      )}
+      {impact && (
+        <ImpactReportDialog
+          title={`Delete field — ${impact.label}`}
+          kind="field"
+          load={() => getCustomFieldReferences(impact.id)}
+          onDeactivate={impact.active ? () => setCustomFieldActive(impact.id, false) : undefined}
+          onDelete={() => deleteCustomFieldDef(impact.id)}
+          onPurge={() => purgeCustomField(impact.id)}
+          onClose={(changed) => { setImpact(null); if (changed) refresh() }}
+        />
       )}
     </SetupPage>
   )
 }
 
-function DefModal({ recordType, def, onClose, onSaved }: {
-  recordType: string; def: CustomFieldDefDto | null
-  onClose: () => void; onSaved: () => void
+function DefModal({ recordType, def, replacing, onClose, onSaved, onReplace }: {
+  recordType: string; def: CustomFieldDefDto | null; replacing?: CustomFieldDefDto
+  onClose: () => void; onSaved: () => void; onReplace: (d: CustomFieldDefDto) => void
 }) {
-  const [label, setLabel] = useState(def?.label ?? '')
+  // CF-FIX3-T5: "Create replacement" — the change-the-type path. A NEW field prefilled
+  // from the old one (label, scope, applies-to, list binding) with a FRESH Internal ID;
+  // the admin picks the new type, then inactivates the original.
+  const from = def ?? replacing ?? null
+  const [label, setLabel] = useState(from?.label ?? '')
   // CF-FIX1-T5: user-set Internal ID — auto-suggested from the label until the user edits it.
-  const [internalId, setInternalId] = useState('')
-  const [idTouched, setIdTouched] = useState(false)
   const suggestId = (l: string) => l.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
-  const [dataType, setDataType] = useState(def?.dataType ?? 'Text')
-  const [listId, setListId] = useState(def?.customListId ?? '')
-  const [required, setRequired] = useState(def?.required ?? false)
-  const [help, setHelp] = useState(def?.helpText ?? '')
-  const [displayType, setDisplayType] = useState(def?.displayType ?? 'Normal')
-  const [scope, setScope] = useState(def?.scope ?? 'Header')
+  const [internalId, setInternalId] = useState(replacing ? `${suggestId(replacing.label)}_2` : '')
+  const [idTouched, setIdTouched] = useState(!!replacing)
+  const [dataType, setDataType] = useState(from?.dataType ?? 'Text')
+  const [listId, setListId] = useState(from?.customListId ?? '')
+  const [required, setRequired] = useState(from?.required ?? false)
+  const [help, setHelp] = useState(from?.helpText ?? '')
+  const [displayType, setDisplayType] = useState(from?.displayType ?? 'Normal')
+  const [scope, setScope] = useState(from?.scope ?? 'Header')
   // CF-FIX2-T3: the applies-to SET (NetSuite) — authored once, applied to many types.
-  const [appliesTo, setAppliesTo] = useState<string>((def?.recordTypes?.length ? def.recordTypes : [recordType]).join('|'))
-  const [showInList, setShowInList] = useState(def?.showInList ?? false)
+  const [appliesTo, setAppliesTo] = useState<string>((from?.recordTypes?.length ? from.recordTypes : [recordType]).join('|'))
+  const [showInList, setShowInList] = useState(from?.showInList ?? false)
 
   const [error, setError] = useState<string | null>(null)
   const { data: lists = [] } = useQuery({ queryKey: ['custom-lists'], queryFn: getCustomLists })
@@ -148,7 +167,7 @@ function DefModal({ recordType, def, onClose, onSaved }: {
 
   return (
     <Modal
-      title={def ? `Edit field — ${def.label}` : `New custom field on ${recordTypeLabel(recordType)}`}
+      title={def ? `Edit field — ${def.label}` : replacing ? `Replacement for — ${replacing.label}` : `New custom field on ${recordTypeLabel(recordType)}`}
       icon="edit"
       footer={
         <>
@@ -169,7 +188,13 @@ function DefModal({ recordType, def, onClose, onSaved }: {
           value={internalId} onChange={(v) => { setIdTouched(true); setInternalId(String(v ?? '')) }} />
       )}
       {def
-        ? <p className="hint">Type ({dataTypeLabel(def.dataType)}) and Internal ID (<span className="mono">{def.code}</span>) are immutable — create a new field to change them.</p>
+        ? (
+          <p className="hint">
+            Type ({dataTypeLabel(def.dataType)}) and Internal ID (<span className="mono">{def.code}</span>) are immutable —
+            to change the type, inactivate this field and create a new one.{' '}
+            <Button variant="ghost" size="sm" onClick={() => onReplace(def)} ariaLabel={`Create replacement for ${def.label}`}>Create replacement</Button>
+          </p>
+        )
         : (
           <>
             <SelectField spec={{ key: 'cf-type', label: 'Data type', dataType: 'select', searchable: true,

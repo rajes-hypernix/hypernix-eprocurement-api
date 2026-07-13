@@ -192,6 +192,21 @@ export const updateCustomFieldDef = (id: string, req: SaveCustomFieldDefRequest)
 export const setCustomFieldActive = (id: string, active: boolean) =>
   http<CustomFieldDefDto>(`/custom-fields/${id}/active`, { method: 'POST', body: JSON.stringify(active) })
 export const deleteCustomFieldDef = (id: string) => http<undefined>(`/custom-fields/${id}`, { method: 'DELETE' })
+// CF-FIX3-T2/T3: the impact report + the governed purge (A73 — Admin only).
+export type FieldReferenceDto = {
+  consumerName: string; kind: string; targetId?: string | null; targetLabel: string
+  detail?: string | null; isMandatory: boolean
+}
+export type DataTypeCountDto = { recordType: string; live: number; historical: number }
+export type DataReferenceSummaryDto = { storeName: string; liveCount: number; historicalCount: number; byRecordType: DataTypeCountDto[] }
+export type ImpactReportDto = {
+  configReferences: FieldReferenceDto[]; data: DataReferenceSummaryDto[]
+  liveCount: number; historicalCount: number; canDelete: boolean; canPurge: boolean; blockedReason?: string | null
+}
+export const getCustomFieldReferences = (id: string) => http<ImpactReportDto>(`/custom-fields/${id}/references`)
+export const purgeCustomField = (id: string) => http<undefined>(`/custom-fields/${id}/purge`, { method: 'POST' })
+export const getListValueReferences = (valueId: string) => http<ImpactReportDto>(`/custom-lists/values/${valueId}/references`)
+export const purgeListValue = (valueId: string) => http<undefined>(`/custom-lists/values/${valueId}/purge`, { method: 'POST' })
 export const getCustomValues = (recordType: string, recordId: string) =>
   http<CustomValueDto[]>(`/custom-values/${recordType}/${recordId}`)
 export const getLineCustomDefs = (recordType: string) =>
