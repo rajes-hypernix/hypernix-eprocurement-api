@@ -6,6 +6,7 @@ import { Modal } from '../ui'
 import { TextField } from '../../ui/TextField'
 import { SelectField } from '../../ui/SelectField'
 import type { FieldSpec } from '../../ui/fieldSpec'
+import { recordTypeOptions } from '../../lib/recordTypeLabel'
 import type { ReminderItem } from './portletConfig'
 
 const RECORD_TYPES = ['Requisition', 'Rfq', 'PurchaseOrder', 'Invoice', 'Asn', 'Vendor', 'Onboarding']
@@ -53,7 +54,7 @@ export function AddReminderModal({ onClose, onAdd, onGoCreateViews }: {
         </>
       }
     >
-      <SelectField spec={spec('rem-type', 'Record type', 'select', RECORD_TYPES)} value={recordType}
+      <SelectField spec={{ key: 'rem-type', label: 'Record type', dataType: 'select', options: { kind: 'static', options: recordTypeOptions(RECORD_TYPES) } }} value={recordType}
         onChange={(v) => { setRecordType(String(v ?? 'Requisition')); setViewId('') }} />
       <SelectField
         spec={{ key: 'rem-view', label: 'Saved view', dataType: 'select', options: { kind: 'static', options: views.map((v) => ({ code: v.id, label: v.name })) } }}

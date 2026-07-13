@@ -12,6 +12,7 @@ import { TextAreaField } from '../../ui/TextAreaField'
 import { SelectField } from '../../ui/SelectField'
 import { CheckboxField } from '../../ui/CheckboxField'
 import type { FieldSpec } from '../../ui/fieldSpec'
+import { recordTypeLabel } from '../../lib/recordTypeLabel'
 
 /**
  * Custom field definitions (D5) — the Admin Setup surface (A65). Lifecycle per the rulings,
@@ -45,9 +46,8 @@ export function AdminCustomFields() {
   return (
     <SetupPage
       title="Custom Fields"
-      subtitle="Fields your team defines — they render, filter and aggregate exactly like built-ins."
       primaryAction={<Button variant="primary" size="sm" icon="plus" onClick={() => setEditing({ def: null })}>New field</Button>}
-      railItems={RECORD_TYPES.map((rt) => ({ key: rt, label: rt, hint: rt === recordType ? `${defs.length} field(s)` : undefined }))}
+      railItems={RECORD_TYPES.map((rt) => ({ key: rt, label: recordTypeLabel(rt), hint: rt === recordType ? `${defs.length} field(s)` : undefined }))}
       selectedKey={recordType}
       onSelect={setRecordType}
       detail={
@@ -73,15 +73,9 @@ export function AdminCustomFields() {
                   </td>
                 </tr>
               ))}
-              {defs.length === 0 && <tr><td colSpan={6} className="hint">No custom fields on {recordType} yet.</td></tr>}
+              {defs.length === 0 && <tr><td colSpan={6} className="hint">No custom fields on {recordTypeLabel(recordType)} yet.</td></tr>}
             </tbody>
           </table>
-          <p className="hint" style={{ marginTop: 10 }}>
-            A field with values is never deleted — deactivating hides it from entry screens and the
-            view builder while its data persists; saved views still referencing it fail loudly until
-            fixed. Only a field with zero values can be deleted. Required is enforced when values are
-            saved — it does not block record transitions (that arrives with the form engine).
-          </p>
         </div>
       }
     >
@@ -127,7 +121,7 @@ function DefModal({ recordType, def, siblings, onClose, onSaved }: {
 
   return (
     <Modal
-      title={def ? `Edit field — ${def.label}` : `New custom field on ${recordType}`}
+      title={def ? `Edit field — ${def.label}` : `New custom field on ${recordTypeLabel(recordType)}`}
       icon="edit"
       footer={
         <>
@@ -162,8 +156,8 @@ function DefModal({ recordType, def, siblings, onClose, onSaved }: {
             options: { kind: 'static', options: placeTargets.map((s) => ({ code: s.id, label: s.label })) } }}
           value={insertBefore} onChange={(v) => setInsertBefore(String(v ?? ''))} />
       )}
-      <CheckboxField spec={spec('cf-showinlist', 'Show in list (column on the default list view)', 'boolean')} value={showInList} onChange={(v) => setShowInList(v === true)} />
-      <CheckboxField spec={spec('cf-required', 'Required (at value-save only)', 'boolean')} value={required} onChange={(v) => setRequired(v === true)} />
+      <CheckboxField spec={spec('cf-showinlist', 'Show On Default List', 'boolean')} value={showInList} onChange={(v) => setShowInList(v === true)} />
+      <CheckboxField spec={spec('cf-required', 'Mandatory', 'boolean')} value={required} onChange={(v) => setRequired(v === true)} />
       <TextAreaField spec={spec('cf-help', 'Help text', 'longText')} value={help} onChange={(v) => setHelp(String(v ?? ''))} />
       {error && <Notice tone="error">{error}</Notice>}
     </Modal>

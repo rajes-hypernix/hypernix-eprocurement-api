@@ -7,6 +7,7 @@ import { SelectField } from '../../ui/SelectField'
 import { NumberField } from '../../ui/NumberField'
 import { CheckboxField } from '../../ui/CheckboxField'
 import { TILE_COLORS } from './ShortcutsPortlet'
+import { recordTypeOptions } from '../../lib/recordTypeLabel'
 
 /**
  * CF3-T9: the NetSuite "personalize bucket" — every portlet type addable from ONE dropdown,
@@ -108,7 +109,7 @@ export function AddPortletModal({ onClose, onAdd, onKpi, onReminder }: {
       )}
       {type === 'SavedViewList' && (
         <>
-          <SelectField spec={{ key: 'ap-rt', label: 'Record type', dataType: 'select', options: { kind: 'static', options: RECORD_TYPES.map((r) => ({ code: r, label: r })) } }}
+          <SelectField spec={{ key: 'ap-rt', label: 'Record type', dataType: 'select', options: { kind: 'static', options: recordTypeOptions(RECORD_TYPES) } }}
             value={recordType} onChange={(v) => { setRecordType(String(v ?? 'PurchaseOrder')); setViewId('') }} />
           <SelectField spec={{ key: 'ap-view', label: 'Saved view', dataType: 'select', options: { kind: 'static', options: views.map((v) => ({ code: v.id, label: v.name })) } }}
             value={viewId} onChange={(v) => setViewId(String(v ?? ''))} />

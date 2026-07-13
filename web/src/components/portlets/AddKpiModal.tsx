@@ -7,6 +7,7 @@ import { TextField } from '../../ui/TextField'
 import { SelectField } from '../../ui/SelectField'
 import { NumberField } from '../../ui/NumberField'
 import type { FieldSpec } from '../../ui/fieldSpec'
+import { recordTypeOptions } from '../../lib/recordTypeLabel'
 
 const RECORD_TYPES = ['Rfq', 'Requisition', 'PurchaseOrder', 'Invoice', 'Asn', 'Vendor', 'Onboarding']
 const FNS = ['count', 'sum', 'avg']
@@ -66,7 +67,7 @@ export function AddKpiModal({ onClose, onAdd, onGoCreateViews }: {
       }
     >
       <TextField spec={spec('kpi-title', 'KPI title', 'text')} value={title} onChange={(v) => setTitle(String(v ?? ''))} />
-      <SelectField spec={spec('kpi-type', 'Record type', 'select', RECORD_TYPES)} value={recordType}
+      <SelectField spec={{ key: 'kpi-type', label: 'Record type', dataType: 'select', options: { kind: 'static', options: recordTypeOptions(RECORD_TYPES) } }} value={recordType}
         onChange={(v) => { setRecordType(String(v ?? 'Rfq')); setViewId(''); setFieldKey('') }} />
       <SelectField
         spec={{ key: 'kpi-view', label: 'Saved view', dataType: 'select', options: { kind: 'static', options: views.map((v) => ({ code: v.id, label: v.name })) } }}

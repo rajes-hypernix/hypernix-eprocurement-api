@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { recordTypeOptions } from '../../lib/recordTypeLabel'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getViews, getViewFields, deleteView, type SavedViewDto } from '../../api/client'
 import { ListPage, type ListColumn, type ListFacet } from '../../ui/archetypes/ListPage'
@@ -103,7 +104,7 @@ export function SavedViewsHome({ onOpenList }: {
           <SelectField
             spec={{
               key: 'nv-type', label: 'Record type', dataType: 'select',
-              options: { kind: 'static', options: RECORD_TYPES.map((t) => ({ code: t, label: t })) },
+              options: { kind: 'static', options: recordTypeOptions(RECORD_TYPES) },
             }}
             value={newType} onChange={(v) => setNewType(String(v ?? 'Requisition'))} />
         </Modal>
