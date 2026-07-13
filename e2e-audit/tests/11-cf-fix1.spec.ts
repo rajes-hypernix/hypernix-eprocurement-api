@@ -57,9 +57,9 @@ test('CF-FIX1-T3: order-mode is choosable at CREATE — Alphabetical from birth'
   await page.getByRole('button', { name: 'Create list' }).click()
   await page.waitForTimeout(1000)
   await expect(page.getByText('A→Z')).toBeVisible()   // the badge shows the mode took at birth
-  const list = await (await request.get(`${API}/api/custom-lists/${CODE}`, { headers: ADMIN })).json()
+  const list = await (await request.get(`${API}/api/custom-lists/CUSTLIST_${CODE}`, { headers: ADMIN })).json()
   expect(list.orderMode).toBe('Alphabetical')
-  expect((await request.delete(`${API}/api/custom-lists/${CODE}`, { headers: ADMIN })).status()).toBe(204)
+  expect((await request.delete(`${API}/api/custom-lists/CUSTLIST_${CODE}`, { headers: ADMIN })).status()).toBe(204)
 })
 
 test('CF-FIX1-T4: lists carry ONE Internal ID — labelled as such, duplicate blocked with a clear message', async ({ page, request }) => {
@@ -79,9 +79,9 @@ test('CF-FIX1-T4: lists carry ONE Internal ID — labelled as such, duplicate bl
   await page.getByLabel('Internal ID', { exact: true }).fill(ID)
   await page.getByLabel('Name', { exact: true }).fill('Dup attempt')
   await page.getByRole('button', { name: 'Create list' }).click()
-  await expect(page.getByText(`Internal ID '${ID}' already exists`)).toBeVisible()
+  await expect(page.getByText(`Internal ID 'CUSTLIST_${ID}' already exists`)).toBeVisible()
 
-  expect((await request.delete(`${API}/api/custom-lists/${ID}`, { headers: ADMIN })).status()).toBe(204)
+  expect((await request.delete(`${API}/api/custom-lists/CUSTLIST_${ID}`, { headers: ADMIN })).status()).toBe(204)
 })
 
 test('CF-FIX1-T5: field Internal ID is user-input — auto-suggested, overridable; duplicate and illegal ids blocked', async ({ page, request }) => {
@@ -95,14 +95,14 @@ test('CF-FIX1-T5: field Internal ID is user-input — auto-suggested, overridabl
   await page.getByLabel('Internal ID', { exact: true }).fill(`chosen_${STAMP}`)
   await page.getByRole('button', { name: 'Create field' }).click()
   await page.waitForTimeout(800)
-  await expect(page.getByText(`cf_chosen_${STAMP}`)).toBeVisible()   // the cf_ namespace is system-applied
+  await expect(page.getByText(`custbody_chosen_${STAMP}`)).toBeVisible()   // the contextual namespace is system-applied (CF-FIX2-T1)
 
   // Duplicate → clear message.
   await page.getByRole('button', { name: 'New field' }).click()
   await page.getByLabel('Label', { exact: true }).fill('Dup attempt')
   await page.getByLabel('Internal ID', { exact: true }).fill(`chosen_${STAMP}`)
   await page.getByRole('button', { name: 'Create field' }).click()
-  await expect(page.getByText(/Internal ID 'cf_chosen_.*already exists/)).toBeVisible()
+  await expect(page.getByText(/Internal ID 'custbody_chosen_.*already exists/)).toBeVisible()
 
   // Illegal characters → blocked.
   await page.getByLabel('Internal ID', { exact: true }).fill('bad id!')
@@ -111,14 +111,14 @@ test('CF-FIX1-T5: field Internal ID is user-input — auto-suggested, overridabl
   await page.getByRole('button', { name: 'Cancel' }).click()
 
   const defs = await (await request.get(`${API}/api/custom-fields?recordType=PurchaseOrder`, { headers: ADMIN })).json()
-  const def = defs.find((d: { code: string }) => d.code === `cf_chosen_${STAMP}`)
+  const def = defs.find((d: { code: string }) => d.code === `custbody_chosen_${STAMP}`)
   expect((await request.delete(`${API}/api/custom-fields/${def.id}`, { headers: ADMIN })).status()).toBe(204)
 })
 
 test('CF-FIX1-T6: list values get automatic numeric ids — 1/2/3 in entry order, read-only', async ({ page, request }) => {
   const ID = `F1T6${STAMP}`
   await request.post(`${API}/api/custom-lists`, { headers: { ...ADMIN, ...JSON_H },
-    data: { code: ID, name: `Fix1 Values ${STAMP}`, description: null, parentListCode: null } })
+    data: { code: ID, name: `Fix1 Values ${STAMP}`, description: null, parentListCode: null } })   // stored as CUSTLIST_<ID> (CF-FIX2-T1)
   await goAs(page, 'u_admin', 'lists')
   await page.waitForTimeout(1200)
   await page.getByRole('button', { name: new RegExp(`Fix1 Values ${STAMP}`) }).click()
@@ -143,7 +143,7 @@ test('CF-FIX1-T6: list values get automatic numeric ids — 1/2/3 in entry order
   await expect(idField).not.toBeEditable()   // readOnly spec renders a readonly input
   await page.getByRole('button', { name: 'Cancel' }).click()
 
-  expect((await request.delete(`${API}/api/custom-lists/${ID}`, { headers: ADMIN })).status()).toBe(204)
+  expect((await request.delete(`${API}/api/custom-lists/CUSTLIST_${ID}`, { headers: ADMIN })).status()).toBe(204)
 })
 
 test('CF-FIX1-T7: the searchable select — type-to-filter on screen, keyboard select, dependent children filter by parent', async ({ page, request }) => {
@@ -231,7 +231,7 @@ test('CF-FIX1-T9: depends-on works and is hardened — child filters by parent; 
   await expect(page.getByRole('row', { name: /North Zone/ })).toContainText('Malaysia')
 
   // A dangling parent value is refused by the SERVER.
-  const bad = await request.post(`${API}/api/custom-lists/${V}/values`, { headers: { ...ADMIN, ...JSON_H },
+  const bad = await request.post(`${API}/api/custom-lists/CUSTLIST_${V}/values`, { headers: { ...ADMIN, ...JSON_H },
     data: { code: null, label: 'Ghost Zone', parentValueCode: 'NO_SUCH' } })
   expect(bad.status()).toBe(409)   // DomainRuleException → conflict, the app's standing error contract
 
@@ -240,7 +240,7 @@ test('CF-FIX1-T9: depends-on works and is hardened — child filters by parent; 
     data: { code: `T9X${STAMP}`, name: 'Ghost', description: null, parentListCode: 'NO_SUCH_LIST' } })
   expect(badList.status()).toBe(409)
 
-  expect((await request.delete(`${API}/api/custom-lists/${V}`, { headers: ADMIN })).status()).toBe(204)
+  expect((await request.delete(`${API}/api/custom-lists/CUSTLIST_${V}`, { headers: ADMIN })).status()).toBe(204)
 })
 
 test('CF-FIX1-T10: value-level parent-child on screen — build a 2-level tree; self-parent and cycles blocked', async ({ page, request }) => {
@@ -264,7 +264,7 @@ test('CF-FIX1-T10: value-level parent-child on screen — build a 2-level tree; 
   await expect(page.getByRole('row', { name: /Pumps/ })).toContainText('Rotating Equipment')   // the Parent column
 
   // Self-parent (same line) — blocked by the server, surfaced on screen.
-  const vals = (await (await request.get(`${API}/api/custom-lists/${ID}`, { headers: ADMIN })).json()).values
+  const vals = (await (await request.get(`${API}/api/custom-lists/CUSTLIST_${ID}`, { headers: ADMIN })).json()).values
   const pumps = vals.find((v: { label: string }) => v.label === 'Pumps')
   const rot = vals.find((v: { label: string }) => v.label === 'Rotating Equipment')
   await page.getByRole('row', { name: /Pumps/ }).getByRole('button', { name: 'Edit' }).click()
@@ -287,5 +287,5 @@ test('CF-FIX1-T10: value-level parent-child on screen — build a 2-level tree; 
   // Cleanup: children first, then the parent (which now hard-deletes), then the list.
   await request.delete(`${API}/api/custom-lists/values/${pumps.id}`, { headers: ADMIN })
   await request.delete(`${API}/api/custom-lists/values/${rot.id}`, { headers: ADMIN })
-  expect((await request.delete(`${API}/api/custom-lists/${ID}`, { headers: ADMIN })).status()).toBe(204)
+  expect((await request.delete(`${API}/api/custom-lists/CUSTLIST_${ID}`, { headers: ADMIN })).status()).toBe(204)
 })

@@ -26,12 +26,16 @@ public sealed class CustomListService(AppDbContext db, IClock clock) : ICustomLi
 
     public async Task<CustomListDto> CreateListAsync(CreateCustomListRequest req, CancellationToken ct = default)
     {
-        // CF-FIX1-T4: ONE id concept — the Internal ID (stored in Code). User-set, validated
-        // like the custom-field id: required, legal characters, unique, immutable after create.
-        var code = req.Code.Trim().ToUpperInvariant();
-        if (string.IsNullOrWhiteSpace(code)) throw new DomainRuleException("A custom list needs an Internal ID.");
-        if (!System.Text.RegularExpressions.Regex.IsMatch(code, "^[A-Z0-9_]+$"))
+        // CF-FIX1-T4 + CF-FIX2-T1: ONE id concept, NetSuite-prefixed — the user keys the
+        // meaningful part; the system stores CUSTLIST_<PART> (lists keep the UPPER-case
+        // convention). Existing unprefixed codes (BANK, COUNTRY…) are immutable and resolve
+        // unchanged — the non-breaking choice, no rename.
+        var rawPart = req.Code.Trim().ToUpperInvariant();
+        if (rawPart.StartsWith("CUSTLIST_")) rawPart = rawPart["CUSTLIST_".Length..];
+        if (string.IsNullOrWhiteSpace(rawPart)) throw new DomainRuleException("A custom list needs an Internal ID.");
+        if (!System.Text.RegularExpressions.Regex.IsMatch(rawPart, "^[A-Z0-9_]+$"))
             throw new DomainRuleException("The Internal ID may only use letters, digits and underscores.");
+        var code = "CUSTLIST_" + rawPart;
         if (await db.CustomLists.AnyAsync(l => l.Code == code, ct))
             throw new DomainRuleException($"A custom list with Internal ID '{code}' already exists.");
         // CF-FIX1-T9: a dangling list-level dependency is rejected at create. Reparenting has

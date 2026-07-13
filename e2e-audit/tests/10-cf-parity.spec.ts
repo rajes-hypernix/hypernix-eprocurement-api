@@ -48,7 +48,7 @@ test('CF1-T1: money renders grouped 100,000.00 on read surfaces and round-trips 
 
 test('CF1-T2: edit a custom list — rename, alphabetical order-mode, guarded delete', async ({ page, request }) => {
   // A run-stamped list, values deliberately entered Z-then-A, bound to a PO custom field.
-  const listCode = `CFLIST${STAMP}`
+  const listCode = `CUSTLIST_CFLIST${STAMP}`   // CF-FIX2-T1: creates are stored with the contextual prefix
   await request.post(`${API}/api/custom-lists`, { headers: { ...ADMIN, ...JSON_H },
     data: { code: listCode, name: `CF List ${STAMP}`, description: null, parentListCode: null } })
   for (const [c, l] of [['Z1', 'Zebra'], ['A1', 'Aardvark']] as const)

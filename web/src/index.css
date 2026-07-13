@@ -927,3 +927,9 @@ table.da-pos td:last-child, table.da-pos th:last-child { text-align: right; }
 .sselect-opt.hi { background: var(--cream, #f4efe3); }
 .sselect-opt.on { font-weight: 600; }
 .sselect-empty { padding: 10px; color: var(--muted); }
+
+/* CF-FIX2-T1 — the namespace affix rendered INSIDE the field */
+.affix-wrap { display: flex; align-items: stretch; width: 100%; border: 1px solid var(--line); background: #fff; }
+.affix-wrap:focus-within { border-color: var(--teal); }
+.affix-wrap .affix { display: flex; align-items: center; padding: 0 2px 0 10px; color: var(--muted); font-size: var(--fs-control); user-select: none; white-space: nowrap; }
+.affix-wrap input { border: none !important; outline: none; flex: 1; min-width: 0; padding-left: 4px; }

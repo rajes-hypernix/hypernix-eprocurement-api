@@ -157,13 +157,11 @@ function DefModal({ recordType, def, onClose, onSaved }: {
       <TextField spec={spec('cf-label', 'Label', 'text')} value={label}
         onChange={(v) => { const l = String(v ?? ''); setLabel(l); if (!idTouched) setInternalId(suggestId(l)) }} />
       {!def && (
-        <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end' }}>
-          <span className="mono hint" style={{ paddingBottom: 9 }}>cf_</span>
-          <div style={{ flex: 1 }}>
-            <TextField spec={{ ...spec('cf-id', 'Internal ID', 'text'), placeholder: 'auto-suggested from the label', help: 'Letters, digits, underscores. Immutable after create.' }}
-              value={internalId} onChange={(v) => { setIdTouched(true); setInternalId(String(v ?? '')) }} />
-          </div>
-        </div>
+        <TextField spec={{ ...spec('cf-id', 'Internal ID', 'text'),
+            affix: scope === 'Line' ? 'custcol_' : 'custbody_',
+            placeholder: internalId ? undefined : 'auto-suggested from the label',
+            help: 'Letters, digits, underscores. Immutable after create.' }}
+          value={internalId} onChange={(v) => { setIdTouched(true); setInternalId(String(v ?? '')) }} />
       )}
       {def
         ? <p className="hint">Type ({dataTypeLabel(def.dataType)}) and Internal ID (<span className="mono">{def.code}</span>) are immutable — create a new field to change them.</p>

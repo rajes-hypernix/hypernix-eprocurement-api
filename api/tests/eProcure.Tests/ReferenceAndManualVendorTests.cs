@@ -64,11 +64,11 @@ public class ReferenceAndManualVendorTests
         var svc = new CustomListService(ctx.Db, ctx.Clock);
 
         var created = await svc.CreateListAsync(new Application.Configuration.CreateCustomListRequest("INCOTERM", "Incoterms", "Delivery terms", null));
-        created.Code.Should().Be("INCOTERM");
+        created.Code.Should().Be("CUSTLIST_INCOTERM");   // CF-FIX2-T1 contextual prefix
         created.IsSystem.Should().BeFalse();   // admin-created lists are not system lists
 
-        await svc.AddValueAsync("INCOTERM", new Application.Configuration.AddCustomListValueRequest("FOB", "Free On Board", null));
-        (await svc.GetAsync("INCOTERM"))!.Values.Should().ContainSingle(v => v.Code == "FOB");
+        await svc.AddValueAsync(created.Code, new Application.Configuration.AddCustomListValueRequest("FOB", "Free On Board", null));
+        (await svc.GetAsync(created.Code))!.Values.Should().ContainSingle(v => v.Code == "FOB");
 
         var dupList = () => svc.CreateListAsync(new Application.Configuration.CreateCustomListRequest("INCOTERM", "dup", null, null));
         await dupList.Should().ThrowAsync<eProcure.Domain.DomainRuleException>();   // unique list code

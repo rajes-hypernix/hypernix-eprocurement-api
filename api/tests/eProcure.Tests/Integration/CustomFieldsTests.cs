@@ -83,7 +83,7 @@ public sealed class CustomFieldsTests(CustomFieldsFixture fx) : IClassFixture<Cu
     public async Task Def_create_registers_the_field_and_the_builder_sees_it_grouped_custom()
     {
         var def = await fx.CreateDef("Site Induction Needed", "Bool");
-        def.Code.Should().Be("cf_site_induction_needed");
+        def.Code.Should().Be("custbody_site_induction_needed");   // CF-FIX2-T1: header fields → custbody_
 
         var fields = await fx.ClientAs("u_faridah").GetFromJsonAsync<List<ViewFieldDto>>("/api/views/fields?recordType=PurchaseOrder");
         var mine = fields!.Single(f => f.FieldKey == def.Code);
@@ -365,10 +365,10 @@ public sealed class CustomFieldsTests(CustomFieldsFixture fx) : IClassFixture<Cu
         var resp = await admin.PostAsJsonAsync("/api/custom-fields", new SaveCustomFieldDefRequest(
             "Fix1 Chosen", "Vendor", "Text", null, false, "", 0, Code: "my_chosen_id"));
         resp.StatusCode.Should().Be(HttpStatusCode.OK, await resp.Content.ReadAsStringAsync());
-        (await resp.Content.ReadFromJsonAsync<CustomFieldDefDto>())!.Code.Should().Be("cf_my_chosen_id");
+        (await resp.Content.ReadFromJsonAsync<CustomFieldDefDto>())!.Code.Should().Be("custbody_my_chosen_id");
 
         (await admin.PostAsJsonAsync("/api/custom-fields", new SaveCustomFieldDefRequest(
-            "Fix1 Dup", "Vendor", "Text", null, false, "", 0, Code: "cf_my_chosen_id")))
+            "Fix1 Dup", "Vendor", "Text", null, false, "", 0, Code: "custbody_my_chosen_id")))
             .StatusCode.Should().Be(HttpStatusCode.BadRequest, "duplicate Internal ID is a clear 400, not an auto-suffix");
         (await admin.PostAsJsonAsync("/api/custom-fields", new SaveCustomFieldDefRequest(
             "Fix1 Bad", "Vendor", "Text", null, false, "", 0, Code: "no spaces!")))

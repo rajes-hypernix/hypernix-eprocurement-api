@@ -55,23 +55,32 @@ public sealed class CustomFieldService(
         if (req.CustomListId is { } listId && !await db.CustomLists.AnyAsync(l => l.Id == listId, ct))
             throw new CustomFieldValidationException("The bound custom list does not exist.");
 
-        // CF-FIX1-T5: the Internal ID is USER-SET (NetSuite-style) — the user controls the
-        // meaningful part, the system guarantees the cf_ namespace. Absent → derived from the
-        // label (API/back-compat path). Same immutability as before.
+        var scope = ParseScope(req.Scope);
+        if (scope == "Line" && req.ShowInList)
+            throw new CustomFieldValidationException("Show-in-list is a header-list concept — a LINE field has no header-list row. (Line-level search is deferred.)");
+        if (scope == "Line" && !LineOwnership.SupportedTypes.Contains(type))
+            throw new CustomFieldValidationException($"Line fields aren't supported on {type} yet — first delivery is Requisition/PurchaseOrder/Rfq lines.");
+
+        // CF-FIX2-T1: NetSuite's CONTEXTUAL prefix convention — the user keys the meaningful
+        // part, the system guarantees the namespace BY SCOPE: custbody_ (header field) or
+        // custcol_ (line column). Derivable, no new data; existing cf_* codes are immutable
+        // and keep resolving (the non-breaking choice — no rename, no migration).
+        var prefix = scope == "Line" ? "custcol_" : "custbody_";
         string code;
         if (!string.IsNullOrWhiteSpace(req.Code))
         {
             var part = req.Code.Trim().ToLowerInvariant();
-            if (part.StartsWith("cf_")) part = part[3..];
+            foreach (var known in new[] { "custbody_", "custcol_", "cf_" })
+                if (part.StartsWith(known)) { part = part[known.Length..]; break; }
             if (part.Length == 0)
-                throw new CustomFieldValidationException("The Internal ID needs a value after the cf_ prefix.");
+                throw new CustomFieldValidationException($"The Internal ID needs a value after the {prefix} prefix.");
             if (!System.Text.RegularExpressions.Regex.IsMatch(part, "^[a-z0-9_]+$"))
                 throw new CustomFieldValidationException("The Internal ID may only use letters, digits and underscores.");
-            code = "cf_" + part;
+            code = prefix + part;
         }
         else
         {
-            code = "cf_" + new string(req.Label.Trim().ToLowerInvariant()
+            code = prefix + new string(req.Label.Trim().ToLowerInvariant()
                 .Select(ch => char.IsLetterOrDigit(ch) ? ch : '_').ToArray()).Trim('_');
         }
         if (code.Length > 60) code = code[..60];
@@ -79,12 +88,6 @@ public sealed class CustomFieldService(
             throw new CustomFieldValidationException($"A custom field with Internal ID '{code}' already exists — choose another.");
         if (FieldRegistrySeed.Rows.Any(r => r.RecordType == type && string.Equals(r.FieldKey, code, StringComparison.OrdinalIgnoreCase)))
             throw new CustomFieldValidationException($"'{code}' collides with a native field key.");
-
-        var scope = ParseScope(req.Scope);
-        if (scope == "Line" && req.ShowInList)
-            throw new CustomFieldValidationException("Show-in-list is a header-list concept — a LINE field has no header-list row. (Line-level search is deferred.)");
-        if (scope == "Line" && !LineOwnership.SupportedTypes.Contains(type))
-            throw new CustomFieldValidationException($"Line fields aren't supported on {type} yet — first delivery is Requisition/PurchaseOrder/Rfq lines.");
 
         var def = new CustomFieldDef
         {

@@ -224,7 +224,7 @@ function NewListModal({ lists, onClose, onCreated, onErr }: {
         <Button variant="primary" icon="check" busy={create.isPending} onClick={submit}>Create list</Button>
       </>}>
       <div className="grid g2">
-        <CodeField spec={{ key: 'lcode', label: 'Internal ID', dataType: 'code', placeholder: 'e.g. INCOTERM' }} value={code} onChange={setCode} />
+        <CodeField spec={{ key: 'lcode', label: 'Internal ID', dataType: 'code', affix: 'CUSTLIST_', placeholder: 'e.g. INCOTERM' }} value={code} onChange={setCode} />
         <TextField spec={{ key: 'lname', label: 'Name', dataType: 'text', placeholder: 'e.g. Incoterms' }} value={name} onChange={setName} />
       </div>
       <TextField spec={{ key: 'ldesc', label: 'Description', dataType: 'text', placeholder: 'Optional' }} value={description} onChange={setDescription} />

@@ -174,11 +174,12 @@ public sealed class CustomListCreateOrderModeTests
     {
         var c = TestContext.New();
         var svc = new CustomListService(c.Db, c.Clock);
-        await svc.CreateListAsync(new("FIX1NUM", "Fix1 Numbers", null, null));
-        (await svc.AddValueAsync("FIX1NUM", new(null, "First", null))).Code.Should().Be("1");
-        (await svc.AddValueAsync("FIX1NUM", new("", "Second", null))).Code.Should().Be("2");
-        (await svc.AddValueAsync("FIX1NUM", new("LEGACY", "Seeded-style", null))).Code.Should().Be("LEGACY");
-        (await svc.AddValueAsync("FIX1NUM", new(null, "Third", null))).Code.Should().Be("3");
+        var numList = await svc.CreateListAsync(new("FIX1NUM", "Fix1 Numbers", null, null));
+        numList.Code.Should().Be("CUSTLIST_FIX1NUM");   // CF-FIX2-T1: the contextual prefix
+        (await svc.AddValueAsync(numList.Code, new(null, "First", null))).Code.Should().Be("1");
+        (await svc.AddValueAsync(numList.Code, new("", "Second", null))).Code.Should().Be("2");
+        (await svc.AddValueAsync(numList.Code, new("LEGACY", "Seeded-style", null))).Code.Should().Be("LEGACY");
+        (await svc.AddValueAsync(numList.Code, new(null, "Third", null))).Code.Should().Be("3");
     }
 
     [Fact]
@@ -210,11 +211,11 @@ public sealed class DependsOnHardeningTests
         await badList.Should().ThrowAsync<eProcure.Domain.DomainRuleException>();
 
         await svc.CreateListAsync(new("T9CTRY", "T9 Country", null, null));
-        await svc.AddValueAsync("T9CTRY", new("MY", "Malaysia", null));
-        await svc.CreateListAsync(new("T9STATE", "T9 State", null, "T9CTRY"));
-        var badValue = async () => await svc.AddValueAsync("T9STATE", new("SGR", "Selangor", "XX"));
+        await svc.AddValueAsync("CUSTLIST_T9CTRY", new("MY", "Malaysia", null));
+        await svc.CreateListAsync(new("T9STATE", "T9 State", null, "CUSTLIST_T9CTRY"));
+        var badValue = async () => await svc.AddValueAsync("CUSTLIST_T9STATE", new("SGR", "Selangor", "XX"));
         await badValue.Should().ThrowAsync<eProcure.Domain.DomainRuleException>("the parent value must exist in the parent list");
-        (await svc.AddValueAsync("T9STATE", new("SGR", "Selangor", "MY"))).ParentValueCode.Should().Be("MY");
+        (await svc.AddValueAsync("CUSTLIST_T9STATE", new("SGR", "Selangor", "MY"))).ParentValueCode.Should().Be("MY");
     }
 
     [Fact]
@@ -222,9 +223,9 @@ public sealed class DependsOnHardeningTests
     {
         var (c, svc) = New();
         await svc.CreateListAsync(new("T9C2", "T9 Country2", null, null));
-        var my = await svc.AddValueAsync("T9C2", new("MY", "Malaysia", null));
-        await svc.CreateListAsync(new("T9S2", "T9 State2", null, "T9C2"));
-        await svc.AddValueAsync("T9S2", new("SGR", "Selangor", "MY"));
+        var my = await svc.AddValueAsync("CUSTLIST_T9C2", new("MY", "Malaysia", null));
+        await svc.CreateListAsync(new("T9S2", "T9 State2", null, "CUSTLIST_T9C2"));
+        await svc.AddValueAsync("CUSTLIST_T9S2", new("SGR", "Selangor", "MY"));
 
         var result = await svc.DeleteValueAsync(my.Id);
         result.Should().NotBeNull("a parent with children DEACTIVATES (never-silently-orphan)");
@@ -237,7 +238,7 @@ public sealed class DependsOnHardeningTests
     {
         var (_, svc) = New();
         await svc.CreateListAsync(new("T9A", "T9 A", null, null));
-        await svc.CreateListAsync(new("T9B", "T9 B", null, "T9A"));
+        await svc.CreateListAsync(new("T9B", "T9 B", null, "CUSTLIST_T9A"));
         // UpdateCustomListRequest carries Name/Description/OrderMode ONLY — the compiler is
         // the guard: there is no way to point T9A at T9B after the fact.
         typeof(eProcure.Application.Configuration.UpdateCustomListRequest).GetProperty("ParentListCode")
@@ -259,8 +260,8 @@ public sealed class ValueTreeTests
     {
         var (_, svc) = New();
         await svc.CreateListAsync(new("T10CAT", "T10 Categories", null, null));
-        var rotating = await svc.AddValueAsync("T10CAT", new(null, "Rotating Equipment", null));
-        var pumps = await svc.AddValueAsync("T10CAT", new(null, "Pumps", rotating.Code));
+        var rotating = await svc.AddValueAsync("CUSTLIST_T10CAT", new(null, "Rotating Equipment", null));
+        var pumps = await svc.AddValueAsync("CUSTLIST_T10CAT", new(null, "Pumps", rotating.Code));
         pumps.ParentValueCode.Should().Be(rotating.Code, "a value parents another value of the SAME list");
 
         // Self-parent (same line) — rejected.
@@ -272,7 +273,7 @@ public sealed class ValueTreeTests
         (await cycle.Should().ThrowAsync<eProcure.Domain.DomainRuleException>()).WithMessage("*cycle*");
 
         // Dangling parent — rejected.
-        var dangling = async () => await svc.AddValueAsync("T10CAT", new(null, "Ghost", "999"));
+        var dangling = async () => await svc.AddValueAsync("CUSTLIST_T10CAT", new(null, "Ghost", "999"));
         (await dangling.Should().ThrowAsync<eProcure.Domain.DomainRuleException>()).WithMessage("*previously-entered*");
 
         // Deleting a parent with tree children — deactivates, never orphans.
@@ -286,9 +287,9 @@ public sealed class ValueTreeTests
     {
         var (_, svc) = New();
         await svc.CreateListAsync(new("T10DEEP", "T10 Deep", null, null));
-        var a = await svc.AddValueAsync("T10DEEP", new(null, "A", null));
-        var b = await svc.AddValueAsync("T10DEEP", new(null, "B", a.Code));
-        var c2 = await svc.AddValueAsync("T10DEEP", new(null, "C", b.Code));
+        var a = await svc.AddValueAsync("CUSTLIST_T10DEEP", new(null, "A", null));
+        var b = await svc.AddValueAsync("CUSTLIST_T10DEEP", new(null, "B", a.Code));
+        var c2 = await svc.AddValueAsync("CUSTLIST_T10DEEP", new(null, "C", b.Code));
         var cycle = async () => await svc.UpdateValueAsync(a.Id, new("A", c2.Code, a.Sort, true));   // A→C→B→A
         (await cycle.Should().ThrowAsync<eProcure.Domain.DomainRuleException>()).WithMessage("*cycle*");
     }

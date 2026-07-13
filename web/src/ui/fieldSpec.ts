@@ -58,6 +58,8 @@ export interface FieldSpec {
   options?: FieldOptionsSource
   /** CF-FIX1-T7: select/multiSelect render as the SEARCHABLE list (type-to-filter, keyboard-navigable) */
   searchable?: boolean
+  /** CF-FIX2-T1: fixed non-editable LEADING affix rendered INSIDE the field (custbody_, custlist_…) */
+  affix?: string
   validation?: FieldValidation
   /** suffix affordance: %, weeks, months, RM’000 */
   unit?: string
