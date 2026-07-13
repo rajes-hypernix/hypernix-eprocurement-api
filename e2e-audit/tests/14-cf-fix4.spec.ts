@@ -257,3 +257,57 @@ test('CF-FIX4-T5: the form picker on New PR — appears with >1 form, switches t
 
   expect((await request.delete(`${API}/api/entry-forms/${alt.id}`, { headers: ADMIN })).status()).toBe(204)
 })
+
+test('CF-FIX4-T6: segment lifecycle — staged values, impact dialog blocks assigned delete, unused deletes clean', async ({ page, request }) => {
+  const NAME = `Fix4 Seg ${STAMP}`
+  await goAs(page, 'u_admin', 'segments')
+  await page.waitForTimeout(1200)
+  await page.getByRole('button', { name: 'New segment' }).click()
+  await page.getByLabel('Name', { exact: true }).fill(NAME)
+  await page.getByRole('button', { name: 'Create segment' }).click()
+  await page.waitForTimeout(1000)
+
+  // STAGED values (the lists convention): two staged, nothing persisted, ONE Save commits.
+  await page.getByLabel('Label', { exact: true }).fill('Site One')
+  await page.getByRole('button', { name: 'Add value' }).click()
+  await page.getByLabel('Label', { exact: true }).fill('Site Two')
+  await page.getByRole('button', { name: 'Add value' }).click()
+  await expect(page.getByText('2 unsaved values')).toBeVisible()
+  let seg = (await (await request.get(`${API}/api/segments`, { headers: ADMIN })).json())
+    .find((s: { name: string }) => s.name === NAME)
+  expect(seg.values).toHaveLength(0)   // NOT persisted yet
+  await page.getByRole('button', { name: 'Save values' }).click()
+  await page.waitForTimeout(1200)
+  seg = (await (await request.get(`${API}/api/segments`, { headers: ADMIN })).json())
+    .find((s: { name: string }) => s.name === NAME)
+  expect(seg.values).toHaveLength(2)
+
+  // Assign SITE-ONE on a live PO → its delete opens the impact dialog and REFUSES with the reason.
+  await request.post(`${API}/api/segments/${seg.id}/applications`, { headers: { ...ADMIN, ...JSON_H },
+    data: { recordType: 'PurchaseOrder', lineLevel: false } })
+  const pos = await (await request.get(`${API}/api/pos`, { headers: BUYER })).json()
+  const draft = pos.find((p: { status: string }) => p.status === 'Draft')
+  const siteOne = seg.values.find((v: { code: string }) => v.code === 'SITE-ONE')
+  await request.put(`${API}/api/segment-assignments/PurchaseOrder/${draft.id}`, { headers: { ...BUYER, ...JSON_H },
+    data: { assignments: { [seg.code]: siteOne.code } } })
+
+  await page.reload({ waitUntil: 'networkidle' })
+  await page.getByRole('button', { name: new RegExp(NAME) }).click()
+  await page.getByRole('button', { name: 'Delete value Site One' }).click()
+  await expect(page.getByTestId('impact-report')).toBeVisible()
+  await expect(page.getByText(/live on OPEN records/)).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Delete segment value' })).toBeDisabled()
+  await page.getByRole('button', { name: 'Cancel' }).click()
+
+  // The unused sibling deletes cleanly through the dialog.
+  await page.getByRole('button', { name: 'Delete value Site Two' }).click()
+  await expect(page.getByText(/can be deleted safely/)).toBeVisible()
+  await page.getByRole('button', { name: 'Delete segment value' }).click()
+  await page.waitForTimeout(800)
+  await expect(page.getByText('Site Two')).toHaveCount(0)
+
+  // cleanup: clear the assignment, then the def deletes through the dialog path (API).
+  await request.put(`${API}/api/segment-assignments/PurchaseOrder/${draft.id}`, { headers: { ...BUYER, ...JSON_H },
+    data: { assignments: { [seg.code]: null } } })
+  expect((await request.delete(`${API}/api/segments/${seg.id}`, { headers: ADMIN })).status()).toBe(204)
+})

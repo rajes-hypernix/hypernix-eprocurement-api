@@ -69,3 +69,19 @@ public interface ICustomListValueDataProvider
     Task<DataReferenceSummary> CountValueUsageAsync(Guid listId, string listCode, string valueCode, CancellationToken ct = default);
     Task<PurgeSnapshot> PurgeHistoricalAsync(Guid listId, string listCode, string valueCode, CancellationToken ct = default);
 }
+
+/// <summary>CF-FIX4-T6: the SEGMENT twins of the CF-FIX-3 registries. valueId null = the
+/// def grain; non-null = one value. Same anti-rot contract: the guard/report LOOP over
+/// registered providers — a new segment consumer is one interface + one DI line.</summary>
+public interface ISegmentReferenceProvider
+{
+    string ConsumerName { get; }
+    Task<IReadOnlyList<FieldReference>> FindReferencesAsync(Guid segmentDefId, string segmentCode, Guid? valueId, CancellationToken ct = default);
+}
+
+public interface ISegmentDataProvider
+{
+    string StoreName { get; }
+    Task<DataReferenceSummary> CountAssignmentsAsync(Guid segmentDefId, Guid? valueId, CancellationToken ct = default);
+    Task<PurgeSnapshot> PurgeHistoricalAsync(Guid segmentDefId, Guid? valueId, CancellationToken ct = default);
+}

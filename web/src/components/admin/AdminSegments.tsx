@@ -3,8 +3,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   getSegmentDefs, createSegmentDef, updateSegmentDef, addSegmentValue, applySegment, unapplySegment,
   updateSegmentValue, deleteSegmentValue, setSegmentDefActive, deleteSegmentDef,
+  getSegmentReferences, purgeSegment, getSegmentValueReferences, purgeSegmentValue,
   type SegmentDefDto, type SegmentValueDto,
 } from '../../api/client'
+import { ImpactReportDialog } from './ImpactReportDialog'
 import { SetupPage } from '../../ui/archetypes/SetupPage'
 import { Modal, Notice } from '../ui'
 import { Button } from '../../ui/Button'
@@ -61,8 +63,11 @@ export function AdminSegments() {
 
 function SegmentDetail({ def, onChanged }: { def: SegmentDefDto; onChanged: () => void }) {
   const [editing, setEditing] = useState(false)
-  const [addingValue, setAddingValue] = useState(false)
   const [editingValue, setEditingValue] = useState<SegmentValueDto | null>(null)
+  // CF-FIX4-T6: destructive verbs open the CF-FIX-3 impact dialog — the admin SEES what
+  // blocks (forms, views, live/historical assignments) and only eligible tiers are offered.
+  const [impactDef, setImpactDef] = useState(false)
+  const [impactValue, setImpactValue] = useState<SegmentValueDto | null>(null)
   const [error, setError] = useState<string | null>(null)
   const byId = new Map(def.values.map((v) => [v.id, v]))
 
@@ -78,20 +83,10 @@ function SegmentDetail({ def, onChanged }: { def: SegmentDefDto; onChanged: () =
     onError: (e) => setError(e instanceof Error ? e.message : 'Could not remove the application.'),
   })
   // CF2-T6: the uniform lifecycle — value edit/delete, def deactivate/delete, all guarded server-side.
-  const removeValue = useMutation({
-    mutationFn: (valueId: string) => deleteSegmentValue(def.id, valueId),
-    onSuccess: () => { setError(null); onChanged() },
-    onError: (e) => setError(e instanceof Error ? e.message : 'Could not delete the value.'),
-  })
   const toggleDef = useMutation({
     mutationFn: () => setSegmentDefActive(def.id, !def.active),
     onSuccess: () => { setError(null); onChanged() },
     onError: (e) => setError(e instanceof Error ? e.message : 'Could not update the segment.'),
-  })
-  const removeDef = useMutation({
-    mutationFn: () => deleteSegmentDef(def.id),
-    onSuccess: () => { setError(null); onChanged() },
-    onError: (e) => setError(e instanceof Error ? e.message : 'Could not delete the segment.'),
   })
 
   return (
@@ -107,7 +102,7 @@ function SegmentDetail({ def, onChanged }: { def: SegmentDefDto; onChanged: () =
               <Button variant="ghost" size="sm" onClick={() => toggleDef.mutate()} ariaLabel={def.active ? 'Deactivate segment' : 'Reactivate segment'}>
                 {def.active ? 'Deactivate' : 'Reactivate'}
               </Button>
-              <Button variant="ghost" size="sm" red onClick={() => removeDef.mutate()} ariaLabel="Delete segment">Delete</Button>
+              <Button variant="ghost" size="sm" red onClick={() => setImpactDef(true)} ariaLabel="Delete segment">Delete</Button>
             </>
           )}
       </div>
@@ -133,7 +128,7 @@ function SegmentDetail({ def, onChanged }: { def: SegmentDefDto; onChanged: () =
                 {!def.isSystem && (
                   <>
                     <Button variant="ghost" size="sm" onClick={() => setEditingValue(v)} ariaLabel={`Edit value ${v.label}`}>Edit</Button>
-                    <Button variant="ghost" size="sm" red onClick={() => removeValue.mutate(v.id)} ariaLabel={`Delete value ${v.label}`}>Delete</Button>
+                    <Button variant="ghost" size="sm" red onClick={() => setImpactValue(v)} ariaLabel={`Delete value ${v.label}`}>Delete</Button>
                   </>
                 )}
               </td>
@@ -142,9 +137,7 @@ function SegmentDetail({ def, onChanged }: { def: SegmentDefDto; onChanged: () =
           {def.values.length === 0 && <tr><td colSpan={def.hasHierarchy ? 5 : 4} className="hint">No values yet — add the first dimension key.</td></tr>}
         </tbody>
       </table>
-      {!def.isSystem && (
-        <Button variant="ghost" size="sm" icon="plus" onClick={() => setAddingValue(true)}>Add value</Button>
-      )}
+      {!def.isSystem && <StagedValues def={def} onChanged={onChanged} onError={setError} />}
 
       <h4 style={{ marginTop: 18 }}>Applied to</h4>
       <table>
@@ -182,11 +175,32 @@ function SegmentDetail({ def, onChanged }: { def: SegmentDefDto; onChanged: () =
       {editing && (
         <DefModal def={def} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); onChanged() }} />
       )}
-      {addingValue && (
-        <ValueModal def={def} onClose={() => setAddingValue(false)} onSaved={() => { setAddingValue(false); onChanged() }} />
-      )}
       {editingValue && (
         <EditValueModal def={def} value={editingValue} onClose={() => setEditingValue(null)} onSaved={() => { setEditingValue(null); onChanged() }} />
+      )}
+      {impactDef && (
+        <ImpactReportDialog
+          title={`Delete segment — ${def.name}`}
+          kind="segment"
+          load={() => getSegmentReferences(def.id)}
+          onDeactivate={def.active ? () => setSegmentDefActive(def.id, false) : undefined}
+          onDelete={() => deleteSegmentDef(def.id)}
+          onPurge={() => purgeSegment(def.id)}
+          onClose={(changed) => { setImpactDef(false); if (changed) onChanged() }}
+        />
+      )}
+      {impactValue && (
+        <ImpactReportDialog
+          title={`Delete value — ${impactValue.label} (${impactValue.code})`}
+          kind="segment-value"
+          load={() => getSegmentValueReferences(impactValue.id)}
+          onDeactivate={impactValue.active
+            ? () => updateSegmentValue(def.id, impactValue.id, { label: impactValue.label, parentValueId: impactValue.parentValueId ?? null, sort: impactValue.sort, active: false })
+            : undefined}
+          onDelete={() => deleteSegmentValue(def.id, impactValue.id)}
+          onPurge={() => purgeSegmentValue(impactValue.id)}
+          onClose={(changed) => { setImpactValue(null); if (changed) onChanged() }}
+        />
       )}
     </div>
   )
@@ -232,36 +246,82 @@ function DefModal({ def, onClose, onSaved }: {
   )
 }
 
-function ValueModal({ def, onClose, onSaved }: { def: SegmentDefDto; onClose: () => void; onSaved: () => void }) {
+/**
+ * CF-FIX4-T6: values STAGE locally — add several, then ONE Save commits them all (the
+ * lists CF-FIX2-T5 convention; no auto-save). A staged value may parent another staged
+ * value (staged:<idx>, resolved to the real id on save). Pickers are the standardized
+ * searchable select.
+ */
+function StagedValues({ def, onChanged, onError }: {
+  def: SegmentDefDto; onChanged: () => void; onError: (msg: string | null) => void
+}) {
   const [label, setLabel] = useState('')
-  const [parentId, setParentId] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  const [parent, setParent] = useState('')
+  const [staged, setStaged] = useState<{ label: string; parent: string }[]>([])
 
   const save = useMutation({
-    mutationFn: () => addSegmentValue(def.id, { label, parentValueId: parentId || null, sort: def.values.length }),
-    onSuccess: onSaved,
-    onError: (e) => setError(e instanceof Error ? e.message : 'Could not add the value.'),
+    mutationFn: async () => {
+      const ids: string[] = []
+      for (const [i, s] of staged.entries()) {
+        const parentId = s.parent.startsWith('staged:') ? ids[Number(s.parent.slice(7))] : (s.parent || null)
+        const d = await addSegmentValue(def.id, { label: s.label, parentValueId: parentId, sort: def.values.length + i })
+        const created = d.values.find((v) => v.label === s.label)
+        ids.push(created?.id ?? '')
+      }
+    },
+    onSuccess: () => { setStaged([]); onError(null); onChanged() },
+    onError: (e) => onError(e instanceof Error ? e.message : 'Could not save the values.'),
   })
+  const stage = () => {
+    if (!label.trim()) { onError('Enter a label.'); return }
+    setStaged((s) => [...s, { label: label.trim(), parent }])
+    setLabel(''); setParent('')
+  }
+  const stagedLabel = (p: string) =>
+    p.startsWith('staged:') ? `${staged[Number(p.slice(7))]?.label} (unsaved)` : def.values.find((v) => v.id === p)?.label ?? '—'
 
   return (
-    <Modal
-      title={`New value on ${def.name}`}
-      icon="plus"
-      footer={
-        <>
-          <button type="button" className="btn btn-out" onClick={onClose}>Cancel</button>
-          <button type="button" className="btn btn-pri" disabled={!label.trim() || save.isPending} onClick={() => save.mutate()}>Add value</button>
-        </>
-      }
-    >
-      <TextField spec={spec('segv-label', 'Label (the code derives from it)', 'text')} value={label} onChange={(v) => setLabel(String(v ?? ''))} />
-      {def.hasHierarchy && (
-        <SelectField
-          spec={{ key: 'segv-parent', label: 'Parent value (optional)', dataType: 'select', options: { kind: 'static', options: def.values.map((v) => ({ code: v.id, label: v.label })) } }}
-          value={parentId} onChange={(v) => setParentId(String(v ?? ''))} />
+    <div style={{ marginTop: 8 }}>
+      {staged.length > 0 && (
+        <table>
+          <tbody>
+            {staged.map((s, i) => (
+              <tr key={`staged-${i}`} style={{ background: 'var(--soft)' }}>
+                <td style={{ fontWeight: 600 }}>{s.label} <span className="badge b-grey">unsaved</span></td>
+                {def.hasHierarchy && <td className="hint">{s.parent ? stagedLabel(s.parent) : '—'}</td>}
+                <td className="amt">
+                  <Button variant="ghost" size="sm" icon="x" onClick={() => setStaged((x) => x.filter((_, j) => j !== i))} ariaLabel={`Discard staged ${s.label}`} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       )}
-      {error && <Notice tone="error">{error}</Notice>}
-    </Modal>
+      <div className="grid g3" style={{ marginTop: 8 }}>
+        <TextField spec={{ key: 'segv-label', label: 'Label', dataType: 'text', help: 'The dimension CODE derives from it, like every sourcing code.' }}
+          value={label} onChange={(v) => setLabel(String(v ?? ''))} />
+        {def.hasHierarchy && (def.values.length > 0 || staged.length > 0) && (
+          <SelectField
+            spec={{ key: 'segv-parent', label: 'Parent (optional)', dataType: 'select', searchable: true, placeholder: 'None — top level',
+              options: { kind: 'static', options: [
+                ...def.values.map((v) => ({ code: v.id, label: v.label })),
+                ...staged.map((s, i) => ({ code: `staged:${i}`, label: `${s.label} (unsaved)` })),
+              ] } }}
+            value={parent} onChange={(v) => setParent(String(v ?? ''))} />
+        )}
+      </div>
+      <div style={{ marginTop: 10, display: 'flex', gap: 8, alignItems: 'center' }}>
+        <Button variant="outline" size="sm" icon="plus" onClick={stage}>Add value</Button>
+        <Button variant="primary" size="sm" icon="check" busy={save.isPending} disabled={staged.length === 0}
+          onClick={() => save.mutate()} ariaLabel="Save values">Save</Button>
+        {staged.length > 0 && (
+          <>
+            <span className="hint">{staged.length} unsaved value{staged.length === 1 ? '' : 's'}</span>
+            <Button variant="ghost" size="sm" onClick={() => setStaged([])} ariaLabel="Discard unsaved values">Cancel</Button>
+          </>
+        )}
+      </div>
+    </div>
   )
 }
 

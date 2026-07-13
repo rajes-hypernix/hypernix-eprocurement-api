@@ -62,6 +62,10 @@ public static class DependencyInjection
         services.AddScoped<Application.CustomFields.ICustomListValueReferenceProvider, Referencing.SegmentReferenceProvider>();
         services.AddScoped<Application.CustomFields.ICustomListValueDataProvider, Referencing.CustomValueDataProvider>();
         services.AddScoped<Application.CustomFields.ICustomListValueDataProvider, Referencing.NativeCodeColumnDataProvider>();
+        // CF-FIX4-T6: the segment twins — same anti-rot loop, segment grain.
+        services.AddScoped<Application.CustomFields.ISegmentReferenceProvider, Referencing.SegmentFormPlacementProvider>();
+        services.AddScoped<Application.CustomFields.ISegmentReferenceProvider, Referencing.SavedViewSegmentProvider>();
+        services.AddScoped<Application.CustomFields.ISegmentDataProvider, Referencing.SegmentAssignmentDataProvider>();
         services.AddScoped<Application.Segments.ISegmentService, SegmentService>();              // segments (D6)
         services.AddScoped<Application.Segments.ISegmentProjection, SegmentProjection>();        // the (iii-a) projection
         services.AddScoped<Application.Views.IRecordReachability, RecordReachability>();        // the ONE reachability guard (A2F-T4)

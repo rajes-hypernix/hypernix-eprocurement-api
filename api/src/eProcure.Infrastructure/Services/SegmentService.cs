@@ -27,7 +27,10 @@ namespace eProcure.Infrastructure.Services;
 public sealed class SegmentService(
     AppDbContext db,
     IClock clock,
-    IRecordReachability reachability) : ISegmentService
+    IRecordReachability reachability,
+    IEnumerable<eProcure.Application.CustomFields.ISegmentReferenceProvider>? refProviders = null,
+    IEnumerable<eProcure.Application.CustomFields.ISegmentDataProvider>? dataProviders = null,
+    eProcure.Application.Abstractions.IAuditLog? audit = null) : ISegmentService
 {
     // ---------- defs / values / applications (A68) ----------
 
@@ -119,16 +122,131 @@ public sealed class SegmentService(
             ?? throw new NotFoundException($"Segment value {valueId} not found on {def.Name}.");
         if (await db.SegmentValues.AnyAsync(v => v.ParentValueId == valueId, ct))
             throw new DomainRuleException($"'{value.Label}' has child values — repoint or remove them first.");
-        // The list-value discipline (A2F-T3): assigned somewhere → deactivate; clean → hard delete.
-        if (await db.SegmentAssignments.AnyAsync(a => a.SegmentValueId == valueId, ct))
-        {
-            value.Active = false;
-            await db.SaveChangesAsync(ct);
-            return await ToDtoAsync(def, ct);
-        }
+        // CF-FIX4-T6: the CF-FIX-3 tiers replace the silent deactivate-fallback. Delete
+        // REFUSES loudly with the report's reason; Tier 1 stays UpdateValueAsync(active:false);
+        // Tier 3 is PurgeValueAsync (A73).
+        var report = await BuildReportAsync(def, value.Id, ct);
+        if (!report.CanDelete)
+            throw new DomainRuleException(report.BlockedReason
+                ?? $"'{value.Label}' is still referenced or assigned — deactivate it instead, or purge its history (governed).");
         db.SegmentValues.Remove(value);
         await db.SaveChangesAsync(ct);
         return await ToDtoAsync(def, ct);
+    }
+
+    public async Task<eProcure.Application.CustomFields.ImpactReportDto> GetReferencesAsync(Guid id, CancellationToken ct = default)
+    {
+        var def = await db.SegmentDefs.FirstOrDefaultAsync(d => d.Id == id, ct)
+            ?? throw new NotFoundException($"Segment {id} not found.");
+        return await BuildReportAsync(def, null, ct);
+    }
+
+    public async Task<eProcure.Application.CustomFields.ImpactReportDto> GetValueReferencesAsync(Guid valueId, CancellationToken ct = default)
+    {
+        var value = await db.SegmentValues.AsNoTracking().FirstOrDefaultAsync(v => v.Id == valueId, ct)
+            ?? throw new NotFoundException($"Segment value {valueId} not found.");
+        var def = await db.SegmentDefs.FirstAsync(d => d.Id == value.SegmentDefId, ct);
+        return await BuildReportAsync(def, valueId, ct);
+    }
+
+    /// <summary>The CF-FIX-3 report shape, segment grain: LOOP the registered providers,
+    /// never name a consumer (the anti-rot contract).</summary>
+    private async Task<eProcure.Application.CustomFields.ImpactReportDto> BuildReportAsync(
+        Domain.Segments.SegmentDef def, Guid? valueId, CancellationToken ct)
+    {
+        var refs = new List<eProcure.Application.CustomFields.FieldReference>();
+        foreach (var p in refProviders ?? [])
+            refs.AddRange(await p.FindReferencesAsync(def.Id, def.Code, valueId, ct));
+        var data = new List<eProcure.Application.CustomFields.DataReferenceSummary>();
+        foreach (var p in dataProviders ?? [])
+            data.Add(await p.CountAssignmentsAsync(def.Id, valueId, ct));
+        var live = data.Sum(d => d.LiveCount);
+        var historical = data.Sum(d => d.HistoricalCount);
+        var blocked =
+            refs.Count > 0 ? $"Still referenced by {string.Join(", ", refs.Select(r => r.ConsumerName).Distinct())} — clear those first (the list below is the to-do)."
+            : live > 0 ? $"{live} assignment(s) live on OPEN records — a dimension in live use is never deleted."
+            : null;
+        return new eProcure.Application.CustomFields.ImpactReportDto(refs, data, live, historical,
+            CanDelete: refs.Count == 0 && live == 0 && historical == 0,
+            CanPurge: refs.Count == 0 && live == 0 && historical > 0,
+            blocked ?? (historical > 0 ? $"{historical} assignment(s) remain on closed/historical records — Purge (governed) removes them with a snapshot." : null));
+    }
+
+    /// <summary>CF-FIX4-T6 Tier 3, segment DEF grain — the CF-FIX-3 purge contract verbatim:
+    /// transactional, RE-VERIFIED inside the transaction, every removed assignment
+    /// snapshotted to the audit, then the def (values, applications, registry) deleted.</summary>
+    public async Task PurgeAsync(Guid id, CancellationToken ct = default)
+    {
+        var def = await LoadUserDef(id, ct);   // system defs refuse — convergence-owned
+        var tx = db.Database.IsRelational() ? await db.Database.BeginTransactionAsync(ct) : null;
+        try
+        {
+            var report = await BuildReportAsync(def, null, ct);
+            if (!report.CanPurge)
+                throw new DomainRuleException(report.BlockedReason
+                    ?? "Purge is only available when references are clear, no live assignments remain, and historical assignments exist.");
+            foreach (var p in dataProviders ?? [])
+            {
+                var snapshot = await p.PurgeHistoricalAsync(def.Id, null, ct);
+                foreach (var v in snapshot.Removed)
+                    if (audit is not null)
+                        await audit.WriteAsync("Segment", def.Code, "Purged historical assignment",
+                            before: $"{v.RecordType} {v.RecordLabel}{(v.LineId is not null ? $" line {v.LineId}" : "")}", after: v.Value, ct: ct);
+            }
+            db.FieldRegistry.RemoveRange(await db.FieldRegistry.Where(r => r.SegmentDefId == def.Id).ToListAsync(ct));
+            db.SegmentApplications.RemoveRange(await db.SegmentApplications.Where(a => a.SegmentDefId == def.Id).ToListAsync(ct));
+            db.SegmentValues.RemoveRange(await db.SegmentValues.Where(v => v.SegmentDefId == def.Id).ToListAsync(ct));
+            db.SegmentDefs.Remove(def);
+            if (audit is not null) await audit.WriteAsync("Segment", def.Code, "Purged and deleted", ct: ct);
+            await db.SaveChangesAsync(ct);
+            if (tx is not null) await tx.CommitAsync(ct);
+        }
+        catch
+        {
+            if (tx is not null) await tx.RollbackAsync(ct);
+            throw;
+        }
+        finally
+        {
+            if (tx is not null) await tx.DisposeAsync();
+        }
+    }
+
+    /// <summary>Tier 3, VALUE grain — same contract; the value row goes with its history.</summary>
+    public async Task PurgeValueAsync(Guid valueId, CancellationToken ct = default)
+    {
+        var value = await db.SegmentValues.FirstOrDefaultAsync(v => v.Id == valueId, ct)
+            ?? throw new NotFoundException($"Segment value {valueId} not found.");
+        var def = await db.SegmentDefs.FirstAsync(d => d.Id == value.SegmentDefId, ct);
+        var tx = db.Database.IsRelational() ? await db.Database.BeginTransactionAsync(ct) : null;
+        try
+        {
+            var report = await BuildReportAsync(def, valueId, ct);
+            if (!report.CanPurge)
+                throw new DomainRuleException(report.BlockedReason
+                    ?? "Purge is only available when references are clear, no live assignments remain, and historical assignments exist.");
+            foreach (var p in dataProviders ?? [])
+            {
+                var snapshot = await p.PurgeHistoricalAsync(def.Id, valueId, ct);
+                foreach (var v in snapshot.Removed)
+                    if (audit is not null)
+                        await audit.WriteAsync("Segment", $"{def.Code}:{value.Code}", "Purged historical assignment",
+                            before: $"{v.RecordType} {v.RecordLabel}{(v.LineId is not null ? $" line {v.LineId}" : "")}", after: v.Value, ct: ct);
+            }
+            db.SegmentValues.Remove(value);
+            if (audit is not null) await audit.WriteAsync("Segment", $"{def.Code}:{value.Code}", "Purged and deleted", ct: ct);
+            await db.SaveChangesAsync(ct);
+            if (tx is not null) await tx.CommitAsync(ct);
+        }
+        catch
+        {
+            if (tx is not null) await tx.RollbackAsync(ct);
+            throw;
+        }
+        finally
+        {
+            if (tx is not null) await tx.DisposeAsync();
+        }
     }
 
     public async Task<SegmentDefDto> SetDefActiveAsync(Guid id, bool active, CancellationToken ct = default)
@@ -143,8 +261,12 @@ public sealed class SegmentService(
     public async Task DeleteDefAsync(Guid id, CancellationToken ct = default)
     {
         var def = await LoadUserDef(id, ct);   // system defs refuse here (convergence row owns them)
-        if (await db.SegmentAssignments.AnyAsync(a => a.SegmentDefId == def.Id, ct))
-            throw new DomainRuleException($"{def.Name} has live assignments — dimension keys are never silently dropped. Clear the assignments (or deactivate the segment) first.");
+        // CF-FIX4-T6: report-driven tiers — refs (forms, views) AND assignments block, with
+        // the reason named; historical-only offers the governed purge instead.
+        var report = await BuildReportAsync(def, null, ct);
+        if (!report.CanDelete)
+            throw new DomainRuleException(report.BlockedReason
+                ?? $"{def.Name} is still referenced or assigned — dimension keys are never silently dropped.");
         db.FieldRegistry.RemoveRange(await db.FieldRegistry.Where(r => r.SegmentDefId == def.Id).ToListAsync(ct));
         db.SegmentApplications.RemoveRange(await db.SegmentApplications.Where(a => a.SegmentDefId == def.Id).ToListAsync(ct));
         db.SegmentValues.RemoveRange(await db.SegmentValues.Where(v => v.SegmentDefId == def.Id).ToListAsync(ct));

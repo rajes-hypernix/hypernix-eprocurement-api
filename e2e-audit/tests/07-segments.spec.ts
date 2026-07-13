@@ -31,15 +31,16 @@ test('segments gate: admin defines → buyer assigns → view filters → sliced
   await goAs(page, 'u_admin', 'segments')
   await page.waitForTimeout(1200)
   await page.getByRole('button', { name: 'New segment' }).click()
-  await page.getByLabel('Name').fill(SEG_NAME)
+  await page.getByLabel('Name', { exact: true }).fill(SEG_NAME)
   await page.getByRole('button', { name: 'Create segment' }).click()
   await page.waitForTimeout(800)
+  // CF-FIX4-T6: values STAGE (the lists convention) — three staged, ONE Save commits.
   for (const v of ['Alpha Plant', 'Beta Plant', 'Gamma Yard']) {
+    await page.getByLabel('Label', { exact: true }).fill(v)
     await page.getByRole('button', { name: 'Add value' }).click()
-    await page.getByLabel('Label (the code derives from it)').fill(v)
-    await page.getByRole('button', { name: 'Add value' }).last().click()
-    await page.waitForTimeout(600)
   }
+  await page.getByRole('button', { name: 'Save values' }).click()
+  await page.waitForTimeout(1000)
   await expect(page.getByText('ALPHA-PLANT')).toBeVisible()     // the DimCode-derived key, on the glass
   for (const rt of ['Requisition', 'PurchaseOrder', 'Invoice']) {
     await page.getByRole('button', { name: `Apply ${SEG_NAME} to ${rt}`, exact: true }).click()
@@ -60,7 +61,7 @@ test('segments gate: admin defines → buyer assigns → view filters → sliced
   await page.waitForTimeout(1500)
   const section = page.locator('div.card', { hasText: 'Segments' }).last()
   await expect(section).toBeVisible()
-  await page.getByLabel(SEG_NAME).selectOption('ALPHA-PLANT')
+  await pickSearch(page, SEG_NAME, 'Alpha Plant')   // CF-FIX4-T6: segment pickers are the searchable select
   await shot(page, 'D6-gate-2-assign')
   await page.getByRole('button', { name: 'Save segments' }).click()
   await page.waitForTimeout(1000)

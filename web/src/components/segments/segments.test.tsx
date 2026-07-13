@@ -35,8 +35,9 @@ describe('SegmentsSection — dimensions ride the D1 select pipeline', () => {
     const save = vi.spyOn(client, 'saveSegmentAssignments').mockResolvedValue([])
 
     renderWithProviders(<SegmentsSection recordType="PurchaseOrder" recordId="p1" lineId="L1" title="Line segments" />)
-    const select = await screen.findByLabelText('Project')
-    await userEvent.selectOptions(select, 'ALPHA-PLANT')
+    // CF-FIX4-T6: segment pickers are the standardized searchable select.
+    await screen.findByLabelText('Project')
+    await pickSearchable('Project', 'Alpha Plant')
     await userEvent.click(screen.getByRole('button', { name: 'Save line segments' }))
     await waitFor(() => expect(save).toHaveBeenCalledWith('PurchaseOrder', 'p1',
       { seg_project: 'ALPHA-PLANT' }, 'L1'))

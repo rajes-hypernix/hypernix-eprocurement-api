@@ -189,14 +189,18 @@ test('CF2-T6: uniform lifecycle on screen — segment value edit/delete, def dea
 
   // EDIT a value on screen (the verb that didn't exist).
   await page.getByRole('button', { name: 'Edit value Pool One' }).click()
-  await page.getByLabel('Label').fill('Pool One Renamed')
-  await page.getByRole('button', { name: 'Save value' }).click()
+  // CF-FIX4-T6: the staged add panel also has a 'Label' input — scope to the dialog.
+  await page.getByRole('dialog').getByLabel('Label').fill('Pool One Renamed')
+  await page.getByRole('button', { name: 'Save value', exact: true }).click()
   await page.waitForTimeout(800)
   await expect(page.getByText('Pool One Renamed')).toBeVisible()
   await expect(page.getByText('POOL-ONE', { exact: true })).toBeVisible()   // the CODE never re-keys
 
   // DELETE an unused value on screen.
   await page.getByRole('button', { name: 'Delete value Pool Two' }).click()
+  // CF-FIX4-T6: the delete verb opens the impact dialog — unused → Delete is offered.
+  await expect(page.getByText(/can be deleted safely/)).toBeVisible()
+  await page.getByRole('button', { name: 'Delete segment value' }).click()
   await page.waitForTimeout(800)
   await expect(page.getByText('POOL-TWO')).toHaveCount(0)
 
@@ -206,6 +210,9 @@ test('CF2-T6: uniform lifecycle on screen — segment value edit/delete, def dea
   await page.getByRole('button', { name: 'Reactivate segment' }).click()
   await page.waitForTimeout(600)
   await page.getByRole('button', { name: 'Delete segment' }).click()
+  // CF-FIX4-T6: def delete goes through the impact dialog too — clean → Delete offered.
+  await expect(page.getByText(/can be deleted safely/)).toBeVisible()
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete segment', exact: true }).click()   // the header verb shares the name
   await page.waitForTimeout(800)
   await expect(page.getByRole('button', { name: new RegExp(`Cost Pool ${STAMP}.*value`) })).toHaveCount(0)
 

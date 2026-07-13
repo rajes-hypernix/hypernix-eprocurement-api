@@ -43,6 +43,12 @@ public interface ISegmentService
     /// <summary>CF2-T6: guarded — refused while ANY assignment or value-in-use exists;
     /// otherwise cascades applications + registry rows + values. System defs never.</summary>
     Task DeleteDefAsync(Guid id, CancellationToken ct = default);
+    // CF-FIX4-T6: the CF-FIX-3 lifecycle discipline, segment grain — impact report +
+    // governed purge (A73) for defs AND values.
+    Task<CustomFields.ImpactReportDto> GetReferencesAsync(Guid id, CancellationToken ct = default);
+    Task<CustomFields.ImpactReportDto> GetValueReferencesAsync(Guid valueId, CancellationToken ct = default);
+    Task PurgeAsync(Guid id, CancellationToken ct = default);
+    Task PurgeValueAsync(Guid valueId, CancellationToken ct = default);
     Task<SegmentDefDto> ApplyAsync(Guid defId, ApplySegmentRequest req, CancellationToken ct = default);
     Task<SegmentDefDto> UnapplyAsync(Guid defId, string recordType, CancellationToken ct = default);
     Task<IReadOnlyList<SegmentAssignmentDto>> GetAssignmentsAsync(string recordType, Guid recordId, Guid? lineId, CancellationToken ct = default);

@@ -18,7 +18,7 @@ import { recordTypeLabel } from '../../lib/recordTypeLabel'
  */
 export function ImpactReportDialog({ title, kind, load, onDeactivate, onDelete, onPurge, onClose }: {
   title: string
-  kind: 'field' | 'value'
+  kind: 'field' | 'value' | 'segment' | 'segment-value'
   load: () => Promise<ImpactReportDto>
   onDeactivate?: () => Promise<unknown>
   onDelete: () => Promise<unknown>
@@ -37,7 +37,7 @@ export function ImpactReportDialog({ title, kind, load, onDeactivate, onDelete, 
     })
   }
 
-  const noun = kind === 'field' ? 'field' : 'list value'
+  const noun = { field: 'field', value: 'list value', segment: 'segment', 'segment-value': 'segment value' }[kind]
   return (
     <Modal title={title} icon="flag"
       footer={

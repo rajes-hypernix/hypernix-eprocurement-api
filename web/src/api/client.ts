@@ -247,6 +247,11 @@ export const deleteSegmentValue = (defId: string, valueId: string) =>
 export const setSegmentDefActive = (id: string, active: boolean) =>
   http<SegmentDefDto>(`/segments/${id}/active`, { method: 'POST', body: JSON.stringify(active) })
 export const deleteSegmentDef = (id: string) => http<undefined>(`/segments/${id}`, { method: 'DELETE' })
+// CF-FIX4-T6: the CF-FIX-3 lifecycle surface at segment grain (report + governed purge).
+export const getSegmentReferences = (id: string) => http<ImpactReportDto>(`/segments/${id}/references`)
+export const purgeSegment = (id: string) => http<undefined>(`/segments/${id}/purge`, { method: 'POST' })
+export const getSegmentValueReferences = (valueId: string) => http<ImpactReportDto>(`/segments/values/${valueId}/references`)
+export const purgeSegmentValue = (valueId: string) => http<undefined>(`/segments/values/${valueId}/purge`, { method: 'POST' })
 export const setEntryFormActive = (id: string, active: boolean) =>
   http<EntryFormDefDto>(`/entry-forms/${id}/active`, { method: 'POST', body: JSON.stringify(active) })
 export const applySegment = (id: string, req: { recordType: string; lineLevel: boolean }) =>

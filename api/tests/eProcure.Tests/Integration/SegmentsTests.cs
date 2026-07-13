@@ -204,13 +204,16 @@ public sealed class SegmentLifecycleTests(SegmentsFixture fx) : IClassFixture<Se
         updated.Values.Single(v => v.Id == alpha.Id).Label.Should().Be("Alpha Site Renamed");
         updated.Values.Single(v => v.Id == alpha.Id).Code.Should().Be("ALPHA-SITE", "codes are stored keys — immutable");
 
-        // Guarded delete: assign BETA somewhere, then delete → deactivates, not removed.
+        // CF-FIX4-T6: the tiers replaced the silent deactivate-fallback — delete of an
+        // ASSIGNED value now REFUSES LOUDLY; Tier 1 stays the explicit deactivate verb.
         await fx.Assign(fx.PoAId, def.Code, "BETA-SITE");
         var beta = def.Values.Single(v => v.Code == "BETA-SITE");
         var del = await admin.DeleteAsync($"/api/segments/{def.Id}/values/{beta.Id}");
-        del.StatusCode.Should().Be(HttpStatusCode.OK);
-        (await del.Content.ReadFromJsonAsync<SegmentDefDto>())!.Values.Single(v => v.Id == beta.Id).Active
-            .Should().BeFalse("assigned values deactivate — history never re-keys");
+        del.StatusCode.Should().Be(HttpStatusCode.Conflict, "assigned values refuse deletion — never a silent state change");
+        (await del.Content.ReadAsStringAsync()).Should().Contain("live");
+        var tier1 = await admin.PutAsJsonAsync($"/api/segments/{def.Id}/values/{beta.Id}",
+            new { label = beta.Label, parentValueId = (Guid?)null, sort = 0, active = false });
+        tier1.StatusCode.Should().Be(HttpStatusCode.OK, "explicit Tier-1 deactivate still works");
 
         // Unassigned value hard-deletes.
         var del2 = await admin.DeleteAsync($"/api/segments/{def.Id}/values/{alpha.Id}");

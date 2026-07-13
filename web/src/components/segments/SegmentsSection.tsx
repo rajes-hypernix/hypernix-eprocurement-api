@@ -21,6 +21,7 @@ const toSpec = (a: SegmentAssignmentDto): FieldSpec => ({
   key: a.segmentCode,
   label: a.segmentName,
   dataType: 'select',
+  searchable: true,   // CF-FIX4-T6: segment pickers use the standardized type-to-filter list
   required: a.required,
   options: { kind: 'static', options: a.options.map((o) => ({ code: o.code, label: o.label })) },
 })

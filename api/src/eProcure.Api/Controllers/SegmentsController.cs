@@ -62,6 +62,34 @@ public sealed class SegmentsController(ISegmentService segments) : ControllerBas
     [Action(ApiActions.ManageSegments)]
     public async Task<ActionResult<SegmentDefDto>> Unapply(Guid id, string recordType, CancellationToken ct) =>
         Ok(await segments.UnapplyAsync(id, recordType, ct));
+
+    // CF-FIX4-T6: the CF-FIX-3 lifecycle surface, segment grain. Reports are admin-scoped;
+    // purge is the DISTINCT higher tier (A73 — deliberately not implied by ManageSegments).
+    [HttpGet("{id:guid}/references")]
+    [Action(ApiActions.ManageSegments)]
+    public async Task<ActionResult<eProcure.Application.CustomFields.ImpactReportDto>> References(Guid id, CancellationToken ct) =>
+        Ok(await segments.GetReferencesAsync(id, ct));
+
+    [HttpPost("{id:guid}/purge")]
+    [Action(ApiActions.PurgeCustomFieldHistory)]
+    public async Task<IActionResult> Purge(Guid id, CancellationToken ct)
+    {
+        await segments.PurgeAsync(id, ct);
+        return NoContent();
+    }
+
+    [HttpGet("values/{valueId:guid}/references")]
+    [Action(ApiActions.ManageSegments)]
+    public async Task<ActionResult<eProcure.Application.CustomFields.ImpactReportDto>> ValueReferences(Guid valueId, CancellationToken ct) =>
+        Ok(await segments.GetValueReferencesAsync(valueId, ct));
+
+    [HttpPost("values/{valueId:guid}/purge")]
+    [Action(ApiActions.PurgeCustomFieldHistory)]
+    public async Task<IActionResult> PurgeValue(Guid valueId, CancellationToken ct)
+    {
+        await segments.PurgeValueAsync(valueId, ct);
+        return NoContent();
+    }
 }
 
 /// <summary>
@@ -80,5 +108,4 @@ public sealed class SegmentAssignmentsController(ISegmentService segments) : Con
     [HttpPut("{recordType}/{recordId:guid}")]
     [Action(ApiActions.EditCustomValues)]
     public async Task<ActionResult<IReadOnlyList<SegmentAssignmentDto>>> Save(string recordType, Guid recordId, [FromBody] SaveSegmentAssignmentsRequest req, CancellationToken ct) =>
-        Ok(await segments.SaveAssignmentsAsync(recordType, recordId, req, ct));
-}
+        Ok(await segments.SaveAssignmentsAsync(recordType, recordId, req, ct));}
