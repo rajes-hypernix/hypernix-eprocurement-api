@@ -40,7 +40,9 @@ export function AdminCustomLists() {
   })
   const removeList = useMutation({
     mutationFn: (code: string) => deleteCustomList(code),
-    onSuccess: () => { setSelCode(null); refresh() }, onError: onErr,
+    // A guarded delete DEACTIVATES (returns the list) — keep it selected so the admin
+    // SEES the Inactive badge; only a hard delete (204/no body) clears the selection.
+    onSuccess: (result) => { if (!result) setSelCode(null); refresh() }, onError: onErr,
   })
 
   if (isPending) return <Spinner label="Loading custom lists…" />
@@ -308,7 +310,7 @@ function EditListModal({ list, onClose, onSaved, onErr }: {
       <TextField spec={{ key: 'el-name', label: 'Name', dataType: 'text' }} value={name} onChange={(v) => setName(String(v ?? ''))} />
       <TextAreaField spec={{ key: 'el-desc', label: 'Description', dataType: 'longText' }} value={desc} onChange={(v) => setDesc(String(v ?? ''))} />
       <SelectField
-        spec={{ key: 'el-order', label: 'Show options in', dataType: 'select', options: { kind: 'static', options: [
+        spec={{ key: 'el-order', label: 'Show options in', dataType: 'select', searchable: true, options: { kind: 'static', options: [
           { code: 'Entered', label: 'The order entered' }, { code: 'Alphabetical', label: 'Alphabetical order' },
         ] } }}
         value={orderMode} onChange={(v) => setOrderMode(String(v ?? 'Entered'))} />

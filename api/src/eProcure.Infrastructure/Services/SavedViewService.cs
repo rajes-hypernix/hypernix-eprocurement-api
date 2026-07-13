@@ -55,7 +55,8 @@ public sealed class SavedViewService(
 
         // D5: deactivated custom defs hide from the builder palette (values persist; a view
         // still referencing one fails loudly at run). ListValue options come from the bound list.
-        var defs = await db.CustomFieldDefs.AsNoTracking().Where(d => d.RecordType == type).ToListAsync(ct);
+        var defs = await db.CustomFieldDefs.AsNoTracking()
+            .Where(d => db.CustomFieldDefApplications.Any(a => a.FieldDefId == d.Id && a.RecordType == type)).ToListAsync(ct);
         var defByKey = defs.ToDictionary(d => d.Code, StringComparer.OrdinalIgnoreCase);
         var listIds = defs.Where(d => d.CustomListId is not null).Select(d => d.CustomListId!.Value).ToList();
         var listOptions = (await db.CustomListValues.AsNoTracking()
@@ -212,7 +213,8 @@ public sealed class SavedViewService(
         if (view.IsSystem)
         {
             var showKeys = await db.CustomFieldDefs.AsNoTracking()
-                .Where(d => d.RecordType == view.RecordType && d.Active && d.ShowInList)
+                .Where(d => db.CustomFieldDefApplications.Any(a => a.FieldDefId == d.Id && a.RecordType == view.RecordType)
+                    && d.Active && d.ShowInList)
                 .OrderBy(d => d.Sort).ThenBy(d => d.Label).Select(d => d.Code).ToListAsync(ct);
             foreach (var key in showKeys)
                 if (!columns.Any(c => string.Equals(c.FieldKey, key, StringComparison.OrdinalIgnoreCase))
@@ -372,7 +374,8 @@ public sealed class SavedViewService(
     private async Task LoadCustomStateAsync(RecordType type, CancellationToken ct)
     {
         await LoadSegmentStateAsync(type, ct);
-        var defs = await db.CustomFieldDefs.AsNoTracking().Where(d => d.RecordType == type).ToListAsync(ct);
+        var defs = await db.CustomFieldDefs.AsNoTracking()
+            .Where(d => db.CustomFieldDefApplications.Any(a => a.FieldDefId == d.Id && a.RecordType == type)).ToListAsync(ct);
         _inactiveCustomKeys = defs.Where(d => !d.Active).Select(d => d.Code).ToHashSet(StringComparer.OrdinalIgnoreCase);
         if (defs.Count == 0) { _customValues = []; return; }
 

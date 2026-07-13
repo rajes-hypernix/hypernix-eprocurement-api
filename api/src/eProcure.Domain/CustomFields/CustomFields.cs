@@ -24,9 +24,11 @@ public enum CustomFieldDataType { Text, LongText, Int, Decimal, Money, Date, Boo
 public class CustomFieldDef
 {
     public Guid Id { get; private set; } = Guid.NewGuid();
-    public string Code { get; set; } = default!;          // cf_warranty_expiry — UQ, immutable
+    public string Code { get; set; } = default!;          // custbody_* — UQ, immutable
     public string Label { get; set; } = default!;
-    public RecordType RecordType { get; set; }
+    // CF-FIX2-T3: the def is authored ONCE and APPLIED to record types via
+    // CustomFieldDefApplication rows (NetSuite's applies-to). The old single
+    // RecordType column is gone — its data lives on as one application row each.
     public CustomFieldDataType DataType { get; set; }
     public Guid? CustomListId { get; set; }               // ListValue only — rides the conformed-dimension machinery
     public bool Required { get; set; }                    // enforced at VALUE-SAVE only; never gates record
@@ -45,6 +47,16 @@ public class CustomFieldDef
     public string Scope { get; set; } = "Header";         // Header | Line
     public DateTime CreatedUtc { get; set; }
     public DateTime UpdatedUtc { get; set; }
+}
+
+/// <summary>CF-FIX2-T3: one row per record type a def APPLIES to — the NetSuite
+/// applies-to set. Values already carry their own RecordType per row, so a shared def
+/// stores values under several types with no storage change. Grain: (def, type) UQ.</summary>
+public class CustomFieldDefApplication
+{
+    public Guid Id { get; private set; } = Guid.NewGuid();
+    public Guid FieldDefId { get; set; }
+    public RecordType RecordType { get; set; }
 }
 
 /// <summary>

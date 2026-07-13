@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { goAs, shot } from './helpers'
+import { goAs, shot, pickSearch } from './helpers'
 
 // D7.5 CLOSING GATE — the operator's full journey, ONE persona (the buyer), ONE unbroken
 // run: Saved Views home → create "PRs pending approval" with criteria → Personalize: add
@@ -15,7 +15,7 @@ const STAMP = Date.now().toString().slice(-6)
 const VIEW_NAME = `PRs pending approval (${STAMP})`
 const KPI_TITLE = `Pending PRs (${STAMP})`
 const CF_LABEL = `Budget Ref ${STAMP}`
-const CF_CODE = `cf_budget_ref_${STAMP}`
+const CF_CODE = `custbody_budget_ref_${STAMP}`
 const FORM_NAME = `Buyer PR Form ${STAMP}`
 const ADMIN = { 'X-Demo-User': 'u_admin' }
 const BUYER = { 'X-Demo-User': 'u_faridah' }
@@ -68,16 +68,15 @@ test('the journey: home → view → reminder + KPI → dashboard live → filte
   await goAs(page, 'u_faridah', 'dashboard')
   await page.waitForTimeout(1500)
   await page.getByRole('button', { name: 'Add reminder' }).click()
-  await page.getByLabel('Record type').selectOption('Requisition')
-  await page.getByRole('option', { name: VIEW_NAME }).waitFor({ state: 'attached' })   // options in a closed select are never 'visible'
-  await page.getByLabel('Saved view').selectOption({ label: VIEW_NAME })
+  await pickSearch(page, 'Record type', 'Requisition')
+  await pickSearch(page, 'Saved view', VIEW_NAME)
   await page.getByRole('button', { name: 'Add reminder' }).last().click()
   await page.waitForTimeout(1200)
 
   await page.getByRole('button', { name: 'Add KPI' }).first().click()
   await page.getByLabel('KPI title').fill(KPI_TITLE)
-  await page.getByLabel('Record type').selectOption('Requisition')
-  await page.getByLabel('Saved view').selectOption({ label: VIEW_NAME })
+  await pickSearch(page, 'Record type', 'Requisition')
+  await pickSearch(page, 'Saved view', VIEW_NAME)
   await page.getByLabel('Function').selectOption('count')
   await page.getByRole('button', { name: 'Add KPI' }).last().click()
   await page.waitForTimeout(1500)

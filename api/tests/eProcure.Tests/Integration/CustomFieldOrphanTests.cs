@@ -48,7 +48,7 @@ public sealed class CustomFieldOrphanTests
         var po = new PurchaseOrder { Code = "PO-D5-01", VendorId = Guid.NewGuid(), CreatedUtc = c.Clock.UtcNow, UpdatedUtc = c.Clock.UtcNow };
         var def = new CustomFieldDef
         {
-            Code = "cf_d5_probe", Label = "Probe", RecordType = RecordType.PurchaseOrder,
+            Code = "cf_d5_probe", Label = "Probe",
             DataType = CustomFieldDataType.Text, CreatedUtc = c.Clock.UtcNow, UpdatedUtc = c.Clock.UtcNow,
         };
         c.Db.PurchaseOrders.Add(po);

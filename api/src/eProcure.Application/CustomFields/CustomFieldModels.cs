@@ -7,7 +7,8 @@ public sealed record CustomFieldDefDto(
     Guid Id, string Code, string Label, string RecordType, string DataType, Guid? CustomListId,
     bool Required, string HelpText, bool Active, int Sort, int ValueCount,
     string DisplayType = "Normal", bool ShowInList = false,
-    string Scope = "Header");   // CF6-T1: Header | Line (immutable)
+    string Scope = "Header",    // CF6-T1: Header | Line (immutable)
+    IReadOnlyList<string>? RecordTypes = null);   // CF-FIX2-T3: the applies-to set (RecordType = first, wire-compat)
 
 // CF-FIX1-T2: InsertBeforeId REMOVED (operator ruling — placement belongs to the form
 // layout editor, CF5). The plain Sort integer remains the default order.
@@ -15,7 +16,8 @@ public sealed record SaveCustomFieldDefRequest(
     string Label, string RecordType, string DataType, Guid? CustomListId, bool Required, string HelpText, int Sort,
     string DisplayType = "Normal", bool ShowInList = false,
     string Scope = "Header",        // CF6-T1: Header | Line
-    string? Code = null);           // CF-FIX1-T5: user-set Internal ID (system enforces cf_ prefix); null → derived from label
+    string? Code = null,            // CF-FIX1-T5: user-set Internal ID (namespace system-enforced); null → derived from label
+    List<string>? RecordTypes = null);   // CF-FIX2-T3: applies-to set; null → [RecordType] (back-compat)
 
 /// <summary>One field on one record, def metadata + the value as a STRING in the stored
 /// formats the FieldSpec pipeline already uses (ISO dates, raw numerics, 'true'/'false',

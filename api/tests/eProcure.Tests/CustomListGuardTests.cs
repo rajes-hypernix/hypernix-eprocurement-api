@@ -58,7 +58,7 @@ public sealed class CustomListGuardTests
         var (list, keep, _) = await SeedList(c);
         var def = new CustomFieldDef
         {
-            Code = "cf_colour", Label = "Colour", RecordType = RecordType.PurchaseOrder,
+            Code = "cf_colour", Label = "Colour",
             DataType = CustomFieldDataType.ListValue, CustomListId = list.Id,
         };
         c.Db.CustomFieldDefs.Add(def);
@@ -139,7 +139,7 @@ public sealed class CustomListSelfLifecycleTests
         await c.Db.SaveChangesAsync();
         c.Db.CustomFieldDefs.Add(new eProcure.Domain.CustomFields.CustomFieldDef
         {
-            Code = "cf_b", Label = "B", RecordType = eProcure.Domain.Views.RecordType.PurchaseOrder,
+            Code = "cf_b", Label = "B",
             DataType = eProcure.Domain.CustomFields.CustomFieldDataType.ListValue, CustomListId = bound.Id,
         });
         await c.Db.SaveChangesAsync();

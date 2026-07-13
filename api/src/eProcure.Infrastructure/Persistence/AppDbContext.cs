@@ -56,6 +56,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     // Custom fields (D5).
     public DbSet<Domain.CustomFields.CustomFieldDef> CustomFieldDefs => Set<Domain.CustomFields.CustomFieldDef>();
     public DbSet<Domain.CustomFields.CustomFieldValue> CustomFieldValues => Set<Domain.CustomFields.CustomFieldValue>();
+    public DbSet<Domain.CustomFields.CustomFieldDefApplication> CustomFieldDefApplications => Set<Domain.CustomFields.CustomFieldDefApplication>();
 
     // Custom segments (D6) — the dimension engine.
     public DbSet<Domain.Segments.SegmentDef> SegmentDefs => Set<Domain.Segments.SegmentDef>();
@@ -650,11 +651,17 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.Code).IsUnique();
             e.Property(x => x.Code).HasMaxLength(60).IsRequired();
             e.Property(x => x.Label).HasMaxLength(100).IsRequired();
-            e.Property(x => x.RecordType).HasConversion<string>().HasMaxLength(30);
             e.Property(x => x.DataType).HasConversion<string>().HasMaxLength(20);
             e.Property(x => x.HelpText).HasMaxLength(500);
-            e.HasIndex(x => new { x.RecordType, x.Active });
             e.HasOne<Domain.Configuration.CustomList>().WithMany().HasForeignKey(x => x.CustomListId).OnDelete(DeleteBehavior.Restrict);
+        });
+        b.Entity<Domain.CustomFields.CustomFieldDefApplication>(e =>
+        {
+            e.ToTable("CustomFieldDefApplications");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.FieldDefId, x.RecordType }).IsUnique();
+            e.Property(x => x.RecordType).HasConversion<string>().HasMaxLength(30);
+            e.HasOne<Domain.CustomFields.CustomFieldDef>().WithMany().HasForeignKey(x => x.FieldDefId).OnDelete(DeleteBehavior.Cascade);
         });
 
         b.Entity<Domain.CustomFields.CustomFieldValue>(e =>

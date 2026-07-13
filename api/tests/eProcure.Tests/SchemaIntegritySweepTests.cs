@@ -92,7 +92,7 @@ public sealed class SchemaIntegritySweepTests
                 var def = new eProcure.Domain.CustomFields.CustomFieldDef
                 {
                     Code = TrimCode($"cf_sweep15_{type.ToString().ToLowerInvariant()}_{Guid.NewGuid():N}"),
-                    Label = $"Sweep15 {type}", RecordType = eProcure.Domain.Views.RecordType.Vendor,
+                    Label = $"Sweep15 {type}",
                     DataType = type, Scope = "Header",
                     CreatedUtc = DateTime.UtcNow, UpdatedUtc = DateTime.UtcNow,
                 };

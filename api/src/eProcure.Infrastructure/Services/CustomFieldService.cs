@@ -31,15 +31,24 @@ public sealed class CustomFieldService(
 {
     // ---------- defs (A65) ----------
 
+    // CF-FIX2-T3: "applies to X" = an application row exists. The ONE membership predicate.
+    private IQueryable<CustomFieldDef> DefsFor(RecordType type) =>
+        db.CustomFieldDefs.Where(d => db.CustomFieldDefApplications.Any(a => a.FieldDefId == d.Id && a.RecordType == type));
+
+    private async Task<List<string>> AppliedTypesAsync(Guid defId, CancellationToken ct) =>
+        (await db.CustomFieldDefApplications.AsNoTracking().Where(a => a.FieldDefId == defId)
+            .Select(a => a.RecordType).ToListAsync(ct)).Select(x => x.ToString()).OrderBy(x => x).ToList();
+
     public async Task<IReadOnlyList<CustomFieldDefDto>> ListDefsAsync(string? recordType, CancellationToken ct = default)
     {
-        var q = db.CustomFieldDefs.AsNoTracking().AsQueryable();
-        if (recordType is not null) q = q.Where(d => d.RecordType == Parse(recordType));
-        var defs = await q.OrderBy(d => d.RecordType).ThenBy(d => d.Sort).ThenBy(d => d.Label).ToListAsync(ct);
+        var q = recordType is not null ? DefsFor(Parse(recordType)) : db.CustomFieldDefs;
+        var defs = await q.AsNoTracking().OrderBy(d => d.Sort).ThenBy(d => d.Label).ToListAsync(ct);
         var counts = await db.CustomFieldValues.AsNoTracking()
             .GroupBy(v => v.FieldDefId).Select(g => new { g.Key, N = g.Count() }).ToListAsync(ct);
+        var apps = await db.CustomFieldDefApplications.AsNoTracking().ToListAsync(ct);
         var byDef = counts.ToDictionary(x => x.Key, x => x.N);
-        return defs.Select(d => ToDto(d, byDef.GetValueOrDefault(d.Id))).ToList();
+        var appsByDef = apps.GroupBy(a => a.FieldDefId).ToDictionary(g => g.Key, g => g.Select(a => a.RecordType.ToString()).OrderBy(x => x).ToList());
+        return defs.Select(d => ToDto(d, byDef.GetValueOrDefault(d.Id), appsByDef.GetValueOrDefault(d.Id) ?? [])).ToList();
     }
 
     public async Task<CustomFieldDefDto> CreateDefAsync(SaveCustomFieldDefRequest req, CancellationToken ct = default)
@@ -89,9 +98,20 @@ public sealed class CustomFieldService(
         if (FieldRegistrySeed.Rows.Any(r => r.RecordType == type && string.Equals(r.FieldKey, code, StringComparison.OrdinalIgnoreCase)))
             throw new CustomFieldValidationException($"'{code}' collides with a native field key.");
 
+        // CF-FIX2-T3: the applies-to SET (NetSuite). Absent → [RecordType] (wire back-compat).
+        var applied = (req.RecordTypes is { Count: > 0 } ? req.RecordTypes.Select(Parse) : [type])
+            .Distinct().ToList();
+        foreach (var t2 in applied)
+        {
+            if (scope == "Line" && !LineOwnership.SupportedTypes.Contains(t2))
+                throw new CustomFieldValidationException($"Line fields aren't supported on {t2} yet — first delivery is Requisition/PurchaseOrder/Rfq lines.");
+            if (FieldRegistrySeed.Rows.Any(r => r.RecordType == t2 && string.Equals(r.FieldKey, code, StringComparison.OrdinalIgnoreCase)))
+                throw new CustomFieldValidationException($"'{code}' collides with a native field key on {t2}.");
+        }
+
         var def = new CustomFieldDef
         {
-            Code = code, Label = req.Label.Trim(), RecordType = type, DataType = dataType,
+            Code = code, Label = req.Label.Trim(), DataType = dataType,
             CustomListId = req.CustomListId, Required = req.Required,
             HelpText = req.HelpText ?? "", Sort = req.Sort,
             DisplayType = ParseDisplayType(req.DisplayType), ShowInList = req.ShowInList,
@@ -99,25 +119,28 @@ public sealed class CustomFieldService(
             CreatedUtc = clock.UtcNow, UpdatedUtc = clock.UtcNow,
         };
         db.CustomFieldDefs.Add(def);
-        // The registry row IS the D3/D4 integration — same transaction, no drift window.
-        // CF6-T1: LINE defs stay OUT of the registry — the view runner is header-grain (a
-        // locked deferral); a registry row would put the field in the builder palette and lie.
-        if (scope == "Header")
-            db.FieldRegistry.Add(new FieldRegistryEntry
-            {
-                Id = def.Id,                               // def id doubles as the registry id for Custom rows
-                RecordType = type, FieldKey = code, Kind = FieldKind.Custom,
-                Label = def.Label, DataType = RegistryTypeOf(dataType), CustomFieldDefId = def.Id,
-            });
+        // One application row + (for Header scope) one registry row PER APPLIED TYPE —
+        // the D3/D4 integration lights up on every type the field applies to.
+        foreach (var t2 in applied)
+        {
+            db.CustomFieldDefApplications.Add(new CustomFieldDefApplication { FieldDefId = def.Id, RecordType = t2 });
+            if (scope == "Header")
+                db.FieldRegistry.Add(new FieldRegistryEntry
+                {
+                    Id = t2 == applied[0] ? def.Id : Guid.NewGuid(),   // first row keeps the def id (back-compat)
+                    RecordType = t2, FieldKey = code, Kind = FieldKind.Custom,
+                    Label = def.Label, DataType = RegistryTypeOf(dataType), CustomFieldDefId = def.Id,
+                });
+        }
         await db.SaveChangesAsync(ct);
-        return ToDto(def, 0);
+        return ToDto(def, 0, applied.Select(a => a.ToString()).OrderBy(x => x).ToList());
     }
 
     public async Task<CustomFieldDefDto> UpdateDefAsync(Guid id, SaveCustomFieldDefRequest req, CancellationToken ct = default)
     {
         var def = await Load(id, ct);
-        if (Parse(req.RecordType) != def.RecordType || ParseDataType(req.DataType) != def.DataType)
-            throw new CustomFieldValidationException("Code, record type and data type are immutable — create a new field instead.");
+        if (ParseDataType(req.DataType) != def.DataType)
+            throw new CustomFieldValidationException("Code and data type are immutable — create a new field instead.");
         if (ParseScope(req.Scope) != def.Scope)
             throw new CustomFieldValidationException("Scope (header vs line) is immutable — values already live at that grain; create a new field instead.");
         if (def.Scope == "Line" && req.ShowInList)
@@ -131,10 +154,42 @@ public sealed class CustomFieldService(
         def.ShowInList = req.ShowInList;
         def.Sort = req.Sort;
         def.UpdatedUtc = clock.UtcNow;
-        var reg = await db.FieldRegistry.FirstOrDefaultAsync(r => r.CustomFieldDefId == def.Id, ct);
-        if (reg is not null) reg.Label = def.Label;   // line defs carry no registry row (CF6-T1)
+        foreach (var reg in await db.FieldRegistry.Where(r => r.CustomFieldDefId == def.Id).ToListAsync(ct))
+            reg.Label = def.Label;   // one registry row per applied type; line defs carry none (CF6-T1)
+
+        // CF-FIX2-T3: edit the applies-to set. Adding a type adds its application (+ registry)
+        // row; REMOVING one is guarded — values stored under that type would be orphaned.
+        if (req.RecordTypes is { Count: > 0 })
+        {
+            var wanted = req.RecordTypes.Select(Parse).Distinct().ToList();
+            var current = await db.CustomFieldDefApplications.Where(a => a.FieldDefId == def.Id).ToListAsync(ct);
+            foreach (var t2 in wanted)
+            {
+                if (def.Scope == "Line" && !LineOwnership.SupportedTypes.Contains(t2))
+                    throw new CustomFieldValidationException($"Line fields aren't supported on {t2} yet.");
+                if (current.All(a => a.RecordType != t2))
+                {
+                    db.CustomFieldDefApplications.Add(new CustomFieldDefApplication { FieldDefId = def.Id, RecordType = t2 });
+                    if (def.Scope == "Header" && !await db.FieldRegistry.AnyAsync(r => r.CustomFieldDefId == def.Id && r.RecordType == t2, ct))
+                        db.FieldRegistry.Add(new FieldRegistryEntry
+                        {
+                            Id = Guid.NewGuid(), RecordType = t2, FieldKey = def.Code, Kind = FieldKind.Custom,
+                            Label = def.Label, DataType = RegistryTypeOf(def.DataType), CustomFieldDefId = def.Id,
+                        });
+                }
+            }
+            foreach (var gone in current.Where(a => !wanted.Contains(a.RecordType)).ToList())
+            {
+                if (await db.CustomFieldValues.AnyAsync(v => v.FieldDefId == def.Id && v.RecordType == gone.RecordType, ct))
+                    throw new CustomFieldValidationException(
+                        $"Cannot remove {gone.RecordType} — this field has stored values there. Deactivate the field instead.");
+                db.CustomFieldDefApplications.Remove(gone);
+                var regGone = await db.FieldRegistry.FirstOrDefaultAsync(r => r.CustomFieldDefId == def.Id && r.RecordType == gone.RecordType, ct);
+                if (regGone is not null) db.FieldRegistry.Remove(regGone);
+            }
+        }
         await db.SaveChangesAsync(ct);
-        return ToDto(def, await db.CustomFieldValues.CountAsync(v => v.FieldDefId == def.Id, ct));
+        return ToDto(def, await db.CustomFieldValues.CountAsync(v => v.FieldDefId == def.Id, ct), await AppliedTypesAsync(def.Id, ct));
     }
 
     public async Task<CustomFieldDefDto> SetDefActiveAsync(Guid id, bool active, CancellationToken ct = default)
@@ -143,7 +198,7 @@ public sealed class CustomFieldService(
         def.Active = active;
         def.UpdatedUtc = clock.UtcNow;
         await db.SaveChangesAsync(ct);
-        return ToDto(def, await db.CustomFieldValues.CountAsync(v => v.FieldDefId == def.Id, ct));
+        return ToDto(def, await db.CustomFieldValues.CountAsync(v => v.FieldDefId == def.Id, ct), await AppliedTypesAsync(def.Id, ct));
     }
 
     public async Task DeleteDefAsync(Guid id, CancellationToken ct = default)
@@ -172,7 +227,7 @@ public sealed class CustomFieldService(
         var type = Parse(recordType);
         await reachability.RequireReachableAsync(type, recordId, ct);   // A2F-T4: the ONE guard (was a 16-line twin)
 
-        var defs = await db.CustomFieldDefs.Where(d => d.RecordType == type && d.Active).ToListAsync(ct);
+        var defs = await DefsFor(type).Where(d => d.Active).ToListAsync(ct);
         var byCode = defs.ToDictionary(d => d.Code, StringComparer.OrdinalIgnoreCase);
         foreach (var key in req.Values.Keys)
         {
@@ -376,8 +431,8 @@ public sealed class CustomFieldService(
 
     private async Task<IReadOnlyList<CustomValueDto>> MergedAsync(RecordType type, Guid recordId, CancellationToken ct)
     {
-        var defs = await db.CustomFieldDefs.AsNoTracking()
-            .Where(d => d.RecordType == type && d.Active && d.Scope == "Header")
+        var defs = await DefsFor(type).AsNoTracking()
+            .Where(d => d.Active && d.Scope == "Header")
             .OrderBy(d => d.Sort).ThenBy(d => d.Label).ToListAsync(ct);
         var values = await db.CustomFieldValues.AsNoTracking()
             .Where(v => v.RecordType == type && v.RecordId == recordId && v.LineId == null).ToListAsync(ct);
@@ -413,8 +468,8 @@ public sealed class CustomFieldService(
     {
         var type = Parse(recordType);
         await reachability.RequireReachableAsync(type, recordId, ct);
-        var defs = await db.CustomFieldDefs.AsNoTracking()
-            .Where(d => d.RecordType == type && d.Active && d.Scope == "Line")
+        var defs = await DefsFor(type).AsNoTracking()
+            .Where(d => d.Active && d.Scope == "Line")
             .OrderBy(d => d.Sort).ThenBy(d => d.Label).ToListAsync(ct);
         if (defs.Count == 0) return new Dictionary<Guid, IReadOnlyList<CustomValueDto>>();
         var values = await db.CustomFieldValues.AsNoTracking()
@@ -435,8 +490,8 @@ public sealed class CustomFieldService(
     public async Task<IReadOnlyList<CustomValueDto>> GetLineDefsAsync(string recordType, CancellationToken ct = default)
     {
         var type = Parse(recordType);
-        var defs = await db.CustomFieldDefs.AsNoTracking()
-            .Where(d => d.RecordType == type && d.Active && d.Scope == "Line")
+        var defs = await DefsFor(type).AsNoTracking()
+            .Where(d => d.Active && d.Scope == "Line")
             .OrderBy(d => d.Sort).ThenBy(d => d.Label).ToListAsync(ct);
         var listIds = defs.Where(d => d.CustomListId is not null).Select(d => d.CustomListId!.Value).ToList();
         var listCodes = await db.CustomLists.AsNoTracking().Where(l => listIds.Contains(l.Id))
@@ -455,9 +510,9 @@ public sealed class CustomFieldService(
         await db.CustomFieldDefs.FirstOrDefaultAsync(d => d.Id == id, ct)
             ?? throw new NotFoundException($"Custom field {id} not found.");
 
-    private static CustomFieldDefDto ToDto(CustomFieldDef d, int valueCount) => new(
-        d.Id, d.Code, d.Label, d.RecordType.ToString(), d.DataType.ToString(), d.CustomListId,
-        d.Required, d.HelpText, d.Active, d.Sort, valueCount, d.DisplayType, d.ShowInList, d.Scope);
+    private static CustomFieldDefDto ToDto(CustomFieldDef d, int valueCount, IReadOnlyList<string>? recordTypes = null) => new(
+        d.Id, d.Code, d.Label, recordTypes is { Count: > 0 } ? recordTypes[0] : "", d.DataType.ToString(), d.CustomListId,
+        d.Required, d.HelpText, d.Active, d.Sort, valueCount, d.DisplayType, d.ShowInList, d.Scope, recordTypes ?? []);
 
     private static readonly string[] DisplayTypes = ["Normal", "Disabled", "Inline"];
 

@@ -52,3 +52,13 @@ export function reportHealth(w: ReturnType<typeof watch>, info: TestInfo, name: 
   if (lines.length) info.annotations.push({ type: `health:${name}`, description: lines.join('\n') })
   return lines
 }
+
+/** CF-FIX2-T2: drive the searchable select — open by label, type-to-filter, Enter picks
+ *  the highlighted match (its proven keyboard contract). */
+export async function pickSearch(page: Page, label: string, filter: string) {
+  await page.getByRole('button', { name: label, exact: true }).click()
+  const box = page.getByRole('combobox', { name: `Search ${label}` })
+  await box.fill(filter)
+  await page.getByRole('listbox', { name: `${label} options` }).getByRole('option').first().waitFor()
+  await page.keyboard.press('Enter')
+}

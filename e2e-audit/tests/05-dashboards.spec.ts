@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { goAs, shot } from './helpers'
+import { goAs, shot, pickSearch } from './helpers'
 
 // D4 Phase 4 GATE (as ruled): a PERSON builds a KPI from her own saved view, pins it to her
 // personalized dashboard and arranges it; the number matches the view's row count; the
@@ -32,8 +32,8 @@ test('dashboard gate: buyer builds a KPI from her view, pins + arranges it; vend
   await page.waitForTimeout(1500)
   await page.getByRole('button', { name: 'Add KPI' }).first().click()
   await page.getByLabel('KPI title').fill(KPI_TITLE)
-  await page.getByLabel('Record type').selectOption('Rfq')
-  await page.getByLabel('Saved view').selectOption({ label: VIEW_NAME })
+  await pickSearch(page, 'Record type', 'Request For Quote')
+  await pickSearch(page, 'Saved view', VIEW_NAME)
   await page.getByLabel('Function').selectOption('count')
   await page.getByLabel('Target (optional)').fill('3')
   await shot(page, 'D4-gate-1-addkpi')

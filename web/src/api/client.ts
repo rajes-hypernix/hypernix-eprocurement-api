@@ -172,12 +172,12 @@ export const aggregateView = (id: string, fn: string, field?: string | null, gro
 export type CustomFieldDefDto = {
   id: string; code: string; label: string; recordType: string; dataType: string
   customListId?: string | null; required: boolean; helpText: string; active: boolean; sort: number; valueCount: number
-  displayType?: string; showInList?: boolean; scope?: string
+  displayType?: string; showInList?: boolean; scope?: string; recordTypes?: string[]
 }
 export type SaveCustomFieldDefRequest = {
   label: string; recordType: string; dataType: string; customListId?: string | null
   required: boolean; helpText: string; sort: number
-  displayType?: string; showInList?: boolean; scope?: string; code?: string | null
+  displayType?: string; showInList?: boolean; scope?: string; code?: string | null; recordTypes?: string[] | null
 }
 export type CustomValueDto = {
   code: string; label: string; dataType: string; required: boolean; helpText: string

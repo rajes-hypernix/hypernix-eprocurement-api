@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { goAs } from './helpers'
+import { goAs, pickSearch } from './helpers'
 
 // CF-FIX-1 browser proofs — one test per task, mirroring the operator's testing notes
 // (Custom_Fields.docx / Custom_List.docx). Names match the CF-FIX1-Tn commits.
@@ -53,7 +53,7 @@ test('CF-FIX1-T3: order-mode is choosable at CREATE — Alphabetical from birth'
   await page.getByRole('button', { name: 'New list' }).click()
   await page.getByLabel('Internal ID', { exact: true }).fill(CODE)   // T4 renamed the id field
   await page.getByLabel('Name', { exact: true }).fill(`Fix1 Order ${STAMP}`)
-  await page.getByLabel('Show options in', { exact: true }).selectOption('Alphabetical')   // on CREATE (was edit-only)
+  await pickSearch(page, 'Show options in', 'Alphabetical')   // on CREATE (was edit-only)
   await page.getByRole('button', { name: 'Create list' }).click()
   await page.waitForTimeout(1000)
   await expect(page.getByText('A→Z')).toBeVisible()   // the badge shows the mode took at birth

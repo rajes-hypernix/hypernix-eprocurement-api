@@ -176,6 +176,13 @@ public sealed class AwardService(
             poCodes.Add(code);
         }
 
+        // CF-FIX2-T3: shared custom fields CARRY FORWARD PR→PO through the real provenance
+        // chain (PoLine → AwardAllocation → RFQ line → PrLineSourcing → PR line → PR).
+        // Copy only when provably UNAMBIGUOUS; every ambiguity skip is a visible audit note
+        // (operator ruling: a buyer must see WHY a field arrived blank, never guess).
+        await CarryCustomValuesForwardAsync(rfq.Id, award.Allocations.ToList(),
+            db.ChangeTracker.Entries<PurchaseOrder>().Where(e => e.State == EntityState.Added).Select(e => e.Entity).ToList(), ct);
+
         award.Approve(approver, clock.UtcNow);   // guards PendingApproval; stamps approver/approvedUtc
         rfq.MarkAwarded(clock.UtcNow);
         rfq.UpdatedUtc = clock.UtcNow;
@@ -199,6 +206,88 @@ public sealed class AwardService(
     {
         var award = await db.Awards.AsNoTracking().Include(a => a.Allocations).FirstOrDefaultAsync(a => a.RfqId == rfqId, ct);
         return award is null ? null : await ToDto(award, ct);
+    }
+
+    /// <summary>CF-FIX2-T3: the PR→PO value carry for defs applied to BOTH types.
+    /// Header values copy when ALL of a PO's lines trace to EXACTLY ONE source PR; line
+    /// values copy when a PO line traces to exactly one PR line. Anything else is a SKIP
+    /// with an audit note on the PO — never a guess. Zero-provenance POs (RFQ built
+    /// without PR refs) have nothing to carry and pass silently.</summary>
+    private async Task CarryCustomValuesForwardAsync(Guid rfqId, List<AwardAllocation> allocations, List<PurchaseOrder> pos, CancellationToken ct)
+    {
+        var sharedDefs = await db.CustomFieldDefs
+            .Where(d => d.Active
+                && db.CustomFieldDefApplications.Any(a => a.FieldDefId == d.Id && a.RecordType == Domain.Views.RecordType.Requisition)
+                && db.CustomFieldDefApplications.Any(a => a.FieldDefId == d.Id && a.RecordType == Domain.Views.RecordType.PurchaseOrder))
+            .ToListAsync(ct);
+        if (sharedDefs.Count == 0) return;
+
+        var links = await db.PrLineSourcings.AsNoTracking()
+            .Where(s => s.RfqId == rfqId && s.LinkStatus == LinkStatus.Active).ToListAsync(ct);
+        if (links.Count == 0) return;   // no PR provenance — nothing to carry
+
+        var prLineIds = links.Select(l => l.PrLineId).ToHashSet();
+        var prs = await db.PurchaseRequisitions.AsNoTracking().Include(p => p.Lines)
+            .Where(p => p.Lines.Any(l => prLineIds.Contains(l.Id))).ToListAsync(ct);
+        Guid? PrOfLine(Guid prLineId) => prs.FirstOrDefault(p => p.Lines.Any(l => l.Id == prLineId))?.Id;
+
+        var headerDefIds = sharedDefs.Where(d => d.Scope == "Header").Select(d => d.Id).ToHashSet();
+        var lineDefIds = sharedDefs.Where(d => d.Scope == "Line").Select(d => d.Id).ToHashSet();
+        var sourcePrIdsAll = prs.Select(p => p.Id).ToHashSet();
+        var prHeaderValues = await db.CustomFieldValues.AsNoTracking()
+            .Where(v => headerDefIds.Contains(v.FieldDefId) && v.RecordType == Domain.Views.RecordType.Requisition
+                && sourcePrIdsAll.Contains(v.RecordId) && v.LineId == null).ToListAsync(ct);
+        var prLineValues = await db.CustomFieldValues.AsNoTracking()
+            .Where(v => lineDefIds.Contains(v.FieldDefId) && v.RecordType == Domain.Views.RecordType.Requisition
+                && v.LineId != null && prLineIds.Contains(v.LineId.Value)).ToListAsync(ct);
+
+        static Domain.CustomFields.CustomFieldValue Clone(Domain.CustomFields.CustomFieldValue v, Guid recordId, Guid? lineId) => new()
+        {
+            FieldDefId = v.FieldDefId, RecordType = Domain.Views.RecordType.PurchaseOrder,
+            RecordId = recordId, LineId = lineId, DataType = v.DataType,
+            ValueText = v.ValueText, ValueNumber = v.ValueNumber, ValueMoney = v.ValueMoney,
+            ValueDate = v.ValueDate, ValueBool = v.ValueBool, ValueListCode = v.ValueListCode,
+            ValueDateTime = v.ValueDateTime, ValueLabel = v.ValueLabel, UpdatedUtc = v.UpdatedUtc,
+        };
+
+        foreach (var po in pos)
+        {
+            // Header grain: every line's provenance must agree on ONE source PR.
+            var poAllocs = allocations.Where(a => po.Lines.Any(l => l.AwardAllocationId == a.Id)).ToList();
+            var sourcePrIds = poAllocs
+                .SelectMany(a => links.Where(l => l.RfqLineCode == a.RfqLineCode))
+                .Select(l => PrOfLine(l.PrLineId)).Where(x => x is not null).Select(x => x!.Value)
+                .Distinct().ToList();
+            if (sourcePrIds.Count == 1)
+            {
+                foreach (var v in prHeaderValues.Where(v => v.RecordId == sourcePrIds[0]))
+                    db.CustomFieldValues.Add(Clone(v, po.Id, null));
+            }
+            else if (sourcePrIds.Count > 1 && headerDefIds.Count > 0)
+            {
+                await audit.WriteAsync("Po", po.Code, "Custom fields not carried",
+                    after: $"header fields not carried from the requisition: this PO consolidates lines from {sourcePrIds.Count} source PRs — enter the values on the PO", ct: ct);
+            }
+
+            // Line grain: each PO line must trace to exactly one PR line.
+            foreach (var poLine in po.Lines)
+            {
+                var alloc = poAllocs.FirstOrDefault(a => a.Id == poLine.AwardAllocationId);
+                if (alloc is null) continue;
+                var lineLinks = links.Where(l => l.RfqLineCode == alloc.RfqLineCode).ToList();
+                if (lineLinks.Count == 1)
+                {
+                    foreach (var v in prLineValues.Where(v => v.LineId == lineLinks[0].PrLineId))
+                        db.CustomFieldValues.Add(Clone(v, po.Id, poLine.Id));
+                }
+                else if (lineLinks.Count > 1 && lineDefIds.Count > 0
+                         && prLineValues.Any(v => lineLinks.Any(l => l.PrLineId == v.LineId)))
+                {
+                    await audit.WriteAsync("Po", po.Code, "Custom fields not carried",
+                        after: $"line {poLine.ItemCode}: field values not carried — the line was consolidated from {lineLinks.Count} source PR lines", ct: ct);
+                }
+            }
+        }
     }
 
     /// <summary>

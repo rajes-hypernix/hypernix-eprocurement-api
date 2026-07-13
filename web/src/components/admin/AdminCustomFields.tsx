@@ -12,7 +12,7 @@ import { TextAreaField } from '../../ui/TextAreaField'
 import { SelectField } from '../../ui/SelectField'
 import { CheckboxField } from '../../ui/CheckboxField'
 import type { FieldSpec } from '../../ui/fieldSpec'
-import { recordTypeLabel } from '../../lib/recordTypeLabel'
+import { recordTypeLabel, recordTypeOptions } from '../../lib/recordTypeLabel'
 
 /**
  * Custom field definitions (D5) — the Admin Setup surface (A65). Lifecycle per the rulings,
@@ -75,7 +75,9 @@ export function AdminCustomFields() {
             <tbody>
               {defs.map((d) => (
                 <tr key={d.id}>
-                  <td>{d.label}{d.required && <span title="Required at value-save"> *</span>}</td>
+                  <td>{d.label}{d.required && <span title="Required at value-save"> *</span>}
+                    {(d.recordTypes?.length ?? 0) > 1 && <span className="badge b-blue" style={{ marginLeft: 6 }} title={d.recordTypes!.map(recordTypeLabel).join(', ')}>shared ×{d.recordTypes!.length}</span>}
+                  </td>
                   <td className="mono">{d.code}</td>
                   <td>{dataTypeLabel(d.dataType)}{d.scope === 'Line' && <span className="badge b-grey" style={{ marginLeft: 6 }}>line</span>}</td>
                   <td className="amt">{d.valueCount}</td>
@@ -121,6 +123,8 @@ function DefModal({ recordType, def, onClose, onSaved }: {
   const [help, setHelp] = useState(def?.helpText ?? '')
   const [displayType, setDisplayType] = useState(def?.displayType ?? 'Normal')
   const [scope, setScope] = useState(def?.scope ?? 'Header')
+  // CF-FIX2-T3: the applies-to SET (NetSuite) — authored once, applied to many types.
+  const [appliesTo, setAppliesTo] = useState<string>((def?.recordTypes?.length ? def.recordTypes : [recordType]).join('|'))
   const [showInList, setShowInList] = useState(def?.showInList ?? false)
 
   const [error, setError] = useState<string | null>(null)
@@ -134,6 +138,7 @@ function DefModal({ recordType, def, onClose, onSaved }: {
         required, helpText: help, sort: def?.sort ?? 0,
         displayType, showInList, scope,
         code: def ? null : (internalId.trim() || null),
+        recordTypes: appliesTo ? appliesTo.split('|') : [recordType],
       }
       return def ? updateCustomFieldDef(def.id, req) : createCustomFieldDef(req)
     },
@@ -179,6 +184,11 @@ function DefModal({ recordType, def, onClose, onSaved }: {
             {scope === 'Line' && <p className="hint">A line column on the record’s lines table (PR/PO/RFQ). Values live per line; not searchable in views yet.</p>}
           </>
         )}
+      <SelectField
+        spec={{ key: 'cf-applies', label: 'Applies to', dataType: 'multiSelect', searchable: true,
+          help: 'The record types this ONE field applies to — its value can carry between them (PR → PO).',
+          options: { kind: 'static', options: recordTypeOptions(RECORD_TYPES) } }}
+        value={appliesTo} onChange={(v) => setAppliesTo(String(v ?? ''))} />
       <SelectField spec={{ ...spec('cf-display', 'Display type', 'select', DISPLAY_TYPES), searchable: true }} value={displayType} onChange={(v) => setDisplayType(String(v ?? 'Normal'))} />
       {displayType !== 'Normal' && <p className="hint">Disabled and Inline fields render read-only and reject user edits — values arrive via defaults or imports.</p>}
       <CheckboxField spec={spec('cf-showinlist', 'Show On Default List', 'boolean')} value={showInList} onChange={(v) => setShowInList(v === true)} />

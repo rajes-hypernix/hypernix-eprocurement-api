@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { goAs, shot } from './helpers'
+import { goAs, shot, pickSearch } from './helpers'
 
 // D6 GATE (as ruled): an ADMIN defines "Project" with three values and applies it to
 // Requisition + PurchaseOrder + Invoice in the Setup screen; a BUYER assigns it on one
@@ -97,11 +97,11 @@ test('segments gate: admin defines → buyer assigns → view filters → sliced
   await page.waitForTimeout(1500)
   await page.getByRole('button', { name: 'Add KPI' }).first().click()
   await page.getByLabel('KPI title').fill(KPI_TITLE)
-  await page.getByLabel('Record type').selectOption('PurchaseOrder')
-  await page.getByLabel('Saved view').selectOption({ label: `All POs (${STAMP})` })
+  await pickSearch(page, 'Record type', 'Purchase Order')
+  await pickSearch(page, 'Saved view', `All POs (${STAMP})`)
   await page.getByLabel('Function').selectOption('sum')
   await page.getByLabel('Field').selectOption('Total')
-  await page.getByLabel('Slice by segment (optional)').selectOption(segKey)
+  await pickSearch(page, 'Slice by segment (optional)', SEG_NAME)
   await page.getByRole('button', { name: 'Add KPI' }).last().click()
   await page.waitForTimeout(1500)
   const kpi = page.locator('section', { hasText: KPI_TITLE })

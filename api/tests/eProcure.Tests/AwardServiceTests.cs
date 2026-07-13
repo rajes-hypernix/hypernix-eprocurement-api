@@ -167,4 +167,73 @@ public sealed class AwardServiceTests
         (await again.Should().ThrowAsync<eProcure.Domain.DomainRuleException>())
             .WithMessage("*already been awarded*");
     }
+
+    // ---- CF-FIX2-T3: shared fields carry PR→PO through provenance; ambiguity leaves a NOTE ----
+
+    [Fact]
+    public async Task Shared_field_value_carries_from_the_single_source_PR_to_the_generated_PO()
+    {
+        var (svc, c, rfqId, va, _) = await SetupAsync();
+        // ONE source PR feeding the RFQ line (unambiguous provenance).
+        var pr = new PurchaseRequisition { Code = "PR-CF3-1", Requestor = "F", CreatedUtc = c.Clock.UtcNow, UpdatedUtc = c.Clock.UtcNow,
+            Lines = { PrLine.Create("PUMP", "Pump", 4, "Unit", 100) } };
+        c.Db.PurchaseRequisitions.Add(pr);
+        await c.Db.SaveChangesAsync();
+        c.Db.PrLineSourcings.Add(new PrLineSourcing(pr.Lines[0].Id, rfqId, "PUMP", 4m, c.Clock.UtcNow));
+
+        // A def applied to BOTH Requisition and PurchaseOrder, with a value on the PR.
+        var def = new eProcure.Domain.CustomFields.CustomFieldDef { Code = "custbody_carry", Label = "Carry", DataType = eProcure.Domain.CustomFields.CustomFieldDataType.Text, CreatedUtc = c.Clock.UtcNow, UpdatedUtc = c.Clock.UtcNow };
+        c.Db.CustomFieldDefs.Add(def);
+        c.Db.CustomFieldDefApplications.AddRange(
+            new eProcure.Domain.CustomFields.CustomFieldDefApplication { FieldDefId = def.Id, RecordType = eProcure.Domain.Views.RecordType.Requisition },
+            new eProcure.Domain.CustomFields.CustomFieldDefApplication { FieldDefId = def.Id, RecordType = eProcure.Domain.Views.RecordType.PurchaseOrder });
+        c.Db.CustomFieldValues.Add(new eProcure.Domain.CustomFields.CustomFieldValue
+        {
+            FieldDefId = def.Id, RecordType = eProcure.Domain.Views.RecordType.Requisition, RecordId = pr.Id,
+            DataType = eProcure.Domain.CustomFields.CustomFieldDataType.Text, ValueText = "carried!", UpdatedUtc = c.Clock.UtcNow,
+        });
+        await c.Db.SaveChangesAsync();
+
+        var dto = await svc.SubmitForApprovalAsync(rfqId, new SubmitAwardRequest([new AllocationInput("PUMP", va, 4)]));
+        c.User.UserId = "u_lim"; c.User.UserName = "Lim"; c.User.Roles = [Roles.Buyer, Roles.Approver];
+        await svc.ApproveAsync(dto.Id);
+
+        var po = await c.Db.PurchaseOrders.SingleAsync();
+        var carried = await c.Db.CustomFieldValues.SingleOrDefaultAsync(v =>
+            v.FieldDefId == def.Id && v.RecordType == eProcure.Domain.Views.RecordType.PurchaseOrder && v.RecordId == po.Id);
+        carried.Should().NotBeNull("the shared field's value carries PR→PO through the provenance chain");
+        carried!.ValueText.Should().Be("carried!");
+    }
+
+    [Fact]
+    public async Task Consolidated_provenance_skips_the_carry_with_a_VISIBLE_audit_note()
+    {
+        var (svc, c, rfqId, va, _) = await SetupAsync();
+        // TWO source PRs feed the same RFQ line — ambiguous, must skip + note (operator ruling).
+        foreach (var code in new[] { "PR-CF3-A", "PR-CF3-B" })
+        {
+            var pr = new PurchaseRequisition { Code = code, Requestor = "F", CreatedUtc = c.Clock.UtcNow, UpdatedUtc = c.Clock.UtcNow,
+                Lines = { PrLine.Create("PUMP", "Pump", 2, "Unit", 100) } };
+            c.Db.PurchaseRequisitions.Add(pr);
+            await c.Db.SaveChangesAsync();
+            c.Db.PrLineSourcings.Add(new PrLineSourcing(pr.Lines[0].Id, rfqId, "PUMP", 2m, c.Clock.UtcNow));
+        }
+        var def = new eProcure.Domain.CustomFields.CustomFieldDef { Code = "custbody_skip", Label = "Skip", DataType = eProcure.Domain.CustomFields.CustomFieldDataType.Text, CreatedUtc = c.Clock.UtcNow, UpdatedUtc = c.Clock.UtcNow };
+        c.Db.CustomFieldDefs.Add(def);
+        c.Db.CustomFieldDefApplications.AddRange(
+            new eProcure.Domain.CustomFields.CustomFieldDefApplication { FieldDefId = def.Id, RecordType = eProcure.Domain.Views.RecordType.Requisition },
+            new eProcure.Domain.CustomFields.CustomFieldDefApplication { FieldDefId = def.Id, RecordType = eProcure.Domain.Views.RecordType.PurchaseOrder });
+        await c.Db.SaveChangesAsync();
+
+        var dto = await svc.SubmitForApprovalAsync(rfqId, new SubmitAwardRequest([new AllocationInput("PUMP", va, 4)]));
+        c.User.UserId = "u_lim"; c.User.UserName = "Lim"; c.User.Roles = [Roles.Buyer, Roles.Approver];
+        await svc.ApproveAsync(dto.Id);
+
+        var po = await c.Db.PurchaseOrders.SingleAsync();
+        (await c.Db.CustomFieldValues.AnyAsync(v => v.RecordType == eProcure.Domain.Views.RecordType.PurchaseOrder))
+            .Should().BeFalse("ambiguous provenance never guesses");
+        var note = await c.Db.AuditEntries.SingleOrDefaultAsync(a => a.EntityId == po.Code && a.Action == "Custom fields not carried");
+        note.Should().NotBeNull("the skip is a VISIBLE audit note on the PO (operator ruling)");
+        note!.After.Should().Contain("2 source PRs");
+    }
 }

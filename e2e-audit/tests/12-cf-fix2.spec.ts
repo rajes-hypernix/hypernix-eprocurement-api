@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { goAs } from './helpers'
+import { goAs, pickSearch } from './helpers'
 
 // CF-FIX-2 browser proofs — one test per finding (round 2 of the operator's testing).
 
@@ -44,7 +44,7 @@ test('CF-FIX2-T1: contextual prefixes — custbody_/custcol_/CUSTLIST_ with the 
 
   // Line field: the affix flips to custcol_ WITH the Scope choice.
   await page.getByRole('button', { name: 'New field' }).click()
-  await page.getByLabel('Scope (header field or line column)', { exact: true }).selectOption('Line')   // still a native select until T2
+  await pickSearch(page, 'Scope (header field or line column)', 'Line')   // searchable since T2
   await expect(page.locator('.affix')).toHaveText('custcol_')
   await page.getByRole('button', { name: 'Cancel' }).click()
 
@@ -137,4 +137,75 @@ test('CF-FIX2-T5: values stage until ONE Save — reload-before-save shows none;
     await request.delete(`${API}/api/custom-lists/values/${v.id}`, { headers: ADMIN })
   }
   expect((await request.delete(`${API}/api/custom-lists/${CODE}`, { headers: ADMIN })).status()).toBe(204)
+})
+
+test('CF-FIX2-T3: ONE shared field applied to PR + PO — appears under both rails; the value CARRIES PR→PO through award', async ({ page, request }) => {
+  const LABEL = `Fix2 Shared ${STAMP}`
+  // Author ONE field applied to BOTH types via the Applies-to multi-select.
+  await goAs(page, 'u_admin', 'customfields')
+  await page.waitForTimeout(1200)
+  await page.getByRole('button', { name: 'Requisition', exact: true }).click()
+  await page.getByRole('button', { name: 'New field' }).click()
+  await page.getByLabel('Label', { exact: true }).fill(LABEL)
+  await page.getByRole('button', { name: 'Applies to' }).click()
+  await page.getByRole('combobox', { name: 'Search Applies to' }).fill('Purchase')
+  await page.keyboard.press('Enter')          // adds Purchase Order to the pre-selected Requisition
+  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: 'Create field' }).click()
+  await page.waitForTimeout(800)
+
+  // Appears under BOTH rails with the shared badge; ONE def behind them.
+  await expect(page.getByRole('row', { name: new RegExp(LABEL) })).toContainText('shared ×2')
+  await page.getByRole('button', { name: 'Purchase Order', exact: true }).click()   // unselected rail item has no count hint
+  await expect(page.getByRole('row', { name: new RegExp(LABEL) })).toBeVisible()
+  const defs = await (await request.get(`${API}/api/custom-fields`, { headers: ADMIN })).json()
+  const def = defs.filter((d: { label: string }) => d.label === LABEL)
+  expect(def).toHaveLength(1)
+  expect(def[0].recordTypes.sort()).toEqual(['PurchaseOrder', 'Requisition'])
+
+  // Value on a fresh PR → PR→RFQ (with provenance) → award → approve → PO: the value CARRIES.
+  const pr = await (await request.post(`${API}/api/requisitions?submit=true`, { headers: { ...BUYER, ...JSON_H },
+    data: { requestor: 'Faridah', department: 'Ops', location: 'Bintulu', category: 'Piping', job: 'J1', memo: 'carry test',
+      requiredDate: null, lines: [{ id: null, itemCode: `CARRY-${STAMP}`, description: 'carry item', qty: 1, uom: 'Unit', estUnitPrice: 50 }] } })).json()
+  // A header-grain save enforces every REQUIRED def (e.g. the operator's live 'Remarks') —
+  // satisfy them generically so this proof doesn't depend on ambient test data.
+  const current = await (await request.get(`${API}/api/custom-values/Requisition/${pr.id}`, { headers: BUYER })).json()
+  const values: Record<string, string> = { [def[0].code]: 'came from the PR' }
+  for (const v of current) if (v.required && !v.value && v.code !== def[0].code) values[v.code] = 'n/a'
+  const put = await request.put(`${API}/api/custom-values/Requisition/${pr.id}`, { headers: { ...BUYER, ...JSON_H }, data: { values } })
+  expect(put.status(), await put.text()).toBe(200)
+
+  // Reserve the PR line and release a consolidated RFQ (writes the provenance link).
+  const prLineId = pr.lines[0].id
+  await request.post(`${API}/api/requisitions/${pr.id}/lines/${prLineId}/reserve`, { headers: BUYER })
+  const vendors = await (await request.get(`${API}/api/vendors`, { headers: BUYER })).json()
+  const v = vendors.find((x: { code: string }) => x.code === 'SWK-V-10293')
+  const rfq = await (await request.post(`${API}/api/rfqs`, { headers: { ...BUYER, ...JSON_H },
+    data: { title: `Carry proof ${STAMP}`, prRefs: [pr.code], lines: [{ itemCode: `CARRY-${STAMP}`, description: 'carry item', qty: 1, uom: 'Unit', prRef: pr.code, sourcePrLineIds: [prLineId] }] } })).json()
+  await request.put(`${API}/api/rfqs/${rfq.id}`, { headers: { ...BUYER, ...JSON_H },
+    data: { title: `Carry proof ${STAMP}`, envelope: 'Single', currency: 'MYR', opensUtc: new Date().toISOString(),
+      closesUtc: new Date(Date.now() + 3600_000).toISOString(),
+      lines: [{ itemCode: `CARRY-${STAMP}`, description: 'carry item', qty: 1, uom: 'Unit', prRef: pr.code, sourcePrLineIds: [prLineId] }],
+      formItems: [], technicalSections: [], commercialSections: [], invitedVendorIds: [v.id], technicalEvaluatorIds: [], commercialEvaluatorIds: [] } })
+  await request.post(`${API}/api/rfqs/${rfq.id}/release`, { headers: BUYER })
+  const VEND = { 'X-Demo-User': 'VU-sentausa' }
+  const bid = { lead: 7, warranty: 12, lines: [{ itemCode: `CARRY-${STAMP}`, bidding: true, price: 50, qty: 1, partial: false, altItem: null }], answers: [], files: [] }
+  await request.put(`${API}/api/rfqs/${rfq.id}/my-bid`, { headers: { ...VEND, ...JSON_H }, data: bid })
+  await request.post(`${API}/api/rfqs/${rfq.id}/my-bid/submit`, { headers: { ...VEND, ...JSON_H }, data: bid })
+  await request.post(`${API}/api/rfqs/${rfq.id}/close`, { headers: BUYER })
+  const award = await (await request.post(`${API}/api/rfqs/${rfq.id}/award`, { headers: { ...BUYER, ...JSON_H },
+    data: { allocations: [{ lineCode: `CARRY-${STAMP}`, vendorId: v.id, qty: 1 }] } })).json()
+  const approved = await (await request.post(`${API}/api/awards/${award.id}/approve`, { headers: { 'X-Demo-User': 'u_lim' } })).json()
+
+  // The generated PO carries the value — visible on its detail screen.
+  const pos = await (await request.get(`${API}/api/pos`, { headers: BUYER })).json()
+  const po = pos.find((p: { code: string }) => p.code === approved.poCodes[0])
+  await goAs(page, 'u_faridah', `pos/${po.id}`)
+  await page.waitForTimeout(1500)
+  await expect(page.getByLabel(LABEL, { exact: true })).toHaveValue('came from the PR')
+
+  // cleanup: clear both grains then delete the def
+  await request.put(`${API}/api/custom-values/PurchaseOrder/${po.id}`, { headers: { ...BUYER, ...JSON_H }, data: { values: { [def[0].code]: null } } })
+  await request.put(`${API}/api/custom-values/Requisition/${pr.id}`, { headers: { ...BUYER, ...JSON_H }, data: { values: { [def[0].code]: null } } })
+  expect((await request.delete(`${API}/api/custom-fields/${def[0].id}`, { headers: ADMIN })).status()).toBe(204)
 })

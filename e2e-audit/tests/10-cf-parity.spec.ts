@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { goAs } from './helpers'
+import { goAs, pickSearch } from './helpers'
 
 // CF programme browser proofs — ONE growing spec; each test name matches a ledger Test column
 // entry. A ledger box only ticks when its test here drives the capability on screen and passes.
@@ -65,7 +65,7 @@ test('CF1-T2: edit a custom list — rename, alphabetical order-mode, guarded de
   await page.getByRole('button', { name: `CF List ${STAMP}` }).click()
   await page.getByRole('button', { name: 'Edit list' }).click()
   await page.getByLabel('Name').fill(`CF List ${STAMP} v2`)
-  await page.getByLabel('Show options in').selectOption('Alphabetical')
+  await pickSearch(page, 'Show options in', 'Alphabetical')
   await page.getByRole('button', { name: 'Save list' }).click()
   await page.waitForTimeout(1000)
   await expect(page.getByText('A→Z')).toBeVisible()                    // order-mode badge on the glass
@@ -284,15 +284,15 @@ test('CF3-T9: the Add-portlet bucket — SavedViewList and RecentRecords added o
 
   // SavedViewList bound to a CF3-T11 seeded example view.
   await page.getByRole('button', { name: 'Add portlet' }).click()
-  await page.getByLabel('Portlet type', { exact: true }).selectOption({ label: 'Saved-view list (top-N rows)' })
-  await page.getByLabel('Record type', { exact: true }).selectOption('Requisition')
-  await page.getByLabel('Saved view', { exact: true }).selectOption({ label: 'PRs pending approval' })
+  await pickSearch(page, 'Portlet type', 'Saved-view list')
+  await pickSearch(page, 'Record type', 'Requisition')
+  await pickSearch(page, 'Saved view', 'PRs pending approval')
   await page.getByRole('button', { name: 'Add portlet' }).last().click()
   await expect(page.locator('section.card[aria-label="PRs pending approval"]')).toBeVisible()
 
   // RecentRecords — the zero-config type.
   await page.getByRole('button', { name: 'Add portlet' }).first().click()
-  await page.getByLabel('Portlet type', { exact: true }).selectOption({ label: 'Recent records' })
+  await pickSearch(page, 'Portlet type', 'Recent records')
   await page.getByLabel('Title (optional)', { exact: true }).fill(`Recent ${STAMP}`)
   await page.getByRole('button', { name: 'Add portlet' }).last().click()
   await expect(page.locator(`section.card[aria-label="Recent ${STAMP}"]`)).toBeVisible()
@@ -315,11 +315,11 @@ test('CF3-T10: shortcut tiles are authorable — first tile with colour+target v
   await goAs(page, 'u_lim', 'dashboard')
 
   await page.getByRole('button', { name: 'Add portlet' }).click()
-  await page.getByLabel('Portlet type', { exact: true }).selectOption({ label: 'Shortcuts (tiles)' })
+  await pickSearch(page, 'Portlet type', 'Shortcuts')
   await page.getByLabel('Title (optional)', { exact: true }).fill(`Tiles ${STAMP}`)
   await page.getByLabel('First tile label', { exact: true }).fill(`Go Views ${STAMP}`)
-  await page.getByLabel('Tile target page', { exact: true }).selectOption({ label: 'Saved Views' })
-  await page.getByLabel('Tile colour', { exact: true }).selectOption({ label: 'Teal' })
+  await pickSearch(page, 'Tile target page', 'Saved Views')
+  await pickSearch(page, 'Tile colour', 'Teal')
   await page.getByRole('button', { name: 'Add portlet' }).last().click()
 
   const tile = page.getByRole('button', { name: `Go Views ${STAMP}` })
@@ -348,7 +348,7 @@ test('CF3-T11: reminder/KPI pickers are populated by seeded example views; an em
 
   // The seeded example views populate the picker (the operator's "reminders don't work" fix).
   await page.getByRole('button', { name: 'Add reminder' }).click()
-  await page.getByLabel('Saved view', { exact: true }).selectOption({ label: 'PRs pending approval' })
+  await pickSearch(page, 'Saved view', 'PRs pending approval')
   await page.getByRole('button', { name: 'Add reminder' }).last().click()
   await expect(page.getByText('PRs pending approval')).toBeVisible()   // the reminder row landed
 
@@ -369,8 +369,8 @@ test('CF3-T11: reminder/KPI pickers are populated by seeded example views; an em
   await goAs(page, 'u_lim', 'dashboard')
   await page.getByRole('button', { name: 'Add KPI', exact: true }).click()
   await page.getByLabel('KPI title', { exact: true }).fill(`CF KPI ${STAMP}`)
-  await page.getByLabel('Record type', { exact: true }).selectOption('Requisition')
-  await page.getByLabel('Saved view', { exact: true }).selectOption({ label: `CF View ${STAMP}` })
+  await pickSearch(page, 'Record type', 'Requisition')
+  await pickSearch(page, 'Saved view', `CF View ${STAMP}`)
   await page.getByRole('button', { name: 'Add KPI' }).last().click()
   await expect(page.locator(`section.card[aria-label="CF KPI ${STAMP}"]`)).toBeVisible()   // bound KPI renders
 
@@ -383,7 +383,7 @@ test('CF3-T11: reminder/KPI pickers are populated by seeded example views; an em
   }
   if (emptyType) {
     await page.getByRole('button', { name: 'Add reminder' }).first().click()
-    await page.getByLabel('Record type', { exact: true }).selectOption(emptyType)
+    await pickSearch(page, 'Record type', emptyType === 'Rfq' ? 'Request For Quote' : emptyType)
     await page.getByRole('button', { name: 'create one in Saved Views' }).click()
     await expect(page.getByRole('heading', { name: 'Saved Views' })).toBeVisible()   // the loop lands on view authoring
   }
@@ -427,7 +427,7 @@ test('CF4-T12: field authoring — display=Inline renders as text, show-in-list 
   // Flip Star to Inline ON SCREEN via Edit (display type is def-mutable, unlike code/type).
   await page.reload({ waitUntil: 'networkidle' })
   await page.getByRole('row', { name: new RegExp(STAR) }).getByRole('button', { name: 'Edit' }).click()
-  await page.getByLabel('Display type', { exact: true }).selectOption('Inline')
+  await pickSearch(page, 'Display type', 'Inline')   // searchable since CF-FIX2-T2
   await page.getByRole('button', { name: 'Save changes' }).click()
   await page.waitForTimeout(600)
 
@@ -450,9 +450,9 @@ test('CF4-T12: field authoring — display=Inline renders as text, show-in-list 
   await request.delete(`${API}/api/dashboards/mine`, { headers: LIM })
   await goAs(page, 'u_lim', 'dashboard')
   await page.getByRole('button', { name: 'Add portlet' }).click()
-  await page.getByLabel('Portlet type', { exact: true }).selectOption({ label: 'Saved-view list (top-N rows)' })
-  await page.getByLabel('Record type', { exact: true }).selectOption('PurchaseOrder')
-  await page.getByLabel('Saved view', { exact: true }).selectOption({ label: 'All Purchase Orders' })
+  await pickSearch(page, 'Portlet type', 'Saved-view list')
+  await pickSearch(page, 'Record type', 'Purchase Order')
+  await pickSearch(page, 'Saved view', 'All Purchase Orders')
   await page.getByRole('button', { name: 'Add portlet' }).last().click()
   await page.waitForTimeout(1000)
   const portlet = page.locator('section.card[aria-label="All Purchase Orders"]')
@@ -625,7 +625,7 @@ test('CF6: line field end-to-end — admin authors a Line-scope field on screen,
   await page.getByRole('button', { name: 'Requisition', exact: true }).click()   // the rail item (not the Requisitions nav)
   await page.getByRole('button', { name: 'New field' }).click()
   await page.getByLabel('Label', { exact: true }).fill(LABEL)
-  await page.getByLabel('Scope (header field or line column)', { exact: true }).selectOption('Line')
+  await pickSearch(page, 'Scope (header field or line column)', 'Line')
   await page.getByRole('button', { name: 'Create field' }).click()
   await page.waitForTimeout(600)
   await expect(page.getByRole('row', { name: new RegExp(LABEL) }).getByText('line', { exact: true })).toBeVisible()
