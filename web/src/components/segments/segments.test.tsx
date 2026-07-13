@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithProviders } from '../../test/utils'
+import { renderWithProviders, pickSearchable } from '../../test/utils'
 import { SegmentsSection } from './SegmentsSection'
 import { AddKpiModal } from '../portlets/AddKpiModal'
 import { KpiMeterPortlet } from '../portlets/KpiMeterPortlet'
@@ -71,13 +71,14 @@ describe('Sliced KPI — the D6 group-by surfaced on the dashboard', () => {
     ])
     const added: client.PortletUpsert[] = []
     renderWithProviders(<AddKpiModal onClose={() => {}} onAdd={(p) => added.push(p)} />)
-    await userEvent.selectOptions(await screen.findByLabelText('Record type'), 'PurchaseOrder')
-    const slice = await screen.findByLabelText('Slice by segment (optional)')
-    expect(Array.from(slice.querySelectorAll('option')).map((o) => o.getAttribute('value')))
-      .not.toContain('Total')                                   // only Segment-kind fields slice
-    await userEvent.selectOptions(slice, 'seg_project')
+    await pickSearchable('Record type', 'Purchase Order')
+    // Only Segment-kind fields slice: open the slicer and check the popup's options.
+    await userEvent.click(screen.getByRole('button', { name: 'Slice by segment (optional)' }))
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).not.toContain('Value')
+    await userEvent.keyboard('{Escape}')
+    await pickSearchable('Slice by segment (optional)', 'Project')
     await userEvent.type(screen.getByLabelText('KPI title'), 'PO value by project')
-    await userEvent.selectOptions(screen.getByLabelText('Saved view'), 'v1')
+    await pickSearchable('Saved view', 'All POs')
     await userEvent.click(screen.getByRole('button', { name: 'Add KPI' }))
     expect(JSON.parse(added[0]!.configJson).groupBy).toBe('seg_project')
   })

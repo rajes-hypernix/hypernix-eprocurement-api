@@ -67,10 +67,10 @@ export function AddKpiModal({ onClose, onAdd, onGoCreateViews }: {
       }
     >
       <TextField spec={spec('kpi-title', 'KPI title', 'text')} value={title} onChange={(v) => setTitle(String(v ?? ''))} />
-      <SelectField spec={{ key: 'kpi-type', label: 'Record type', dataType: 'select', options: { kind: 'static', options: recordTypeOptions(RECORD_TYPES) } }} value={recordType}
+      <SelectField spec={{ key: 'kpi-type', searchable: true, label: 'Record type', dataType: 'select', options: { kind: 'static', options: recordTypeOptions(RECORD_TYPES) } }} value={recordType}
         onChange={(v) => { setRecordType(String(v ?? 'Rfq')); setViewId(''); setFieldKey('') }} />
       <SelectField
-        spec={{ key: 'kpi-view', label: 'Saved view', dataType: 'select', options: { kind: 'static', options: views.map((v) => ({ code: v.id, label: v.name })) } }}
+        spec={{ key: 'kpi-view', searchable: true, label: 'Saved view', dataType: 'select', options: { kind: 'static', options: views.map((v) => ({ code: v.id, label: v.name })) } }}
         value={viewId} onChange={(v) => setViewId(String(v ?? ''))} />
       <SelectField spec={spec('kpi-fn', 'Function', 'select', FNS)} value={fn} onChange={(v) => setFn(String(v ?? 'count'))} />
       {fn !== 'count' && (
@@ -78,7 +78,7 @@ export function AddKpiModal({ onClose, onAdd, onGoCreateViews }: {
       )}
       {segments.length > 0 && (
         <SelectField
-          spec={{ key: 'kpi-groupby', label: 'Slice by segment (optional)', dataType: 'select', options: { kind: 'static', options: segments.map((s) => ({ code: s.fieldKey, label: s.label })) } }}
+          spec={{ key: 'kpi-groupby', searchable: true, label: 'Slice by segment (optional)', dataType: 'select', options: { kind: 'static', options: segments.map((s) => ({ code: s.fieldKey, label: s.label })) } }}
           value={groupBy} onChange={(v) => setGroupBy(String(v ?? ''))} />
       )}
       <NumberField spec={spec('kpi-target', 'Target (optional)', 'number')} value={target} onChange={(v) => setTarget(String(v ?? ''))} />

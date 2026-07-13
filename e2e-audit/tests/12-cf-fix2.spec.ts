@@ -65,3 +65,29 @@ test('CF-FIX2-T1: contextual prefixes — custbody_/custcol_/CUSTLIST_ with the 
   expect((await request.delete(`${API}/api/custom-fields/${def.id}`, { headers: ADMIN })).status()).toBe(204)
   expect((await request.delete(`${API}/api/custom-lists/CUSTLIST_FIX2${STAMP}`, { headers: ADMIN })).status()).toBe(204)
 })
+
+test('CF-FIX2-T2: the searchable select is the standard everywhere — a record ListValue field AND the previously-plain Vendor Master region filter', async ({ page, request }) => {
+  // A ListValue custom field on a PO picks via type-to-filter (record surface).
+  const lists = await (await request.get(`${API}/api/custom-lists`, { headers: ADMIN })).json()
+  const currency = lists.find((l: { code: string }) => l.code === 'CURRENCY')
+  const def = await (await request.post(`${API}/api/custom-fields`, { headers: { ...ADMIN, ...JSON_H },
+    data: { label: `Fix2 Terms ${STAMP}`, recordType: 'PurchaseOrder', dataType: 'ListValue', customListId: currency.id, required: false, helpText: '', sort: 0 } })).json()
+  const pos = await (await request.get(`${API}/api/pos`, { headers: BUYER })).json()
+  await goAs(page, 'u_faridah', `pos/${pos[0].id}`)
+  await page.waitForTimeout(1500)
+  await page.getByRole('button', { name: `Fix2 Terms ${STAMP}`, exact: true }).click()
+  await page.getByRole('combobox', { name: `Search Fix2 Terms ${STAMP}` }).fill('ring')
+  await expect(page.getByRole('option', { name: /Ringgit/ })).toBeVisible()   // customList options load async
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('button', { name: `Fix2 Terms ${STAMP}`, exact: true })).toContainText('Ringgit')
+
+  // Vendor Master's Region filter (was a plain native select) is now the searchable component.
+  await goAs(page, 'u_faridah', 'vendors')
+  await page.waitForTimeout(1200)
+  await page.getByRole('button', { name: 'Region', exact: true }).click()
+  await page.getByRole('combobox', { name: 'Search Region' }).fill('Sar')
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('button', { name: 'Region', exact: true })).toContainText('Sarawak')
+
+  expect((await request.delete(`${API}/api/custom-fields/${def.id}`, { headers: ADMIN })).status()).toBe(204)
+})

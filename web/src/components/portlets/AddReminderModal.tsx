@@ -54,10 +54,10 @@ export function AddReminderModal({ onClose, onAdd, onGoCreateViews }: {
         </>
       }
     >
-      <SelectField spec={{ key: 'rem-type', label: 'Record type', dataType: 'select', options: { kind: 'static', options: recordTypeOptions(RECORD_TYPES) } }} value={recordType}
+      <SelectField spec={{ key: 'rem-type', searchable: true, label: 'Record type', dataType: 'select', options: { kind: 'static', options: recordTypeOptions(RECORD_TYPES) } }} value={recordType}
         onChange={(v) => { setRecordType(String(v ?? 'Requisition')); setViewId('') }} />
       <SelectField
-        spec={{ key: 'rem-view', label: 'Saved view', dataType: 'select', options: { kind: 'static', options: views.map((v) => ({ code: v.id, label: v.name })) } }}
+        spec={{ key: 'rem-view', searchable: true, label: 'Saved view', dataType: 'select', options: { kind: 'static', options: views.map((v) => ({ code: v.id, label: v.name })) } }}
         value={viewId} onChange={(v) => setViewId(String(v ?? ''))} />
       <TextField spec={{ ...spec('rem-label', 'Label', 'text'), placeholder: 'defaults to the view name' }} value={label} onChange={(v) => setLabel(String(v ?? ''))} />
       {views.length === 0 && onGoCreateViews && (

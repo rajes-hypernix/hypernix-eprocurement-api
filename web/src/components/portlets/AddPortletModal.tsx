@@ -91,7 +91,7 @@ export function AddPortletModal({ onClose, onAdd, onKpi, onReminder }: {
         </button>
       </>}
     >
-      <SelectField spec={{ key: 'ap-type', label: 'Portlet type', dataType: 'select', options: { kind: 'static', options: TYPES } }}
+      <SelectField spec={{ key: 'ap-type', searchable: true, label: 'Portlet type', dataType: 'select', options: { kind: 'static', options: TYPES } }}
         value={type} onChange={(v) => { setType(String(v ?? 'KpiMeter')); setMetricIds([]) }} />
       {type !== 'KpiMeter' && type !== 'Reminders' && (
         <TextField spec={{ key: 'ap-title', label: 'Title (optional)', dataType: 'text' }} value={title} onChange={(v) => setTitle(String(v ?? ''))} />
@@ -109,9 +109,9 @@ export function AddPortletModal({ onClose, onAdd, onKpi, onReminder }: {
       )}
       {type === 'SavedViewList' && (
         <>
-          <SelectField spec={{ key: 'ap-rt', label: 'Record type', dataType: 'select', options: { kind: 'static', options: recordTypeOptions(RECORD_TYPES) } }}
+          <SelectField spec={{ key: 'ap-rt', searchable: true, label: 'Record type', dataType: 'select', options: { kind: 'static', options: recordTypeOptions(RECORD_TYPES) } }}
             value={recordType} onChange={(v) => { setRecordType(String(v ?? 'PurchaseOrder')); setViewId('') }} />
-          <SelectField spec={{ key: 'ap-view', label: 'Saved view', dataType: 'select', options: { kind: 'static', options: views.map((v) => ({ code: v.id, label: v.name })) } }}
+          <SelectField spec={{ key: 'ap-view', searchable: true, label: 'Saved view', dataType: 'select', options: { kind: 'static', options: views.map((v) => ({ code: v.id, label: v.name })) } }}
             value={viewId} onChange={(v) => setViewId(String(v ?? ''))} />
           <NumberField spec={{ key: 'ap-topn', label: 'Rows (top N)', dataType: 'number', validation: { min: 1, max: 50 } }} value={topN} onChange={(v) => setTopN(String(v ?? '5'))} />
         </>
@@ -119,11 +119,11 @@ export function AddPortletModal({ onClose, onAdd, onKpi, onReminder }: {
       {type === 'Shortcuts' && (
         <>
           <TextField spec={{ key: 'ap-tl', label: 'First tile label', dataType: 'text' }} value={tileLabel} onChange={(v) => setTileLabel(String(v ?? ''))} />
-          <SelectField spec={{ key: 'ap-tr', label: 'Tile target page', dataType: 'select', options: { kind: 'static', options: [
+          <SelectField spec={{ key: 'ap-tr', searchable: true, label: 'Tile target page', dataType: 'select', options: { kind: 'static', options: [
             { code: 'dashboard', label: 'Dashboard' }, { code: 'views', label: 'Saved Views' }, { code: 'reqs', label: 'Requisitions' },
             { code: 'rfqs', label: 'RFQs' }, { code: 'pos', label: 'Purchase Orders' }, { code: 'invoices', label: 'Invoices' },
           ] } }} value={tileRoute} onChange={(v) => setTileRoute(String(v ?? 'dashboard'))} />
-          <SelectField spec={{ key: 'ap-tc', label: 'Tile colour', dataType: 'select', options: { kind: 'static', options: TILE_COLORS.map((c) => ({ code: c.code, label: c.label })) } }}
+          <SelectField spec={{ key: 'ap-tc', searchable: true, label: 'Tile colour', dataType: 'select', options: { kind: 'static', options: TILE_COLORS.map((c) => ({ code: c.code, label: c.label })) } }}
             value={tileColor} onChange={(v) => setTileColor(String(v ?? ''))} />
         </>
       )}

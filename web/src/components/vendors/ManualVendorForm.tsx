@@ -105,15 +105,15 @@ export function ManualVendorForm({ onSaved, onBack }: { onSaved: (id: string) =>
         <div className="cbody">
           <div className="grid g3">
             <SelectField
-              spec={{ key: 'country', label: 'Country', dataType: 'select', options: { kind: 'customList', listCode: 'COUNTRY' } }}
+              spec={{ key: 'country', label: 'Country', dataType: 'select', searchable: true, options: { kind: 'customList', listCode: 'COUNTRY' } }}
               value={f.country ?? 'MY'} onChange={(v) => { set('country', v); set('state', ''); set('city', '') }}
             />
             <DependentSelectField
-              spec={{ key: 'state', label: 'State / Region', dataType: 'select', placeholder: 'Select state', options: { kind: 'customList', listCode: 'STATE', parentField: 'country' } }}
+              spec={{ key: 'state', label: 'State / Region', dataType: 'select', searchable: true, placeholder: 'Select state', options: { kind: 'customList', listCode: 'STATE', parentField: 'country' } }}
               value={f.state ?? ''} onChange={(v) => { set('state', v); set('city', '') }} parentValue={f.country ?? ''}
             />
             <DependentSelectField
-              spec={{ key: 'city', label: 'City', dataType: 'select', placeholder: 'Select city', options: { kind: 'customList', listCode: 'CITY', parentField: 'state' } }}
+              spec={{ key: 'city', label: 'City', dataType: 'select', searchable: true, placeholder: 'Select city', options: { kind: 'customList', listCode: 'CITY', parentField: 'state' } }}
               value={f.city ?? ''} onChange={(v) => set('city', v)} parentValue={f.state ?? ''}
             />
           </div>
@@ -125,11 +125,11 @@ export function ManualVendorForm({ onSaved, onBack }: { onSaved: (id: string) =>
         <div className="chead"><h3>Commercial &amp; banking</h3></div>
         <div className="cbody">
           <div className="grid g2">
-            <SelectField spec={{ key: 'currency', label: 'Currency', dataType: 'select', options: { kind: 'customList', listCode: 'CURRENCY' } }} value={f.currency ?? 'MYR'} onChange={(v) => set('currency', v)} />
-            <SelectField spec={{ key: 'paymentTerms', label: 'Payment terms', dataType: 'select', options: { kind: 'customList', listCode: 'PAYMENT_TERMS' } }} value={f.paymentTerms ?? 'NET30'} onChange={(v) => set('paymentTerms', v)} />
+            <SelectField spec={{ key: 'currency', label: 'Currency', dataType: 'select', searchable: true, options: { kind: 'customList', listCode: 'CURRENCY' } }} value={f.currency ?? 'MYR'} onChange={(v) => set('currency', v)} />
+            <SelectField spec={{ key: 'paymentTerms', label: 'Payment terms', dataType: 'select', searchable: true, options: { kind: 'customList', listCode: 'PAYMENT_TERMS' } }} value={f.paymentTerms ?? 'NET30'} onChange={(v) => set('paymentTerms', v)} />
           </div>
           <div className="grid g3">
-            <SelectField spec={{ key: 'bank', label: 'Bank', dataType: 'select', placeholder: 'Select bank', options: { kind: 'customList', listCode: 'BANK' } }} value={f.bank ?? ''} onChange={(v) => set('bank', v)} />
+            <SelectField spec={{ key: 'bank', label: 'Bank', dataType: 'select', searchable: true, placeholder: 'Select bank', options: { kind: 'customList', listCode: 'BANK' } }} value={f.bank ?? ''} onChange={(v) => set('bank', v)} />
             <TextField spec={text('accountNo', 'Account no.')} value={f.accountNo ?? ''} onChange={(v) => set('accountNo', v)} />
             <TextField spec={text('swift', 'SWIFT')} value={f.swift ?? ''} onChange={(v) => set('swift', v)} />
           </div>

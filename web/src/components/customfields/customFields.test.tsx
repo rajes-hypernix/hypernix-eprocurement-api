@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithProviders } from '../../test/utils'
+import { renderWithProviders, pickSearchable } from '../../test/utils'
 import { CustomFieldsSection } from './CustomFieldsSection'
 import { AddKpiModal } from '../portlets/AddKpiModal'
 import * as client from '../../api/client'
@@ -66,8 +66,8 @@ describe('Add-KPI inherits custom fields with ZERO changes (proven, not asserted
       { fieldKey: 'cf_bank_guarantee', label: 'Bank Guarantee', dataType: 'Money', kind: 'Custom', options: null },
     ])
     renderWithProviders(<AddKpiModal onClose={() => {}} onAdd={() => {}} />)
-    await userEvent.selectOptions(await screen.findByLabelText('Record type'), 'PurchaseOrder')
-    await userEvent.selectOptions(screen.getByLabelText('Function'), 'sum')
+    await pickSearchable('Record type', 'Purchase Order')
+    await userEvent.selectOptions(screen.getByLabelText('Function'), 'sum')   // fn stays a small native select
     const fieldSelect = await screen.findByLabelText('Field')
     expect(Array.from(fieldSelect.querySelectorAll('option')).map((o) => o.getAttribute('value')))
       .toContain('cf_bank_guarantee')

@@ -2,6 +2,7 @@ import { useId } from 'react'
 import { FieldChrome } from './FieldChrome'
 import { effectiveMode, type FieldProps } from './fieldSpec'
 import { useFieldOptions } from './useFieldOptions'
+import { SearchSelectField } from './SearchSelectField'
 import { useLookups } from '../lib/lookups'
 
 /**
@@ -16,6 +17,10 @@ export function DependentSelectField({ spec, value, onChange, chrome, error, par
   const mode = effectiveMode(spec)
   const { flat } = useFieldOptions(spec, parentValue)
   const { hasChildren } = useLookups()
+
+  // CF-FIX2-T2: searchable specs render THE standardized type-to-filter list — the
+  // dependent filtering rides the same parentValue → useFieldOptions path.
+  if (spec.searchable) return <SearchSelectField spec={spec} value={value} onChange={onChange} chrome={chrome} error={error} parentValue={parentValue} />
   if (mode === 'hidden') return null
   const listCode = spec.options?.kind === 'customList' ? spec.options.listCode : ''
   const degrade = !parentValue || !hasChildren(listCode, parentValue)

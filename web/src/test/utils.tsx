@@ -52,3 +52,14 @@ export const mockViewRun = (recordType: string, rows: Record<string, unknown>[])
   viewId: `sys-${recordType}`, name: `All ${recordType}`, recordType,
   columns: [], rows, page: 1, size: 50, total: rows.length,
 })
+
+/** CF-FIX2-T2: drive the SearchSelectField in unit tests via its KEYBOARD contract —
+ *  open, type-to-filter, Enter picks the highlighted match. (userEvent.selectOptions
+ *  only works on native selects; jsdom option-clicks are unreliable on popups.) */
+export async function pickSearchable(label: string, filter: string) {
+  const { screen } = await import('@testing-library/react')
+  const userEvent = (await import('@testing-library/user-event')).default
+  await userEvent.click(screen.getByRole('button', { name: label }))
+  await userEvent.type(await screen.findByRole('combobox', { name: `Search ${label}` }), filter)
+  await userEvent.keyboard('{Enter}')
+}

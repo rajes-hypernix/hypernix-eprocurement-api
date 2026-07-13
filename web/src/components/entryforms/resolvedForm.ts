@@ -34,10 +34,11 @@ export const toSpec = (f: ResolvedFormFieldDto): FieldSpec => ({
   required: f.requiredOnForm,
   placeholder: f.placeholder ?? undefined,
   displayType: DISPLAY[f.displayType] ?? 'normal',
+  // CF-FIX2-T2: every list-backed field renders THE searchable select (operator ruling).
   ...(f.options && f.options.length > 0
-    ? { options: { kind: 'static' as const, options: f.options.map((o) => ({ code: o.code, label: o.label })) } }
+    ? { searchable: true as const, options: { kind: 'static' as const, options: f.options.map((o) => ({ code: o.code, label: o.label })) } }
     : f.customListCode
-      ? { options: { kind: 'customList' as const, listCode: f.customListCode, ...(f.sourceFieldKey ? { parentField: stateKey(f.sourceFieldKey) } : {}) } }
+      ? { searchable: true as const, options: { kind: 'customList' as const, listCode: f.customListCode, ...(f.sourceFieldKey ? { parentField: stateKey(f.sourceFieldKey) } : {}) } }
       : {}),
 })
 

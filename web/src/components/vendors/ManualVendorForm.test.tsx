@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithQuery } from '../../test/utils'
+import { renderWithQuery, pickSearchable } from '../../test/utils'
 import { ManualVendorForm } from './ManualVendorForm'
 import * as client from '../../api/client'
 import type { CustomList } from '../../api/client'
@@ -35,14 +35,17 @@ describe('ManualVendorForm (Bug 3)', () => {
     expect((name as HTMLInputElement).value).toBe('KL Industrial Supplies')
 
     // dropdowns are populated from the lookups
-    expect((screen.getByLabelText('Country') as HTMLSelectElement).value).toBe('MY')   // default Malaysia
+    expect(screen.getByRole('button', { name: 'Country' })).toHaveTextContent('Malaysia')   // default Malaysia (searchable select)
+    // Bank options live in the searchable popup now — open it to check, then close.
+    await userEvent.click(screen.getByRole('button', { name: 'Bank' }))
     expect(screen.getByRole('option', { name: 'Maybank' })).toBeInTheDocument()
+    await userEvent.keyboard('{Escape}')
 
-    await userEvent.selectOptions(screen.getByLabelText('State / Region'), 'SGR')
-    await userEvent.selectOptions(screen.getByLabelText('City'), 'Shah Alam')          // dependent list
-    await userEvent.selectOptions(screen.getByLabelText('Currency'), 'USD')
-    await userEvent.selectOptions(screen.getByLabelText('Payment terms'), 'NET60')
-    await userEvent.selectOptions(screen.getByLabelText('Bank'), 'CIMB')
+    await pickSearchable('State / Region', 'Selangor')
+    await pickSearchable('City', 'Shah Alam')          // dependent list
+    await pickSearchable('Currency', 'USD')
+    await pickSearchable('Payment terms', '60')
+    await pickSearchable('Bank', 'CIMB')
 
     await userEvent.click(screen.getAllByRole('button', { name: /Add to master/ })[0])
     await waitFor(() => expect(create).toHaveBeenCalled())

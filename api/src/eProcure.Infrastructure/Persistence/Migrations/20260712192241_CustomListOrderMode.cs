@@ -10,12 +10,15 @@ namespace eProcure.Infrastructure.Persistence.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            // CF-FIX2 REPAIR: was defaultValue: false — which silently DEACTIVATED every
+            // pre-existing list on upgrade (found by the CF-FIX2-T2 browser proof: vendor-form
+            // pickers were empty). Lists are born active; the entity default is true.
             migrationBuilder.AddColumn<bool>(
                 name: "Active",
                 table: "CustomLists",
                 type: "boolean",
                 nullable: false,
-                defaultValue: false);
+                defaultValue: true);
 
             migrationBuilder.AddColumn<string>(
                 name: "OrderMode",

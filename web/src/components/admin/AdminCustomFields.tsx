@@ -174,12 +174,12 @@ function DefModal({ recordType, def, onClose, onSaved }: {
                 spec={{ key: 'cf-list', label: 'Custom list', dataType: 'select', searchable: true, options: { kind: 'static', options: lists.map((l) => ({ code: l.id ?? '', label: l.name ?? l.code ?? '' })) } }}
                 value={listId} onChange={(v) => setListId(String(v ?? ''))} />
             )}
-            <SelectField spec={spec('cf-scope', 'Scope (header field or line column)', 'select', ['Header', 'Line'])}
+            <SelectField spec={{ ...spec('cf-scope', 'Scope (header field or line column)', 'select', ['Header', 'Line']), searchable: true }}
               value={scope} onChange={(v) => setScope(String(v ?? 'Header'))} />
             {scope === 'Line' && <p className="hint">A line column on the record’s lines table (PR/PO/RFQ). Values live per line; not searchable in views yet.</p>}
           </>
         )}
-      <SelectField spec={spec('cf-display', 'Display type', 'select', DISPLAY_TYPES)} value={displayType} onChange={(v) => setDisplayType(String(v ?? 'Normal'))} />
+      <SelectField spec={{ ...spec('cf-display', 'Display type', 'select', DISPLAY_TYPES), searchable: true }} value={displayType} onChange={(v) => setDisplayType(String(v ?? 'Normal'))} />
       {displayType !== 'Normal' && <p className="hint">Disabled and Inline fields render read-only and reject user edits — values arrive via defaults or imports.</p>}
       <CheckboxField spec={spec('cf-showinlist', 'Show On Default List', 'boolean')} value={showInList} onChange={(v) => setShowInList(v === true)} />
       <CheckboxField spec={spec('cf-required', 'Mandatory', 'boolean')} value={required} onChange={(v) => setRequired(v === true)} />

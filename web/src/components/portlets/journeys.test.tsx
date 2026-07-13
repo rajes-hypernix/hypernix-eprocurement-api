@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithProviders } from '../../test/utils'
+import { renderWithProviders, pickSearchable } from '../../test/utils'
 import { SavedViewListPortlet } from './SavedViewListPortlet'
 import { AddReminderModal } from './AddReminderModal'
 import * as client from '../../api/client'
@@ -53,8 +53,7 @@ describe('Add reminder from any view (D7.5 task 5 — the operator’s journey)'
     ])
     const add = vi.fn()
     renderWithProviders(<AddReminderModal onClose={() => {}} onAdd={add} />)
-    await screen.findByRole('option', { name: 'PRs pending approval' })
-    await userEvent.selectOptions(screen.getByLabelText('Saved view'), 'v5')
+    await pickSearchable('Saved view', 'PRs pending')   // options render inside the searchable popup now
     await userEvent.click(screen.getByRole('button', { name: 'Add reminder' }))
     await waitFor(() => expect(add).toHaveBeenCalledWith({
       savedViewId: 'v5', label: 'PRs pending approval', route: 'reqs',

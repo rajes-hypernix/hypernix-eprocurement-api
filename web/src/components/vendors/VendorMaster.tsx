@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { SearchSelectField } from '../../ui/SearchSelectField'
 import { type VendorListItem } from '../../api/client'
 import { useSwec } from '../../api/swec'
 import { Icon } from '../Icon'
@@ -83,16 +84,12 @@ export function VendorMaster({ onOpen, onNavigate, initialViewId }: {
                 <option value="Non-SWEC">Non-SWEC</option>
               </select>
             </div>
-            <div className="field" style={{ margin: 0 }}>
-              <label>Region</label>
-              <select value={region} onChange={(e) => setRegion(e.target.value)}>
-                <option value="all">All</option>
-                {REGIONS.map((r) => (
-                  <option key={r} value={r}>
-                    {r}
-                  </option>
-                ))}
-              </select>
+            <div className="field" style={{ margin: 0, minWidth: 170 }}>
+              {/* CF-FIX2-T2: a real LIST pick → the searchable select (Type stays a small toggle) */}
+              <SearchSelectField
+                spec={{ key: 'vm-region', label: 'Region', dataType: 'select', searchable: true, placeholder: 'All',
+                  options: { kind: 'static', options: [{ code: 'all', label: 'All' }, ...REGIONS.map((r) => ({ code: r, label: r }))] } }}
+                value={region === 'all' ? '' : region} onChange={(v) => setRegion(String(v || 'all'))} chrome="bare" />
             </div>
           </div>
         </div>

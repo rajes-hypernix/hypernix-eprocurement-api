@@ -237,7 +237,7 @@ function NewListModal({ lists, onClose, onCreated, onErr }: {
         value={parentListCode} onChange={setParentListCode}
       />
       <SelectField
-        spec={{ key: 'lorder', label: 'Show options in', dataType: 'select',
+        spec={{ key: 'lorder', label: 'Show options in', dataType: 'select', searchable: true,
           options: { kind: 'static', options: [
             { code: 'Entered', label: 'The order entered' }, { code: 'Alphabetical', label: 'Alphabetical order' },
           ] } }}
