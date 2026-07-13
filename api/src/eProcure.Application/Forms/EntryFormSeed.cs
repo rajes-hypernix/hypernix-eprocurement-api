@@ -45,6 +45,7 @@ public static class EntryFormSeed
         new(RecordType.Asn, "ASN", true, 4),
         new(RecordType.Vendor, "SWK-V", true, 4),
         new(RecordType.Onboarding, "VOB", true, 4),
+        new(RecordType.Grn, "GRN", true, 4),   // CF-FIX4-T2: was the string-prefix mint, format identical
     ];
 
     // HEX-PARSE (not new Guid(byte[])) — the SegmentSeed rule: matches Postgres
@@ -63,6 +64,54 @@ public static class EntryFormSeed
     /// <summary>Entity builders for TEST stores (the FieldRegistrySeed.ToEntities precedent):
     /// production gets these rows from the migration; in-memory test contexts seed the same
     /// invariant so the scheme-consulting mint and the submit guard behave identically.</summary>
+    /// <summary>CF-FIX4-T2: standard/system forms for the widened entry surfaces (L5: RFQ
+    /// excluded — wizard). PO and GRN carry ZERO native fields (their write contracts have no
+    /// form-controllable header keys — recon D-3, approved): they are placement containers
+    /// whose Header group (L3) is the landing zone for custom fields and segments. Invoice
+    /// places InvoiceNo (registry ∩ SubmitInvoiceRequest).</summary>
+    public static readonly IReadOnlyList<(RecordType Type, string Code, string Name, IReadOnlyList<FieldRow> Fields)> StandardForms =
+    [
+        (RecordType.PurchaseOrder, "ef_standard_po_form", "Standard PO Form", []),
+        (RecordType.Grn, "ef_standard_grn_form", "Standard GRN Form", []),
+        (RecordType.Invoice, "ef_standard_invoice_form", "Standard Invoice Form",
+            new List<FieldRow> { new("InvoiceNo", "Header", 0, null, "Supplier's invoice number") }),
+    ];
+
+    /// <summary>Generic standard-form builder (the PR builder's shape, minus PR's census
+    /// overrides). ALWAYS materializes the Header group — L3 — even with zero fields.</summary>
+    public static (Domain.Forms.EntryFormDef Def, List<Domain.Forms.EntryFormSubtab> Subtabs,
+        List<Domain.Forms.EntryFormGroup> Groups, List<Domain.Forms.EntryFormField> Fields) ToStandardFormEntities(
+        RecordType type, string code, string name, IReadOnlyList<FieldRow> rows)
+    {
+        var seeded = new DateTime(2026, 7, 13, 0, 0, 0, DateTimeKind.Utc);
+        var formId = FormId(code);
+        var def = new Domain.Forms.EntryFormDef
+        {
+            Id = formId, Code = code, Name = name, RecordType = type,
+            IsSystem = true, Active = true, CreatedUtc = seeded, UpdatedUtc = seeded,
+        };
+        var groupTitles = rows.Select(r => (r.Subtab, r.FieldGroup)).Distinct().ToList();
+        if (!groupTitles.Contains((null, "Header"))) groupTitles.Insert(0, (null, "Header"));
+        var subtabs = rows.Where(r => r.Subtab is not null).Select(r => r.Subtab!).Distinct()
+            .Select((n, i) => new Domain.Forms.EntryFormSubtab
+            { Id = SubtabId(formId, n), FormDefId = formId, Name = n, Sort = i, Hidden = false }).ToList();
+        var groups = groupTitles.Select((g, i) => new Domain.Forms.EntryFormGroup
+        {
+            Id = GroupId(formId, g.Item1, g.Item2), FormDefId = formId,
+            SubtabId = g.Item1 is null ? null : SubtabId(formId, g.Item1),
+            Title = g.Item2, Sort = i, ColumnBreak = false,
+            IsHeader = g.Item1 is null && g.Item2 == "Header",
+        }).ToList();
+        var fields = rows.Select(r => new Domain.Forms.EntryFormField
+        {
+            Id = FieldId(formId, r.FieldKey), FormDefId = formId, FieldKey = r.FieldKey,
+            GroupId = GroupId(formId, r.Subtab, r.FieldGroup), Sort = r.Sort,
+            DisplayType = Domain.Forms.EntryFormDisplayType.Normal, RequiredOnForm = false,
+            FullWidth = r.FullWidth, Label = r.Label, Placeholder = r.Placeholder,
+        }).ToList();
+        return (def, subtabs, groups, fields);
+    }
+
     public static (Domain.Forms.EntryFormDef Def, List<Domain.Forms.EntryFormSubtab> Subtabs,
         List<Domain.Forms.EntryFormGroup> Groups, List<Domain.Forms.EntryFormField> Fields) ToStandardPrFormEntities()
     {

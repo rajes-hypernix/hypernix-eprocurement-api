@@ -12,6 +12,7 @@ const LABELS: Record<string, string> = {
   Asn: 'Advance Shipment Notice',
   Vendor: 'Vendor',
   Onboarding: 'Onboarding',
+  Grn: 'Goods Receipt',   // CF-FIX4-T2: first-class record type
 }
 
 export const recordTypeLabel = (rt: string): string => LABELS[rt] ?? rt

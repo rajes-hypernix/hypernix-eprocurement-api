@@ -274,7 +274,8 @@ public sealed class EntryFormService(AppDbContext db, IClock clock, ICurrentUser
 
     private async Task ValidateFieldsAsync(RecordType type, List<EntryFormFieldDto> fields, CancellationToken ct)
     {
-        if (fields.Count == 0) throw new FormValidationException("A form needs at least one field.");
+        // CF-FIX4-T2: zero fields is VALID — the Header invariant (L3) guarantees structure,
+        // and PO/GRN standard forms are placement containers until custom fields land (D-3).
         if (fields.Select(f => f.FieldKey).Distinct(StringComparer.OrdinalIgnoreCase).Count() != fields.Count)
             throw new FormValidationException("A field may appear once per form.");
 

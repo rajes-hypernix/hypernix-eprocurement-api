@@ -37,6 +37,7 @@ public sealed class RecordReachability(
             RecordType.Asn => await deliveries.GetAsync(recordId, ct) is not null,
             RecordType.Vendor => await vendors.GetAsync(recordId, ct) is not null,
             RecordType.Onboarding => await onboarding.GetApplicationAsync(recordId, ct) is not null,
+            RecordType.Grn => await deliveries.GrnReachableAsync(recordId, ct),   // CF-FIX4-T2
             _ => false,
         };
         if (!exists) throw new NotFoundException($"{type} {recordId} not found.");

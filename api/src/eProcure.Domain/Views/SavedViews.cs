@@ -1,7 +1,10 @@
 namespace eProcure.Domain.Views;
 
 /// <summary>The record types a saved view can query — one per list surface (D3).</summary>
-public enum RecordType { Requisition, Rfq, PurchaseOrder, Invoice, Asn, Vendor, Onboarding }
+// CF-FIX4-T2: Grn appended — first-class record type for entry forms + custom-field
+// applicability. Stored as STRING (HasConversion) and unmapped in RecordLifecycle,
+// so it is LIVE/fail-closed by construction (the CF-FIX-3 pin covers it).
+public enum RecordType { Requisition, Rfq, PurchaseOrder, Invoice, Asn, Vendor, Onboarding, Grn }
 
 /// <summary>Native = seeded from the list DTOs; Custom (D5) and Segment (D6) are RESERVED —
 /// later slices add rows, never reshape (AUTHORIZATION-MATRIX-era framework rule).</summary>

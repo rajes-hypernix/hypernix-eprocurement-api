@@ -75,6 +75,14 @@ public sealed class TestWebAppFactory(
             db.EntryFormSubtabs.AddRange(subtabs);
             db.EntryFormGroups.AddRange(groups);
             db.EntryFormFields.AddRange(fields);
+            foreach (var (sfType, sfCode, sfName, sfRows) in eProcure.Application.Forms.EntryFormSeed.StandardForms)
+            {
+                var (sfDef, sfSubtabs, sfGroups, sfFields) = eProcure.Application.Forms.EntryFormSeed.ToStandardFormEntities(sfType, sfCode, sfName, sfRows);
+                db.EntryFormDefs.Add(sfDef);
+                db.EntryFormSubtabs.AddRange(sfSubtabs);
+                db.EntryFormGroups.AddRange(sfGroups);
+                db.EntryFormFields.AddRange(sfFields);
+            }
             await db.SaveChangesAsync();
         }
         await seed(db);

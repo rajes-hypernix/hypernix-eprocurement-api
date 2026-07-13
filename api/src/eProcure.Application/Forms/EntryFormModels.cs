@@ -101,9 +101,18 @@ public static class EntryFormVocabulary
             // SavePrRequest: Requestor, Department, Location, Category, Job, Memo, RequiredDate
             [RecordType.Requisition] = new HashSet<string>
                 { "Requestor", "Department", "Location", "Category", "Job", "Memo", "RequiredDate" },
+            // CF-FIX4-T2 (still MECHANICAL — registry ∩ write DTO):
+            // PO is award-created (no hand-entered header) and GRN's only write is
+            // ReceiveRequest(Lines) → both have ZERO controllable native keys; their standard
+            // forms are placement containers for custom fields + segments (recon D-3, approved).
+            [RecordType.PurchaseOrder] = new HashSet<string>(),
+            [RecordType.Grn] = new HashSet<string>(),
+            // SubmitInvoiceRequest carries InvoiceNo/Date/WhtRate; only InvoiceNo is a registry
+            // key today — the intersection rule keeps the other two off forms until they are.
+            [RecordType.Invoice] = new HashSet<string> { "InvoiceNo" },
         };
 
     /// <summary>Record types with a consuming entry surface THIS slice (OD-D7-5).</summary>
     public static readonly IReadOnlySet<RecordType> ConsumableRecordTypes =
-        new HashSet<RecordType> { RecordType.Requisition };
+        new HashSet<RecordType> { RecordType.Requisition, RecordType.PurchaseOrder, RecordType.Grn, RecordType.Invoice };
 }

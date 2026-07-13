@@ -28,5 +28,8 @@ public interface IDeliveryService
     Task<ShipPlanDto> GetShipPlanAsync(Guid poId, CancellationToken ct = default);
     Task<AsnDetailDto> CreateAsnAsync(Guid poId, CreateAsnRequest req, CancellationToken ct = default);
     Task<GrnDetailDto?> GetGrnForAsnAsync(Guid asnId, CancellationToken ct = default);
+    /// <summary>CF-FIX4-T2: GRN reachability BY GRN ID (vendor chain via its ASN) — the
+    /// RecordReachability case for the new first-class Grn record type.</summary>
+    Task<bool> GrnReachableAsync(Guid grnId, CancellationToken ct = default);
     Task<GrnDetailDto> ReceiveAsync(Guid asnId, ReceiveRequest req, CancellationToken ct = default);
 }

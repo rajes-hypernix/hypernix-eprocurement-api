@@ -104,6 +104,17 @@ public sealed class DeliveryService(
         return grn is null ? null : await MapGrn(grn, ct);
     }
 
+    public async Task<bool> GrnReachableAsync(Guid grnId, CancellationToken ct = default)
+    {
+        var key = await db.Grns.AsNoTracking().Where(g => g.Id == grnId)
+            .Select(g => new { g.AsnId }).FirstOrDefaultAsync(ct);
+        if (key is null) return false;
+        var asn = await db.Asns.AsNoTracking().FirstOrDefaultAsync(a => a.Id == key.AsnId, ct);
+        if (asn is null) return false;
+        VendorAccess.EnsureCanAccess(user, asn.VendorId);   // same vendor chain as the ASN detail
+        return true;
+    }
+
     public async Task<GrnDetailDto> ReceiveAsync(Guid asnId, ReceiveRequest req, CancellationToken ct = default)
     {
         EnsureInternal();
@@ -126,7 +137,7 @@ public sealed class DeliveryService(
             grnLines.Add(new GrnLine { ItemCode = al.ItemCode, Description = al.Description, ExpectedQty = al.ShippedQty, ReceivedQty = rq, Condition = condition });
         }
 
-        var code = await codes.NextAsync("GRN", ct);
+        var code = await codes.NextAsync(Domain.Views.RecordType.Grn, ct);   // CF-FIX4-T2: scheme-driven, format unchanged
         // Receipt date is a business date, not an instant: it's the Malaysia calendar day of receipt.
         // Kuching is a fixed UTC+8 (no DST), so the local day is UtcNow+8 as a plain DateOnly — no
         // string formatting, no stored offset (Slice H T4 retired the AddHours(8)-into-a-string hack).

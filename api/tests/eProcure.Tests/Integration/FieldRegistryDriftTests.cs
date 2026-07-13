@@ -26,6 +26,7 @@ public sealed class FieldRegistryDriftTests
         [RecordType.Asn] = typeof(AsnListDto),
         [RecordType.Vendor] = typeof(VendorListItem),
         [RecordType.Onboarding] = typeof(OnboardingQueueItemDto),
+        [RecordType.Grn] = typeof(GrnDetailDto),   // CF-FIX4-T2: no list DTO yet — detail is the contract
     };
 
     private static bool TypeMatches(FieldDataType dataType, Type clr)

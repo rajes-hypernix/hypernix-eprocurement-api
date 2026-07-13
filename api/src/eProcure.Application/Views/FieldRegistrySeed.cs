@@ -73,6 +73,13 @@ public static class FieldRegistrySeed
         new(RecordType.Invoice, "Total", FieldDataType.Money, "Total"),
         new(RecordType.Invoice, "Payable", FieldDataType.Bool, "Payable"),
 
+        // Grn — DeliveryModels.GrnDetailDto (CF-FIX4-T2; no list DTO yet — detail is the contract)
+        new(RecordType.Grn, "Code", FieldDataType.Code, "GRN"),
+        new(RecordType.Grn, "AsnCode", FieldDataType.Code, "ASN"),
+        new(RecordType.Grn, "PoCode", FieldDataType.Code, "PO"),
+        new(RecordType.Grn, "ReceivedDate", FieldDataType.Date, "Received"),
+        new(RecordType.Grn, "NsId", FieldDataType.Code, "NetSuite id"),
+
         // Asn — DeliveryModels.AsnListDto (7)
         new(RecordType.Asn, "Code", FieldDataType.Code, "ASN"),
         new(RecordType.Asn, "PoCode", FieldDataType.Code, "PO"),

@@ -27,6 +27,7 @@ public static class ViewVocabulary
         [RecordType.Asn] = ApiActions.ViewAsns,                    // vendor allowed, VendorId-scoped source (A13)
         [RecordType.Vendor] = ApiActions.ViewVendors,              // vendor allowed; list DTO carries no bank fields (A16)
         [RecordType.Onboarding] = ApiActions.ViewOnboarding,       // internal-only per matrix A20
+        [RecordType.Grn] = ApiActions.ViewAsns,                    // CF-FIX4-T2: GRN reads ride ViewAsns (DeliveriesController)
     };
 
     /// <summary>

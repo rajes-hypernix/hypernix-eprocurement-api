@@ -89,7 +89,7 @@ public sealed class NumberingTests
 
         var dto = await Set(svc, "SPO", digits: 5);
         dto.NextPreview.Should().Be("SPO-2026-00001");
-        (await svc.ListAsync()).Should().HaveCount(7);
+        (await svc.ListAsync()).Should().HaveCount(8);   // CF-FIX4-T2: +Grn (scheme-driven, was the string-prefix mint)
         (await c.Codes.NextAsync(RecordType.PurchaseOrder)).Should().Be("SPO-2026-00001", "the preview consumed nothing");
     }
 }

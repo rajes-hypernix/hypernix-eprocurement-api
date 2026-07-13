@@ -85,6 +85,23 @@ public sealed class HeaderInvariantTests(EntryFormsFixture fx) : IClassFixture<E
         resp.StatusCode.Should().Be(HttpStatusCode.Conflict, "the standard form is the parity baseline — Header is not even renamable there");
     }
 
+    // CF-FIX4-T2: every standard form (PR + the widened PO/GRN/Invoice surfaces) ships with
+    // its L3 Header group; PO and GRN are placement CONTAINERS (zero native fields — their
+    // write contracts have no form-controllable header keys); Invoice places InvoiceNo.
+    [Theory]
+    [InlineData("Requisition", "Standard PR Form", 7)]
+    [InlineData("PurchaseOrder", "Standard PO Form", 0)]
+    [InlineData("Grn", "Standard GRN Form", 0)]
+    [InlineData("Invoice", "Standard Invoice Form", 1)]
+    public async Task Every_record_type_has_a_seeded_standard_form_with_a_Header_group(string type, string name, int fieldCount)
+    {
+        var forms = await fx.ClientAs("u_admin").GetFromJsonAsync<List<EntryFormDefDto>>($"/api/entry-forms?recordType={type}");
+        var standard = forms!.Single(f => f.IsSystem);
+        standard.Name.Should().Be(name);
+        standard.Groups.Should().ContainSingle(g => g.IsHeader && g.SubtabId == null);
+        standard.Fields.Should().HaveCount(fieldCount);
+    }
+
     [Fact]
     public async Task The_standard_PR_form_carries_the_IsHeader_flag_from_seed()
     {
