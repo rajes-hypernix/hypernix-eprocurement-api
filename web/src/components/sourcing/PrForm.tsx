@@ -21,6 +21,14 @@ import { TransactionPage } from '../../ui/archetypes/TransactionPage'
 import { CustomFieldsSection } from '../customfields/CustomFieldsSection'
 import { SegmentsSection } from '../segments/SegmentsSection'
 
+const LINE_HEADS: Record<string, JSX.Element> = {
+  ItemCode: <th key="ItemCode" style={{ width: '18%' }}>Item code</th>,
+  Description: <th key="Description">Description</th>,
+  Qty: <th key="Qty" className="amt" style={{ width: '10%' }}>Qty</th>,
+  Uom: <th key="Uom" style={{ width: '10%' }}>UoM</th>,
+  EstUnitPrice: <th key="EstUnitPrice" className="amt" style={{ width: '12%' }}>Est. rate</th>,
+}
+
 const LINE_SPEC_TYPE: Record<string, FieldSpec['dataType']> = {
   Text: 'text', LongText: 'text', Int: 'number', Decimal: 'number',
   Money: 'money', Date: 'date', Bool: 'yesNo', ListValue: 'select',
@@ -55,6 +63,10 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
   const isNew = id === null
   const { data: pr, isPending } = useQuery({ queryKey: ['requisition', id], queryFn: () => getRequisition(id!), enabled: !isNew })
   const { data: form } = useQuery({ queryKey: ['entry-form', 'Requisition'], queryFn: () => resolveEntryForm('Requisition') })
+  // CF-FIX4-T3 (L4): the lines table renders the resolved form's flat sublist order;
+  // unknown/missing keys fall back to the standard order (parity when no config exists).
+  const NATIVE_LINE_COLS = ['ItemCode', 'Description', 'Qty', 'Uom', 'EstUnitPrice']
+  const sublistOrder = (form?.sublistColumns ?? NATIVE_LINE_COLS).filter((k) => NATIVE_LINE_COLS.includes(k))
 
   const [h, setH] = useState<Record<string, string>>({ requestor: '', department: '', category: '', location: '', job: '', requiredDate: '', memo: '' })
   const [lines, setLines] = useState<EditLine[]>([blankLine()])
@@ -250,17 +262,23 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
       <div className="card" style={{ padding: 18, marginBottom: 16 }}>
         <h3 style={{ marginTop: 0 }}>Lines</h3>
         <table>
-          <thead><tr><th style={{ width: '18%' }}>Item code</th><th>Description</th><th className="amt" style={{ width: '10%' }}>Qty</th><th style={{ width: '10%' }}>UoM</th><th className="amt" style={{ width: '12%' }}>Est. rate</th>{lineDefs.map((d) => <th key={d.code}>{d.label}</th>)}<th style={{ width: '14%' }} /></tr></thead>
+          <thead><tr>{sublistOrder.map((k) => LINE_HEADS[k])}{lineDefs.map((d) => <th key={d.code}>{d.label}</th>)}<th style={{ width: '14%' }} /></tr></thead>
           <tbody>
             {lines.map((l, i) => {
               const ro = !isNew && !l.editable
               return (
                 <tr key={l.id ?? `new-${i}`}>
-                  <td><TextField chrome="bare" spec={lineSpec(i, 'item code', { placeholder: 'ITEM-CODE', readOnly: ro })} value={l.itemCode} onChange={(v) => setLine(i, 'itemCode', v)} /></td>
-                  <td><TextField chrome="bare" spec={lineSpec(i, 'description', { placeholder: 'Description', readOnly: ro })} value={l.description} onChange={(v) => setLine(i, 'description', v)} /></td>
-                  <td><NumberField chrome="bare" spec={lineSpec(i, 'qty', { dataType: 'number', placeholder: '0', readOnly: ro, validation: { min: 0 } })} value={l.qty} onChange={(v) => setLine(i, 'qty', v)} /></td>
-                  <td><TextField chrome="bare" spec={lineSpec(i, 'uom', { placeholder: 'Unit', readOnly: ro })} value={l.uom} onChange={(v) => setLine(i, 'uom', v)} /></td>
-                  <td><MoneyField chrome="bare" spec={lineSpec(i, 'rate', { dataType: 'money', placeholder: '0', readOnly: ro })} value={l.estUnitPrice} onChange={(v) => setLine(i, 'estUnitPrice', v)} /></td>
+                  {sublistOrder.map((k) => {
+                    // CF-FIX4-T3 (L4): native line cells render in the FORM's sublist order.
+                    switch (k) {
+                      case 'ItemCode': return <td key={k}><TextField chrome="bare" spec={lineSpec(i, 'item code', { placeholder: 'ITEM-CODE', readOnly: ro })} value={l.itemCode} onChange={(v) => setLine(i, 'itemCode', v)} /></td>
+                      case 'Description': return <td key={k}><TextField chrome="bare" spec={lineSpec(i, 'description', { placeholder: 'Description', readOnly: ro })} value={l.description} onChange={(v) => setLine(i, 'description', v)} /></td>
+                      case 'Qty': return <td key={k}><NumberField chrome="bare" spec={lineSpec(i, 'qty', { dataType: 'number', placeholder: '0', readOnly: ro, validation: { min: 0 } })} value={l.qty} onChange={(v) => setLine(i, 'qty', v)} /></td>
+                      case 'Uom': return <td key={k}><TextField chrome="bare" spec={lineSpec(i, 'uom', { placeholder: 'Unit', readOnly: ro })} value={l.uom} onChange={(v) => setLine(i, 'uom', v)} /></td>
+                      case 'EstUnitPrice': return <td key={k}><MoneyField chrome="bare" spec={lineSpec(i, 'rate', { dataType: 'money', placeholder: '0', readOnly: ro })} value={l.estUnitPrice} onChange={(v) => setLine(i, 'estUnitPrice', v)} /></td>
+                      default: return null
+                    }
+                  })}
                   {lineDefs.map((d) => (
                     <td key={d.code}>
                       {l.id

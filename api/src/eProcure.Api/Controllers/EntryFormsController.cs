@@ -86,6 +86,18 @@ public sealed class EntryFormsController(IEntryFormService forms) : ControllerBa
     [Action(ApiActions.ManageEntryForms)]
     public async Task<ActionResult<EntryFormDefDto>> DeleteGroup(Guid id, Guid groupId, CancellationToken ct) =>
         Ok(await forms.DeleteGroupAsync(id, groupId, ct));
+
+    // CF-FIX4-T3: the drag-drop placement move (ONE shared placement row, L1) + the
+    // flat sublist column order (L4).
+    [HttpPut("{id:guid}/fields/{fieldKey}/placement")]
+    [Action(ApiActions.ManageEntryForms)]
+    public async Task<ActionResult<EntryFormDefDto>> MoveField(Guid id, string fieldKey, [FromBody] MoveFieldRequest req, CancellationToken ct) =>
+        Ok(await forms.MoveFieldAsync(id, fieldKey, req, ct));
+
+    [HttpPut("{id:guid}/sublist")]
+    [Action(ApiActions.ManageEntryForms)]
+    public async Task<ActionResult<EntryFormDefDto>> SaveSublist(Guid id, [FromBody] SaveSublistRequest req, CancellationToken ct) =>
+        Ok(await forms.SaveSublistAsync(id, req, ct));
 }
 
 /// <summary>Numbering schemes — Admin Setup (A70). Format-time config over the untouched

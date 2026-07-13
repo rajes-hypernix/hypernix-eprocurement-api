@@ -68,6 +68,18 @@ public class EntryFormGroup
     public bool IsHeader { get; set; }
 }
 
+/// <summary>CF-FIX4-T3 (L4): the item sublist's column ORDER, per form — FLAT by design
+/// (no groups on sublists; the operator was explicit). FieldKey is a native line column
+/// (SublistNativeColumns vocabulary) or a Line-scope custom field's custcol_ code.
+/// Rearrangeable in the layout editor; the transaction's lines table renders this order.</summary>
+public class EntryFormSublistColumn
+{
+    public Guid Id { get; set; }                           // deterministic for seeds
+    public Guid FormDefId { get; set; }
+    public string FieldKey { get; set; } = default!;
+    public int Sort { get; set; }
+}
+
 public class EntryFormField
 {
     public Guid Id { get; set; }

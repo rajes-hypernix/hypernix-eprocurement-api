@@ -15,17 +15,21 @@ test('CF1-T1: money renders grouped 100,000.00 on read surfaces and round-trips 
   const pos = await (await request.get(`${API}/api/pos`, { headers: BUYER })).json()
   const big = pos.find((p: { total: number }) => p.total >= 10000)
   expect(big, 'a seeded PO with a groupable total').toBeTruthy()
-  await goAs(page, 'u_faridah', 'pos')
+  // The PO DETAIL page (fold-independent — the paged list may not show this PO on page 1
+  // once numbering-test litter accumulates; the rendering pathway is the same).
+  await goAs(page, 'u_faridah', `pos/${big.id}`)
   await page.waitForTimeout(1200)
   const grouped = Number(big.total).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-  await expect(page.locator('td', { hasText: `RM ${grouped}` }).first()).toBeVisible()
+  await expect(page.getByText(`RM ${grouped}`).first()).toBeVisible()
 
   // Edit surface: a Money custom field groups on blur and SUBMITS the raw numeric.
   const cf = await (await request.post(`${API}/api/custom-fields`, {
     headers: { ...ADMIN, ...JSON_H },
     data: { label: `Budget Cap ${STAMP}`, recordType: 'PurchaseOrder', dataType: 'Money', customListId: null, required: false, helpText: '', sort: 0 },
   })).json()
-  await goAs(page, 'u_faridah', `pos/${big.id}`)
+  // Same URL as the read-surface visit — a goAs would be a same-document hash nav and the
+  // section's cached query would never see the just-created def; force a real reload.
+  await page.reload({ waitUntil: 'networkidle' })
   await page.waitForTimeout(1500)
   const field = page.getByLabel(`Budget Cap ${STAMP}`)
   await field.fill('123456.5')
@@ -507,9 +511,9 @@ test('CF5-T2: subtabs are OBJECTS — create empty, drop a field in, hide it; th
   await page.getByRole('button', { name: 'Add subtab' }).click()
   await expect(page.getByLabel(`Subtab ${TAB}`, { exact: true })).toBeVisible()
 
-  // Drag the Category field row onto the chip.
+  // Drag the Category field row onto the tab chip (CF-FIX4-T3: rows live in group cards).
   const dataTransfer = await page.evaluateHandle(() => new DataTransfer())
-  await page.getByRole('row', { name: /Category/ }).dispatchEvent('dragstart', { dataTransfer })
+  await page.locator('[aria-label="Field row Category"]').dispatchEvent('dragstart', { dataTransfer })
   await page.getByLabel(`Subtab ${TAB}`, { exact: true }).dispatchEvent('drop', { dataTransfer })
   await page.waitForTimeout(800)
 
@@ -519,7 +523,9 @@ test('CF5-T2: subtabs are OBJECTS — create empty, drop a field in, hide it; th
   await expect(page.getByRole('textbox', { name: 'Category' })).toBeVisible()   // the FORM field (a Segments card also names Category)
 
   // Hide it → the tab disappears from the buyer form (fields excluded server-side).
+  // CF-FIX4-T3: the hide verb lives under the ACTIVE tab.
   await openForm(page, FORM)
+  await page.getByLabel(`Subtab ${TAB}`, { exact: true }).click()
   await page.getByRole('button', { name: `Hide subtab ${TAB}` }).click()
   await page.waitForTimeout(600)
   await openPrAsBuyer(page, request)
@@ -534,11 +540,17 @@ test('CF5-T3: column break on a field group — the buyer form renders TWO colum
   const form = await makeCf5Form(request, FORM)
   await openForm(page, FORM)
 
-  // Move Job + Memo into a second group by naming it on the fields, then save.
-  await page.getByLabel('Job group', { exact: true }).fill(GROUP)
-  await page.getByLabel('Memo group', { exact: true }).fill(GROUP)
-  await page.getByRole('button', { name: 'Save form' }).click()
-  await page.waitForTimeout(800)
+  // CF-FIX4-T3: create the group on screen, then DRAG Job + Memo into it (the placement
+  // object moves — no more free-text group cells).
+  await page.getByLabel('New group title', { exact: true }).fill(GROUP)
+  await page.getByRole('button', { name: 'Add group' }).click()
+  await page.waitForTimeout(600)
+  for (const key of ['Job', 'Memo']) {
+    const dt = await page.evaluateHandle(() => new DataTransfer())
+    await page.locator(`[aria-label="Field row ${key}"]`).dispatchEvent('dragstart', { dataTransfer: dt })
+    await page.locator(`[aria-label="Field group ${GROUP}"]`).dispatchEvent('drop', { dataTransfer: dt })
+    await page.waitForTimeout(600)
+  }
 
   // Flip the new group's column break (controlled checkbox: click, then the refetch confirms).
   await page.getByLabel(`Column break at ${GROUP}`, { exact: true }).click()
@@ -564,19 +576,20 @@ test('CF5-T4: drag a field between containers — placement persists across relo
   await page.getByRole('button', { name: 'Add subtab' }).click()
 
   const dataTransfer = await page.evaluateHandle(() => new DataTransfer())
-  await page.getByRole('row', { name: /^Job/ }).dispatchEvent('dragstart', { dataTransfer })
+  await page.locator('[aria-label="Field row Job"]').dispatchEvent('dragstart', { dataTransfer })
   await page.getByLabel(`Subtab ${TAB}`, { exact: true }).dispatchEvent('drop', { dataTransfer })
   await page.waitForTimeout(800)
 
-  // PERSISTED: reload the composer — Job's subtab cell carries the name.
+  // PERSISTED: reload the designer — Job renders inside the subtab's container.
   await page.reload({ waitUntil: 'networkidle' })
   await page.getByRole('button', { name: new RegExp(FORM) }).first().click()
-  await expect(page.getByLabel('Job subtab', { exact: true })).toHaveValue(TAB)
+  await page.getByLabel(`Subtab ${TAB}`, { exact: true }).click()
+  await expect(page.locator('[aria-label="Field row Job"]')).toBeVisible()
 
   // And back: drop Job on Body — the subtab empties but SURVIVES as an object.
   const dt2 = await page.evaluateHandle(() => new DataTransfer())
-  await page.getByRole('row', { name: /^Job/ }).dispatchEvent('dragstart', { dataTransfer: dt2 })
-  await page.getByLabel('Body drop target', { exact: true }).dispatchEvent('drop', { dataTransfer: dt2 })
+  await page.locator('[aria-label="Field row Job"]').dispatchEvent('dragstart', { dataTransfer: dt2 })
+  await page.getByLabel('Body tab', { exact: true }).dispatchEvent('drop', { dataTransfer: dt2 })
   await page.waitForTimeout(800)
   await expect(page.getByLabel(`Subtab ${TAB}`, { exact: true })).toBeVisible()   // empty subtab object persists
 
@@ -596,6 +609,8 @@ test('CF5-T5: guards — required-on-hidden warns (allow), populated containers 
   await openForm(page, FORM)
 
   // Hiding warns about the required field (warn-but-allow, ruled D2) — dismiss = no hide.
+  // CF-FIX4-T3: activate the tab to reach its verbs.
+  await page.getByLabel(`Subtab ${TAB}`, { exact: true }).click()
   let warned = ''
   page.once('dialog', (d) => { warned = d.message(); void d.dismiss() })
   await page.getByRole('button', { name: `Hide subtab ${TAB}` }).click()

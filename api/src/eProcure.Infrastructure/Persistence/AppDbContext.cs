@@ -69,6 +69,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Domain.Forms.EntryFormSubtab> EntryFormSubtabs => Set<Domain.Forms.EntryFormSubtab>();
     public DbSet<Domain.Forms.EntryFormGroup> EntryFormGroups => Set<Domain.Forms.EntryFormGroup>();
     public DbSet<Domain.Forms.EntryFormField> EntryFormFields => Set<Domain.Forms.EntryFormField>();
+    public DbSet<Domain.Forms.EntryFormSublistColumn> EntryFormSublistColumns => Set<Domain.Forms.EntryFormSublistColumn>();
     public DbSet<Domain.Forms.EntryFormRoleMap> EntryFormRoleMaps => Set<Domain.Forms.EntryFormRoleMap>();
     public DbSet<Domain.Forms.NumberingScheme> NumberingSchemes => Set<Domain.Forms.NumberingScheme>();
 
@@ -786,6 +787,16 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasOne<Domain.Forms.EntryFormDef>().WithMany().HasForeignKey(x => x.FormDefId).OnDelete(DeleteBehavior.Cascade);
             // Restrict, not cascade: a group with fields refuses deletion (service-guarded).
             e.HasOne<Domain.Forms.EntryFormGroup>().WithMany().HasForeignKey(x => x.GroupId).OnDelete(DeleteBehavior.Restrict);
+        });
+        b.Entity<Domain.Forms.EntryFormSublistColumn>(e =>
+        {
+            // CF-FIX4-T3: flat sublist column order (L4). FieldKey has NO FK — the
+            // registry-liveness loud-fail rule, same as EntryFormField.FieldKey.
+            e.ToTable("EntryFormSublistColumns");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.FormDefId, x.FieldKey }).IsUnique();
+            e.Property(x => x.FieldKey).HasMaxLength(100).IsRequired();
+            e.HasOne<Domain.Forms.EntryFormDef>().WithMany().HasForeignKey(x => x.FormDefId).OnDelete(DeleteBehavior.Cascade);
         });
         b.Entity<Domain.Forms.EntryFormRoleMap>(e =>
         {

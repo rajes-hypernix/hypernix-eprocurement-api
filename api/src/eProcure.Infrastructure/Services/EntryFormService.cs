@@ -75,6 +75,13 @@ public sealed class EntryFormService(AppDbContext db, IClock clock, ICurrentUser
         };
         db.EntryFormDefs.Add(def);
         AddLayout(def.Id, req.Fields);
+        // CF-FIX4-T3 (L4): every new form starts with the record type's native sublist
+        // order — immediately rearrangeable in the designer, parity with the standard form.
+        var sublist = EntryFormVocabulary.SublistNativeColumns.GetValueOrDefault(type) ?? [];
+        db.EntryFormSublistColumns.AddRange(sublist.Select((k, i) => new EntryFormSublistColumn
+        {
+            Id = Guid.NewGuid(), FormDefId = def.Id, FieldKey = k, Sort = i,
+        }));
         await db.SaveChangesAsync(ct);
         return await ToDtoAsync(def, ct);
     }
@@ -195,7 +202,10 @@ public sealed class EntryFormService(AppDbContext db, IClock clock, ICurrentUser
                 ResolveDefault(f, reg), f.SourceFieldKey, f.FullWidth, f.Placeholder, listCode, options,
                 breaks.Contains(f.GroupId)));
         }
-        return new ResolvedFormDto(def.Id, def.Code, def.Name, type.ToString(), resolved);
+        var sublist = await db.EntryFormSublistColumns.AsNoTracking()
+            .Where(c => c.FormDefId == def.Id).OrderBy(c => c.Sort).Select(c => c.FieldKey).ToListAsync(ct);
+        return new ResolvedFormDto(def.Id, def.Code, def.Name, type.ToString(), resolved,
+            sublist.Count > 0 ? sublist : null);
     }
 
     private async Task<EntryFormDef> ResolveDefAsync(RecordType type, CancellationToken ct)
@@ -301,6 +311,51 @@ public sealed class EntryFormService(AppDbContext db, IClock clock, ICurrentUser
         }
     }
 
+    /// <summary>CF-FIX4-T3: the drag-drop write. ONE placement row is re-pointed (L1 — the
+    /// same EntryFormField the T4 creation cascade writes); nothing else is touched. Removing
+    /// a field from a form is DeleteFieldAsync-by-save (wholesale field replace) or the L6
+    /// remove — never a value operation.</summary>
+    public async Task<EntryFormDefDto> MoveFieldAsync(Guid formId, string fieldKey, MoveFieldRequest req, CancellationToken ct = default)
+    {
+        var def = await LoadUserForm(formId, ct);
+        var field = await db.EntryFormFields.FirstOrDefaultAsync(f => f.FormDefId == formId && f.FieldKey == fieldKey, ct)
+            ?? throw new NotFoundException($"'{fieldKey}' is not placed on this form.");
+        var group = await db.EntryFormGroups.FirstOrDefaultAsync(g => g.Id == req.GroupId && g.FormDefId == formId, ct)
+            ?? throw new FormValidationException("The target group does not exist on this form.");
+        field.GroupId = group.Id;
+        field.Sort = req.Sort;
+        def.UpdatedUtc = clock.UtcNow;
+        await db.SaveChangesAsync(ct);
+        return await ToDtoAsync(def, ct);
+    }
+
+    /// <summary>CF-FIX4-T3 (L4): replace the item sublist's column ORDER — flat, no groups.
+    /// Keys must be native line columns (SublistNativeColumns) or Line-scope custom fields
+    /// applying to this record type.</summary>
+    public async Task<EntryFormDefDto> SaveSublistAsync(Guid formId, SaveSublistRequest req, CancellationToken ct = default)
+    {
+        var def = await LoadUserForm(formId, ct);
+        var native = EntryFormVocabulary.SublistNativeColumns.GetValueOrDefault(def.RecordType) ?? [];
+        var lineCodes = await db.CustomFieldDefs.AsNoTracking()
+            .Where(d => d.Scope == "Line" && d.Active
+                && db.CustomFieldDefApplications.Any(a => a.FieldDefId == d.Id && a.RecordType == def.RecordType))
+            .Select(d => d.Code).ToListAsync(ct);
+        if (req.FieldKeys.Distinct(StringComparer.OrdinalIgnoreCase).Count() != req.FieldKeys.Count)
+            throw new FormValidationException("A sublist column may appear once.");
+        foreach (var k in req.FieldKeys)
+            if (!native.Contains(k) && !lineCodes.Contains(k))
+                throw new FormValidationException($"'{k}' is not a line column on {def.RecordType}.");
+
+        db.EntryFormSublistColumns.RemoveRange(db.EntryFormSublistColumns.Where(c => c.FormDefId == formId));
+        db.EntryFormSublistColumns.AddRange(req.FieldKeys.Select((k, i) => new EntryFormSublistColumn
+        {
+            Id = Guid.NewGuid(), FormDefId = formId, FieldKey = k, Sort = i,
+        }));
+        def.UpdatedUtc = clock.UtcNow;
+        await db.SaveChangesAsync(ct);
+        return await ToDtoAsync(def, ct);
+    }
+
     /// <summary>CF5: the composer still SPEAKS strings (subtab name, group title) — this seam
     /// materializes them as subtab/group OBJECTS (find-or-create by name within the form, in
     /// order of first appearance) and points each field at its group. The T2/T3 designer adds
@@ -391,8 +446,10 @@ public sealed class EntryFormService(AppDbContext db, IClock clock, ICurrentUser
         return new EntryFormDefDto(def.Id, def.Code, def.Name, def.RecordType.ToString(), def.IsSystem, def.Active,
             fields.Select(f => new EntryFormFieldDto(f.FieldKey, placement[f.GroupId].Subtab, placement[f.GroupId].Group, f.Sort,
                 f.DisplayType.ToString(), f.RequiredOnForm, f.DefaultValue, f.SourceFieldKey,
-                f.FullWidth, f.Label, f.Placeholder)).ToList(),
-            roles, subtabs, groups);
+                f.FullWidth, f.Label, f.Placeholder, f.GroupId)).ToList(),
+            roles, subtabs, groups,
+            await db.EntryFormSublistColumns.AsNoTracking().Where(c => c.FormDefId == def.Id)
+                .OrderBy(c => c.Sort).Select(c => c.FieldKey).ToListAsync(ct));
     }
 
     // ---------- CF5-T2/T3: layout-object CRUD ----------

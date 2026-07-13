@@ -41,6 +41,9 @@ public static class TestDb
         db.EntryFormSubtabs.AddRange(subtabs);
         db.EntryFormGroups.AddRange(groups);
         db.EntryFormFields.AddRange(fields);
+        db.EntryFormSublistColumns.AddRange(eProcure.Application.Forms.EntryFormSeed.StandardPrSublistColumns
+            .Select((k, i) => new eProcure.Domain.Forms.EntryFormSublistColumn
+            { Id = eProcure.Application.Forms.EntryFormSeed.SublistColumnId(form.Id, k), FormDefId = form.Id, FieldKey = k, Sort = i }));
         foreach (var (sfType, sfCode, sfName, sfRows) in eProcure.Application.Forms.EntryFormSeed.StandardForms)
         {
             var (sfDef, sfSubtabs, sfGroups, sfFields) = eProcure.Application.Forms.EntryFormSeed.ToStandardFormEntities(sfType, sfCode, sfName, sfRows);

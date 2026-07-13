@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { goAs, shot } from './helpers'
+import { goAs, shot, pickSearch } from './helpers'
 
 // D7 GATE (as ruled, OD-D7-1 option ii): the persona BEFORE/AFTER. A BUYER loads the PR
 // form and gets the seeded Standard layout; an ADMIN composes a role form in the Setup
@@ -53,6 +53,8 @@ test('entry-forms gate: standard → admin composes role form → buyer gets it;
   // ---- 2. ADMIN composes the role form in the Setup composer ----
   await goAs(page, 'u_admin', 'entryforms')
   await page.waitForTimeout(1500)
+  // CF-FIX4-T2: the rail now lists ALL record types' forms — select the PR standard first.
+  await page.getByRole('button', { name: /Standard PR Form/ }).and(page.locator(':not(:has-text("(copy)"))')).first().click()
   await page.getByRole('button', { name: /New form \(copy of Standard PR Form\)/ }).click()
   await page.waitForTimeout(1200)
   await page.getByLabel('Form name').fill(FORM_NAME)
@@ -60,8 +62,16 @@ test('entry-forms gate: standard → admin composes role form → buyer gets it;
   await page.getByLabel('Category display').selectOption('Hidden')                     // hidden by display type
   await page.getByLabel('Department required at submit').check()
   await page.getByLabel('RequiredDate default').fill('@today+7d')
-  await page.getByLabel(/Add field/).selectOption(CF_CODE)                             // from the registry palette
-  await page.getByLabel(`${CF_CODE} subtab`).fill('Additional')                        // the admin-defined subtab
+  // CF-FIX4-T3: the add-field picker is the standardized SearchSelectField, and subtab
+  // placement is create-the-object + drag (no free-text cells).
+  await pickSearch(page, 'Add field', CF_LABEL)
+  await page.getByLabel('New subtab name', { exact: true }).fill('Additional')
+  await page.getByRole('button', { name: 'Add subtab' }).click()
+  await page.waitForTimeout(600)
+  const gateDt = await page.evaluateHandle(() => new DataTransfer())
+  await page.locator(`[aria-label="Field row ${CF_CODE}"]`).dispatchEvent('dragstart', { dataTransfer: gateDt })
+  await page.getByLabel('Subtab Additional', { exact: true }).dispatchEvent('drop', { dataTransfer: gateDt })
+  await page.waitForTimeout(800)
   await page.getByLabel('Buyer', { exact: true }).check()
   await shot(page, 'D7-gate-2-compose')
   await page.getByRole('button', { name: 'Save form' }).click()

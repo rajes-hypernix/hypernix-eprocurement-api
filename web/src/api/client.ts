@@ -261,13 +261,15 @@ export type EntryFormFieldDto = {
   fieldKey: string; subtab?: string | null; fieldGroup: string; sort: number; displayType: string
   requiredOnForm: boolean; defaultValue?: string | null; sourceFieldKey?: string | null
   fullWidth: boolean; label?: string | null; placeholder?: string | null
+  groupId?: string | null   // CF-FIX4-T3: the placement object's id (server output)
 }
 export type EntryFormSubtabDto = { id: string; name: string; sort: number; hidden: boolean }
-export type EntryFormGroupDto = { id: string; subtabId?: string | null; title: string; sort: number; columnBreak: boolean }
+export type EntryFormGroupDto = { id: string; subtabId?: string | null; title: string; sort: number; columnBreak: boolean; isHeader: boolean }
 export type EntryFormDefDto = {
   id: string; code: string; name: string; recordType: string; isSystem: boolean; active: boolean
   fields: EntryFormFieldDto[]; roles: string[]
   subtabs?: EntryFormSubtabDto[]; groups?: EntryFormGroupDto[]
+  sublistColumns?: string[] | null   // CF-FIX4-T3: ordered line-column keys (L4, flat)
 }
 export type SaveEntryFormRequest = { name: string; recordType: string; fields: EntryFormFieldDto[] }
 export type ResolvedFormFieldDto = {
@@ -278,7 +280,7 @@ export type ResolvedFormFieldDto = {
   options?: { code: string; label: string }[] | null
   groupColumnBreak?: boolean
 }
-export type ResolvedFormDto = { formId: string; formCode: string; formName: string; recordType: string; fields: ResolvedFormFieldDto[] }
+export type ResolvedFormDto = { formId: string; formCode: string; formName: string; recordType: string; fields: ResolvedFormFieldDto[]; sublistColumns?: string[] | null }
 export type NumberingSchemeDto = { recordType: string; prefix: string; yearSegment: boolean; digits: number; nextPreview: string }
 
 export const getEntryForms = (recordType?: string) =>
@@ -300,6 +302,11 @@ export const saveEntryFormGroup = (formId: string, group: { title: string; subta
     { method: groupId ? 'PUT' : 'POST', body: JSON.stringify(group) })
 export const deleteEntryFormGroup = (formId: string, groupId: string) =>
   http<EntryFormDefDto>(`/entry-forms/${formId}/groups/${groupId}`, { method: 'DELETE' })
+// CF-FIX4-T3: the drag-drop placement move (ONE shared placement row, L1) + sublist order (L4).
+export const moveEntryFormField = (formId: string, fieldKey: string, groupId: string, sort: number) =>
+  http<EntryFormDefDto>(`/entry-forms/${formId}/fields/${encodeURIComponent(fieldKey)}/placement`, { method: 'PUT', body: JSON.stringify({ groupId, sort }) })
+export const saveEntryFormSublist = (formId: string, fieldKeys: string[]) =>
+  http<EntryFormDefDto>(`/entry-forms/${formId}/sublist`, { method: 'PUT', body: JSON.stringify({ fieldKeys }) })
 export const resolveEntryForm = (recordType: string) =>
   http<ResolvedFormDto>(`/entry-forms/resolve?recordType=${encodeURIComponent(recordType)}`)
 export const getNumberingSchemes = () => http<NumberingSchemeDto[]>('/numbering')

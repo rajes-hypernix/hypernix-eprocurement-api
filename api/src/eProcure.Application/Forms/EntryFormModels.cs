@@ -10,7 +10,14 @@ public sealed class FormValidationException(string message) : Exception(message)
 public sealed record EntryFormFieldDto(
     string FieldKey, string? Subtab, string FieldGroup, int Sort, string DisplayType,
     bool RequiredOnForm, string? DefaultValue, string? SourceFieldKey, bool FullWidth,
-    string? Label, string? Placeholder);
+    string? Label, string? Placeholder,
+    Guid? GroupId = null);   // CF-FIX4-T3: the placement object's id (output; strings stay the save language)
+
+/// <summary>CF-FIX4-T3: the drag-drop write — a SURGICAL placement update on the ONE
+/// shared placement row (L1). The same row the T4 creation cascade writes.</summary>
+public sealed record MoveFieldRequest(Guid GroupId, int Sort);
+
+public sealed record SaveSublistRequest(List<string> FieldKeys);
 
 // CF5: subtabs and groups as first-class objects on the def DTO (additive — the string
 // placement on each field stays the composer's wire language; these carry the object
@@ -23,7 +30,8 @@ public sealed record SaveGroupRequest(string Title, Guid? SubtabId, int Sort, bo
 public sealed record EntryFormDefDto(
     Guid Id, string Code, string Name, string RecordType, bool IsSystem, bool Active,
     IReadOnlyList<EntryFormFieldDto> Fields, IReadOnlyList<string> Roles,
-    IReadOnlyList<EntryFormSubtabDto>? Subtabs = null, IReadOnlyList<EntryFormGroupDto>? Groups = null);
+    IReadOnlyList<EntryFormSubtabDto>? Subtabs = null, IReadOnlyList<EntryFormGroupDto>? Groups = null,
+    IReadOnlyList<string>? SublistColumns = null);   // CF-FIX4-T3: ordered line-column keys (L4, flat)
 
 public sealed record SaveEntryFormRequest(string Name, string RecordType, List<EntryFormFieldDto> Fields);
 
@@ -45,7 +53,8 @@ public sealed record SegmentOptionDto(string Code, string Label);
 
 public sealed record ResolvedFormDto(
     Guid FormId, string FormCode, string FormName, string RecordType,
-    IReadOnlyList<ResolvedFormFieldDto> Fields);
+    IReadOnlyList<ResolvedFormFieldDto> Fields,
+    IReadOnlyList<string>? SublistColumns = null);   // CF-FIX4-T3: the lines table renders this order
 
 public sealed record NumberingSchemeDto(string RecordType, string Prefix, bool YearSegment, int Digits, string NextPreview);
 
@@ -66,6 +75,9 @@ public interface IEntryFormService
     Task<EntryFormDefDto> CreateGroupAsync(Guid formId, SaveGroupRequest req, CancellationToken ct = default);
     Task<EntryFormDefDto> UpdateGroupAsync(Guid formId, Guid groupId, SaveGroupRequest req, CancellationToken ct = default);
     Task<EntryFormDefDto> DeleteGroupAsync(Guid formId, Guid groupId, CancellationToken ct = default);
+    // CF-FIX4-T3: the surgical placement move (drag-drop) + the flat sublist order (L4).
+    Task<EntryFormDefDto> MoveFieldAsync(Guid formId, string fieldKey, MoveFieldRequest req, CancellationToken ct = default);
+    Task<EntryFormDefDto> SaveSublistAsync(Guid formId, SaveSublistRequest req, CancellationToken ct = default);
     /// <summary>The caller's form for a record type (A71 + dynamic View*): fixed global
     /// role precedence, first held role with an Active mapped form wins, Standard fallback.</summary>
     Task<ResolvedFormDto> ResolveAsync(string recordType, CancellationToken ct = default);
@@ -110,6 +122,15 @@ public static class EntryFormVocabulary
             // SubmitInvoiceRequest carries InvoiceNo/Date/WhtRate; only InvoiceNo is a registry
             // key today — the intersection rule keeps the other two off forms until they are.
             [RecordType.Invoice] = new HashSet<string> { "InvoiceNo" },
+        };
+
+    /// <summary>CF-FIX4-T3 (L4): native ITEM-SUBLIST columns per record type — flat, no
+    /// groups (the operator was explicit). Derived from PrLineDto's editable surface; other
+    /// types join when their lines tables become form-driven.</summary>
+    public static readonly IReadOnlyDictionary<RecordType, IReadOnlyList<string>> SublistNativeColumns =
+        new Dictionary<RecordType, IReadOnlyList<string>>
+        {
+            [RecordType.Requisition] = ["ItemCode", "Description", "Qty", "Uom", "EstUnitPrice"],
         };
 
     /// <summary>Record types with a consuming entry surface THIS slice (OD-D7-5).</summary>

@@ -23,6 +23,12 @@ public static class EntryFormSeed
     public const string StandardPrFormCode = "ef_standard_pr_form";
     public const string StandardPrFormName = "Standard PR Form";
 
+    /// <summary>CF-FIX4-T3 (L4): the standard PR form's item-sublist column order — PrForm's
+    /// hardcoded lines table, verbatim (parity: rendering from these rows equals the markup
+    /// they replace). Line-scope custom fields append after the natives, as today.</summary>
+    public static readonly IReadOnlyList<string> StandardPrSublistColumns =
+        ["ItemCode", "Description", "Qty", "Uom", "EstUnitPrice"];
+
     /// <summary>PrForm HEADER_SECTION, verbatim (rows of 3 by Sort; Memo full-width).</summary>
     public static readonly IReadOnlyList<FieldRow> StandardPrFields =
     [
@@ -58,6 +64,7 @@ public static class EntryFormSeed
     public static Guid SchemeId(RecordType type) => HexGuid($"numberingscheme:{type}");
     // CF5 layout objects — the SAME md5 derivations the EntryFormLayout migration uses in SQL,
     // so C# seeds and the backfill mint IDENTICAL ids (the SegmentSeed rule).
+    public static Guid SublistColumnId(Guid formId, string fieldKey) => HexGuid($"entryformsublist:{formId}:{fieldKey}");
     public static Guid SubtabId(Guid formId, string name) => HexGuid($"entryformsubtab:{formId}:{name}");
     public static Guid GroupId(Guid formId, string? subtabName, string title) => HexGuid($"entryformgroup:{formId}:{subtabName ?? ""}:{title}");
 
