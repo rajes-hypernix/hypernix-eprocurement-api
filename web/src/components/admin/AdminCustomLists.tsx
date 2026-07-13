@@ -51,7 +51,7 @@ export function AdminCustomLists() {
   return (
     <SetupPage
       title="Custom Lists"
-      subtitle="Reusable coded value sets tagged to fields — like NetSuite Custom Lists. Values store a code (kept) and a label (shown). Maintained here, no code change needed."
+      subtitle="Reusable value sets tagged to fields — like NetSuite Custom Lists."
       primaryAction={<Button variant="primary" icon="plus" onClick={() => setNewList(true)}>New list</Button>}
       error={err}
       railItems={lists.map((l) => ({ key: l.code, label: l.name, hint: `${l.code}${l.parentListCode ? ` · ↳ ${l.parentListCode}` : ''}` }))}
@@ -200,7 +200,7 @@ function NewListModal({ lists, onClose, onCreated, onErr }: {
     mutationFn: () => createCustomList({ code: code.trim().toUpperCase(), name: name.trim(), description: description.trim() || null, parentListCode: parentListCode || null, orderMode }),
     onSuccess: (l) => onCreated(l.code), onError: onErr,
   })
-  const submit = () => { if (!code.trim() || !name.trim()) { onErr(new Error('Enter both a code and a name.')); return } create.mutate() }
+  const submit = () => { if (!code.trim() || !name.trim()) { onErr(new Error('Enter both an Internal ID and a name.')); return } create.mutate() }
 
   return (
     <Modal title="New custom list" icon="plus"
@@ -209,7 +209,7 @@ function NewListModal({ lists, onClose, onCreated, onErr }: {
         <Button variant="primary" icon="check" busy={create.isPending} onClick={submit}>Create list</Button>
       </>}>
       <div className="grid g2">
-        <CodeField spec={{ key: 'lcode', label: 'Code', dataType: 'code', placeholder: 'e.g. INCOTERM' }} value={code} onChange={setCode} />
+        <CodeField spec={{ key: 'lcode', label: 'Internal ID', dataType: 'code', placeholder: 'e.g. INCOTERM' }} value={code} onChange={setCode} />
         <TextField spec={{ key: 'lname', label: 'Name', dataType: 'text', placeholder: 'e.g. Incoterms' }} value={name} onChange={setName} />
       </div>
       <TextField spec={{ key: 'ldesc', label: 'Description', dataType: 'text', placeholder: 'Optional' }} value={description} onChange={setDescription} />
@@ -257,7 +257,7 @@ function EditListModal({ list, onClose, onSaved, onErr }: {
           { code: 'Entered', label: 'The order entered' }, { code: 'Alphabetical', label: 'Alphabetical order' },
         ] } }}
         value={orderMode} onChange={(v) => setOrderMode(String(v ?? 'Entered'))} />
-      <p className="hint">The code (<span className="mono">{list.code}</span>) is immutable — fields are tagged to it.</p>
+      <p className="hint">The Internal ID (<span className="mono">{list.code}</span>) is immutable — fields are tagged to it.</p>
     </Modal>
   )
 }

@@ -61,3 +61,25 @@ test('CF-FIX1-T3: order-mode is choosable at CREATE — Alphabetical from birth'
   expect(list.orderMode).toBe('Alphabetical')
   expect((await request.delete(`${API}/api/custom-lists/${CODE}`, { headers: ADMIN })).status()).toBe(204)
 })
+
+test('CF-FIX1-T4: lists carry ONE Internal ID — labelled as such, duplicate blocked with a clear message', async ({ page, request }) => {
+  const ID = `F1T4${STAMP}`
+  await goAs(page, 'u_admin', 'lists')
+  await page.waitForTimeout(1200)
+  await page.getByRole('button', { name: 'New list' }).click()
+  await expect(page.getByLabel('Internal ID', { exact: true })).toBeVisible()   // one id concept, no separate Code
+  await expect(page.getByLabel('Code', { exact: true })).toHaveCount(0)
+  await page.getByLabel('Internal ID', { exact: true }).fill(ID)
+  await page.getByLabel('Name', { exact: true }).fill(`Fix1 Ids ${STAMP}`)
+  await page.getByRole('button', { name: 'Create list' }).click()
+  await page.waitForTimeout(1000)
+
+  // Duplicate Internal ID → blocked with the Internal ID message.
+  await page.getByRole('button', { name: 'New list' }).click()
+  await page.getByLabel('Internal ID', { exact: true }).fill(ID)
+  await page.getByLabel('Name', { exact: true }).fill('Dup attempt')
+  await page.getByRole('button', { name: 'Create list' }).click()
+  await expect(page.getByText(`Internal ID '${ID}' already exists`)).toBeVisible()
+
+  expect((await request.delete(`${API}/api/custom-lists/${ID}`, { headers: ADMIN })).status()).toBe(204)
+})
