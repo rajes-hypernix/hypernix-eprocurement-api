@@ -9,10 +9,11 @@ public sealed record CustomFieldDefDto(
     string DisplayType = "Normal", bool ShowInList = false,
     string Scope = "Header");   // CF6-T1: Header | Line (immutable)
 
+// CF-FIX1-T2: InsertBeforeId REMOVED (operator ruling — placement belongs to the form
+// layout editor, CF5). The plain Sort integer remains the default order.
 public sealed record SaveCustomFieldDefRequest(
     string Label, string RecordType, string DataType, Guid? CustomListId, bool Required, string HelpText, int Sort,
     string DisplayType = "Normal", bool ShowInList = false,
-    Guid? InsertBeforeId = null,    // CF4-T12: named-field placement over the raw integer sort
     string Scope = "Header");       // CF6-T1: Header | Line
 
 /// <summary>One field on one record, def metadata + the value as a STRING in the stored

@@ -393,13 +393,13 @@ test('CF3-T11: reminder/KPI pickers are populated by seeded example views; an em
 
 // ── CF4 — Custom-field authoring parity ──────────────────────────────────────
 
-test('CF4-T12: field authoring — display=Inline renders as text, insert-before places it, show-in-list surfaces a system-view column', async ({ page, request }) => {
+test('CF4-T12: field authoring — display=Inline renders as text, show-in-list surfaces a system-view column (insert-before removed by CF-FIX1-T2)', async ({ page, request }) => {
   const ANCHOR = `CF4 Anchor ${STAMP}`
   const STAR = `CF4 Star ${STAMP}`
 
   // Author BOTH fields on screen through the def modal (the CF4 authoring surface).
   await goAs(page, 'u_admin', 'customfields')
-  await page.getByRole('button', { name: 'PurchaseOrder' }).click()
+  await page.getByRole('button', { name: /Purchase Order \d+ field/ }).click()   // rail item (full name since CF-FIX1-T1)
   await page.getByRole('button', { name: 'New field' }).click()
   await page.getByLabel('Label', { exact: true }).fill(ANCHOR)
   await page.getByRole('button', { name: 'Create field' }).click()
@@ -407,8 +407,7 @@ test('CF4-T12: field authoring — display=Inline renders as text, insert-before
 
   await page.getByRole('button', { name: 'New field' }).click()
   await page.getByLabel('Label', { exact: true }).fill(STAR)
-  await page.getByLabel('Insert before', { exact: true }).selectOption({ label: ANCHOR })
-  await page.getByLabel('Show in list (column on the default list view)', { exact: true }).check()
+  await page.getByLabel('Show On Default List', { exact: true }).check()
   await page.getByRole('button', { name: 'Create field' }).click()
   await page.waitForTimeout(600)
 
@@ -418,7 +417,7 @@ test('CF4-T12: field authoring — display=Inline renders as text, insert-before
   const defs = await (await request.get(`${API}/api/custom-fields?recordType=PurchaseOrder`, { headers: ADMIN })).json()
   const star = defs.find((d: { label: string }) => d.label === STAR)
   const anchor = defs.find((d: { label: string }) => d.label === ANCHOR)
-  expect(star.sort, 'insert-before placed Star in Anchor\'s slot').toBeLessThan(anchor.sort)
+  expect(anchor, 'both fields authored').toBeTruthy()   // (insert-before ordering removed by CF-FIX1-T2)
   await request.put(`${API}/api/custom-values/PurchaseOrder/${po.id}`, {
     headers: { ...BUYER, ...JSON_H }, data: { values: { [star.code]: `starval${STAMP}` } } })
 
@@ -437,7 +436,7 @@ test('CF4-T12: field authoring — display=Inline renders as text, insert-before
   await expect(section.locator(`input[aria-label="${STAR}"]`)).toHaveCount(0)              // no input
   await expect(section.getByLabel(ANCHOR)).toBeVisible()                                   // Anchor still a field
   const labels = await section.locator('label').allTextContents()
-  expect(labels.findIndex((l) => l.includes(STAR))).toBeLessThan(labels.findIndex((l) => l.includes(ANCHOR)))
+  expect(labels.some((l) => l.includes(STAR)) && labels.some((l) => l.includes(ANCHOR))).toBe(true)   // ordering leg removed with insert-before (CF-FIX1-T2)
 
   // The server (not just the UI) refuses edits to an Inline field.
   const tamper = await request.put(`${API}/api/custom-values/PurchaseOrder/${po.id}`, {

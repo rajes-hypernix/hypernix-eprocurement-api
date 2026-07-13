@@ -31,3 +31,17 @@ test('CF-FIX1-T1: full record-type names, renamed options, no lifecycle prose', 
   await expect(page.getByText('Show in list (column on the default list view)')).toHaveCount(0)
   await expect(page.getByText('Required (at value-save only)')).toHaveCount(0)
 })
+
+test('CF-FIX1-T2: Insert Before is gone; creating a field still works and lands in the list', async ({ page, request }) => {
+  await goAs(page, 'u_admin', 'customfields')
+  await page.waitForTimeout(1200)
+  await page.getByRole('button', { name: 'New field' }).click()
+  await expect(page.getByText('Insert before')).toHaveCount(0)   // the control is removed
+  await page.getByLabel('Label', { exact: true }).fill(`Fix1 Plain ${STAMP}`)
+  await page.getByRole('button', { name: 'Create field' }).click()
+  await page.waitForTimeout(800)
+  await expect(page.getByRole('row', { name: new RegExp(`Fix1 Plain ${STAMP}`) })).toBeVisible()
+  const defs = await (await request.get(`${API}/api/custom-fields?recordType=PurchaseOrder`, { headers: ADMIN })).json()
+  const def = defs.find((d: { label: string }) => d.label === `Fix1 Plain ${STAMP}`)
+  expect((await request.delete(`${API}/api/custom-fields/${def.id}`, { headers: ADMIN })).status()).toBe(204)
+})

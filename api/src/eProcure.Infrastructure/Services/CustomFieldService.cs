@@ -78,7 +78,6 @@ public sealed class CustomFieldService(
             Scope = scope,
             CreatedUtc = clock.UtcNow, UpdatedUtc = clock.UtcNow,
         };
-        await ApplyInsertBeforeAsync(def, req.InsertBeforeId, req.Sort, ct);
         db.CustomFieldDefs.Add(def);
         // The registry row IS the D3/D4 integration — same transaction, no drift window.
         // CF6-T1: LINE defs stay OUT of the registry — the view runner is header-grain (a
@@ -110,7 +109,7 @@ public sealed class CustomFieldService(
         def.HelpText = req.HelpText ?? "";
         def.DisplayType = ParseDisplayType(req.DisplayType);
         def.ShowInList = req.ShowInList;
-        await ApplyInsertBeforeAsync(def, req.InsertBeforeId, req.Sort, ct);
+        def.Sort = req.Sort;
         def.UpdatedUtc = clock.UtcNow;
         var reg = await db.FieldRegistry.FirstOrDefaultAsync(r => r.CustomFieldDefId == def.Id, ct);
         if (reg is not null) reg.Label = def.Label;   // line defs carry no registry row (CF6-T1)
@@ -383,24 +382,6 @@ public sealed class CustomFieldService(
         DisplayTypes.FirstOrDefault(x => string.Equals(x, raw, StringComparison.OrdinalIgnoreCase))
             ?? throw new CustomFieldValidationException($"Display type must be one of: {string.Join(", ", DisplayTypes)}.");
 
-    /// <summary>CF4-T12 insert-before: the def takes the target's slot; the target and every
-    /// def at/after it shift down one. Null target = the raw integer sort, as before.</summary>
-    private async Task ApplyInsertBeforeAsync(CustomFieldDef def, Guid? insertBeforeId, int fallbackSort, CancellationToken ct)
-    {
-        if (insertBeforeId is not { } beforeId) { def.Sort = fallbackSort; return; }
-        if (beforeId == def.Id)
-            throw new CustomFieldValidationException("A field cannot be inserted before itself.");
-        // Normalize the WHOLE sibling order (the display order: Sort then Label) with the def
-        // wedged in at the target's index — integer ties are resolved once, deterministically.
-        var siblings = await db.CustomFieldDefs
-            .Where(d => d.RecordType == def.RecordType && d.Id != def.Id)
-            .OrderBy(d => d.Sort).ThenBy(d => d.Label).ToListAsync(ct);
-        var idx = siblings.FindIndex(d => d.Id == beforeId);
-        if (idx < 0)
-            throw new CustomFieldValidationException("The insert-before field does not exist on this record type.");
-        siblings.Insert(idx, def);
-        for (var i = 0; i < siblings.Count; i++) siblings[i].Sort = i;
-    }
 
     private static RecordType Parse(string raw) =>
         Enum.TryParse<RecordType>(raw, ignoreCase: true, out var t)

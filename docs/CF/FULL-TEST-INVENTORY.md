@@ -75,7 +75,7 @@ Legend: `[ ]`→`[x]` · **Evidence** = test name(s) proving it · **Layer** = U
 - [x] Flows into saved-view filter/KPI/series · Layer:both · Evidence:CustomFieldsTests.A_money_custom_field_sums_with_honest_nulls_and_a_date_field_buckets (API); e2e 06-custom-fields filter + KPI count (UI)
 - [x] Orphan guard (CustomFieldOrphanTests) · Layer:API · Evidence:CustomFieldOrphanTests.Orphan_probe_flags_values_whose_record_is_gone_and_passes_clean_data
 - [x] **CF4:** display type Normal/Disabled/Inline — non-Normal edit tamper → 400 · Layer:both · Evidence:CustomFieldsTests.Non_normal_display_fields_reject_user_edits_but_tolerate_unchanged_echoes (API); e2e CF4-T12 inline-render + 400 tamper (UI)
-- [x] **CF4:** insert-before named-field placement · Layer:both · Evidence:CustomFieldsTests.Insert_before_places_the_def_in_the_target_slot_and_shifts_the_rest (API); e2e CF4-T12 authored on screen, position asserted (UI)
+- [x] **CF4:** insert-before named-field placement · Layer:both · Evidence:REVERSED by CF-FIX1-T2 (operator ruling: placement belongs to the form layout editor; control, request field, normalization logic and their tests removed — Sort integer remains)
 - [x] **CF4:** show-in-list appends to system-view runs only, never authored views · Layer:both · Evidence:CustomFieldsTests.Show_in_list_appends_the_column_to_SYSTEM_view_runs_only (API); e2e CF4-T12 portlet column with value (UI)
 
 ## PART 7 — CONFIGURABILITY: CUSTOM LISTS (D2 + CF1-T2)

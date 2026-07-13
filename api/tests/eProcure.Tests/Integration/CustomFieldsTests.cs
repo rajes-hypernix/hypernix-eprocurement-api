@@ -203,21 +203,8 @@ public sealed class CustomFieldsTests(CustomFieldsFixture fx) : IClassFixture<Cu
 
     // ---- CF4-T12: authoring parity — display type, insert-before, show-in-list ----
 
-    [Fact]
-    public async Task Insert_before_places_the_def_in_the_target_slot_and_shifts_the_rest()
-    {
-        var admin = fx.ClientAs("u_admin");
-        var first = await fx.CreateDef("CF4 Order First", "Text", "Invoice");
-        var second = await fx.CreateDef("CF4 Order Second", "Text", "Invoice");
-
-        var resp = await admin.PostAsJsonAsync("/api/custom-fields", new SaveCustomFieldDefRequest(
-            "CF4 Order Wedge", "Invoice", "Text", null, false, "", 99, InsertBeforeId: second.Id));
-        resp.StatusCode.Should().Be(HttpStatusCode.OK, await resp.Content.ReadAsStringAsync());
-
-        var defs = (await admin.GetFromJsonAsync<List<CustomFieldDefDto>>("/api/custom-fields?recordType=Invoice"))!
-            .Where(d => d.Label.StartsWith("CF4 Order")).OrderBy(d => d.Sort).ThenBy(d => d.Label).Select(d => d.Label).ToList();
-        defs.Should().ContainInOrder("CF4 Order First", "CF4 Order Wedge", "CF4 Order Second");
-    }
+    // (Insert_before test removed by CF-FIX1-T2 — the operator reversed the insert-before
+    // feature: placement belongs to the form layout editor. Sort remains the default order.)
 
     [Fact]
     public async Task Non_normal_display_fields_reject_user_edits_but_tolerate_unchanged_echoes()
