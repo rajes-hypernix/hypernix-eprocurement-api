@@ -22,12 +22,12 @@ Baselines (hold-or-raise every commit): **dotnet 541 · vitest 251 · e2e 98**. 
 ## SLICE 1 — FUNCTIONAL FIXES (correctness — MUST ship for handover, do FIRST)
 
 ### T1 — BUG: chosen form not persisted / phantom fields on reopen — `CFF-T1:`
-- [ ] Add a form reference (e.g. `EntryFormId Guid?`) to the Requisition record; migration `RequisitionChosenForm` (additive) · Build:___ · Test:___
-- [ ] On SAVE/submit, persist the chosen `formId` onto the requisition · Build:___ · Test:___
-- [ ] On REOPEN/view, resolve the SAVED form (not default-to-Standard); `chosenFormId` initializes from the loaded record, not null · Build:___ · Test:___
-- [ ] Remove the ungoverned fallback: a viewed PR shows ONLY its chosen form's placed fields/segments — NOT every applicable custom field/segment dumped below the sublist · Build:___ · Test:___
-- [ ] OD-D7-2 still holds: submit re-resolves role requireds regardless of chosen form · Build:___ · Test:___
-- [ ] Browser test: create PR with a custom form + custom field → save → reopen → still on the custom form, the custom field shows, NO phantom fields/segments below the sublist · Test:___
+- [x] Add a form reference (e.g. `EntryFormId Guid?`) to the Requisition record; migration `RequisitionChosenForm` (additive) · Build:9fcf1c9 · Test:CFF-T1
+- [x] On SAVE/submit, persist the chosen `formId` onto the requisition · Build:9fcf1c9 · Test:CFF-T1 (POST response `entryFormId === form.id`)
+- [x] On REOPEN/view, resolve the SAVED form (not default-to-Standard); `chosenFormId` initializes from the loaded record, not null · Build:9fcf1c9 · Test:CFF-T1 (picker shows the custom form on reopen)
+- [x] Remove the ungoverned fallback: a viewed PR shows ONLY its chosen form's placed fields/segments — NOT every applicable custom field/segment dumped below the sublist · Build:9fcf1c9 · Test:CFF-T1 (no `[aria-label="Custom fields"]`/`Segments`; unplaced field absent)
+- [x] OD-D7-2 still holds: submit re-resolves role requireds regardless of chosen form · Build:9fcf1c9 · Test:CFF-T1/OD-D7-2 (submit 400, draft ok)
+- [x] Browser test: create PR with a custom form + custom field → save → reopen → still on the custom form, the custom field shows, NO phantom fields/segments below the sublist · Test:CFF-T1
 
 ### T2 — Custom fields apply to CUSTOM forms only (standard forms stay source-controlled) — `CFF-T2:`
 - [ ] Server rule: a custom field can be placed on a NON-system form only; attempting to place on a `IsSystem` standard form is refused (400) · Build:___ · Test:___
@@ -36,8 +36,8 @@ Baselines (hold-or-raise every commit): **dotnet 541 · vitest 251 · e2e 98**. 
 - [ ] Browser test: try to apply a custom field to a Standard form → blocked; to a custom form → works · Test:___
 
 ### T3 — Standard PR: Est. Amount column (rate × qty) — `CFF-T3:`
-- [ ] Add "Est. Amount" next to Est. Rate on the standard PR line grid = `qty × estRate`, live-computed, currency-formatted (grouped decimals, the CF1 money display) · Build:___ · Test:___
-- [ ] Browser test: enter qty 3, rate 100 → Est. Amount shows 300.00; updates on change · Test:___
+- [x] Add "Est. Amount" next to Est. Rate on the standard PR line grid = `qty × estRate`, live-computed, currency-formatted (grouped decimals, the CF1 money display) · Build:9a1d1ef · Test:CFF-T3
+- [x] Browser test: enter qty 3, rate 100 → Est. Amount shows 300.00; updates on change · Test:CFF-T3 (also qty 40 → 4,000.00 grouped)
 
 **SLICE 1 GATE** — [ ] all T1-T3 boxes ticked or blocked; suites green; tag `v2.1-fixes`. **Only then Slice 2.**
 
