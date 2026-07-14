@@ -301,3 +301,44 @@ test('CFF-T8: a form set preferred for a role defaults the transaction picker; "
   // cleanup (delete the form → Buyer falls back to Standard)
   await request.delete(`${API}/api/entry-forms/${form.id}`, { headers: ADMIN })
 })
+
+// ── T9 — dummy-data cleanup: screens show a clean, realistic set ──────────────
+test('CFF-T9: the Custom Fields / Lists / Segments screens show a clean, realistic set', async ({ page, request }) => {
+  // Governed sweep of any residual BULK litter (zero-value "Budget Ref"/"Site Ref" fields),
+  // so the assertion is deterministic even after other specs ran. (Value-bearing residue is
+  // governed-inactivated per AD-7 — data safety refuses to delete a field in live use.)
+  const allTypes = ['Requisition', 'PurchaseOrder', 'Rfq', 'Invoice', 'Vendor']
+  for (const rt of allTypes) {
+    const defs = await (await request.get(`${API}/api/custom-fields?recordType=${rt}`, { headers: ADMIN })).json()
+    for (const d of defs.filter((x: { label: string }) => /Budget Ref|Site Ref/i.test(x.label)))
+      await hardDeleteField(request, d).catch(() => {})
+  }
+  // Curate: ensure the realistic "Cost Centre" field exists.
+  const reqDefs = await (await request.get(`${API}/api/custom-fields?recordType=Requisition`, { headers: ADMIN })).json()
+  if (!reqDefs.some((d: { label: string }) => d.label === 'Cost Centre'))
+    await request.post(`${API}/api/custom-fields`, { headers: { ...ADMIN, ...JSON_H },
+      data: { label: 'Cost Centre', recordType: 'Requisition', dataType: 'Text', required: false, helpText: '', sort: 0, code: 'cost_centre' } })
+
+  // Custom Fields — the realistic active set is present; the bulk litter is gone.
+  await goAs(page, 'u_admin', 'customfields')
+  await page.waitForTimeout(1200)
+  await page.getByRole('button', { name: 'Requisition', exact: true }).click()
+  await page.waitForTimeout(500)
+  await expect(page.getByText('Cost Centre', { exact: true })).toBeVisible()   // the curated realistic field
+  await expect(page.getByText(/Budget Ref/)).toHaveCount(0)                     // bulk litter deleted
+  await expect(page.getByText(/Site Ref/)).toHaveCount(0)
+
+  // Custom Lists — realistic lists present; Fix/T10 litter gone.
+  await goAs(page, 'u_admin', 'lists')
+  await page.waitForTimeout(1200)
+  await expect(page.getByText('Payment terms', { exact: true })).toBeVisible()
+  await expect(page.getByText(/Fix1 Values|T10 Tree|Fix3 List/)).toHaveCount(0)
+
+  // Segments — the realistic Project segment + system dimensions; stamped litter gone.
+  await goAs(page, 'u_admin', 'segments')
+  await page.waitForTimeout(1200)
+  await expect(page.getByText('Project Code Grouped')).toBeVisible()   // the curated realistic segment
+  await expect(page.getByText('Department', { exact: true })).toBeVisible()   // system dimension
+  // (A couple of value/assignment-bound litter segments remain governed-inactivated per AD-7 —
+  //  data safety refuses to delete a segment with live assignments; not asserted here.)
+})
