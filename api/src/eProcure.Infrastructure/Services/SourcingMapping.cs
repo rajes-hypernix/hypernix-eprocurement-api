@@ -14,7 +14,7 @@ internal static class SourcingMapping
             LegacyToken(l.LifecycleStatus), l.Ref, l.LifecycleStatus.ToString(),
             NoQuotes: noQuoteLineIds?.Contains(l.Id) ?? false,
             Editable: l.LifecycleStatus == PrLineStatus.Open)).ToList(),
-        p.HeaderStatus.ToString(), p.Submitted);
+        p.HeaderStatus.ToString(), p.Submitted, p.EntryFormId);
 
     /// <summary>Controlled analytics dimension code from a display label (conformed dimension,
     /// DATA-MODEL-ANALYTICS §4) — shared by the seed and PR create/edit so codes stay stable.</summary>

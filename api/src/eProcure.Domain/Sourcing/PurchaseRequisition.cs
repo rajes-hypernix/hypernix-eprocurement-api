@@ -31,6 +31,13 @@ public class PurchaseRequisition
     public string CostCentre { get; set; } = "";
     public string? Project { get; set; }
 
+    /// <summary>CFF-T1: the entry form this PR was entered on. Persisted so a reopen resolves the
+    /// SAME layout instead of silently reverting to Standard (which dumped every applicable custom
+    /// field/segment below the sublist). Nullable = legacy/standard; no FK by convention (a form
+    /// that later goes inactive resolves loud, not silently — the loud-fail rule). Layout only —
+    /// submit still re-resolves the ROLE form's requireds (OD-D7-2).</summary>
+    public Guid? EntryFormId { get; set; }
+
     // --- Business dates: typed source of truth (§5) + the legacy display strings kept intact ---
     public DateOnly? RaisedOn { get; set; }               // typed source of truth (Slice H T4 retired the display strings)
     public DateOnly? RequiredOn { get; set; }

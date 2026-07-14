@@ -65,6 +65,7 @@ public sealed class RequisitionService(
             Job = req.Job, JobCode = SourcingMapping.DimCode(req.Job),
             Currency = "MYR",
             Submitted = submit,
+            EntryFormId = req.EntryFormId,   // CFF-T1: persist the form the PR is entered on
             RaisedOn = DateOnly.FromDateTime(now),
             RequiredOn = req.RequiredDate,
             Lines = [.. req.Lines.Select(l => PrLine.Create(l.ItemCode, l.Description, l.Qty, l.Uom, l.EstUnitPrice))],
@@ -95,6 +96,7 @@ public sealed class RequisitionService(
         pr.Category = req.Category; pr.CategoryCode = SourcingMapping.DimCode(req.Category);
         pr.Job = req.Job; pr.JobCode = SourcingMapping.DimCode(req.Job);
         pr.RequiredOn = req.RequiredDate;
+        pr.EntryFormId = req.EntryFormId;   // CFF-T1: keep the chosen form current on edit
 
         // Open lines absent from the request are removed; locked (InRfq/Awarded/Cancelled) lines
         // are always kept and read-only.

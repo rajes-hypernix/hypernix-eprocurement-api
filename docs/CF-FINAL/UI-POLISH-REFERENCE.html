@@ -1,0 +1,49 @@
+<!-- UI POLISH REFERENCE — operator-greenlit. Match this feel: square + bold kept, MOVEMENT softened.
+     Tokens: header teal #336374, active-nav #25586B, page cream #F3EFE9, greige panel #F6F4EF,
+     border #E4DED2, ink #2B2B28; Georgia for headings/titles, Inter for UI, JetBrains Mono for codes.
+     Square corners throughout (radius 2-3px max). Transitions 150-400ms ease. NO gradients on chrome. -->
+
+<!-- 1. HEADER TITLE — Georgia, REGULAR weight (not bold), like the NSPB "Rebillable Aging" sample -->
+<div style="background:#336374; padding:14px 20px; display:flex; align-items:center; gap:10px;">
+  <span style="color:#fff; font-family:Georgia,serif; font-size:20px; font-weight:400; letter-spacing:.2px;">Hypernix eProcure</span>
+  <span style="color:#AEC6CC; font-size:11px; align-self:flex-end; padding-bottom:2px;">Sourcing &amp; Vendor Portal</span>
+</div>
+
+<!-- 2. INLINE SAVE BANNER — appears in-page after any create/edit/save, fades after ~3s.
+     Fade+slide in (opacity 0→1, translateY -6px→0 over 400ms). This is the primary "it saved" signal. -->
+<div id="banner" style="display:flex; align-items:center; gap:10px; background:#E1F0EC; border:1px solid #B6D6CC; border-left:3px solid #1D9E75; padding:10px 14px; transition:opacity .4s ease, transform .4s ease;">
+  <i class="ti ti-circle-check" style="color:#0F6E56; font-size:18px;"></i>
+  <span style="color:#0F6E56; font-size:14px;">Requisition saved</span>
+  <span style="margin-left:auto; color:#5c8378; font-size:12px;">PR-2026-0412</span>
+</div>
+<!-- copy rules: "Requisition saved" / "Custom field created" / "Form saved" — past tense, NO "successfully", NO "!" -->
+
+<!-- 3. TOAST — corner slide-in for quick confirmations (create field, add value). Dark chip, teal check.
+     Slide in top-right (opacity 0→1, translateY -8px→0, 350ms), auto-dismiss ~2.2s. -->
+<div id="toast" style="display:flex; align-items:center; gap:8px; background:#2B2B28; color:#fff; padding:9px 14px; font-size:13px; border-radius:3px; transition:opacity .35s ease, transform .35s ease;">
+  <i class="ti ti-check" style="color:#5DCAA5; font-size:16px;"></i>
+  <span>Custom field created</span>
+</div>
+
+<!-- 4. SOFTENED ROWS — list rows settle on hover (bg tint + 4px padding-left shift, 180ms). NOT a jump. -->
+<style>
+.erow{ padding:12px 22px; border-bottom:1px solid #F3EFE9; font-size:14px; transition:background .18s ease, padding-left .18s ease; }
+.erow:hover{ background:#F1F5F4; padding-left:26px; }
+/* primary button: teal, darken on hover (#25586B), scale(0.97) on press (80ms) */
+.btn-primary{ background:#336374; color:#fff; border:none; padding:8px 16px; font-size:13px; cursor:pointer; border-radius:2px; transition:background .15s ease, transform .08s ease; }
+.btn-primary:hover{ background:#25586B; }
+.btn-primary:active{ transform:scale(0.97); }
+</style>
+
+<!-- 5. SKELETON LOADER — replaces blank white flashes while data loads. Shimmer sweep 1.4s. -->
+<style>
+.sk{ background:linear-gradient(90deg,#EFEBE4 25%,#F6F4EF 50%,#EFEBE4 75%); background-size:200% 100%; animation:shimmer 1.4s infinite; border-radius:2px; }
+@keyframes shimmer{ 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+</style>
+<div style="background:#fff; border:1px solid #E4DED2; padding:14px 22px;">
+  <div class="sk" style="height:12px; width:38%; margin-bottom:10px;"></div>
+  <div class="sk" style="height:30px; width:100%;"></div>
+</div>
+
+<!-- 6. STANDARD SAVE BUTTON PLACEMENT — every create/edit surface (transactions AND admin config):
+     the primary Save/Submit sits TOP-RIGHT of the panel it saves, using .btn-primary. Consistent everywhere. -->

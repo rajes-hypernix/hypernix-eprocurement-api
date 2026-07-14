@@ -86,7 +86,7 @@ describe('AdminEntryForms — CF-FIX4-T3 designer (groups as cards, L1/L3/L4)', 
     await userEvent.click(screen.getByRole('button', { name: 'Move custbody_partner down' }))
     await waitFor(() => expect(save).toHaveBeenCalled())
     const sent = save.mock.calls[0][1].fields.find((f: client.EntryFormFieldDto) => f.fieldKey === 'custbody_partner')
-    expect(sent.fieldGroup).toBe('Logistics')
+    expect(sent!.fieldGroup).toBe('Logistics')
   })
 
   it('CF-FIX5-T4: the sublist is a VERTICAL list (top = leftmost); up/down persists the new order', async () => {

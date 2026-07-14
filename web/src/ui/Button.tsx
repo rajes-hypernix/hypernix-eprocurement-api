@@ -16,7 +16,7 @@ const VARIANT_CLS: Record<ButtonVariant, string> = {
  * retired by migration, not by restyle. `busy` disables while a mutation is
  * pending (the existing isPending idiom).
  */
-export function Button({ variant = 'outline', size, icon, busy = false, red = false, disabled, onClick, children, ariaLabel, type = 'button' }: {
+export function Button({ variant = 'outline', size, icon, busy = false, red = false, disabled, onClick, children, ariaLabel, title, type = 'button' }: {
   variant?: ButtonVariant
   size?: 'sm'
   icon?: string
@@ -27,6 +27,8 @@ export function Button({ variant = 'outline', size, icon, busy = false, red = fa
   onClick?: MouseEventHandler<HTMLButtonElement>
   children?: ReactNode
   ariaLabel?: string
+  /** native tooltip (hover hint) */
+  title?: string
   type?: 'button' | 'submit'
 }) {
   return (
@@ -36,6 +38,7 @@ export function Button({ variant = 'outline', size, icon, busy = false, red = fa
       disabled={disabled || busy}
       aria-label={ariaLabel}
       aria-busy={busy || undefined}
+      title={title}
       onClick={onClick}
     >
       {icon && <Icon name={icon} size={size === 'sm' ? 13 : 15} />} {children}

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactElement } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   getRequisition, createPr, updatePr, cancelPr, submitPr, resolveEntryForm,
@@ -19,10 +19,8 @@ import { NumberField } from '../../ui/NumberField'
 import { MoneyField } from '../../ui/MoneyField'
 import { Button } from '../../ui/Button'
 import { TransactionPage } from '../../ui/archetypes/TransactionPage'
-import { CustomFieldsSection } from '../customfields/CustomFieldsSection'
-import { SegmentsSection } from '../segments/SegmentsSection'
 
-const LINE_HEADS: Record<string, JSX.Element> = {
+const LINE_HEADS: Record<string, ReactElement> = {
   ItemCode: <th key="ItemCode" style={{ width: '18%' }}>Item code</th>,
   Description: <th key="Description">Description</th>,
   Qty: <th key="Qty" className="amt" style={{ width: '10%' }}>Qty</th>,
@@ -115,6 +113,9 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
         location: pr.location ?? '', job: pr.job ?? '', requiredDate: (pr.requiredDate ?? '').slice(0, 10), memo: pr.memo ?? '',
       })
       setLines((pr.lines ?? []).map(toEdit))
+      // CFF-T1: resolve the SAVED form on reopen — initialize the picker from the record, not
+      // null (null re-resolved to Standard and dumped every applicable custom field below).
+      if (pr.entryFormId) setChosenFormId(pr.entryFormId)
       setHydrated(true)
     }
     if (isNew && form && !hydrated) {
@@ -145,6 +146,9 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
   const body = (): SavePrRequest => ({
     requestor: h.requestor, department: h.department, location: h.location, category: h.category,
     job: h.job, memo: h.memo, requiredDate: h.requiredDate || null,
+    // CFF-T1: persist the EFFECTIVE resolved form (the one actually rendered), so a reopen pins
+    // exactly this layout — immune to later role-preference changes; null only if none resolved.
+    entryFormId: form?.formId ?? null,
     lines: lines.filter((l) => l.itemCode.trim() || l.description.trim()).map((l) => ({
       id: l.id ?? null, itemCode: l.itemCode, description: l.description,
       qty: Number(l.qty) || 0, uom: l.uom || 'Unit', estUnitPrice: Number(l.estUnitPrice) || 0,
@@ -189,7 +193,7 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
     mutationFn: async (mode: 'draft' | 'submit' | 'keep') => {
       if (mode === 'submit' && !requiredGate()) throw new Error('__handled__')
       const result = isNew ? await createPr(body(), mode === 'submit') : await updatePr(id!, body())
-      await saveExtras(result.id)   // CF-FIX5-T1: the new record's id from the create response
+      await saveExtras(result.id!)   // CF-FIX5-T1: the new record's id from the create response
       return result
     },
     onSuccess: () => { inval(); leave() },
@@ -354,8 +358,10 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
           />
         </Modal>
       )}
-      {id && <CustomFieldsSection recordType="Requisition" recordId={id} excludeKeys={placedCustom} />}
-      {id && <SegmentsSection recordType="Requisition" recordId={id} excludeKeys={placedSegment} />}
+      {/* CFF-T1: the ungoverned fallback is REMOVED — a viewed PR renders ONLY its chosen form's
+          placed fields/segments (they render inline in the sections above). Previously these two
+          residual sections dumped EVERY applicable-but-unplaced custom field/segment below the
+          sublist, which is exactly the phantom-fields symptom when the form reverted to Standard. */}
     </TransactionPage>
   )
 }
