@@ -19,6 +19,7 @@ import { NumberField } from '../../ui/NumberField'
 import { MoneyField } from '../../ui/MoneyField'
 import { Button } from '../../ui/Button'
 import { TransactionPage } from '../../ui/archetypes/TransactionPage'
+import { fmt } from '../../lib/format'
 
 const LINE_HEADS: Record<string, ReactElement> = {
   ItemCode: <th key="ItemCode" style={{ width: '18%' }}>Item code</th>,
@@ -298,7 +299,8 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
       <div className="card" style={{ padding: 18, marginBottom: 16 }}>
         <h3 style={{ marginTop: 0 }}>Lines</h3>
         <table>
-          <thead><tr>{sublistHeads}{appendedDefs.map((d) => <th key={d.code}>{d.label}</th>)}<th style={{ width: '14%' }} /></tr></thead>
+          {/* CFF-T3: a live-computed Est. Amount (qty × rate) column, next to Est. Rate. */}
+          <thead><tr>{sublistHeads}{appendedDefs.map((d) => <th key={d.code}>{d.label}</th>)}<th className="amt" style={{ width: '12%' }}>Est. amount</th><th style={{ width: '14%' }} /></tr></thead>
           <tbody>
             {lines.map((l, i) => {
               const ro = !isNew && !l.editable
@@ -329,6 +331,8 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
                 <tr key={l.id ?? `new-${i}`}>
                   {sublistOrder.map((k) => NATIVE_LINE_COLS.includes(k) ? nativeCell(k) : (lineDefByCode.get(k) ? custCell(lineDefByCode.get(k)!) : null))}
                   {appendedDefs.map((d) => custCell(d))}
+                  {/* CFF-T3: Est. Amount = qty × rate, currency-grouped (CF1 money display), read-only. */}
+                  <td className="amt" aria-label={`Line ${i + 1} est amount`}>{fmt((Number(l.qty) || 0) * (Number(l.estUnitPrice) || 0))}</td>
                   <td>
                     {ro
                       ? <span className="lockchip"><Icon name="lock" size={12} /> {l.lifecycleStatus === 'InRfq' ? 'In RFQ' : l.lifecycleStatus}</span>

@@ -96,3 +96,20 @@ test('CFF-T1/OD-D7-2: a chosen form cannot dodge the role form’s requireds at 
   await request.post(`${API}/api/requisitions/${draftId}/cancel`, { headers: { ...BUYER, ...JSON_H }, data: { reason: 'cff od-d7-2 cleanup' } })
   expect((await request.delete(`${API}/api/entry-forms/${strict.id}`, { headers: ADMIN })).status()).toBe(204)
 })
+
+// ── SLICE 1 · T3 — Est. Amount column (qty × rate) ───────────────────────────
+test('CFF-T3: the PR line grid shows a live Est. Amount = qty × rate, currency-grouped', async ({ page }) => {
+  await goAs(page, 'u_faridah', 'reqs')
+  await page.waitForTimeout(1200)
+  await page.getByRole('button', { name: /Create PR/ }).click()
+  await page.waitForTimeout(1000)
+
+  await page.getByLabel('Line 1 qty', { exact: true }).fill('3')
+  await page.getByLabel('Line 1 rate', { exact: true }).fill('100')
+  // qty 3 × rate 100 → 300.00 (CF1 grouped money display).
+  await expect(page.locator('[aria-label="Line 1 est amount"]')).toHaveText('300.00')
+
+  // Live-computed: bump the qty and the amount grows, with a thousands separator.
+  await page.getByLabel('Line 1 qty', { exact: true }).fill('40')
+  await expect(page.locator('[aria-label="Line 1 est amount"]')).toHaveText('4,000.00')
+})
