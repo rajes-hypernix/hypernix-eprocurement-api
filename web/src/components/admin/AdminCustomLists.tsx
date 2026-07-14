@@ -17,6 +17,7 @@ import { NumberField } from '../../ui/NumberField'
 import { CheckboxField } from '../../ui/CheckboxField'
 import { Button } from '../../ui/Button'
 import { StatusBadge } from '../../ui/badges'
+import { useNotify } from '../../ui/Notify'
 
 /**
  * Custom Lists admin (NetSuite-style, VENDOR-ONBOARDING / DATA-MODEL §4). A list is a reusable coded
@@ -111,6 +112,7 @@ function ListValues({ list, parentList, onRefresh, onErr, clearErr }: {
   // (operator ruling: no auto-save). A staged value may parent another staged value
   // (referenced as staged:<idx>, resolved to the real system-assigned id on save).
   const [staged, setStaged] = useState<{ label: string; parent: string }[]>([])
+  const notify = useNotify()
 
   const save = useMutation({
     mutationFn: async () => {
@@ -121,11 +123,11 @@ function ListValues({ list, parentList, onRefresh, onErr, clearErr }: {
         codes.push(created.code ?? '')
       }
     },
-    onSuccess: () => { setStaged([]); onRefresh() }, onError: onErr,
+    onSuccess: () => { notify('List saved', { kind: 'toast' }); setStaged([]); onRefresh() }, onError: onErr,
   })
   const update = useMutation({
     mutationFn: (v: CustomListValue) => updateCustomListValue(v.id, { label: v.label, parentValueCode: v.parentValueCode, sort: v.sort, active: v.active }),
-    onSuccess: () => { setEditing(null); onRefresh() }, onError: onErr,
+    onSuccess: () => { notify('List value saved', { kind: 'toast' }); setEditing(null); onRefresh() }, onError: onErr,
   })
 
   const parentLabel = (pc: string | null) => pc ? (parentList?.values.find((x) => x.code === pc)?.label ?? pc) : '—'
@@ -269,10 +271,11 @@ function NewListModal({ lists, onClose, onCreated, onErr }: {
   const [description, setDescription] = useState('')
   const [parentListCode, setParentListCode] = useState('')
   const [orderMode, setOrderMode] = useState('Entered')   // CF-FIX1-T3: choosable at create
+  const notify = useNotify()
 
   const create = useMutation({
     mutationFn: () => createCustomList({ code: code.trim().toUpperCase(), name: name.trim(), description: description.trim() || null, parentListCode: parentListCode || null, orderMode }),
-    onSuccess: (l) => onCreated(l.code), onError: onErr,
+    onSuccess: (l) => { notify('Custom list created', { kind: 'toast' }); onCreated(l.code) }, onError: onErr,
   })
   const submit = () => { if (!code.trim() || !name.trim()) { onErr(new Error('Enter both an Internal ID and a name.')); return } create.mutate() }
 
@@ -312,9 +315,10 @@ function EditListModal({ list, onClose, onSaved, onErr }: {
   const [name, setName] = useState(list.name)
   const [desc, setDesc] = useState(list.description ?? '')
   const [orderMode, setOrderMode] = useState(list.orderMode ?? 'Entered')
+  const notify = useNotify()
   const save = useMutation({
     mutationFn: () => updateCustomList(list.code, { name, description: desc || null, orderMode }),
-    onSuccess: onSaved, onError: onErr,
+    onSuccess: () => { notify('Custom list saved', { kind: 'toast' }); onSaved() }, onError: onErr,
   })
   return (
     <Modal

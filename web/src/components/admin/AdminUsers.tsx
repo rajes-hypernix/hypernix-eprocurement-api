@@ -9,6 +9,7 @@ import {
 } from '../../api/client'
 import { Icon } from '../Icon'
 import { initials, roleLabel } from '../../lib/format'
+import { useNotify } from '../../ui/Notify'
 
 // Internal roles only — the Vendor role is deliberately absent (SoD): internal
 // users are never vendors.
@@ -83,6 +84,7 @@ function UserModal({
 
 export function AdminUsers() {
   const qc = useQueryClient()
+  const notify = useNotify()
   const [draft, setDraft] = useState<Draft | null>(null)
   const { data: users = [] } = useQuery({ queryKey: ['users'], queryFn: getUsers })
   const { data: vendorLogins = [] } = useQuery({ queryKey: ['vendor-logins'], queryFn: getVendorLogins })
@@ -93,6 +95,7 @@ export function AdminUsers() {
         ? updateUser(d.id, { name: d.name, email: d.email, roles: d.roles, isActive: d.isActive })
         : createUser({ name: d.name, email: d.email, roles: d.roles }),
     onSuccess: () => {
+      notify('User saved', { kind: 'toast' })
       setDraft(null)
       void qc.invalidateQueries({ queryKey: ['users'] })
     },

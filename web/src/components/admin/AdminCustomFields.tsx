@@ -15,6 +15,7 @@ import { SelectField } from '../../ui/SelectField'
 import { CheckboxField } from '../../ui/CheckboxField'
 import type { FieldSpec } from '../../ui/fieldSpec'
 import { recordTypeLabel, recordTypeOptions } from '../../lib/recordTypeLabel'
+import { useNotify } from '../../ui/Notify'
 
 /**
  * Custom field definitions (D5) — the Admin Setup surface (A65). Lifecycle per the rulings,
@@ -146,6 +147,7 @@ function DefModal({ recordType, def, replacing, onClose, onSaved, onReplace }: {
   // CF-FIX3-T5: "Create replacement" — the change-the-type path. A NEW field prefilled
   // from the old one (label, scope, applies-to, list binding) with a FRESH Internal ID;
   // the admin picks the new type, then inactivates the original.
+  const notify = useNotify()
   const from = def ?? replacing ?? null
   const [label, setLabel] = useState(from?.label ?? '')
   // CF-FIX1-T5: user-set Internal ID — auto-suggested from the label until the user edits it.
@@ -202,7 +204,7 @@ function DefModal({ recordType, def, replacing, onClose, onSaved, onReplace }: {
       }
       return def ? updateCustomFieldDef(def.id, req) : createCustomFieldDef(req)
     },
-    onSuccess: onSaved,
+    onSuccess: () => { notify(def ? 'Custom field saved' : 'Custom field created', { kind: 'toast' }); onSaved() },
     onError: (e) => setError(e instanceof Error ? e.message : 'Could not save the field.'),
   })
 

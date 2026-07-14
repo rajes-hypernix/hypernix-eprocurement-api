@@ -16,6 +16,7 @@ import { CodeField } from '../../ui/CodeField'
 import { SelectField } from '../../ui/SelectField'
 import { CheckboxField } from '../../ui/CheckboxField'
 import type { FieldSpec } from '../../ui/fieldSpec'
+import { useNotify } from '../../ui/Notify'
 
 /**
  * Segment definitions (D6) — the Admin Setup surface (A68). A segment is a reporting
@@ -221,13 +222,14 @@ function DefModal({ def, onClose, onSaved }: {
   const [hasHierarchy, setHasHierarchy] = useState(def?.hasHierarchy ?? false)
   const [required, setRequired] = useState(def?.required ?? false)
   const [error, setError] = useState<string | null>(null)
+  const notify = useNotify()
 
   const save = useMutation({
     mutationFn: () => {
       const req = { name, hasHierarchy, required }
       return def ? updateSegmentDef(def.id, req) : createSegmentDef({ ...req, code: code.trim() || null })
     },
-    onSuccess: onSaved,
+    onSuccess: (d) => { notify('Segment saved', { kind: 'toast' }); onSaved(d) },
     onError: (e) => setError(e instanceof Error ? e.message : 'Could not save the segment.'),
   })
 
@@ -322,6 +324,7 @@ function StagedValues({ def, onChanged, onError }: {
   const [label, setLabel] = useState('')
   const [parent, setParent] = useState('')
   const [staged, setStaged] = useState<{ label: string; parent: string }[]>([])
+  const notify = useNotify()
 
   const save = useMutation({
     mutationFn: async () => {
@@ -333,7 +336,7 @@ function StagedValues({ def, onChanged, onError }: {
         ids.push(created?.id ?? '')
       }
     },
-    onSuccess: () => { setStaged([]); onError(null); onChanged() },
+    onSuccess: () => { notify('Segment values saved', { kind: 'toast' }); setStaged([]); onError(null); onChanged() },
     onError: (e) => onError(e instanceof Error ? e.message : 'Could not save the values.'),
   })
   const stage = () => {
@@ -396,9 +399,10 @@ function EditValueModal({ def, value, onClose, onSaved }: {
   const [parentId, setParentId] = useState(value.parentValueId ?? '')
   const [active, setActive] = useState(value.active)
   const [error, setError] = useState<string | null>(null)
+  const notify = useNotify()
   const save = useMutation({
     mutationFn: () => updateSegmentValue(def.id, value.id, { label, parentValueId: parentId || null, sort: value.sort, active }),
-    onSuccess: onSaved,
+    onSuccess: () => { notify('Segment value saved', { kind: 'toast' }); onSaved() },
     onError: (e) => setError(e instanceof Error ? e.message : 'Could not save the value.'),
   })
   return (

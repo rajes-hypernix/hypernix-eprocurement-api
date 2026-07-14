@@ -9,6 +9,7 @@ import { Button } from '../../ui/Button'
 import { ConfirmModal, EmptyState, Notice, Spinner } from '../ui'
 import { fmt, fmtDay } from '../../lib/format'
 import { useIdentity } from '../../identity'
+import { useNotify } from '../../ui/Notify'
 
 const STATUS_TONE: Record<string, string> = {
   Draft: 'b-grey', Issued: 'b-blue', Acknowledged: 'b-blue', PartiallyReceived: 'b-amber',
@@ -126,6 +127,7 @@ function PoList({ onOpen, initialViewId }: { onOpen: (id: string) => void; initi
 
 function PoDetailView({ id, onBack, onNavigate }: { id: string; onBack: () => void; onNavigate: (key: string) => void }) {
   const qc = useQueryClient()
+  const notify = useNotify()
   const { isVendor } = useIdentity()
   const { data: po, isPending } = useQuery({ queryKey: ['po', id], queryFn: () => getPo(id) })
   const { data: asns = [] } = useQuery({ queryKey: ['asns'], queryFn: getAsns })
@@ -135,7 +137,7 @@ function PoDetailView({ id, onBack, onNavigate }: { id: string; onBack: () => vo
   const [showIssue, setShowIssue] = useState(false)
   const [segmentsLine, setSegmentsLine] = useState<string | null>(null)
   const inval = () => { void qc.invalidateQueries({ queryKey: ['po', id] }); void qc.invalidateQueries({ queryKey: ['pos'] }) }
-  const issue = useMutation({ mutationFn: () => issuePo(id), onSuccess: () => { inval(); setShowIssue(false) }, onError: (e: Error) => { setShowIssue(false); setNotice(e.message) } })
+  const issue = useMutation({ mutationFn: () => issuePo(id), onSuccess: (result) => { notify('Purchase order saved', { code: result.code ?? undefined }); inval(); setShowIssue(false) }, onError: (e: Error) => { setShowIssue(false); setNotice(e.message) } })
   const ack = useMutation({ mutationFn: () => acknowledgePo(id), onSuccess: inval, onError: (e: Error) => setNotice(e.message) })
 
   if (isPending || !po) return <Spinner label="Loading PO…" />

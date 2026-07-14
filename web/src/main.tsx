@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import './index.css'
 import App from './App.tsx'
 import { IdentityProvider } from './identity.tsx'
+import { NotifyProvider } from './ui/Notify.tsx'
 
 const queryClient = new QueryClient()
 
@@ -11,7 +12,9 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <IdentityProvider>
-        <App />
+        <NotifyProvider>
+          <App />
+        </NotifyProvider>
       </IdentityProvider>
     </QueryClientProvider>
   </StrictMode>,

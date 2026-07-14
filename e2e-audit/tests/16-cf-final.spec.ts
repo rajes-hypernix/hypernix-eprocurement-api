@@ -161,3 +161,46 @@ test('CFF-T7: the header title renders Georgia at regular weight (400)', async (
   expect((await title.evaluate((el) => getComputedStyle(el).fontFamily)).toLowerCase()).toContain('georgia')
   expect(await title.evaluate((el) => getComputedStyle(el).fontWeight)).toBe('400')
 })
+
+// ── T4 — global toast + save-banner, wired to saves; copy discipline ─────────
+test('CFF-T4: saving a PR shows the banner; creating a custom field shows a toast; copy is clean', async ({ page, request }) => {
+  // Saving a PR → the inline save-banner, past tense, no "successfully"/"!".
+  await goAs(page, 'u_faridah', 'reqs')
+  await page.waitForTimeout(1000)
+  await page.getByRole('button', { name: /Create PR/ }).click()
+  await page.waitForTimeout(1000)
+  await page.getByLabel('Requestor', { exact: true }).fill('T4 Buyer')
+  await page.getByLabel('Line 1 item code', { exact: true }).fill(`T4-${STAMP}`)
+  await page.getByLabel('Line 1 qty', { exact: true }).fill('1')
+  const [prResp] = await Promise.all([
+    page.waitForResponse((r) => r.url().includes('/api/requisitions') && r.request().method() === 'POST'),
+    page.getByRole('button', { name: 'Save draft' }).first().click(),
+  ])
+  const createdPr = await prResp.json()
+  const banner = page.getByTestId('save-banner')
+  await expect(banner).toBeVisible()
+  await expect(banner).toContainText('Requisition saved')
+  const bannerText = (await banner.textContent()) ?? ''
+  expect(bannerText.toLowerCase()).not.toContain('successfully')
+  expect(bannerText).not.toContain('!')
+
+  // Creating a custom field → the corner toast.
+  await goAs(page, 'u_admin', 'customfields')
+  await page.waitForTimeout(1000)
+  await page.getByRole('button', { name: 'Requisition', exact: true }).click()
+  await page.getByRole('button', { name: 'New field' }).click()
+  await page.getByLabel('Label', { exact: true }).fill(`T4 Field ${STAMP}`)
+  await page.getByRole('button', { name: 'Create field' }).click()
+  const toast = page.getByTestId('toast')
+  await expect(toast).toBeVisible()
+  await expect(toast).toContainText('Custom field created')
+  const toastText = (await toast.textContent()) ?? ''
+  expect(toastText.toLowerCase()).not.toContain('successfully')
+  expect(toastText).not.toContain('!')
+
+  // cleanup
+  const defs = await (await request.get(`${API}/api/custom-fields?recordType=Requisition`, { headers: ADMIN })).json()
+  const mine = defs.find((d: { label: string }) => d.label === `T4 Field ${STAMP}`)
+  if (mine) await hardDeleteField(request, mine)
+  if (createdPr?.id) await request.post(`${API}/api/requisitions/${createdPr.id}/cancel`, { headers: { ...BUYER, ...JSON_H }, data: { reason: 't4 cleanup' } })
+})

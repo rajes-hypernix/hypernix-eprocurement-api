@@ -20,6 +20,7 @@ import { MoneyField } from '../../ui/MoneyField'
 import { Button } from '../../ui/Button'
 import { TransactionPage } from '../../ui/archetypes/TransactionPage'
 import { fmt } from '../../lib/format'
+import { useNotify } from '../../ui/Notify'
 
 const LINE_HEADS: Record<string, ReactElement> = {
   ItemCode: <th key="ItemCode" style={{ width: '18%' }}>Item code</th>,
@@ -60,6 +61,7 @@ const lineSpec = (i: number, part: string, over: Partial<FieldSpec> = {}): Field
 
 export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }) {
   const qc = useQueryClient()
+  const notify = useNotify()
   const isNew = id === null
   const { data: pr, isPending } = useQuery({ queryKey: ['requisition', id], queryFn: () => getRequisition(id!), enabled: !isNew })
   // CF-FIX4-T5: the form picker — an explicit choice re-resolves the LAYOUT; the server
@@ -197,12 +199,12 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
       await saveExtras(result.id!)   // CF-FIX5-T1: the new record's id from the create response
       return result
     },
-    onSuccess: () => { inval(); leave() },
+    onSuccess: (result, mode) => { notify(mode === 'submit' ? 'Requisition submitted' : 'Requisition saved', { code: result.code ?? undefined }); inval(); leave() },
     onError: (e: Error) => { if (e.message !== '__handled__') setErr(e.message) },
   })
   const cancel = useMutation({
     mutationFn: () => cancelPr(id!, cancelReason),
-    onSuccess: () => { inval(); setConfirmCancel(false); leave() },
+    onSuccess: (result) => { notify('Requisition cancelled', { code: result.code ?? undefined }); inval(); setConfirmCancel(false); leave() },
     onError: (e: Error) => { setErr(e.message); setConfirmCancel(false) },
   })
   // Draft → Submitted (Bug 3). Saves in-progress header edits first so nothing is lost.
@@ -213,7 +215,7 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
       await saveExtras(id!)
       return submitPr(id!)
     },
-    onSuccess: () => { inval(); leave() },
+    onSuccess: (result) => { notify('Requisition submitted', { code: result.code ?? undefined }); inval(); leave() },
     onError: (e: Error) => { if (e.message !== '__handled__') setErr(e.message) },
   })
 

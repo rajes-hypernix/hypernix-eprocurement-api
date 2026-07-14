@@ -8,6 +8,7 @@ import { TextField } from '../../ui/TextField'
 import { NumberField } from '../../ui/NumberField'
 import { CheckboxField } from '../../ui/CheckboxField'
 import type { FieldSpec } from '../../ui/fieldSpec'
+import { useNotify } from '../../ui/Notify'
 
 /**
  * Numbering schemes (D7) — the Admin Setup surface (A70). Config over the gap-free
@@ -73,10 +74,11 @@ function SchemeModal({ scheme, onClose, onSaved }: { scheme: NumberingSchemeDto;
   const [yearSegment, setYearSegment] = useState(scheme.yearSegment)
   const [digits, setDigits] = useState(String(scheme.digits))
   const [error, setError] = useState<string | null>(null)
+  const notify = useNotify()
 
   const save = useMutation({
     mutationFn: () => updateNumberingScheme(scheme.recordType, { prefix, yearSegment, digits: Number(digits) || 0 }),
-    onSuccess: onSaved,
+    onSuccess: () => { notify('Numbering saved', { kind: 'toast' }); onSaved() },
     onError: (e) => setError(e instanceof Error ? e.message : 'Could not save the scheme.'),
   })
 

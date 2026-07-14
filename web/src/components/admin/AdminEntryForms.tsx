@@ -14,6 +14,7 @@ import { SelectField } from '../../ui/SelectField'
 import { CheckboxField } from '../../ui/CheckboxField'
 import type { FieldSpec } from '../../ui/fieldSpec'
 import { recordTypeLabel } from '../../lib/recordTypeLabel'
+import { useNotify } from '../../ui/Notify'
 
 /**
  * Entry-form designer (D7). Body fields render INSIDE their field-group cards (the
@@ -120,9 +121,10 @@ function NewFormModal({ source, onClose, onCreated, onError }: {
 }) {
   const [name, setName] = useState(`${source.name} (copy)`)
   const [code, setCode] = useState('')   // CF-FIX5-T8: user-input customform_ id (auto-derived if blank)
+  const notify = useNotify()
   const create = useMutation({
     mutationFn: () => createEntryForm({ name: name.trim(), code: code.trim() || null, recordType: source.recordType, fields: source.fields }),
-    onSuccess: onCreated,
+    onSuccess: (d) => { notify('Form created', { kind: 'toast' }); onCreated(d) },
     onError: (e) => onError(e instanceof Error ? e.message : 'Could not create the form.'),
   })
   return (
@@ -141,6 +143,7 @@ function NewFormModal({ source, onClose, onCreated, onError }: {
 function FormDesigner({ form, onChanged, onDeleted, onBack }: {
   form: EntryFormDefDto; onChanged: () => void; onDeleted: () => void; onBack: () => void
 }) {
+  const notify = useNotify()
   const [name, setName] = useState(form.name)
   const [fields, setFields] = useState<EntryFormFieldDto[]>(form.fields)
   const [roles, setRoles] = useState<string[]>(form.roles)
@@ -178,7 +181,7 @@ function FormDesigner({ form, onChanged, onDeleted, onBack }: {
       await updateEntryForm(form.id, { name, recordType: form.recordType, fields: fields.map((f, i) => ({ ...f, sort: i })) })
       await assignEntryFormRoles(form.id, roles)
     },
-    onSuccess: () => { staged.current = { added: [], removed: new Set(), patched: new Map() }; nameEdited.current = false; rolesEdited.current = false; ok() },
+    onSuccess: () => { notify('Form saved', { kind: 'toast' }); staged.current = { added: [], removed: new Set(), patched: new Map() }; nameEdited.current = false; rolesEdited.current = false; ok() },
     onError: fail,
   })
   const toggleActive = useMutation({
