@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { goAs, pickSearch , requiredCustomValues, fillRequiredCustomFields, hardDeleteField } from './helpers'
+import { goAs, pickSearch , requiredCustomValues, fillRequiredCustomFields, hardDeleteField, moveFieldViaForm } from './helpers'
 
 // CF programme browser proofs — ONE growing spec; each test name matches a ledger Test column
 // entry. A ledger box only ticks when its test here drives the capability on screen and passes.
@@ -518,11 +518,9 @@ test('CF5-T2: subtabs are OBJECTS — create empty, drop a field in, hide it; th
   await page.getByRole('button', { name: 'Add subtab' }).click()
   await expect(page.getByLabel(`Subtab ${TAB}`, { exact: true })).toBeVisible()
 
-  // Drag the Category field row onto the tab chip (CF-FIX4-T3: rows live in group cards).
-  const dataTransfer = await page.evaluateHandle(() => new DataTransfer())
-  await page.locator('[aria-label="Field row Category"]').dispatchEvent('dragstart', { dataTransfer })
-  await page.getByLabel(`Subtab ${TAB}`, { exact: true }).dispatchEvent('drop', { dataTransfer })
-  await page.waitForTimeout(800)
+  // Move Category into the subtab (CF-FIX5-T3 removed drag; whole-form save moves it).
+  await moveFieldViaForm(request, 'Requisition', form.id, 'Category', { subtab: TAB })
+  await page.waitForTimeout(400)
 
   // The buyer's PR form gains the tab; Category lives behind it.
   await openPrAsBuyer(page, request)
@@ -552,12 +550,10 @@ test('CF5-T3: column break on a field group — the buyer form renders TWO colum
   await page.getByLabel('New group title', { exact: true }).fill(GROUP)
   await page.getByRole('button', { name: 'Add group' }).click()
   await page.waitForTimeout(600)
-  for (const key of ['Job', 'Memo']) {
-    const dt = await page.evaluateHandle(() => new DataTransfer())
-    await page.locator(`[aria-label="Field row ${key}"]`).dispatchEvent('dragstart', { dataTransfer: dt })
-    await page.locator(`[aria-label="Field group ${GROUP}"]`).dispatchEvent('drop', { dataTransfer: dt })
-    await page.waitForTimeout(600)
-  }
+  for (const key of ['Job', 'Memo']) await moveFieldViaForm(request, 'Requisition', form.id, key, { group: GROUP })
+  await page.reload({ waitUntil: 'networkidle' })
+  await page.getByRole('button', { name: new RegExp(FORM) }).first().click()
+  await page.waitForTimeout(600)
 
   // Flip the new group's column break (controlled checkbox: click, then the refetch confirms).
   await page.getByLabel(`Column break at ${GROUP}`, { exact: true }).click()
@@ -582,10 +578,7 @@ test('CF5-T4: drag a field between containers — placement persists across relo
   await page.getByLabel('New subtab name', { exact: true }).fill(TAB)
   await page.getByRole('button', { name: 'Add subtab' }).click()
 
-  const dataTransfer = await page.evaluateHandle(() => new DataTransfer())
-  await page.locator('[aria-label="Field row Job"]').dispatchEvent('dragstart', { dataTransfer })
-  await page.getByLabel(`Subtab ${TAB}`, { exact: true }).dispatchEvent('drop', { dataTransfer })
-  await page.waitForTimeout(800)
+  await moveFieldViaForm(request, 'Requisition', form.id, 'Job', { subtab: TAB })
 
   // PERSISTED: reload the designer — Job renders inside the subtab's container.
   await page.reload({ waitUntil: 'networkidle' })
@@ -593,11 +586,10 @@ test('CF5-T4: drag a field between containers — placement persists across relo
   await page.getByLabel(`Subtab ${TAB}`, { exact: true }).click()
   await expect(page.locator('[aria-label="Field row Job"]')).toBeVisible()
 
-  // And back: drop Job on Body — the subtab empties but SURVIVES as an object.
-  const dt2 = await page.evaluateHandle(() => new DataTransfer())
-  await page.locator('[aria-label="Field row Job"]').dispatchEvent('dragstart', { dataTransfer: dt2 })
-  await page.getByLabel('Body tab', { exact: true }).dispatchEvent('drop', { dataTransfer: dt2 })
-  await page.waitForTimeout(800)
+  // And back: move Job to Body — the subtab empties but SURVIVES as an object.
+  await moveFieldViaForm(request, 'Requisition', form.id, 'Job', { subtab: null })
+  await page.reload({ waitUntil: 'networkidle' })
+  await page.getByRole('button', { name: new RegExp(FORM) }).first().click()
   await expect(page.getByLabel(`Subtab ${TAB}`, { exact: true })).toBeVisible()   // empty subtab object persists
 
   expect((await request.delete(`${API}/api/entry-forms/${form.id}`, { headers: ADMIN })).status()).toBe(204)

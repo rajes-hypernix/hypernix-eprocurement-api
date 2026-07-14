@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { goAs, requiredCustomValues, pickSearch, hardDeleteField } from './helpers'
+import { goAs, requiredCustomValues, pickSearch, hardDeleteField, moveFieldViaForm } from './helpers'
 
 // CF-FIX-4 browser proofs. T1 Header invariant · T2 standard forms · T3 designer + L6
 // data-safety (the operator's hardest check: remove-from-form deletes placement ONLY).
@@ -36,11 +36,12 @@ test('CF-FIX4-T1+T3: designer — create group, drag a field from Header into it
   await page.getByRole('button', { name: 'Add group' }).click()
   await expect(page.getByLabelText ? page.getByLabel('Field group Logistics') : page.locator('[aria-label="Field group Logistics"]')).toBeVisible()
 
-  // Drag Department from Header into Logistics — the placement object moves (L1).
-  const dt = await page.evaluateHandle(() => new DataTransfer())
-  await page.dispatchEvent('[aria-label="Field row Department"]', 'dragstart', { dataTransfer: dt })
-  await page.dispatchEvent('[aria-label="Field group Logistics"]', 'drop', { dataTransfer: dt })
-  await page.waitForTimeout(800)
+  // Move Department from Header into Logistics — CF-FIX5-T3 removed drag; the placement
+  // object moves through the whole-form save (arrows proven separately). L1 unchanged.
+  await moveFieldViaForm(request, 'Requisition', form.id, 'Department', { group: 'Logistics' })
+  await page.reload({ waitUntil: 'networkidle' })
+  await page.getByRole('button', { name: new RegExp(`Fix4 Designer ${STAMP}`) }).click()
+  await page.waitForTimeout(600)
   await expect(page.locator('[aria-label="Field group Logistics"]')).toContainText('Department')
 
   // GroupId PERSISTED server-side (reload-proof, not a UI illusion).
@@ -54,10 +55,9 @@ test('CF-FIX4-T1+T3: designer — create group, drag a field from Header into it
   await page.getByLabel('New subtab name', { exact: true }).fill('Extras')
   await page.getByRole('button', { name: 'Add subtab' }).click()
   await page.waitForTimeout(600)
-  const dt2 = await page.evaluateHandle(() => new DataTransfer())
-  await page.dispatchEvent('[aria-label="Field row Memo"]', 'dragstart', { dataTransfer: dt2 })
-  await page.locator('button[aria-label="Subtab Extras"]').dispatchEvent('drop', { dataTransfer: dt2 })
-  await page.waitForTimeout(800)
+  await moveFieldViaForm(request, 'Requisition', form.id, 'Memo', { subtab: 'Extras' })
+  await page.reload({ waitUntil: 'networkidle' })
+  await page.getByRole('button', { name: new RegExp(`Fix4 Designer ${STAMP}`) }).click()
   await page.getByRole('button', { name: 'Subtab Extras' }).click()
   await expect(page.locator('[aria-label^="Field group"]').first()).toContainText('Memo')
 
@@ -126,7 +126,7 @@ test('CF-FIX4-T3/L6: remove-from-form is DATA-SAFE — the value survives on the
 })
 
 
-test('CF-FIX4-T3fix: labels not ids, searchable add-field, NO default control, arrows re-group, staged drag persists', async ({ page, request }) => {
+test('CF-FIX4-T3fix: labels not ids, searchable add-field, NO default control, arrows re-group a STAGED field cross-group', async ({ page, request }) => {
   const std = (await (await request.get(`${API}/api/entry-forms?recordType=Requisition`, { headers: ADMIN })).json())
     .find((f: { isSystem: boolean }) => f.isSystem)
   const form = await (await request.post(`${API}/api/entry-forms`, { headers: { ...ADMIN, ...JSON_H },
@@ -148,13 +148,13 @@ test('CF-FIX4-T3fix: labels not ids, searchable add-field, NO default control, a
   await pickSearch(page, 'Add field', 'Partner')
   await expect(page.locator('[aria-label="Field row custbody_partner"]')).toContainText('Partner')
 
-  // (4) drag the STAGED (unsaved) field into a new group — the exact case the operator hit.
+  // (4) move the STAGED (unsaved) field into a new group via the ARROW — the exact case the
+  //     operator hit (drag removed in CF-FIX5-T3; persistFields saves staged fields too).
+  //     Partner was appended to the bottom of Header, so one Move-down crosses into Partners.
   await page.getByLabel('New group title', { exact: true }).fill('Partners')
   await page.getByRole('button', { name: 'Add group' }).click()
   await page.waitForTimeout(600)
-  const dt = await page.evaluateHandle(() => new DataTransfer())
-  await page.dispatchEvent('[aria-label="Field row custbody_partner"]', 'dragstart', { dataTransfer: dt })
-  await page.dispatchEvent('[aria-label="Field group Partners"]', 'drop', { dataTransfer: dt })
+  await page.getByRole('button', { name: 'Move custbody_partner down' }).click()
   await page.waitForTimeout(1000)
   await expect(page.locator('[aria-label="Field group Partners"]')).toContainText('Partner')
   // …and it PERSISTED (no 'is not placed on this form' error, the placement row exists).
@@ -215,9 +215,9 @@ test('CF-FIX4-T4: the creation cascade — standard pre-selected, Header default
   await page.getByLabel('New group title', { exact: true }).fill('Cascade Landing')
   await page.getByRole('button', { name: 'Add group' }).click()
   await page.waitForTimeout(600)
-  const dt = await page.evaluateHandle(() => new DataTransfer())
-  await page.dispatchEvent(`[aria-label="Field row ${def.code}"]`, 'dragstart', { dataTransfer: dt })
-  await page.dispatchEvent('[aria-label="Field group Cascade Landing"]', 'drop', { dataTransfer: dt })
+  await moveFieldViaForm(request, 'Requisition', work.id, def.code, { group: 'Cascade Landing' })
+  await page.reload({ waitUntil: 'networkidle' })
+  await page.getByRole('button', { name: new RegExp(`Fix4 Cascade Form ${STAMP}`) }).click()
   await page.waitForTimeout(1000)
   state = (await (await request.get(`${API}/api/entry-forms?recordType=Requisition`, { headers: ADMIN })).json())
     .find((f: { id: string }) => f.id === work.id)

@@ -106,3 +106,22 @@ export async function hardDeleteField(
   const res = await request.delete(`http://localhost:5260/api/custom-fields/${def.id}`, { headers: H })
   expect(res.status(), `hard-delete ${def.code}`).toBe(expectStatus)
 }
+
+// CF-FIX5-T3: drag was REMOVED from the entry-form builder (arrows are the sole reorder
+// mechanism — proven in unit tests + a dedicated browser arrow proof). Older tests that
+// needed a field parked in a specific group/subtab drove it by dragging; they now set the
+// placement through the SAME whole-form save the app uses (a pure layout write).
+export async function moveFieldViaForm(
+  request: APIRequestContext, recordType: string, formId: string, fieldKey: string,
+  target: { group?: string; subtab?: string | null },
+) {
+  const H = { 'X-Demo-User': 'u_admin', 'Content-Type': 'application/json' }
+  const cur = (await (await request.get(`http://localhost:5260/api/entry-forms?recordType=${recordType}`, { headers: H })).json())
+    .find((f: { id: string }) => f.id === formId)
+  await request.put(`http://localhost:5260/api/entry-forms/${formId}`, { headers: H, data: {
+    name: cur.name, recordType,
+    fields: cur.fields.map((f: { fieldKey: string; fieldGroup: string; subtab: string | null }) => f.fieldKey === fieldKey
+      ? { ...f, fieldGroup: target.group ?? f.fieldGroup, subtab: target.subtab !== undefined ? target.subtab : f.subtab }
+      : f),
+  } })
+}

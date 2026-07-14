@@ -16,14 +16,14 @@ import type { FieldSpec } from '../../ui/fieldSpec'
 import { recordTypeLabel } from '../../lib/recordTypeLabel'
 
 /**
- * Entry-form designer (D7 → CF-FIX4-T3 redesign). Body fields render INSIDE their
- * field-group cards (the placement object made visible); dragging a field row onto
- * another group re-parents it — ONE surgical write to the SAME EntryFormField row the
- * creation cascade authors (L1). Groups and subtabs are managed on screen (Header is
- * pinned per L3 — the server enforces; the UI just doesn't offer the knife). The item
- * sublist is a FLAT column order (L4 — no groups on sublists). Field property edits
- * (display/required/default) stage locally and commit on Save form; STRUCTURE moves
- * (drag, group/subtab CRUD, sublist order) persist immediately.
+ * Entry-form designer (D7). Body fields render INSIDE their field-group cards (the
+ * placement object made visible). CF-FIX5-T3: reorder is by up/down ARROWS only (drag
+ * was removed — its drop position was architecturally uncaptured; arrows match NetSuite).
+ * Within a group the arrow swaps neighbours; at a group edge it crosses into the adjacent
+ * group of the same container (placement follows position, L1). Groups and subtabs are
+ * managed on screen (Header is pinned per L3 — the server enforces). The item sublist is
+ * a FLAT column order (L4). Property edits stage locally and commit on Save form;
+ * structure moves (arrows, group/subtab CRUD, sublist order) persist immediately.
  */
 
 const ROLES = ['Buyer', 'Approver', 'TechEvaluator', 'CommEvaluator', 'Admin']
@@ -95,7 +95,7 @@ function FormDesigner({ form, onChanged, onDeleted }: {
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<string | null>(null)   // null = Body; else subtab id
   // STAGED field edits (props, adds, removes) must SURVIVE the refetches that immediate
-  // structure writes (drag, group/subtab CRUD) trigger — reconcile on every form refresh.
+  // structure writes (arrows, group/subtab CRUD) trigger — reconcile on every form refresh.
   const staged = useRef<{ added: EntryFormFieldDto[]; removed: Set<string>; patched: Map<string, Partial<EntryFormFieldDto>> }>(
     { added: [], removed: new Set(), patched: new Map() })
   const nameEdited = useRef(false)
@@ -162,7 +162,10 @@ function FormDesigner({ form, onChanged, onDeleted }: {
     }).then(() => { staged.current = { added: [], removed: new Set(), patched: new Map() }; ok() }, fail)
   }
   const groupContainer = (g: EntryFormGroupDto) => subtabs.find((s) => s.id === g.subtabId)?.name ?? null
-  /** Reposition `key` to the END of group `g` (array order = global Sort on save). */
+  /** Reposition `key` to the END of group `g` (array order = global Sort on save). Used by
+   *  the arrows' cross-group step — drop-drag was REMOVED in CF-FIX5-T3 (its drop position
+   *  was architecturally uncaptured and never fixed; the arrows are the sole reorder path,
+   *  matching NetSuite's arrow buttons). */
   const moveIntoGroup = (key: string, g: EntryFormGroupDto) => {
     const mine = fields.find((f) => f.fieldKey === key)
     if (!mine) return
@@ -175,20 +178,9 @@ function FormDesigner({ form, onChanged, onDeleted }: {
     rest.splice(lastIdx >= 0 ? lastIdx + 1 : rest.length, 0, moved)
     persistFields(rest)
   }
-  const dropOnGroup = (g: EntryFormGroupDto) => (e: React.DragEvent) => {
-    e.preventDefault()
-    const key = e.dataTransfer.getData('text/field-key')
-    if (key) moveIntoGroup(key, g)
-  }
-  // Dropping on a subtab chip: land in that container (Header-titled group via the seam).
-  const dropOnSubtab = (subtabName: string | null) => (e: React.DragEvent) => {
-    e.preventDefault()
-    const key = e.dataTransfer.getData('text/field-key')
-    if (!key) return
-    persistFields(fields.map((f) => (f.fieldKey === key ? { ...f, subtab: subtabName, groupId: null } : f)))
-  }
-  // T3-FIX(5): the always-works arrows. Within a group: swap with the neighbour. At a group
-  // edge: cross into the adjacent group of the SAME container (placement follows position).
+  // CF-FIX5-T3: the always-works arrows are the SOLE reorder mechanism. Within a group: swap
+  // with the neighbour. At a group edge: cross into the adjacent group of the SAME container
+  // (placement follows position — the operator's cross-group requirement).
   const arrowMove = (key: string, dir: -1 | 1) => {
     const mine = fields.find((f) => f.fieldKey === key)
     if (!mine) return
@@ -247,14 +239,12 @@ function FormDesigner({ form, onChanged, onDeleted }: {
       {error && <Notice tone="error">{error}</Notice>}
       {!ro && <TextField spec={spec('ef-name', 'Form name', 'text')} value={name} onChange={(v) => { nameEdited.current = true; setName(String(v ?? '')) }} />}
 
-      {/* ---- Subtab bar: Body + each subtab; chips are drop targets and manage-verbs ---- */}
+      {/* ---- Subtab bar: Body + each subtab (container tabs + manage-verbs) ---- */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 10 }}>
         <button type="button" className={`btn btn-sm ${activeTab === null ? 'btn-pri' : 'btn-out'}`}
-          onDragOver={(e) => e.preventDefault()} onDrop={dropOnSubtab(null)}
           onClick={() => setActiveTab(null)} aria-label="Body tab">Body</button>
         {subtabs.map((s) => (
           <button key={s.id} type="button" className={`btn btn-sm ${activeTab === s.id ? 'btn-pri' : 'btn-out'}`}
-            onDragOver={(e) => e.preventDefault()} onDrop={dropOnSubtab(s.name)}
             onClick={() => setActiveTab(s.id)} aria-label={`Subtab ${s.name}`}>
             {s.name}{s.hidden ? ' (hidden)' : ''}
           </button>
@@ -273,12 +263,12 @@ function FormDesigner({ form, onChanged, onDeleted }: {
           <GroupCard key={g.id} form={form} group={g} ro={ro}
             fields={fields.filter((f) => f.groupId === g.id
               // A STAGED (not yet saved) field has no groupId — place it by its string
-              // placement so it is visible and draggable before the first save.
+              // placement so it is visible before the first save.
               || (!f.groupId
                 && (f.subtab ?? null) === (subtabs.find((s) => s.id === g.subtabId)?.name ?? null)
                 && (f.fieldGroup || 'Header') === g.title))}
             labelFor={(key) => registry.find((r) => r.fieldKey === key)?.label ?? key}
-            onDrop={dropOnGroup(g)} onFieldChange={setField}
+            onFieldChange={setField}
             onRemoveField={removeField}
             onArrow={arrowMove} onGroupArrow={(dir) => groupArrow(g, dir)}
             onOk={ok} onFail={fail} />
@@ -293,7 +283,7 @@ function FormDesigner({ form, onChanged, onDeleted }: {
           <SelectField
             spec={{
               key: 'ef-add', label: 'Add field', dataType: 'select', searchable: true,
-              help: 'From the registry — native, custom and segment kinds. Lands in Header; drag it to its group.',
+              help: 'From the registry — native, custom and segment kinds. Lands in Header; use the arrows to move it.',
               options: {
                 kind: 'static',
                 options: [
@@ -316,7 +306,7 @@ function FormDesigner({ form, onChanged, onDeleted }: {
               setFields((fs) => [...fs, added])
             }}
           />
-          <p className="hint">Property edits and added/removed fields commit on Save form; drags and group/subtab changes save immediately.</p>
+          <p className="hint">Property edits and added/removed fields commit on Save form; group/subtab changes save immediately.</p>
         </div>
       )}
 
@@ -347,11 +337,10 @@ function FormDesigner({ form, onChanged, onDeleted }: {
   )
 }
 
-function GroupCard({ form, group, ro, fields, labelFor, onDrop, onFieldChange, onRemoveField, onArrow, onGroupArrow, onOk, onFail }: {
+function GroupCard({ form, group, ro, fields, labelFor, onFieldChange, onRemoveField, onArrow, onGroupArrow, onOk, onFail }: {
   form: EntryFormDefDto; group: EntryFormGroupDto; ro: boolean
   fields: EntryFormFieldDto[]
   labelFor: (key: string) => string
-  onDrop: (e: React.DragEvent) => void
   onFieldChange: (key: string, patch: Partial<EntryFormFieldDto>) => void
   onRemoveField: (key: string) => void
   onArrow: (key: string, dir: -1 | 1) => void
@@ -363,9 +352,7 @@ function GroupCard({ form, group, ro, fields, labelFor, onDrop, onFieldChange, o
   const renameBlocked = ro   // Header rename allowed on non-system forms (L3); system forms are wholly read-only
 
   return (
-    <div className="card" style={{ padding: 12 }} onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }}
-      onDragEnter={(e) => e.preventDefault()} onDrop={onDrop}
-      aria-label={`Field group ${group.title}`}>
+    <div className="card" style={{ padding: 12 }} aria-label={`Field group ${group.title}`}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
         {renameBlocked
           ? <b>{group.title}</b>
@@ -399,17 +386,13 @@ function GroupCard({ form, group, ro, fields, labelFor, onDrop, onFieldChange, o
           </>
         )}
       </div>
-      {fields.length === 0 && <p className="hint" style={{ margin: 4 }}>Empty — drop a field here.</p>}
+      {fields.length === 0 && <p className="hint" style={{ margin: 4 }}>Empty group.</p>}
       {fields.length > 0 && (
         <table>
           <thead><tr><th>Field</th><th>Display</th><th>Required</th><th /></tr></thead>
           <tbody>
             {fields.map((f) => (
-              <tr key={f.fieldKey}
-                draggable={!ro}
-                onDragStart={(e) => { e.dataTransfer.setData('text/field-key', f.fieldKey); e.dataTransfer.effectAllowed = 'move' }}
-                style={!ro ? { cursor: 'grab' } : undefined}
-                aria-label={`Field row ${f.fieldKey}`}>
+              <tr key={f.fieldKey} aria-label={`Field row ${f.fieldKey}`}>
                 {/* T3-FIX(2): the NAME is the display; the internal id is secondary/muted. */}
                 <td>
                   <span style={{ fontWeight: 600 }}>{f.label ?? labelFor(f.fieldKey)}</span>

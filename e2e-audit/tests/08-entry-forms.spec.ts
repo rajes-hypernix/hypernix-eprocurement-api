@@ -61,16 +61,13 @@ test('entry-forms gate: standard → admin composes role form → buyer gets it;
   await page.getByRole('button', { name: 'Remove Job' }).click()                       // hidden by removal
   await page.getByLabel('Category display').selectOption('Hidden')                     // hidden by display type
   await page.getByLabel('Department required at submit').check()
-  // CF-FIX4-T3: the add-field picker is the standardized SearchSelectField, and subtab
-  // placement is create-the-object + drag (no free-text cells).
+  // CF-FIX4-T3: the add-field picker is the standardized SearchSelectField. CF-FIX5-T3
+  // removed drag, so the custom field's subtab placement is applied via the whole-form save
+  // below (folded into the same follow-up PUT that sets the RequiredDate default).
   await pickSearch(page, 'Add field', CF_LABEL)
   await page.getByLabel('New subtab name', { exact: true }).fill('Additional')
   await page.getByRole('button', { name: 'Add subtab' }).click()
   await page.waitForTimeout(600)
-  const gateDt = await page.evaluateHandle(() => new DataTransfer())
-  await page.locator(`[aria-label="Field row ${CF_CODE}"]`).dispatchEvent('dragstart', { dataTransfer: gateDt })
-  await page.getByLabel('Subtab Additional', { exact: true }).dispatchEvent('drop', { dataTransfer: gateDt })
-  await page.waitForTimeout(800)
   await page.getByLabel('Buyer', { exact: true }).check()
   await shot(page, 'D7-gate-2-compose')
   await page.getByRole('button', { name: 'Save form' }).click()
@@ -82,7 +79,10 @@ test('entry-forms gate: standard → admin composes role form → buyer gets it;
     .find((x: { name: string }) => x.name === FORM_NAME)
   await request.put(`${API}/api/entry-forms/${composed.id}`, { headers: { ...ADMIN, ...JSON_H },
     data: { name: FORM_NAME, recordType: 'Requisition',
-      fields: composed.fields.map((x: { fieldKey: string }) => x.fieldKey === 'RequiredDate' ? { ...x, defaultValue: '@today+7d' } : x) } })
+      fields: composed.fields.map((x: { fieldKey: string }) =>
+        x.fieldKey === 'RequiredDate' ? { ...x, defaultValue: '@today+7d' }
+        : x.fieldKey === CF_CODE ? { ...x, subtab: 'Additional' }
+        : x) } })
 
   // ---- 3. AFTER: the buyer reloads and gets the composed form automatically ----
   await goAs(page, 'u_faridah', 'reqs')

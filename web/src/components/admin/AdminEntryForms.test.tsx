@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { screen, fireEvent, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithQuery } from '../../test/utils'
 import { AdminEntryForms } from './AdminEntryForms'
@@ -40,18 +40,23 @@ describe('AdminEntryForms — CF-FIX4-T3 designer (groups as cards, L1/L3/L4)', 
     expect(screen.getByRole('button', { name: 'Delete group Logistics' })).toBeInTheDocument()
   })
 
-  it('dragging a field onto another group re-parents THE placement (L1) — staged or persisted alike', async () => {
-    const save = vi.spyOn(client, 'updateEntryForm').mockResolvedValue(FORM)
+  // CF-FIX5-T3: drag is REMOVED — the field rows carry no draggable affordance at all.
+  it('field rows are NOT draggable (drag removed; arrows are the sole reorder mechanism)', async () => {
     renderWithQuery(<AdminEntryForms />)
     const row = await screen.findByLabelText('Field row Department')
-    const target = screen.getByLabelText('Field group Logistics')
+    expect(row).not.toHaveAttribute('draggable', 'true')
+  })
 
-    const dt = { getData: vi.fn(() => 'Department'), setData: vi.fn() }
-    fireEvent.dragStart(row, { dataTransfer: dt })
-    fireEvent.drop(target, { dataTransfer: dt })
+  it('within a group, the UP arrow swaps a field with its neighbour (order changes, group unchanged)', async () => {
+    const save = vi.spyOn(client, 'updateEntryForm').mockResolvedValue(FORM)
+    renderWithQuery(<AdminEntryForms />)
+    await screen.findByLabelText('Field row custbody_partner')
+    // Header holds Department (0) then Partner (1); move Partner UP → they swap, both stay Header.
+    await userEvent.click(screen.getByRole('button', { name: 'Move custbody_partner up' }))
     await waitFor(() => expect(save).toHaveBeenCalled())
-    const sent = save.mock.calls[0][1].fields.find((f: client.EntryFormFieldDto) => f.fieldKey === 'Department')
-    expect(sent.fieldGroup).toBe('Logistics')   // the string seam re-points the SAME EntryFormField row
+    const sent: client.EntryFormFieldDto[] = save.mock.calls[0][1].fields
+    const headerFields = sent.filter((f) => f.fieldGroup === 'Header').map((f) => f.fieldKey)
+    expect(headerFields).toEqual(['custbody_partner', 'Department'])   // swapped within Header
   })
 
   // T3-FIX(2)+(3): labels-not-ids; the Default control is gone.
@@ -64,8 +69,9 @@ describe('AdminEntryForms — CF-FIX4-T3 designer (groups as cards, L1/L3/L4)', 
     expect(screen.queryByText('Default')).toBeNull()
   })
 
-  // T3-FIX(5): the arrows re-group when crossing a boundary.
-  it('move-down past the last row of Header re-groups the field into the next group', async () => {
+  // CF-FIX5-T3 (operator's explicit ask): arrows handle CROSS-group movement —
+  // the BOTTOM field of one group moves DOWN into the next group.
+  it('cross-group: move-down at the bottom of Header re-groups the field into the next group', async () => {
     const save = vi.spyOn(client, 'updateEntryForm').mockResolvedValue(FORM)
     renderWithQuery(<AdminEntryForms />)
     await screen.findByLabelText('Field row custbody_partner')

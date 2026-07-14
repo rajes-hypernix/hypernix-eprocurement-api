@@ -92,3 +92,32 @@ test('CF-FIX5-T1/OD-D7-2: a chosen form omitting a role-required field is STILL 
   await request.post(`${API}/api/requisitions/${draftId}/cancel`, { headers: { ...BUYER, ...JSON_H }, data: { reason: 'fix5 od-d7-2 cleanup' } })
   expect((await request.delete(`${API}/api/entry-forms/${strict.id}`, { headers: ADMIN })).status()).toBe(204)
 })
+
+test('CF-FIX5-T3: drag is GONE (rows not draggable) and the ARROWS move a field CROSS-group', async ({ page, request }) => {
+  // A non-system form to design on (copy the standard PR form).
+  const std = await stdReqForm(request)
+  const form = await (await request.post(`${API}/api/entry-forms`, { headers: { ...ADMIN, ...JSON_H },
+    data: { name: `Fix5 T3 Form ${STAMP}`, recordType: 'Requisition', fields: std.fields } })).json()
+
+  await goAs(page, 'u_admin', 'entryforms')
+  await page.waitForTimeout(1200)
+  await page.getByRole('button', { name: new RegExp(`Fix5 T3 Form ${STAMP}`) }).click()
+
+  // Drag removed: the field rows carry no draggable affordance.
+  expect(await page.locator('[aria-label="Field row Requestor"]').getAttribute('draggable')).not.toBe('true')
+
+  // Add a second group, then use the DOWN arrow on the BOTTOM field of Header (Memo) to
+  // CROSS the group boundary into the new group — the operator's exact requirement.
+  await page.getByLabel('New group title', { exact: true }).fill('Landing')
+  await page.getByRole('button', { name: 'Add group' }).click()
+  await page.waitForTimeout(600)
+  await page.getByRole('button', { name: 'Move Memo down' }).click()
+  await page.waitForTimeout(900)
+
+  const state = (await (await request.get(`${API}/api/entry-forms?recordType=Requisition`, { headers: ADMIN })).json())
+    .find((f: { id: string }) => f.id === form.id)
+  const landing = state.groups.find((g: { title: string }) => g.title === 'Landing')
+  expect(state.fields.find((f: { fieldKey: string }) => f.fieldKey === 'Memo').groupId).toBe(landing.id)
+
+  expect((await request.delete(`${API}/api/entry-forms/${form.id}`, { headers: ADMIN })).status()).toBe(204)
+})
