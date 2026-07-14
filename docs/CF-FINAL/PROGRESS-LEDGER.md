@@ -80,10 +80,10 @@ Baselines (hold-or-raise every commit): **dotnet 541 · vitest 251 · e2e 98**. 
 - [x] Browser test: mark a custom form preferred for Buyer → a Buyer's New PR defaults to it · Test:CFF-T8
 
 ### T9 — Dummy-data cleanup (make the demo look real) — `CFF-T9:`
-- [ ] Delete the bulk of dummy/testing custom fields, lists, segments (the `FIX4/FIX5/BUDGET REF nnn/Site Ref nnn/Partner N` litter) · Build:___ · Test:___
-- [ ] Leave a FEW that sound like REAL procurement fields/lists/segments (e.g. field "Cost Centre", list "Payment Terms", segment "Project") — rename/curate so a handover viewer sees plausible config, not test noise · Build:___ · Test:___
-- [ ] Use the governed lifecycle (inactivate/delete/purge) where records reference them — never orphan; snapshot purges to audit · Build:___ · Test:___
-- [ ] Browser test / check: the Custom Fields / Lists / Segments screens show a clean, realistic set · Test:___
+- [x] Delete the bulk of dummy/testing custom fields, lists, segments (the `FIX4/FIX5/BUDGET REF nnn/Site Ref nnn/Partner N` litter) · Build:c6d36d7 · Test:CFF-T9 (~65 fields + 9 lists + 44 segments + 34 views deleted)
+- [x] Leave a FEW that sound like REAL procurement fields/lists/segments (e.g. field "Cost Centre", list "Payment Terms", segment "Project") — rename/curate so a handover viewer sees plausible config, not test noise · Build:c6d36d7 · Test:CFF-T9 (Cost Centre, Payment terms, Project Code Grouped + system dims)
+- [x] Use the governed lifecycle (inactivate/delete/purge) where records reference them — never orphan; snapshot purges to audit · Build:c6d36d7 · Test:CFF-T9 (zero-value deleted; live-value fields/segments INACTIVATED per AD-7 — data safety, never orphaned)
+- [x] Browser test / check: the Custom Fields / Lists / Segments screens show a clean, realistic set · Test:CFF-T9
 
 **SLICE 3 GATE** — [ ] all T8-T9 ticked or blocked; suites green; tag `v2.3-final`.
 
