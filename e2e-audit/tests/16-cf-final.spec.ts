@@ -267,3 +267,37 @@ test('CFF-T6: a loading list shows a skeleton (not blank), and rows carry a hove
   // Buttons carry a transition (hover-darken + press-scale).
   expect(await page.locator('.btn').first().evaluate((el) => getComputedStyle(el).transitionDuration)).not.toBe('0s')
 })
+
+// ══ SLICE 3 · PREFERRED FORMS + CLEANUP ══════════════════════════════════════
+
+// ── T8 — preferred form by role / all roles + defaulting ─────────────────────
+test('CFF-T8: a form set preferred for a role defaults the transaction picker; "All roles" toggles the set', async ({ page, request }) => {
+  const std = await stdReqForm(request)
+  const form = await (await request.post(`${API}/api/entry-forms`, { headers: { ...ADMIN, ...JSON_H },
+    data: { name: `CFF T8 Form ${STAMP}`, recordType: 'Requisition', fields: [...std.fields] } })).json()
+
+  // Expose + persist the preferred setting on screen: mark the form preferred for Buyer.
+  await goAs(page, 'u_admin', 'entryforms')
+  await page.waitForTimeout(1000)
+  await page.getByRole('button', { name: `Open CFF T8 Form ${STAMP}`, exact: true }).click()
+  await page.getByLabel('Buyer', { exact: true }).check()
+  await page.getByRole('button', { name: 'Save form' }).click()
+  await page.waitForTimeout(1000)
+
+  // As a Buyer, a New PR DEFAULTS to that preferred form — no manual pick.
+  await goAs(page, 'u_faridah', 'reqs')
+  await page.waitForTimeout(1000)
+  await page.getByRole('button', { name: /Create PR/ }).click()
+  await page.waitForTimeout(1200)
+  await expect(page.getByRole('button', { name: 'Entry form' })).toContainText(`CFF T8 Form ${STAMP}`)
+
+  // "All roles" convenience selects the whole set.
+  await goAs(page, 'u_admin', 'entryforms')
+  await page.waitForTimeout(1000)
+  await page.getByRole('button', { name: `Open CFF T8 Form ${STAMP}`, exact: true }).click()
+  await page.getByLabel('All roles', { exact: true }).check()
+  for (const r of ['Buyer', 'Approver', 'Admin']) await expect(page.getByLabel(r, { exact: true })).toBeChecked()
+
+  // cleanup (delete the form → Buyer falls back to Standard)
+  await request.delete(`${API}/api/entry-forms/${form.id}`, { headers: ADMIN })
+})

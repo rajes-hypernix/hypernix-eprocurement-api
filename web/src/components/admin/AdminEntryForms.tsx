@@ -383,12 +383,18 @@ function FormDesigner({ form, onChanged, onDeleted, onBack }: {
 
       <h4 style={{ marginTop: 18 }}>Preferred for roles</h4>
       {!ro && (
-        <div className="grid g3">
-          {ROLES.map((r) => (
-            <CheckboxField key={r} spec={spec(`ef-role-${r}`, r, 'boolean')} value={roles.includes(r)}
-              onChange={(v) => { rolesEdited.current = true; setRoles((cur) => (v === true ? [...cur, r] : cur.filter((x) => x !== r))) }} />
-          ))}
-        </div>
+        <>
+          {/* CFF-T8: "All roles" — a form preferred for everyone (defaults the transaction picker
+              for every role). Toggles the whole set; the resolver's role precedence is unchanged. */}
+          <CheckboxField spec={spec('ef-role-all', 'All roles', 'boolean')} value={ROLES.every((r) => roles.includes(r))}
+            onChange={(v) => { rolesEdited.current = true; setRoles(v === true ? [...ROLES] : []) }} />
+          <div className="grid g3" style={{ marginTop: 6 }}>
+            {ROLES.map((r) => (
+              <CheckboxField key={r} spec={spec(`ef-role-${r}`, r, 'boolean')} value={roles.includes(r)}
+                onChange={(v) => { rolesEdited.current = true; setRoles((cur) => (v === true ? [...cur, r] : cur.filter((x) => x !== r))) }} />
+            ))}
+          </div>
+        </>
       )}
     </div>
   )
