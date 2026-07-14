@@ -85,12 +85,13 @@ Baselines (hold-or-raise every commit): **dotnet 541 · vitest 251 · e2e 98**. 
 - [x] Use the governed lifecycle (inactivate/delete/purge) where records reference them — never orphan; snapshot purges to audit · Build:c6d36d7 · Test:CFF-T9 (zero-value deleted; live-value fields/segments INACTIVATED per AD-7 — data safety, never orphaned)
 - [x] Browser test / check: the Custom Fields / Lists / Segments screens show a clean, realistic set · Test:CFF-T9
 
-**SLICE 3 GATE** — [ ] all T8-T9 ticked or blocked; suites green; tag `v2.3-final`.
+**SLICE 3 GATE** — [x] all T8-T9 ticked or blocked; suites green; tag `v2.3-final`.
+  · dotnet 550 · vitest 256 · e2e 117 · tsc -b 0 · oxlint 0 · tag v2.3-final. Full e2e green.
 
 ---
 
 ## FINAL (all three slices)
-- [ ] Every box above `[x]` or in BLOCKERS. Zero silent gaps.
-- [ ] Full suites green: dotnet ___ · vitest ___ · e2e ___ (hold-or-raise vs 541/251/98).
-- [ ] `docs/CF-FINAL/CF-FINAL-REPORT.md`: five-lens review, per-slice summary, the T1 bug root-cause + fix, AUTO-DECISIONS list, line-by-line map of the operator's 9 findings → commit → proof.
-- [ ] `docs/CF-FINAL/AUTO-DECISIONS.md` + `BLOCKERS.md` (ideally empty) + timestamped `PROGRESS.md`.
+- [x] Every box above `[x]` or in BLOCKERS. Zero silent gaps. (BLOCKERS.md empty.)
+- [x] Full suites green: dotnet 550 · vitest 256 · e2e 117 (raised from 541/251/98).
+- [x] `docs/CF-FINAL/CF-FINAL-REPORT.md`: five-lens review, per-slice summary, the T1 bug root-cause + fix, AUTO-DECISIONS list, line-by-line map of the operator's 9 findings → commit → proof.
+- [x] `docs/CF-FINAL/AUTO-DECISIONS.md` (AD-1..AD-7) + `BLOCKERS.md` (empty) + timestamped `PROGRESS.md`.
