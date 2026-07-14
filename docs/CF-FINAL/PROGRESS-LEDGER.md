@@ -75,9 +75,9 @@ Baselines (hold-or-raise every commit): **dotnet 541 · vitest 251 · e2e 98**. 
 ## SLICE 3 — PREFERRED FORMS + DATA CLEANUP
 
 ### T8 — Preferred form by role / all roles, defaulting — `CFF-T8:`
-- [ ] A form can be set "preferred" for specific roles OR all roles (the resolver already does role precedence — expose the setting + persist it) · Build:___ · Test:___
-- [ ] The transaction form-picker DEFAULTS to the role's preferred form (falling back to Standard when none) · Build:___ · Test:___
-- [ ] Browser test: mark a custom form preferred for Buyer → a Buyer's New PR defaults to it · Test:___
+- [x] A form can be set "preferred" for specific roles OR all roles (the resolver already does role precedence — expose the setting + persist it) · Build:3d07cbc · Test:CFF-T8 ("All roles" checkbox + per-role; persisted via EntryFormRoleMaps)
+- [x] The transaction form-picker DEFAULTS to the role's preferred form (falling back to Standard when none) · Build:3d07cbc · Test:CFF-T8 (resolver+picker already do this; proven end-to-end)
+- [x] Browser test: mark a custom form preferred for Buyer → a Buyer's New PR defaults to it · Test:CFF-T8
 
 ### T9 — Dummy-data cleanup (make the demo look real) — `CFF-T9:`
 - [ ] Delete the bulk of dummy/testing custom fields, lists, segments (the `FIX4/FIX5/BUDGET REF nnn/Site Ref nnn/Partner N` litter) · Build:___ · Test:___
