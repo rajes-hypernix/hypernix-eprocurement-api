@@ -262,6 +262,47 @@ test('CF-FIX5-T4: sublist is a VERTICAL list (top = leftmost), reorders, and add
   await hardDeleteField(request, lineDef)
 })
 
+test('CF-FIX5-T5: instructional/help prose is gone from Entry Forms, the PR picker and Segments (controls stay)', async ({ page, request }) => {
+  const std = await stdReqForm(request)
+  const form = await (await request.post(`${API}/api/entry-forms`, { headers: { ...ADMIN, ...JSON_H },
+    data: { name: `Fix5 T5 Form ${STAMP}`, recordType: 'Requisition', fields: std.fields } })).json()
+
+  // Entry Forms builder — the CONTROLS render, but no rulings-as-subtext accompany them.
+  await goAs(page, 'u_admin', 'entryforms')
+  await page.waitForTimeout(1200)
+  await page.getByRole('button', { name: `Open Fix5 T5 Form ${STAMP}`, exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Save form' })).toBeVisible()          // control stays
+  for (const gone of [
+    /Resolution follows a fixed global role precedence/i,
+    /commit on Save form/i,
+    /is the fallback for every role/i,
+    /From the registry — native, custom/i,
+  ]) await expect(page.getByText(gone)).toHaveCount(0)
+
+  // The PR form picker is the first control — no helper sentence hangs off it.
+  await goAs(page, 'u_faridah', 'reqs')
+  await page.waitForTimeout(1200)
+  await page.getByRole('button', { name: /Create PR/ }).click()
+  await page.waitForTimeout(1000)
+  await expect(page.getByRole('button', { name: 'Entry form', exact: true })).toBeVisible()
+
+  // Segments — no concept subtitle, no application-refusal ruling, no immutability note.
+  await goAs(page, 'u_admin', 'segments')
+  await page.waitForTimeout(1200)
+  for (const gone of [
+    /Reporting dimensions — define once/i,
+    /Removing an application is refused/i,
+    / is immutable/i,
+    /projected one-way/i,
+  ]) await expect(page.getByText(gone)).toHaveCount(0)
+  // The create modal keeps clean labels only — no parenthetical explanations.
+  await page.getByRole('button', { name: 'New segment' }).click()
+  await expect(page.getByLabel('Hierarchical values', { exact: true })).toBeVisible()
+  await expect(page.getByText(/parent stored|enforced at assignment-save/i)).toHaveCount(0)
+
+  expect((await request.delete(`${API}/api/entry-forms/${form.id}`, { headers: ADMIN })).status()).toBe(204)
+})
+
 test('CF-FIX5-T6: Entry Forms is a LIST → full-page builder; the Back guard uses REAL dirty state', async ({ page, request }) => {
   const std = await stdReqForm(request)
   const form = await (await request.post(`${API}/api/entry-forms`, { headers: { ...ADMIN, ...JSON_H },

@@ -324,8 +324,8 @@ test('CF-FIX4-T7: header apply runs the form+group cascade; the segment lands on
   await page.getByRole('button', { name: new RegExp(NAME) }).click()
 
   // HEADER apply → the cascade dialog: standard form pre-selected, group defaults Header.
+  // (CF-FIX5-T5 removed the explanatory help prose; the pre-selection shows in the picker itself.)
   await page.getByRole('button', { name: `Apply ${NAME} to Requisition header`, exact: true }).click()
-  await expect(page.getByText(/the standard form is pre-selected/i)).toBeVisible()
   const formPicker = page.getByRole('button', { name: 'Requisition — form(s)' })
   await expect(formPicker).toContainText('Standard PR Form')
   await page.getByRole('button', { name: 'Apply segment' }).click()

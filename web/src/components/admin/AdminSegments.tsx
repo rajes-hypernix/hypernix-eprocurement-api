@@ -47,7 +47,6 @@ export function AdminSegments() {
   return (
     <SetupPage
       title="Segments"
-      subtitle="Reporting dimensions — define once, apply to record types, slice any view or KPI by them."
       primaryAction={<Button variant="primary" size="sm" icon="plus" onClick={() => setCreating(true)}>New segment</Button>}
       railItems={defs.map((d) => ({
         key: d.id, label: d.name,
@@ -114,12 +113,6 @@ function SegmentDetail({ def, onChanged }: { def: SegmentDefDto; onChanged: () =
             </>
           )}
       </div>
-      {def.isSystem && (
-        <p className="hint">
-          Values and assignments are projected one-way from requisition entry — edit the PR,
-          not the segment. Converging the PR onto user-defined segments is a recorded backlog decision.
-        </p>
-      )}
       {error && <Notice tone="error">{error}</Notice>}
 
       <h4>Values ({def.values.length})</h4>
@@ -142,7 +135,7 @@ function SegmentDetail({ def, onChanged }: { def: SegmentDefDto; onChanged: () =
               </td>
             </tr>
           ))}
-          {def.values.length === 0 && <tr><td colSpan={def.hasHierarchy ? 5 : 4} className="hint">No values yet — add the first dimension key.</td></tr>}
+          {def.values.length === 0 && <tr><td colSpan={def.hasHierarchy ? 5 : 4} className="hint">No values yet.</td></tr>}
         </tbody>
       </table>
       {!def.isSystem && <StagedValues def={def} onChanged={onChanged} onError={setError} />}
@@ -180,10 +173,6 @@ function SegmentDetail({ def, onChanged }: { def: SegmentDefDto; onChanged: () =
           })}
         </tbody>
       </table>
-      <p className="hint" style={{ marginTop: 10 }}>
-        Removing an application is refused while assignments exist — dimension keys are never
-        silently dropped. Value codes derive from the label the same way sourcing codes do.
-      </p>
 
       {editing && (
         <DefModal def={def} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); onChanged() }} />
@@ -260,10 +249,9 @@ function DefModal({ def, onClose, onSaved }: {
         <CodeField spec={{ key: 'seg-id', label: 'Internal ID', dataType: 'code', affix: 'custseg_', placeholder: 'e.g. region' }}
           value={code} onChange={setCode} />
       )}
-      {def && <p className="hint">Internal ID <span className="mono">{def.code}</span> is immutable.</p>}
-      <CheckboxField spec={spec('seg-hier', 'Hierarchical values (parent stored; rollup reporting arrives gate-driven)', 'boolean')}
+      <CheckboxField spec={spec('seg-hier', 'Hierarchical values', 'boolean')}
         value={hasHierarchy} onChange={(v) => setHasHierarchy(v === true)} />
-      <CheckboxField spec={spec('seg-req', 'Required (enforced at assignment-save)', 'boolean')}
+      <CheckboxField spec={spec('seg-req', 'Required', 'boolean')}
         value={required} onChange={(v) => setRequired(v === true)} />
       {error && <Notice tone="error">{error}</Notice>}
     </Modal>
@@ -297,12 +285,11 @@ function ApplyCascadeModal({ def, recordType, onClose, onApply }: {
           ariaLabel="Apply segment">Apply</Button>
       </>}>
       {forms.length === 0
-        ? <p className="hint">{recordType} has no entry forms yet — the segment applies without a form placement.</p>
+        ? <p className="hint">{recordType} has no entry forms yet.</p>
         : (
           <>
             <SelectField
               spec={{ key: 'seg-apply-forms', label: `${recordType} — form(s)`, dataType: 'multiSelect', searchable: true,
-                help: 'The segment appears on these forms — the standard form is pre-selected; the group defaults to Header.',
                 options: { kind: 'static', options: forms.map((f) => ({ code: f.id, label: f.name })) } }}
               value={selected.join('|')}
               onChange={(v) => setChosen(String(v ?? ''))} />
@@ -375,7 +362,7 @@ function StagedValues({ def, onChanged, onError }: {
         </table>
       )}
       <div className="grid g3" style={{ marginTop: 8 }}>
-        <TextField spec={{ key: 'segv-label', label: 'Label', dataType: 'text', help: 'The dimension CODE derives from it, like every sourcing code.' }}
+        <TextField spec={{ key: 'segv-label', label: 'Label', dataType: 'text' }}
           value={label} onChange={(v) => setLabel(String(v ?? ''))} />
         {def.hasHierarchy && (def.values.length > 0 || staged.length > 0) && (
           <SelectField
@@ -428,8 +415,7 @@ function EditValueModal({ def, value, onClose, onSaved }: {
           spec={{ key: 'ev-parent', label: 'Parent value (optional)', dataType: 'select', options: { kind: 'static', options: def.values.filter((x) => x.id !== value.id).map((x) => ({ code: x.id, label: x.label })) } }}
           value={parentId} onChange={(v) => setParentId(String(v ?? ''))} />
       )}
-      <CheckboxField spec={{ key: 'ev-active', label: 'Active (offered for new assignment)', dataType: 'boolean' }} value={active} onChange={(v) => setActive(v === true)} />
-      <p className="hint">The code (<span className="mono">{value.code}</span>) is the stored dimension key — it never changes.</p>
+      <CheckboxField spec={{ key: 'ev-active', label: 'Active', dataType: 'boolean' }} value={active} onChange={(v) => setActive(v === true)} />
       {error && <Notice tone="error">{error}</Notice>}
     </Modal>
   )

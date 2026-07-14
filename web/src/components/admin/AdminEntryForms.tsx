@@ -348,7 +348,6 @@ function FormDesigner({ form, onChanged, onDeleted, onBack }: {
           <SelectField
             spec={{
               key: 'ef-add', label: 'Add field', dataType: 'select', searchable: true,
-              help: 'From the registry — native, custom and segment kinds. Lands in Header; use the arrows to move it.',
               options: {
                 kind: 'static',
                 options: [
@@ -371,7 +370,6 @@ function FormDesigner({ form, onChanged, onDeleted, onBack }: {
               setFields((fs) => [...fs, added])
             }}
           />
-          <p className="hint">Property edits and added/removed fields commit on Save form; group/subtab changes save immediately.</p>
         </div>
       )}
 
@@ -381,23 +379,14 @@ function FormDesigner({ form, onChanged, onDeleted, onBack }: {
       )}
 
       <h4 style={{ marginTop: 18 }}>Preferred for roles</h4>
-      {ro
-        ? <p className="hint">The Standard form is the fallback for every role without a preferred form — it is not assigned directly.</p>
-        : (
-          <div className="grid g3">
-            {ROLES.map((r) => (
-              <CheckboxField key={r} spec={spec(`ef-role-${r}`, r, 'boolean')} value={roles.includes(r)}
-                onChange={(v) => { rolesEdited.current = true; setRoles((cur) => (v === true ? [...cur, r] : cur.filter((x) => x !== r))) }} />
-            ))}
-          </div>
-        )}
-      <p className="hint" style={{ marginTop: 10 }}>
-        Resolution follows a fixed global role precedence (Buyer first), never a user record's
-        role order; roles without a preferred form get the Standard form. Required applies at
-        SUBMIT only — drafts always save. Hidden means hidden, not forbidden: the server's
-        role matrix is unchanged by form layout. Removing a field from a form is a LAYOUT
-        change — stored values are never touched (use the field's lifecycle to retire data).
-      </p>
+      {!ro && (
+        <div className="grid g3">
+          {ROLES.map((r) => (
+            <CheckboxField key={r} spec={spec(`ef-role-${r}`, r, 'boolean')} value={roles.includes(r)}
+              onChange={(v) => { rolesEdited.current = true; setRoles((cur) => (v === true ? [...cur, r] : cur.filter((x) => x !== r))) }} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -563,7 +552,6 @@ function SubtabVerbs({ form, subtab, fields, onOk, onToggled, onFail }: {
       </button>
       <button type="button" className="lnk" aria-label={`Delete subtab ${subtab.name}`}
         onClick={() => void deleteEntryFormSubtab(form.id, subtab.id).then(onOk, onFail)}>Delete subtab</button>
-      <span className="hint">Hiding hides its fields from the form — required fields still gate submit.</span>
     </>
   )
 }
