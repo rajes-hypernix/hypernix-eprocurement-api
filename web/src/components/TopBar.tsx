@@ -18,7 +18,7 @@ export function TopBar({ onNavigate }: { onNavigate: (hash: string) => void }) {
           </svg>
         </span>
         <span>
-          Hypernix eProcure
+          <span className="brand-title">Hypernix eProcure</span>
           <small>Sourcing &amp; Vendor Portal</small>
         </span>
       </div>

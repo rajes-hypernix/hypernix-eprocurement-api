@@ -149,3 +149,15 @@ test('CFF-T3: the PR line grid shows a live Est. Amount = qty × rate, currency-
   await page.getByLabel('Line 1 qty', { exact: true }).fill('40')
   await expect(page.locator('[aria-label="Line 1 est amount"]')).toHaveText('4,000.00')
 })
+
+// ══ SLICE 2 · UI POLISH (match UI-POLISH-REFERENCE.html) ═════════════════════
+
+// ── T7 — header title Georgia, regular weight ────────────────────────────────
+test('CFF-T7: the header title renders Georgia at regular weight (400)', async ({ page }) => {
+  await goAs(page, 'u_faridah', 'reqs')
+  await page.waitForTimeout(800)
+  const title = page.locator('.brand-title')
+  await expect(title).toHaveText('Hypernix eProcure')
+  expect((await title.evaluate((el) => getComputedStyle(el).fontFamily)).toLowerCase()).toContain('georgia')
+  expect(await title.evaluate((el) => getComputedStyle(el).fontWeight)).toBe('400')
+})

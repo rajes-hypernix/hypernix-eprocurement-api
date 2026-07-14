@@ -52,6 +52,14 @@ body {
   align-items: center;
   justify-content: center;
 }
+/* CFF-T7: the header title is Georgia, REGULAR weight (not bold) — matches the
+   operator-greenlit UI-POLISH reference (the NSPB "Rebillable Aging" sample). */
+.brand-title {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 20px;
+  letter-spacing: 0.2px;
+}
 .brand small {
   font-weight: 500;
   opacity: 0.7;
