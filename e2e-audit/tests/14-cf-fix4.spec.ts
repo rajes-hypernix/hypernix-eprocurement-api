@@ -179,9 +179,13 @@ test('CF-FIX4-T3fix: labels not ids, searchable add-field, NO default control, a
 
 test('CF-FIX4-T4: the creation cascade — standard pre-selected, Header default, ONE row the designer then re-groups', async ({ page, request }) => {
   const LABEL = `Fix4 Cascade ${STAMP}`
-  // A non-system PR form so the rearrange half can run in the designer.
   const std = (await (await request.get(`${API}/api/entry-forms?recordType=Requisition`, { headers: ADMIN })).json())
     .find((f: { isSystem: boolean }) => f.isSystem)
+  // Make `work` the SOLE custom Requisition form so the CFF-T2 placement picker pre-selects it
+  // deterministically (the multiselect toggles on Enter — relying on that under load is flaky).
+  for (const f of (await (await request.get(`${API}/api/entry-forms?recordType=Requisition`, { headers: ADMIN })).json())
+    .filter((f: { isSystem: boolean }) => !f.isSystem))
+    await request.delete(`${API}/api/entry-forms/${f.id}`, { headers: ADMIN })
   const work = await (await request.post(`${API}/api/entry-forms`, { headers: { ...ADMIN, ...JSON_H },
     data: { name: `Fix4 Cascade Form ${STAMP}`, recordType: 'Requisition', fields: std.fields } })).json()
 
@@ -191,15 +195,12 @@ test('CF-FIX4-T4: the creation cascade — standard pre-selected, Header default
   await page.getByRole('button', { name: 'New field' }).click()
   await page.getByLabel('Label', { exact: true }).fill(LABEL)
 
-  // CFF-T2: the cascade block is THERE and offers CUSTOM forms only (the standard is
-  // source-controlled and never offered) — add the work form so it gets the placement.
+  // CFF-T2: the placement block offers CUSTOM forms only (the standard is source-controlled
+  // and never offered). `work` is the sole custom form, so it is pre-selected — accept it.
   await expect(page.getByText(/Placement — where this field appears/)).toBeVisible()
   const formPicker = page.getByRole('button', { name: 'Requisition — form(s)' })
   await expect(formPicker).not.toContainText('Standard PR Form')
-  await formPicker.click()
-  await page.getByRole('combobox', { name: 'Search Requisition — form(s)' }).fill(`Fix4 Cascade Form ${STAMP}`)
-  await page.keyboard.press('Enter')   // ADD the work form → it gets the placement (asserted below)
-  await page.keyboard.press('Escape')
+  await expect(formPicker).toContainText(`Fix4 Cascade Form ${STAMP}`)   // pre-selected placement target
   await page.getByRole('button', { name: 'Create field' }).click()
   await page.waitForTimeout(1000)
 
