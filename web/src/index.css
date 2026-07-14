@@ -79,6 +79,20 @@ body {
 .toast-ic { color: #5DCAA5; display: flex; }
 @keyframes toast-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
 
+/* CFF-T6: motion polish — soften the hard jumps, keep it square. Per the reference:
+   list rows settle on hover, buttons darken + press-scale, skeletons replace blank flashes. */
+.btn { transition: background 0.15s ease, transform 0.08s ease, box-shadow 0.15s ease, border-color 0.15s ease; }
+.btn:active { transform: scale(0.97); }
+tbody tr td { transition: background 0.18s ease; }
+tbody tr td:first-child { transition: background 0.18s ease, box-shadow 0.18s ease; }
+tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--teal); }
+/* skeleton loader — shimmer sweep, replaces blank white while data loads */
+.sk { background: linear-gradient(90deg, #EFEBE4 25%, #F6F4EF 50%, #EFEBE4 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 2px; height: 14px; }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+/* panel settle — softens a hard jump (form-builder open, save→view) */
+@keyframes panel-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.panel-fade { animation: panel-in 0.24s ease; }
+
 /* CFF-T7: the header title is Georgia, REGULAR weight (not bold) — matches the
    operator-greenlit UI-POLISH reference (the NSPB "Rebillable Aging" sample). */
 .brand-title {

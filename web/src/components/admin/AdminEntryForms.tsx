@@ -283,7 +283,7 @@ function FormDesigner({ form, onChanged, onDeleted, onBack }: {
     if (!hasUnsavedChanges() || window.confirm('You have unsaved changes — all changes will be lost. Leave anyway?')) onBack()
   }
   return (
-    <div>
+    <div className="panel-fade">
       <div className="chead" style={{ paddingLeft: 0 }}>
         <Button variant="ghost" size="sm" icon="back" onClick={back} ariaLabel="Back to forms">Back</Button>
         <h3 style={{ marginLeft: 8 }}>{form.name} <span className="mono hint" style={{ fontWeight: 400 }}>{form.code}</span>

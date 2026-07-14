@@ -10,6 +10,7 @@ import { PrForm } from './PrForm'
 import { ViewPicker, ViewBuilder } from '../views/SavedViewControls'
 import { PrHeaderBadge, LineChip, PR_KANBAN_COLUMNS, isLineSourceable } from '../../lib/prStatus'
 import { fmtDay } from '../../lib/format'
+import { SkeletonRows } from '../../ui/Skeleton'
 
 type PrLine = NonNullable<RequisitionDto['lines']>[number]
 const lstat = (l: PrLine) => l.status ?? 'available'
@@ -44,7 +45,7 @@ export function Requisitions({ onOpenRfq, onConsolidate, addTo, initialViewId, i
 }) {
   const qc = useQueryClient()
   const standalone = !addTo   // PR-management features only outside the RFQ add-lines picker
-  const { data: allPrs = [] } = useQuery({ queryKey: ['requisitions'], queryFn: getRequisitions })
+  const { data: allPrs = [], isPending: prsPending } = useQuery({ queryKey: ['requisitions'], queryFn: getRequisitions })
   // D7.5 ID-INTERSECTION mount (ruled): Requisitions rows are DEEP (expandable lines,
   // line-level bulk-select) and don't project to flat view columns, so a picked view
   // filters the typed rows BY ID from the view's run — server-scoped, server-filtered
@@ -291,7 +292,8 @@ export function Requisitions({ onOpenRfq, onConsolidate, addTo, initialViewId, i
                 </tr>
               </thead>
               <tbody>
-                {list.map((pr) => {
+                {prsPending && <SkeletonRows rows={6} cols={standalone ? 10 : 9} />}
+                {!prsPending && list.map((pr) => {
                   const open = expanded.has(pr.code!)
                   const canGroup = availLines(pr).length > 0
                   const a = (pr.lines ?? []).filter((l) => lstat(l) === 'available').length

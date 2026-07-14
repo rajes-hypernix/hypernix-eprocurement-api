@@ -245,3 +245,25 @@ test('CFF-T5: the primary Save/Submit sits top-right on a transaction, a modal, 
 
   await request.delete(`${API}/api/entry-forms/${form.id}`, { headers: ADMIN })
 })
+
+// ── T6 — transitions + skeleton loaders ──────────────────────────────────────
+test('CFF-T6: a loading list shows a skeleton (not blank), and rows carry a hover transition', async ({ page }) => {
+  // Delay ONLY the requisitions fetch so the loading state is observable. Navigate with
+  // `commit` (goAs waits for networkidle, which would swallow the whole delay).
+  await page.route('**/api/requisitions', async (route) => {
+    await new Promise((r) => setTimeout(r, 3000))
+    await route.continue()
+  })
+  await page.goto('/?as=u_faridah#reqs', { waitUntil: 'commit' })
+  // During the delay the list renders shimmer skeleton rows, not a blank table.
+  await expect(page.getByTestId('skeleton').first()).toBeVisible()
+  await page.unroute('**/api/requisitions')
+
+  // Once loaded, the skeleton is replaced by real rows that carry a background transition.
+  await expect(page.getByTestId('skeleton')).toHaveCount(0, { timeout: 10000 })
+  const td = page.locator('tbody tr td').first()
+  await expect(td).toBeVisible()
+  expect(await td.evaluate((el) => getComputedStyle(el).transitionDuration)).not.toBe('0s')
+  // Buttons carry a transition (hover-darken + press-scale).
+  expect(await page.locator('.btn').first().evaluate((el) => getComputedStyle(el).transitionDuration)).not.toBe('0s')
+})
