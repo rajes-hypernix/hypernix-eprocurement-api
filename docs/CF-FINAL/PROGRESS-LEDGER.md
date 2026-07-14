@@ -58,10 +58,10 @@ Baselines (hold-or-raise every commit): **dotnet 541 · vitest 251 · e2e 98**. 
 - [x] Browser test: 3+ surfaces (a transaction, a custom-field modal, an admin screen) all show Save in the same place · Test:CFF-T5 (Submit PR + Create-field modal + Save form, all top-right of their panel)
 
 ### T6 — Transitions + skeleton loaders (kill blank flashes and hard jumps) — `CFF-T6:`
-- [ ] List rows settle on hover (bg tint + slight padding shift, ~180ms) per reference; buttons darken on hover + scale on press · Build:___ · Test:___
-- [ ] Skeleton loaders replace blank white while data loads (lists, forms, dashboards) — shimmer per reference · Build:___ · Test:___
-- [ ] Panel/page transitions softened (fade/settle, not instant swap) where a hard jump exists today (esp. form builder open, save→view) · Build:___ · Test:___
-- [ ] Browser test: a loading list shows a skeleton, not a blank; row hover animates · Test:___
+- [x] List rows settle on hover (bg tint + slight padding shift, ~180ms) per reference; buttons darken on hover + scale on press · Build:efcd8ac · Test:CFF-T6 (row td + .btn transitions; :active scale). Settle = bg + left teal accent (no reflow) in lieu of padding shift.
+- [x] Skeleton loaders replace blank white while data loads (lists, forms, dashboards) — shimmer per reference · Build:efcd8ac · Test:CFF-T6 (Skeleton/SkeletonRows; wired into Requisitions; proven on a delayed load)
+- [x] Panel/page transitions softened (fade/settle, not instant swap) where a hard jump exists today (esp. form builder open, save→view) · Build:efcd8ac · Test:CFF-T6 (.panel-fade on the entry-form builder open)
+- [x] Browser test: a loading list shows a skeleton, not a blank; row hover animates · Test:CFF-T6
 
 ### T7 — Header title → Georgia, regular weight — `CFF-T7:`
 - [x] "Hypernix eProcure" title renders Georgia, font-weight 400 (not bold), per reference · Build:9f19f08 · Test:CFF-T7
