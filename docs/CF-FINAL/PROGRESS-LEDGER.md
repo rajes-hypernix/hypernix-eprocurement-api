@@ -48,10 +48,10 @@ Baselines (hold-or-raise every commit): **dotnet 541 · vitest 251 · e2e 98**. 
 *Reference: `docs/CF-FINAL/UI-POLISH-REFERENCE.html` — match that feel. Square + bold KEPT; movement softened.*
 
 ### T4 — Global toast + save-banner system — `CFF-T4:`
-- [ ] Build ONE reusable toast/banner provider (context + component) — inline save-banner (fades ~3s) AND corner toast (auto-dismiss ~2.2s), per the HTML reference · Build:___ · Test:___
-- [ ] Copy discipline: past tense, NO "successfully", NO "!" ("Requisition saved", "Custom field created", "Form saved") · Build:___ · Test:___
-- [ ] Wire it to EVERY create/edit/save across the app: requisitions, POs, custom fields, lists, segments, entry forms, numbering, users — every save fires a confirmation · Build:___ · Test:___
-- [ ] Browser test: saving a PR shows the banner; creating a custom field shows a toast; copy has no "successfully"/"!" · Test:___
+- [x] Build ONE reusable toast/banner provider (context + component) — inline save-banner (fades ~3s) AND corner toast (auto-dismiss ~2.2s), per the HTML reference · Build:7c40575 · Test:CFF-T4 (src/ui/Notify.tsx)
+- [x] Copy discipline: past tense, NO "successfully", NO "!" ("Requisition saved", "Custom field created", "Form saved") · Build:7c40575 · Test:CFF-T4 (asserts no "successfully"/"!")
+- [x] Wire it to EVERY create/edit/save across the app: requisitions, POs, custom fields, lists, segments, entry forms, numbering, users — every save fires a confirmation · Build:7c40575 · Test:CFF-T4 (all 8 surfaces wired; PR + custom-field proven on screen)
+- [x] Browser test: saving a PR shows the banner; creating a custom field shows a toast; copy has no "successfully"/"!" · Test:CFF-T4
 
 ### T5 — Standardize Save-button placement — `CFF-T5:`
 - [ ] Every create/edit surface (transactions AND admin config) has its primary Save/Submit TOP-RIGHT of the panel it saves, consistent style (the reference `.btn-primary`) · Build:___ · Test:___
