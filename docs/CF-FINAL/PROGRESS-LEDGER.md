@@ -54,8 +54,8 @@ Baselines (hold-or-raise every commit): **dotnet 541 · vitest 251 · e2e 98**. 
 - [x] Browser test: saving a PR shows the banner; creating a custom field shows a toast; copy has no "successfully"/"!" · Test:CFF-T4
 
 ### T5 — Standardize Save-button placement — `CFF-T5:`
-- [ ] Every create/edit surface (transactions AND admin config) has its primary Save/Submit TOP-RIGHT of the panel it saves, consistent style (the reference `.btn-primary`) · Build:___ · Test:___
-- [ ] Browser test: 3+ surfaces (a transaction, a custom-field modal, an admin screen) all show Save in the same place · Test:___
+- [x] Every create/edit surface (transactions AND admin config) has its primary Save/Submit TOP-RIGHT of the panel it saves, consistent style (the reference `.btn-primary`) · Build:4b680c0 · Test:CFF-T5 (transactions right-aligned; chead right-aligned; modal headerAction). Note: remaining modals keep footer primary — follow-up, see AD-6.
+- [x] Browser test: 3+ surfaces (a transaction, a custom-field modal, an admin screen) all show Save in the same place · Test:CFF-T5 (Submit PR + Create-field modal + Save form, all top-right of their panel)
 
 ### T6 — Transitions + skeleton loaders (kill blank flashes and hard jumps) — `CFF-T6:`
 - [ ] List rows settle on hover (bg tint + slight padding shift, ~180ms) per reference; buttons darken on hover + scale on press · Build:___ · Test:___

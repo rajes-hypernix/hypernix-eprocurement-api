@@ -6,3 +6,4 @@
 - 2026-07-14T10:57:24Z  SLICE 1 GATE PASSED: tag v2.1-fixes (6cd8dc7). Full suites green: dotnet 550, vitest 256, e2e 111/111 (baseline 107). CFF-T1/T2/T3 all shipped. The ship-critical form-persistence bug is fixed + proven. Proceeding to Slice 2 (UI polish).
 - 2026-07-14T11:01:13Z  CFF-T7 committed (9f19f08): header title Georgia weight-400 (.brand-title). e2e computed-style proof.
 - 2026-07-14T11:13:22Z  CFF-T4 committed (7c40575): global Notify provider (banner+toast) wired to all 8 save surfaces, past-tense copy. CFF-T7 committed (9f19f08): header Georgia 400. Gates: dotnet 550, vitest 256, tsc 0, oxlint 0, e2e T4+T7 green.
+- 2026-07-14T11:23:33Z  CFF-T5 committed (4b680c0): primary Save/Submit top-right (transactions right-aligned, chead spacers fixed, modal headerAction on custom-field modal). e2e proves 3 surfaces. AD-6 recorded.
