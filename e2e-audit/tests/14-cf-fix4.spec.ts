@@ -62,7 +62,7 @@ test('CF-FIX4-T1+T3: designer — create group, drag a field from Header into it
   await expect(page.locator('[aria-label^="Field group"]').first()).toContainText('Memo')
 
   // Sublist: flat reorder persists (L4).
-  await page.getByRole('button', { name: 'Move Description left' }).click()
+  await page.getByRole('button', { name: 'Move Description up' }).click()   // CF-FIX5-T4: vertical
   await page.waitForTimeout(800)
   const reordered = (await (await request.get(`${API}/api/entry-forms?recordType=Requisition`, { headers: ADMIN })).json())
     .find((f: { id: string }) => f.id === form.id)

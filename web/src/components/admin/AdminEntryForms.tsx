@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   getEntryForms, createEntryForm, updateEntryForm, deleteEntryForm, assignEntryFormRoles, setEntryFormActive,
   saveEntryFormSubtab, deleteEntryFormSubtab, saveEntryFormGroup, deleteEntryFormGroup,
-  saveEntryFormSublist,
+  saveEntryFormSublist, getLineCustomDefs,
   getViewFields, type EntryFormDefDto, type EntryFormFieldDto, type EntryFormGroupDto,
 } from '../../api/client'
 import { SetupPage } from '../../ui/archetypes/SetupPage'
@@ -38,6 +38,13 @@ const CONTROLLABLE_NATIVE: Record<string, string[]> = {
 }
 const SUBLIST_LABELS: Record<string, string> = {
   ItemCode: 'Item code', Description: 'Description', Qty: 'Qty', Uom: 'UoM', EstUnitPrice: 'Est. rate',
+}
+// CF-FIX5-T4: native line columns per record type (mirrors the server's SublistNativeColumns).
+const NATIVE_LINE_COLS: Record<string, { code: string; label: string }[]> = {
+  Requisition: [
+    { code: 'ItemCode', label: 'Item code' }, { code: 'Description', label: 'Description' },
+    { code: 'Qty', label: 'Qty' }, { code: 'Uom', label: 'UoM' }, { code: 'EstUnitPrice', label: 'Est. rate' },
+  ],
 }
 
 const spec = (key: string, label: string, dataType: FieldSpec['dataType'], options?: string[]): FieldSpec => ({
@@ -339,8 +346,8 @@ function FormDesigner({ form, onChanged, onDeleted }: {
         </div>
       )}
 
-      {/* ---- Item sublist (L4: flat, rearrangeable, NO groups) ---- */}
-      {(form.sublistColumns?.length ?? 0) > 0 && (
+      {/* ---- Item sublist (L4: flat, vertical, NO groups) ---- */}
+      {((NATIVE_LINE_COLS[form.recordType]?.length ?? 0) > 0 || (form.sublistColumns?.length ?? 0) > 0) && (
         <SublistPanel form={form} ro={ro} onOk={ok} onFail={fail} />
       )}
 
@@ -520,35 +527,60 @@ function SubtabVerbs({ form, subtab, fields, onOk, onToggled, onFail }: {
   )
 }
 
-/** L4: the item sublist — flat column ORDER, rearrangeable, deliberately group-free. */
+/** CF-FIX5-T4 (L4): the item sublist — NetSuite Sublist-Fields style. A VERTICAL list,
+ *  top = leftmost column on the line grid, reorder up/down, show/hide via a Show checkbox
+ *  (membership = shown), and add applied custcol_ LINE fields as columns. Flat — no groups. */
 function SublistPanel({ form, ro, onOk, onFail }: {
   form: EntryFormDefDto; ro: boolean; onOk: () => void; onFail: (e: unknown) => void
 }) {
-  const cols = form.sublistColumns ?? []
+  const { data: lineDefs = [] } = useQuery({
+    queryKey: ['line-defs', form.recordType], queryFn: () => getLineCustomDefs(form.recordType), staleTime: 60_000,
+  })
+  const shown = form.sublistColumns ?? []
+  const natives = NATIVE_LINE_COLS[form.recordType] ?? []
+  const labelOf = (k: string) =>
+    natives.find((c) => c.code === k)?.label ?? lineDefs.find((d) => d.code === k)?.label ?? SUBLIST_LABELS[k] ?? k
+  // Available to add = native + applied custcol_ line fields not already shown.
+  const available = [...natives, ...lineDefs.map((d) => ({ code: d.code, label: d.label }))]
+    .filter((c) => !shown.includes(c.code))
+  const save = (next: string[]) => void saveEntryFormSublist(form.id, next).then(onOk, onFail)
   const move = (i: number, d: -1 | 1) => {
     const j = i + d
-    if (j < 0 || j >= cols.length) return
-    const next = [...cols]
-    ;[next[i], next[j]] = [next[j], next[i]]
-    void saveEntryFormSublist(form.id, next).then(onOk, onFail)
+    if (j < 0 || j >= shown.length) return
+    const n = [...shown]
+    ;[n[i], n[j]] = [n[j], n[i]]
+    save(n)
   }
+  const custId = (k: string) => (k.startsWith('custcol_') ? <span className="mono hint" style={{ marginLeft: 6, fontSize: 11 }}>{k}</span> : null)
   return (
     <div style={{ marginTop: 16 }}>
       <h4>Item sublist</h4>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-        {cols.map((k, i) => (
-          <span key={k} className="badge b-grey" style={{ padding: '6px 10px', display: 'inline-flex', gap: 6, alignItems: 'center' }}>
-            {SUBLIST_LABELS[k] ?? k}
-            {!ro && (
-              <>
-                <button type="button" className="lnk" aria-label={`Move ${k} left`} onClick={() => move(i, -1)}>←</button>
-                <button type="button" className="lnk" aria-label={`Move ${k} right`} onClick={() => move(i, 1)}>→</button>
-              </>
-            )}
-          </span>
-        ))}
-      </div>
-      <p className="hint">Line columns are FLAT — rearrangeable, no field groups (ruled). Line-scope custom fields append after these.</p>
+      <table>
+        <thead><tr><th>Column (top = leftmost)</th><th>Show</th><th /></tr></thead>
+        <tbody>
+          {shown.map((k, i) => (
+            <tr key={k} aria-label={`Sublist column ${k}`}>
+              <td>{labelOf(k)}{custId(k)}</td>
+              <td>{ro ? '✓' : <CheckboxField chrome="bare" spec={spec(`sublist-show-${k}`, `Show ${k}`, 'boolean')} value={true} onChange={() => save(shown.filter((x) => x !== k))} />}</td>
+              <td className="amt">
+                {!ro && (
+                  <>
+                    <button type="button" className="btn btn-sm btn-out" aria-label={`Move ${k} up`} onClick={() => move(i, -1)}>↑</button>
+                    <button type="button" className="btn btn-sm btn-out" aria-label={`Move ${k} down`} onClick={() => move(i, 1)}>↓</button>
+                  </>
+                )}
+              </td>
+            </tr>
+          ))}
+          {!ro && available.map((c) => (
+            <tr key={c.code} aria-label={`Available column ${c.code}`} style={{ opacity: 0.6 }}>
+              <td>{c.label}{custId(c.code)}</td>
+              <td><CheckboxField chrome="bare" spec={spec(`sublist-add-${c.code}`, `Show ${c.code}`, 'boolean')} value={false} onChange={() => save([...shown, c.code])} /></td>
+              <td />
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }

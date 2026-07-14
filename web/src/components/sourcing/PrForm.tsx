@@ -70,7 +70,8 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
   // CF-FIX4-T3 (L4): the lines table renders the resolved form's flat sublist order;
   // unknown/missing keys fall back to the standard order (parity when no config exists).
   const NATIVE_LINE_COLS = ['ItemCode', 'Description', 'Qty', 'Uom', 'EstUnitPrice']
-  const sublistOrder = (form?.sublistColumns ?? NATIVE_LINE_COLS).filter((k) => NATIVE_LINE_COLS.includes(k))
+  // CF-FIX5-T4: the sublist order drives BOTH native columns and custcol_ line fields.
+  const sublistOrder = form?.sublistColumns ?? NATIVE_LINE_COLS
 
   const [h, setH] = useState<Record<string, string>>({ requestor: '', department: '', category: '', location: '', job: '', requiredDate: '', memo: '' })
   const [lines, setLines] = useState<EditLine[]>([blankLine()])
@@ -126,6 +127,12 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
   const hasLiveLine = lines.some((l) => l.lifecycleStatus === 'InRfq' || l.lifecycleStatus === 'Awarded')
   const headerStatus = pr?.headerStatus
   const { data: lineDefs = [] } = useQuery({ queryKey: ['line-defs', 'Requisition'], queryFn: () => getLineCustomDefs('Requisition'), staleTime: 60_000 })
+  // CF-FIX5-T4: custcol_ line fields render in the sublist ORDER (interleaved with natives);
+  // applied line fields NOT placed in the order append after (CF6 default-shown, non-breaking).
+  const lineDefByCode = new Map(lineDefs.map((d) => [d.code, d]))
+  const appendedDefs = lineDefs.filter((d) => !sublistOrder.includes(d.code))
+  const sublistHeads = sublistOrder.map((k) =>
+    NATIVE_LINE_COLS.includes(k) ? LINE_HEADS[k] : (lineDefByCode.get(k) ? <th key={k}>{lineDefByCode.get(k)!.label}</th> : null))
   const { data: lineValues } = useQuery({
     queryKey: ['line-values', 'Requisition', id], queryFn: () => getLineCustomValues('Requisition', id!), enabled: !isNew && !!id,
   })
@@ -287,36 +294,37 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
       <div className="card" style={{ padding: 18, marginBottom: 16 }}>
         <h3 style={{ marginTop: 0 }}>Lines</h3>
         <table>
-          <thead><tr>{sublistOrder.map((k) => LINE_HEADS[k])}{lineDefs.map((d) => <th key={d.code}>{d.label}</th>)}<th style={{ width: '14%' }} /></tr></thead>
+          <thead><tr>{sublistHeads}{appendedDefs.map((d) => <th key={d.code}>{d.label}</th>)}<th style={{ width: '14%' }} /></tr></thead>
           <tbody>
             {lines.map((l, i) => {
               const ro = !isNew && !l.editable
+              const nativeCell = (k: string) => {
+                switch (k) {
+                  case 'ItemCode': return <td key={k}><TextField chrome="bare" spec={lineSpec(i, 'item code', { placeholder: 'ITEM-CODE', readOnly: ro })} value={l.itemCode} onChange={(v) => setLine(i, 'itemCode', v)} /></td>
+                  case 'Description': return <td key={k}><TextField chrome="bare" spec={lineSpec(i, 'description', { placeholder: 'Description', readOnly: ro })} value={l.description} onChange={(v) => setLine(i, 'description', v)} /></td>
+                  case 'Qty': return <td key={k}><NumberField chrome="bare" spec={lineSpec(i, 'qty', { dataType: 'number', placeholder: '0', readOnly: ro, validation: { min: 0 } })} value={l.qty} onChange={(v) => setLine(i, 'qty', v)} /></td>
+                  case 'Uom': return <td key={k}><TextField chrome="bare" spec={lineSpec(i, 'uom', { placeholder: 'Unit', readOnly: ro })} value={l.uom} onChange={(v) => setLine(i, 'uom', v)} /></td>
+                  case 'EstUnitPrice': return <td key={k}><MoneyField chrome="bare" spec={lineSpec(i, 'rate', { dataType: 'money', placeholder: '0', readOnly: ro })} value={l.estUnitPrice} onChange={(v) => setLine(i, 'estUnitPrice', v)} /></td>
+                  default: return null
+                }
+              }
+              const custCell = (d: (typeof lineDefs)[number]) => (
+                <td key={d.code}>
+                  {l.id
+                    ? renderField(
+                        { key: `line-${i}-${d.code}`, label: `${d.label} line ${i + 1}`, dataType: LINE_SPEC_TYPE[d.dataType] ?? 'text',
+                          ...(d.displayType === 'Disabled' || ro ? { displayType: 'disabled' as const } : {}),
+                          ...(d.dataType === 'ListValue' && d.customListCode ? { options: { kind: 'customList' as const, listCode: d.customListCode } } : {}) },
+                        lineVals[l.id]?.[d.code] ?? '',
+                        (v) => { setDirty(true); setLineVals((m) => ({ ...m, [l.id!]: { ...m[l.id!], [d.code]: String(v ?? '') } })) },
+                        { chrome: 'bare' })
+                    : <span className="hint" title="Save the PR first — new lines get their id on save">—</span>}
+                </td>
+              )
               return (
                 <tr key={l.id ?? `new-${i}`}>
-                  {sublistOrder.map((k) => {
-                    // CF-FIX4-T3 (L4): native line cells render in the FORM's sublist order.
-                    switch (k) {
-                      case 'ItemCode': return <td key={k}><TextField chrome="bare" spec={lineSpec(i, 'item code', { placeholder: 'ITEM-CODE', readOnly: ro })} value={l.itemCode} onChange={(v) => setLine(i, 'itemCode', v)} /></td>
-                      case 'Description': return <td key={k}><TextField chrome="bare" spec={lineSpec(i, 'description', { placeholder: 'Description', readOnly: ro })} value={l.description} onChange={(v) => setLine(i, 'description', v)} /></td>
-                      case 'Qty': return <td key={k}><NumberField chrome="bare" spec={lineSpec(i, 'qty', { dataType: 'number', placeholder: '0', readOnly: ro, validation: { min: 0 } })} value={l.qty} onChange={(v) => setLine(i, 'qty', v)} /></td>
-                      case 'Uom': return <td key={k}><TextField chrome="bare" spec={lineSpec(i, 'uom', { placeholder: 'Unit', readOnly: ro })} value={l.uom} onChange={(v) => setLine(i, 'uom', v)} /></td>
-                      case 'EstUnitPrice': return <td key={k}><MoneyField chrome="bare" spec={lineSpec(i, 'rate', { dataType: 'money', placeholder: '0', readOnly: ro })} value={l.estUnitPrice} onChange={(v) => setLine(i, 'estUnitPrice', v)} /></td>
-                      default: return null
-                    }
-                  })}
-                  {lineDefs.map((d) => (
-                    <td key={d.code}>
-                      {l.id
-                        ? renderField(
-                            { key: `line-${i}-${d.code}`, label: `${d.label} line ${i + 1}`, dataType: LINE_SPEC_TYPE[d.dataType] ?? 'text',
-                              ...(d.displayType === 'Disabled' || ro ? { displayType: 'disabled' as const } : {}),
-                              ...(d.dataType === 'ListValue' && d.customListCode ? { options: { kind: 'customList' as const, listCode: d.customListCode } } : {}) },
-                            lineVals[l.id]?.[d.code] ?? '',
-                            (v) => { setDirty(true); setLineVals((m) => ({ ...m, [l.id!]: { ...m[l.id!], [d.code]: String(v ?? '') } })) },
-                            { chrome: 'bare' })
-                        : <span className="hint" title="Save the PR first — new lines get their id on save">—</span>}
-                    </td>
-                  ))}
+                  {sublistOrder.map((k) => NATIVE_LINE_COLS.includes(k) ? nativeCell(k) : (lineDefByCode.get(k) ? custCell(lineDefByCode.get(k)!) : null))}
+                  {appendedDefs.map((d) => custCell(d))}
                   <td>
                     {ro
                       ? <span className="lockchip"><Icon name="lock" size={12} /> {l.lifecycleStatus === 'InRfq' ? 'In RFQ' : l.lifecycleStatus}</span>

@@ -222,3 +222,42 @@ test('CF-FIX5-T2: on New PR the form picker is the FIRST control, ABOVE the Head
 
   expect((await request.delete(`${API}/api/entry-forms/${alt.id}`, { headers: ADMIN })).status()).toBe(204)
 })
+
+test('CF-FIX5-T4: sublist is a VERTICAL list (top = leftmost), reorders, and adds a custcol_ line field', async ({ page, request }) => {
+  // An applied LINE (custcol_) custom field to add to the sublist.
+  const lineDef = await (await request.post(`${API}/api/custom-fields`, { headers: { ...ADMIN, ...JSON_H },
+    data: { label: `Fix5 Line ${STAMP}`, recordType: 'Requisition', dataType: 'Text', required: false, helpText: '', sort: 0, scope: 'Line', code: `fix5_line_${STAMP}` } })).json()
+  const std = await stdReqForm(request)
+  const form = await (await request.post(`${API}/api/entry-forms`, { headers: { ...ADMIN, ...JSON_H },
+    data: { name: `Fix5 T4 Form ${STAMP}`, recordType: 'Requisition', fields: std.fields } })).json()
+
+  await goAs(page, 'u_admin', 'entryforms')
+  await page.waitForTimeout(1200)
+  await page.getByRole('button', { name: new RegExp(`Fix5 T4 Form ${STAMP}`) }).click()
+  await page.waitForTimeout(500)
+
+  // VERTICAL list: the sublist columns render as rows; top row = leftmost (Item code).
+  const rows = page.locator('[aria-label^="Sublist column "]')
+  await expect(rows.first()).toContainText('Item code')
+
+  // Reorder: Move Description UP → it becomes the top (leftmost) column, persisted.
+  await page.getByRole('button', { name: 'Move Description up' }).click()
+  await page.waitForTimeout(800)
+  let state = (await (await request.get(`${API}/api/entry-forms?recordType=Requisition`, { headers: ADMIN })).json())
+    .find((f: { id: string }) => f.id === form.id)
+  expect(state.sublistColumns[0]).toBe('Description')
+
+  // Add the custcol_ line field via its Show checkbox → it becomes a sublist column.
+  await page.getByLabel(`Show ${lineDef.code}`, { exact: true }).click()
+  await page.waitForTimeout(800)
+  state = (await (await request.get(`${API}/api/entry-forms?recordType=Requisition`, { headers: ADMIN })).json())
+    .find((f: { id: string }) => f.id === form.id)
+  expect(state.sublistColumns).toContain(lineDef.code)
+  await expect(page.locator(`[aria-label="Sublist column ${lineDef.code}"]`)).toBeVisible()
+
+  // cleanup: strip it from the sublist, delete form + field.
+  await request.put(`${API}/api/entry-forms/${form.id}/sublist`, { headers: { ...ADMIN, ...JSON_H },
+    data: { fieldKeys: state.sublistColumns.filter((k: string) => k !== lineDef.code) } })
+  await request.delete(`${API}/api/entry-forms/${form.id}`, { headers: ADMIN })
+  await hardDeleteField(request, lineDef)
+})

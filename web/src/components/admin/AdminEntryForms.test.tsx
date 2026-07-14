@@ -29,6 +29,7 @@ describe('AdminEntryForms — CF-FIX4-T3 designer (groups as cards, L1/L3/L4)', 
       { fieldKey: 'Department', label: 'Department', dataType: 'Text', kind: 'Native' },
       { fieldKey: 'custbody_partner', label: 'Partner', dataType: 'Text', kind: 'Custom' },
     ] as client.ViewFieldDto[])
+    vi.spyOn(client, 'getLineCustomDefs').mockResolvedValue([])
   })
 
   it('renders fields INSIDE their group cards; Header is pinned (no delete verb), empty non-Header offers delete', async () => {
@@ -81,11 +82,12 @@ describe('AdminEntryForms — CF-FIX4-T3 designer (groups as cards, L1/L3/L4)', 
     expect(sent.fieldGroup).toBe('Logistics')
   })
 
-  it('the item sublist is FLAT and rearrangeable — a move persists the new order (L4)', async () => {
+  it('CF-FIX5-T4: the sublist is a VERTICAL list (top = leftmost); up/down persists the new order', async () => {
     const save = vi.spyOn(client, 'saveEntryFormSublist').mockResolvedValue(FORM)
     renderWithQuery(<AdminEntryForms />)
     await screen.findByText('Item sublist')
-    await userEvent.click(screen.getByRole('button', { name: 'Move Description left' }))
+    // Description is second; Move up swaps it above ItemCode (top row = leftmost column).
+    await userEvent.click(screen.getByRole('button', { name: 'Move Description up' }))
     await waitFor(() => expect(save).toHaveBeenCalledWith('f1', ['Description', 'ItemCode', 'Qty', 'Uom', 'EstUnitPrice']))
   })
 
@@ -95,6 +97,6 @@ describe('AdminEntryForms — CF-FIX4-T3 designer (groups as cards, L1/L3/L4)', 
     expect(await screen.findByText('Standard — the parity baseline, read-only')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Save form' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Add group' })).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Move Description left' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Move Description up' })).toBeNull()
   })
 })
