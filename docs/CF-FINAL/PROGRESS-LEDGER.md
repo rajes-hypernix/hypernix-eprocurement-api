@@ -39,7 +39,8 @@ Baselines (hold-or-raise every commit): **dotnet 541 · vitest 251 · e2e 98**. 
 - [x] Add "Est. Amount" next to Est. Rate on the standard PR line grid = `qty × estRate`, live-computed, currency-formatted (grouped decimals, the CF1 money display) · Build:9a1d1ef · Test:CFF-T3
 - [x] Browser test: enter qty 3, rate 100 → Est. Amount shows 300.00; updates on change · Test:CFF-T3 (also qty 40 → 4,000.00 grouped)
 
-**SLICE 1 GATE** — [ ] all T1-T3 boxes ticked or blocked; suites green; tag `v2.1-fixes`. **Only then Slice 2.**
+**SLICE 1 GATE** — [x] all T1-T3 boxes ticked or blocked; suites green; tag `v2.1-fixes`. **Only then Slice 2.**
+  · dotnet 550 · vitest 256 · e2e 111 · tag v2.1-fixes (6cd8dc7). Full e2e suite green (was 107 baseline).
 
 ---
 
