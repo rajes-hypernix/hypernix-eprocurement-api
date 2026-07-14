@@ -272,17 +272,18 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
       tabs={formTabs.length > 0 ? formTabs : undefined}
       dirty={dirty}
       onGuardReady={(fn) => { markClean.current = fn }}
-    >
-      {(form?.availableForms?.length ?? 0) > 1 && (
+      topSlot={(form?.availableForms?.length ?? 0) > 1 && (
+        // CF-FIX5-T2: the form picker is the FIRST control — choosing the form drives the
+        // whole layout beneath it. Rendered ABOVE the Header via TransactionPage's topSlot.
         <div className="card" style={{ padding: 12, marginBottom: 12, maxWidth: 420 }}>
           <SelectField
             spec={{ key: 'pr-form-picker', label: 'Entry form', dataType: 'select', searchable: true,
-              help: 'Layout only — required fields of your role\u2019s form still apply at submit.',
               options: { kind: 'static', options: (form?.availableForms ?? []).map((f) => ({ code: f.id, label: f.name })) } }}
             value={form?.formId ?? ''}
             onChange={(v) => setChosenFormId(String(v ?? '') || null)} />
         </div>
       )}
+    >
       <div className="card" style={{ padding: 18, marginBottom: 16 }}>
         <h3 style={{ marginTop: 0 }}>Lines</h3>
         <table>

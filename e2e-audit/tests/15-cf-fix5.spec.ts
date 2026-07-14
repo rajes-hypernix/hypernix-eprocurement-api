@@ -201,3 +201,24 @@ test('CF-FIX5-T8: new form id → customform_, new segment id → custseg_ (same
   const form = (await (await request.get(`${API}/api/entry-forms?recordType=Requisition`, { headers: ADMIN })).json()).find((f: { code: string }) => f.code === `customform_project${STAMP}`)
   if (form) await request.delete(`${API}/api/entry-forms/${form.id}`, { headers: ADMIN })
 })
+
+test('CF-FIX5-T2: on New PR the form picker is the FIRST control, ABOVE the Header', async ({ page, request }) => {
+  // Ensure a second Requisition form so the picker appears.
+  const std = await stdReqForm(request)
+  const alt = await (await request.post(`${API}/api/entry-forms`, { headers: { ...ADMIN, ...JSON_H },
+    data: { name: `Fix5 T2 Alt ${STAMP}`, recordType: 'Requisition', fields: std.fields } })).json()
+
+  await goAs(page, 'u_faridah', 'reqs')
+  await page.waitForTimeout(1200)
+  await page.getByRole('button', { name: /Create PR/ }).click()
+  await page.waitForTimeout(1200)
+
+  // The picker is present and sits ABOVE the Header section (position, not just existence).
+  const picker = page.getByRole('button', { name: 'Entry form', exact: true })
+  await expect(picker).toBeVisible()
+  const pickerBox = await picker.boundingBox()
+  const headerBox = await page.getByText('Header', { exact: true }).first().boundingBox()
+  expect(pickerBox!.y).toBeLessThan(headerBox!.y)   // picker first, then the Header
+
+  expect((await request.delete(`${API}/api/entry-forms/${alt.id}`, { headers: ADMIN })).status()).toBe(204)
+})

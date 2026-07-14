@@ -65,7 +65,7 @@ export function TransactionPage({
   crumbParent, onCrumbParent, crumbCurrent,
   title, subtitle, statusBadge,
   error, actions, sections, values, onFieldChange, fieldErrors,
-  tabs, dirty = false, onGuardReady, children,
+  tabs, dirty = false, onGuardReady, children, topSlot,
 }: {
   crumbParent: string
   onCrumbParent: () => void
@@ -91,6 +91,8 @@ export function TransactionPage({
   onGuardReady?: (markClean: () => void) => void
   /** sublist slots: line grids, notes, modals */
   children?: ReactNode
+  /** CF-FIX5-T2: a slot ABOVE the sections (the form picker — chosen first, it drives the layout) */
+  topSlot?: ReactNode
 }) {
   const { markClean } = useDirtyNavigationGuard(dirty)
   onGuardReady?.(markClean)
@@ -126,6 +128,8 @@ export function TransactionPage({
       {error && <Notice tone="error" icon="x" style={{ marginBottom: 14 }}>{error}</Notice>}
 
       {actionBar}
+
+      {topSlot}
 
       {(() => {
         // CF5-T3 column break: sections after the FIRST break render in a second column
