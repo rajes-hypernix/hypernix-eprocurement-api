@@ -64,8 +64,8 @@ Baselines (hold-or-raise every commit): **dotnet 541 · vitest 251 · e2e 98**. 
 - [ ] Browser test: a loading list shows a skeleton, not a blank; row hover animates · Test:___
 
 ### T7 — Header title → Georgia, regular weight — `CFF-T7:`
-- [ ] "Hypernix eProcure" title renders Georgia, font-weight 400 (not bold), per reference · Build:___ · Test:___
-- [ ] Browser test / assertion: the title's font-family is Georgia and weight is 400 · Test:___
+- [x] "Hypernix eProcure" title renders Georgia, font-weight 400 (not bold), per reference · Build:9f19f08 · Test:CFF-T7
+- [x] Browser test / assertion: the title's font-family is Georgia and weight is 400 · Test:CFF-T7 (computed style)
 
 **SLICE 2 GATE** — [ ] all T4-T7 ticked or blocked; suites green; tag `v2.2-ui-polish`. **Only then Slice 3.**
 
