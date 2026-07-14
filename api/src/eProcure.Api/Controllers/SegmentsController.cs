@@ -60,8 +60,8 @@ public sealed class SegmentsController(ISegmentService segments) : ControllerBas
 
     [HttpDelete("{id:guid}/applications/{recordType}")]
     [Action(ApiActions.ManageSegments)]
-    public async Task<ActionResult<SegmentDefDto>> Unapply(Guid id, string recordType, CancellationToken ct) =>
-        Ok(await segments.UnapplyAsync(id, recordType, ct));
+    public async Task<ActionResult<SegmentDefDto>> Unapply(Guid id, string recordType, [FromQuery] bool line, CancellationToken ct) =>
+        Ok(await segments.UnapplyAsync(id, recordType, line, ct));
 
     // CF-FIX4-T6: the CF-FIX-3 lifecycle surface, segment grain. Reports are admin-scoped;
     // purge is the DISTINCT higher tier (A73 — deliberately not implied by ManageSegments).

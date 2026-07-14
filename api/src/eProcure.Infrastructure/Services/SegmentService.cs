@@ -278,18 +278,22 @@ public sealed class SegmentService(
     {
         var def = await LoadUserDef(defId, ct);
         var type = Parse(req.RecordType);
-        if (await db.SegmentApplications.AnyAsync(a => a.SegmentDefId == def.Id && a.RecordType == type, ct))
-            throw new SegmentValidationException($"{def.Name} is already applied to {type}.");
+        if (await db.SegmentApplications.AnyAsync(a => a.SegmentDefId == def.Id && a.RecordType == type && a.LineLevel == req.LineLevel, ct))
+            throw new SegmentValidationException($"{def.Name} is already applied to {type} {(req.LineLevel ? "at line level" : "at header level")}.");
         db.SegmentApplications.Add(new SegmentApplication
         {
             Id = Guid.NewGuid(), SegmentDefId = def.Id, RecordType = type, LineLevel = req.LineLevel,
         });
         // Registry lockstep (D5 pattern): the applied segment becomes filterable on that type.
-        db.FieldRegistry.Add(new FieldRegistryEntry
-        {
-            Id = Guid.NewGuid(), RecordType = type, FieldKey = def.Code, Kind = FieldKind.Segment,
-            Label = def.Name, DataType = FieldDataType.Enum, SegmentDefId = def.Id,
-        });
+        // CF-FIX5-T7: the dimension is filterable whether applied at header OR line, so the
+        // registry row is ONE per (segment, type) — written idempotently (a second-level
+        // apply must not duplicate it).
+        if (!await db.FieldRegistry.AnyAsync(r => r.SegmentDefId == def.Id && r.RecordType == type, ct))
+            db.FieldRegistry.Add(new FieldRegistryEntry
+            {
+                Id = Guid.NewGuid(), RecordType = type, FieldKey = def.Code, Kind = FieldKind.Segment,
+                Label = def.Name, DataType = FieldDataType.Enum, SegmentDefId = def.Id,
+            });
         // CF-FIX4-T7: a HEADER apply may carry form placements — the SAME L1 EntryFormField
         // rows the T4 cascade writes and the designer drags. A LINE apply is FLAT (L4 — no
         // groups on lines) and must not carry any.
@@ -325,22 +329,29 @@ public sealed class SegmentService(
         return await ToDtoAsync(def, ct);
     }
 
-    public async Task<SegmentDefDto> UnapplyAsync(Guid defId, string recordType, CancellationToken ct = default)
+    public async Task<SegmentDefDto> UnapplyAsync(Guid defId, string recordType, bool lineLevel = false, CancellationToken ct = default)
     {
         var def = await LoadUserDef(defId, ct);
         var type = Parse(recordType);
-        var app = await db.SegmentApplications.FirstOrDefaultAsync(a => a.SegmentDefId == def.Id && a.RecordType == type, ct)
-            ?? throw new NotFoundException($"{def.Name} is not applied to {type}.");
-        if (await db.SegmentAssignments.AnyAsync(a => a.SegmentDefId == def.Id && a.RecordType == type, ct))
-            throw new DomainRuleException($"{def.Name} has assignments on {type} — dimension keys are never silently dropped.");
+        // CF-FIX5-T7: unapply targets ONE level; the other stays.
+        var app = await db.SegmentApplications.FirstOrDefaultAsync(a => a.SegmentDefId == def.Id && a.RecordType == type && a.LineLevel == lineLevel, ct)
+            ?? throw new NotFoundException($"{def.Name} is not applied to {type} {(lineLevel ? "at line level" : "at header level")}.");
+        // Assignments PIN the application at THAT grain (header = LineId null, line = LineId set).
+        if (await db.SegmentAssignments.AnyAsync(a => a.SegmentDefId == def.Id && a.RecordType == type
+                && (lineLevel ? a.LineId != null : a.LineId == null), ct))
+            throw new DomainRuleException($"{def.Name} has {(lineLevel ? "line" : "header")} assignments on {type} — dimension keys are never silently dropped.");
         db.SegmentApplications.Remove(app);
-        db.FieldRegistry.RemoveRange(await db.FieldRegistry
-            .Where(r => r.SegmentDefId == def.Id && r.RecordType == type).ToListAsync(ct));
-        // CF-FIX4-T7 (direction A, segment grain): un-applying a type takes its form
-        // placements with it — pure layout (L6), assignments already guarded above.
-        db.EntryFormFields.RemoveRange(await db.EntryFormFields
-            .Where(x => x.FieldKey == def.Code
-                && db.EntryFormDefs.Any(d2 => d2.Id == x.FormDefId && d2.RecordType == type)).ToListAsync(ct));
+        // CF-FIX5-T7: the shared registry row (filterable dimension) survives while the OTHER
+        // level is still applied — drop it only when NO application of either level remains.
+        if (!await db.SegmentApplications.AnyAsync(a => a.SegmentDefId == def.Id && a.RecordType == type && a.LineLevel != lineLevel, ct))
+            db.FieldRegistry.RemoveRange(await db.FieldRegistry
+                .Where(r => r.SegmentDefId == def.Id && r.RecordType == type).ToListAsync(ct));
+        // Form placements belong to the HEADER application (line dimensions are flat — no form
+        // fields), so they leave only when the header level is removed.
+        if (!lineLevel)
+            db.EntryFormFields.RemoveRange(await db.EntryFormFields
+                .Where(x => x.FieldKey == def.Code
+                    && db.EntryFormDefs.Any(d2 => d2.Id == x.FormDefId && d2.RecordType == type)).ToListAsync(ct));
         await db.SaveChangesAsync(ct);
         return await ToDtoAsync(def, ct);
     }
@@ -360,15 +371,18 @@ public sealed class SegmentService(
         await reachability.RequireReachableAsync(type, recordId, ct);   // A2F-T4: the ONE guard (was a 16-line twin)
 
         var apps = await ApplicationsFor(type, ct);
-        var defs = apps.Select(a => a.Def).ToDictionary(d => d.Code, StringComparer.OrdinalIgnoreCase);
+        // CF-FIX5-T7: a segment can have TWO applications (header + line) — dedupe to the
+        // distinct defs so the by-code lookup never collides.
+        var defs = apps.Select(a => a.Def).DistinctBy(d => d.Id).ToDictionary(d => d.Code, StringComparer.OrdinalIgnoreCase);
         foreach (var key in req.Assignments.Keys)
         {
             if (!defs.TryGetValue(key, out var def))
                 throw new SegmentValidationException($"Segment '{key}' is not applied to {type}.");
             if (def.IsSystem && type == RecordType.Requisition)
                 throw new SegmentValidationException($"'{def.Name}' on requisitions is a projection of the PR's own field — edit the PR (convergence row owns the switch).");
-            if (req.LineId is not null && !apps.First(a => a.Def.Id == def.Id).App.LineLevel)
-                throw new SegmentValidationException($"'{def.Name}' is header-level on {type}.");
+            // A LINE write requires a LINE application (either level may exist independently).
+            if (req.LineId is not null && !apps.Any(a => a.Def.Id == def.Id && a.App.LineLevel))
+                throw new SegmentValidationException($"'{def.Name}' is not applied at line level on {type}.");
         }
 
         foreach (var (key, raw) in req.Assignments)
@@ -405,7 +419,8 @@ public sealed class SegmentService(
     private async Task<IReadOnlyList<SegmentAssignmentDto>> MergedAsync(RecordType type, Guid recordId, Guid? lineId, CancellationToken ct)
     {
         var apps = await ApplicationsFor(type, ct);
-        var relevant = lineId is null ? apps : apps.Where(a => a.App.LineLevel).ToList();
+        // CF-FIX5-T7: a HEADER read sees only header apps; a LINE read only line apps.
+        var relevant = apps.Where(a => a.App.LineLevel == (lineId is not null)).ToList();
         var defIds = relevant.Select(a => a.Def.Id).ToList();
         var assignments = await db.SegmentAssignments.AsNoTracking()
             .Where(a => defIds.Contains(a.SegmentDefId) && a.RecordType == type && a.RecordId == recordId && a.LineId == lineId)

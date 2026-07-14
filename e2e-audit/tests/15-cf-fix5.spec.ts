@@ -121,3 +121,44 @@ test('CF-FIX5-T3: drag is GONE (rows not draggable) and the ARROWS move a field 
 
   expect((await request.delete(`${API}/api/entry-forms/${form.id}`, { headers: ADMIN })).status()).toBe(204)
 })
+
+test('CF-FIX5-T7: a segment applies to BOTH header and line of a record type, same id', async ({ page, request }) => {
+  const NAME = `Fix5 T7 Seg ${STAMP}`
+  const seg = await (await request.post(`${API}/api/segments`, { headers: { ...ADMIN, ...JSON_H },
+    data: { name: NAME, hasHierarchy: false, required: false } })).json()
+
+  await goAs(page, 'u_admin', 'segments')
+  await page.waitForTimeout(1200)
+  await page.getByRole('button', { name: new RegExp(NAME) }).click()
+
+  // PurchaseOrder is line-bearing → BOTH an 'Apply' (header) and an 'Apply per-line' offered.
+  // Apply header (opens the form+group cascade), accept defaults.
+  await page.getByRole('button', { name: `Apply ${NAME} to PurchaseOrder header`, exact: true }).click()
+  await page.getByRole('button', { name: 'Apply segment' }).click()
+  await page.waitForTimeout(800)
+  // Apply per-line (flat, one click).
+  await page.getByRole('button', { name: `Apply ${NAME} to PurchaseOrder per line`, exact: true }).click()
+  await page.waitForTimeout(800)
+
+  // BOTH applications exist, SAME dimension id (one SegmentDef, one code).
+  const apps = (await (await request.get(`${API}/api/segments`, { headers: ADMIN })).json())
+    .find((s: { id: string }) => s.id === seg.id).applications
+    .filter((a: { recordType: string }) => a.recordType === 'PurchaseOrder')
+  expect(apps.map((a: { lineLevel: boolean }) => a.lineLevel).sort()).toEqual([false, true])
+  // The UI now shows BOTH the header Remove and the per-line Remove for PurchaseOrder.
+  await expect(page.getByRole('button', { name: `Remove ${NAME} from PurchaseOrder header`, exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: `Remove ${NAME} from PurchaseOrder line`, exact: true })).toBeVisible()
+
+  // Removing ONE level leaves the other standing (server-verified).
+  await page.getByRole('button', { name: `Remove ${NAME} from PurchaseOrder line`, exact: true }).click()
+  await page.waitForTimeout(800)
+  const after = (await (await request.get(`${API}/api/segments`, { headers: ADMIN })).json())
+    .find((s: { id: string }) => s.id === seg.id).applications
+    .filter((a: { recordType: string }) => a.recordType === 'PurchaseOrder')
+  expect(after).toHaveLength(1)
+  expect(after[0].lineLevel).toBe(false)
+
+  // cleanup
+  await request.delete(`${API}/api/segments/${seg.id}/applications/PurchaseOrder?line=false`, { headers: ADMIN })
+  expect((await request.delete(`${API}/api/segments/${seg.id}`, { headers: ADMIN })).status()).toBe(204)
+})

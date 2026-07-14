@@ -729,7 +729,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             e.ToTable("SegmentApplications");
             e.HasKey(x => x.Id);
-            e.HasIndex(x => new { x.SegmentDefId, x.RecordType }).IsUnique();
+            // CF-FIX5-T7: a segment applies at BOTH levels of a record type (header AND line),
+            // exactly like NetSuite treats one dimension applied at two levels. Uniqueness is
+            // per (Def, RecordType, LineLevel) — the assignment grain (…,RecordId,LineId) is
+            // independent, so no dimension keys are dropped.
+            e.HasIndex(x => new { x.SegmentDefId, x.RecordType, x.LineLevel }).IsUnique();
             e.Property(x => x.RecordType).HasConversion<string>().HasMaxLength(30);
             e.HasOne<Domain.Segments.SegmentDef>().WithMany().HasForeignKey(x => x.SegmentDefId).OnDelete(DeleteBehavior.Restrict);
         });

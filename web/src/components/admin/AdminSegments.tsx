@@ -26,6 +26,9 @@ import type { FieldSpec } from '../../ui/fieldSpec'
  */
 
 const RECORD_TYPES = ['Requisition', 'Rfq', 'PurchaseOrder', 'Invoice', 'Asn', 'Vendor', 'Onboarding']
+// CF-FIX5-T7: mirrors the server's LineOwnership.SupportedTypes — types with a line grid
+// that can carry per-line dimensions.
+const LINE_BEARING = ['Requisition', 'PurchaseOrder', 'Rfq']
 
 const spec = (key: string, label: string, dataType: FieldSpec['dataType'], options?: string[]): FieldSpec => ({
   key, label, dataType,
@@ -82,7 +85,7 @@ function SegmentDetail({ def, onChanged }: { def: SegmentDefDto; onChanged: () =
     onError: (e) => setError(e instanceof Error ? e.message : 'Could not apply the segment.'),
   })
   const unapply = useMutation({
-    mutationFn: (recordType: string) => unapplySegment(def.id, recordType),
+    mutationFn: ({ recordType, line }: { recordType: string; line: boolean }) => unapplySegment(def.id, recordType, line),
     onSuccess: () => { setError(null); onChanged() },
     onError: (e) => setError(e instanceof Error ? e.message : 'Could not remove the application.'),
   })
@@ -148,23 +151,28 @@ function SegmentDetail({ def, onChanged }: { def: SegmentDefDto; onChanged: () =
         <thead><tr><th>Record type</th><th>Applied</th><th>Line level</th></tr></thead>
         <tbody>
           {RECORD_TYPES.map((rt) => {
-            const app = def.applications.find((a) => a.recordType === rt)
+            // CF-FIX5-T7: header and line are INDEPENDENT — a segment can apply to both.
+            const headerApp = def.applications.some((a) => a.recordType === rt && !a.lineLevel)
+            const lineApp = def.applications.some((a) => a.recordType === rt && a.lineLevel)
+            const lineBearing = LINE_BEARING.includes(rt)
             return (
               <tr key={rt}>
                 <td>{rt}</td>
                 <td>
                   {def.isSystem
-                    ? <span className={`badge ${app ? 'b-green' : 'b-grey'}`}>{app ? 'Applied' : '—'}</span>
-                    : app
-                      ? <Button variant="ghost" size="sm" onClick={() => unapply.mutate(rt)} ariaLabel={`Remove ${def.name} from ${rt}`}>Remove</Button>
-                      : <Button variant="ghost" size="sm" onClick={() => setApplying(rt)} ariaLabel={`Apply ${def.name} to ${rt}`}>Apply</Button>}
+                    ? <span className={`badge ${headerApp ? 'b-green' : 'b-grey'}`}>{headerApp ? 'Applied' : '—'}</span>
+                    : headerApp
+                      ? <Button variant="ghost" size="sm" onClick={() => unapply.mutate({ recordType: rt, line: false })} ariaLabel={`Remove ${def.name} from ${rt} header`}>Remove</Button>
+                      : <Button variant="ghost" size="sm" onClick={() => setApplying(rt)} ariaLabel={`Apply ${def.name} to ${rt} header`}>Apply</Button>}
                 </td>
                 <td>
-                  {/* Line-level is fixed at apply time (an application is immutable once live). */}
-                  {!app && !def.isSystem && rt === 'PurchaseOrder' && (
-                    <Button variant="ghost" size="sm" onClick={() => apply.mutate({ recordType: rt, lineLevel: true })} ariaLabel={`Apply ${def.name} to ${rt} per line`}>Apply per-line</Button>
-                  )}
-                  {app?.lineLevel && <span className="badge b-blue">per line</span>}
+                  {!lineBearing
+                    ? <span className="hint">—</span>
+                    : def.isSystem
+                      ? <span className={`badge ${lineApp ? 'b-blue' : 'b-grey'}`}>{lineApp ? 'per line' : '—'}</span>
+                      : lineApp
+                        ? <Button variant="ghost" size="sm" onClick={() => unapply.mutate({ recordType: rt, line: true })} ariaLabel={`Remove ${def.name} from ${rt} line`}>Remove per-line</Button>
+                        : <Button variant="ghost" size="sm" onClick={() => apply.mutate({ recordType: rt, lineLevel: true })} ariaLabel={`Apply ${def.name} to ${rt} per line`}>Apply per-line</Button>}
                 </td>
               </tr>
             )

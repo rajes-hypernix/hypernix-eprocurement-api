@@ -322,7 +322,7 @@ test('CF-FIX4-T7: header apply runs the form+group cascade; the segment lands on
   await page.getByRole('button', { name: new RegExp(NAME) }).click()
 
   // HEADER apply → the cascade dialog: standard form pre-selected, group defaults Header.
-  await page.getByRole('button', { name: `Apply ${NAME} to Requisition`, exact: true }).click()
+  await page.getByRole('button', { name: `Apply ${NAME} to Requisition header`, exact: true }).click()
   await expect(page.getByText(/the standard form is pre-selected/i)).toBeVisible()
   const formPicker = page.getByRole('button', { name: 'Requisition — form(s)' })
   await expect(formPicker).toContainText('Standard PR Form')
@@ -339,11 +339,11 @@ test('CF-FIX4-T7: header apply runs the form+group cascade; the segment lands on
   // LINE apply (PO) — no cascade, no group asked: the flat path.
   await page.getByRole('button', { name: `Apply ${NAME} to PurchaseOrder per line`, exact: true }).click()
   await page.waitForTimeout(800)
-  await expect(page.getByText('per line')).toBeVisible()
+  await expect(page.getByRole('button', { name: `Remove ${NAME} from PurchaseOrder line`, exact: true })).toBeVisible()
 
   // cleanup: unapply header (placement leaves with it), then delete the segment.
   await request.delete(`${API}/api/segments/${seg.id}/applications/Requisition`, { headers: ADMIN })
-  await request.delete(`${API}/api/segments/${seg.id}/applications/PurchaseOrder`, { headers: ADMIN })
+  await request.delete(`${API}/api/segments/${seg.id}/applications/PurchaseOrder?line=true`, { headers: ADMIN })
   expect((await request.delete(`${API}/api/segments/${seg.id}`, { headers: ADMIN })).status()).toBe(204)
   const after = (await (await request.get(`${API}/api/entry-forms?recordType=Requisition`, { headers: ADMIN })).json())
     .find((f: { isSystem: boolean }) => f.isSystem)

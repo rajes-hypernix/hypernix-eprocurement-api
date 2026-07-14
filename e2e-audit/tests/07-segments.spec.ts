@@ -43,7 +43,7 @@ test('segments gate: admin defines → buyer assigns → view filters → sliced
   await page.waitForTimeout(1000)
   await expect(page.getByText('ALPHA-PLANT')).toBeVisible()     // the DimCode-derived key, on the glass
   for (const rt of ['Requisition', 'PurchaseOrder', 'Invoice']) {
-    await page.getByRole('button', { name: `Apply ${SEG_NAME} to ${rt}`, exact: true }).click()
+    await page.getByRole('button', { name: `Apply ${SEG_NAME} to ${rt} header`, exact: true }).click()
     // CF-FIX4-T7: header apply runs the form+group cascade — accept the defaults
     // (standard form pre-selected, Header group).
     await page.getByRole('button', { name: 'Apply segment' }).click()

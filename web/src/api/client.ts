@@ -260,8 +260,8 @@ export const setEntryFormActive = (id: string, active: boolean) =>
 export type SegmentPlacementRequest = { formId: string; groupId?: string | null }
 export const applySegment = (id: string, req: { recordType: string; lineLevel: boolean; placements?: SegmentPlacementRequest[] | null }) =>
   http<SegmentDefDto>(`/segments/${id}/applications`, { method: 'POST', body: JSON.stringify(req) })
-export const unapplySegment = (id: string, recordType: string) =>
-  http<SegmentDefDto>(`/segments/${id}/applications/${recordType}`, { method: 'DELETE' })
+export const unapplySegment = (id: string, recordType: string, line = false) =>
+  http<SegmentDefDto>(`/segments/${id}/applications/${recordType}?line=${line}`, { method: 'DELETE' })
 export const getSegmentAssignments = (recordType: string, recordId: string, lineId?: string | null) =>
   http<SegmentAssignmentDto[]>(`/segment-assignments/${recordType}/${recordId}${lineId ? `?lineId=${lineId}` : ''}`)
 export const saveSegmentAssignments = (recordType: string, recordId: string, assignments: Record<string, string | null>, lineId?: string | null) =>

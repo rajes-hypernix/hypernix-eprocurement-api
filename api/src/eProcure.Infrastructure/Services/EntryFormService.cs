@@ -153,11 +153,13 @@ public sealed class EntryFormService(AppDbContext db, IClock clock, ICurrentUser
                 var segStillPlaced = await db.EntryFormFields.AnyAsync(x => x.FieldKey == key
                     && db.EntryFormDefs.Any(d2 => d2.Id == x.FormDefId && d2.RecordType == type), ct);
                 if (segStillPlaced) continue;
+                // CF-FIX5-T7: only the HEADER application carries form placements; a LINE
+                // application is flat (never placed), so this reconcile touches header only.
                 var segApp = await db.SegmentApplications
-                    .FirstOrDefaultAsync(a => a.SegmentDefId == segDef.Id && a.RecordType == type, ct);
+                    .FirstOrDefaultAsync(a => a.SegmentDefId == segDef.Id && a.RecordType == type && !a.LineLevel, ct);
                 if (segApp is null) continue;
-                if (await db.SegmentAssignments.AnyAsync(a => a.SegmentDefId == segDef.Id && a.RecordType == type, ct))
-                    continue;   // assignments pin the application
+                if (await db.SegmentAssignments.AnyAsync(a => a.SegmentDefId == segDef.Id && a.RecordType == type && a.LineId == null, ct))
+                    continue;   // header assignments pin the header application
                 db.SegmentApplications.Remove(segApp);
                 db.FieldRegistry.RemoveRange(await db.FieldRegistry
                     .Where(r => r.SegmentDefId == segDef.Id && r.RecordType == type).ToListAsync(ct));

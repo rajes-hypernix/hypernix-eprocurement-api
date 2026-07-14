@@ -68,6 +68,10 @@ public sealed class SegmentsFixture : IAsyncLifetime
         var def = (await resp.Content.ReadFromJsonAsync<SegmentDefDto>())!;
         foreach (var v in values)
             def = (await (await admin.PostAsJsonAsync($"/api/segments/{def.Id}/values", new SaveSegmentValueRequest(v, null, 0))).Content.ReadFromJsonAsync<SegmentDefDto>())!;
+        // CF-FIX5-T7: apply at BOTH levels (now that header and line coexist) so header
+        // assigns hit the header app and line assigns hit the line app — each read is
+        // grain-correct (a header read no longer leaks line apps, and vice versa).
+        await admin.PostAsJsonAsync($"/api/segments/{def.Id}/applications", new ApplySegmentRequest("PurchaseOrder", false));
         def = (await (await admin.PostAsJsonAsync($"/api/segments/{def.Id}/applications", new ApplySegmentRequest("PurchaseOrder", true))).Content.ReadFromJsonAsync<SegmentDefDto>())!;
         return def;
     }

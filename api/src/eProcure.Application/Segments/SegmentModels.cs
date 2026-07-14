@@ -54,7 +54,7 @@ public interface ISegmentService
     Task PurgeAsync(Guid id, CancellationToken ct = default);
     Task PurgeValueAsync(Guid valueId, CancellationToken ct = default);
     Task<SegmentDefDto> ApplyAsync(Guid defId, ApplySegmentRequest req, CancellationToken ct = default);
-    Task<SegmentDefDto> UnapplyAsync(Guid defId, string recordType, CancellationToken ct = default);
+    Task<SegmentDefDto> UnapplyAsync(Guid defId, string recordType, bool lineLevel = false, CancellationToken ct = default);
     Task<IReadOnlyList<SegmentAssignmentDto>> GetAssignmentsAsync(string recordType, Guid recordId, Guid? lineId, CancellationToken ct = default);
     Task<IReadOnlyList<SegmentAssignmentDto>> SaveAssignmentsAsync(string recordType, Guid recordId, SaveSegmentAssignmentsRequest req, CancellationToken ct = default);
 }
