@@ -149,16 +149,19 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
   const leave = () => { markClean.current(); onBack() }
 
   // Form-placed cf_/seg_ values save alongside the header (their own endpoints, only the
-  // keys this form placed — the residual sections keep owning everything else).
-  const saveExtras = async () => {
-    if (isNew || !form) return
+  // keys this form placed — the residual sections keep owning everything else). CF-FIX5-T1:
+  // on CREATE the record id arrives from createPr's response, so this takes it explicitly
+  // and no longer bails on isNew — the chosen form's custom fields now persist at creation.
+  const saveExtras = async (recordId: string) => {
+    if (!form) return
     const cf = Object.fromEntries(placedCustom.filter((k) => k in extras).map((k) => [k, extras[k] === '' ? null : extras[k]]))
-    if (Object.keys(cf).length > 0) await saveCustomValues('Requisition', id!, cf)
+    if (Object.keys(cf).length > 0) await saveCustomValues('Requisition', recordId, cf)
     const seg = Object.fromEntries(placedSegment.filter((k) => k in extras).map((k) => [k, extras[k] === '' ? null : extras[k]]))
-    if (Object.keys(seg).length > 0) await saveSegmentAssignments('Requisition', id!, seg)
+    if (Object.keys(seg).length > 0) await saveSegmentAssignments('Requisition', recordId, seg)
     // CF6: per-line custom values ride the same save (server verifies line ownership).
+    // Lines only carry ids once the record exists, so on create this stays empty (unchanged).
     if (lineDefs.length > 0 && Object.keys(lineVals).length > 0)
-      await saveLineCustomValues('Requisition', id!,
+      await saveLineCustomValues('Requisition', recordId,
         Object.fromEntries(Object.entries(lineVals).map(([lid, vs]) =>
           [lid, Object.fromEntries(Object.entries(vs).map(([k, v]) => [k, v === '' ? null : v]))])))
   }
@@ -179,7 +182,7 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
     mutationFn: async (mode: 'draft' | 'submit' | 'keep') => {
       if (mode === 'submit' && !requiredGate()) throw new Error('__handled__')
       const result = isNew ? await createPr(body(), mode === 'submit') : await updatePr(id!, body())
-      await saveExtras()
+      await saveExtras(result.id)   // CF-FIX5-T1: the new record's id from the create response
       return result
     },
     onSuccess: () => { inval(); leave() },
@@ -195,7 +198,7 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
     mutationFn: async () => {
       if (!requiredGate()) throw new Error('__handled__')
       await updatePr(id!, body())
-      await saveExtras()
+      await saveExtras(id!)
       return submitPr(id!)
     },
     onSuccess: () => { inval(); leave() },
@@ -204,17 +207,24 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
 
   if ((!isNew && isPending) || !form) return <Spinner />
 
-  // Layout from the RESOLVED definition. On CREATE, cf_/seg_ placements drop out (their
-  // value endpoints need a record id); they appear the moment the record exists.
-  const renderable = form.fields.filter((f) => !isNew || f.kind === 'Native')
+  // Layout from the RESOLVED definition. CF-FIX5-T1: the chosen form's placed custom/segment
+  // fields now render on CREATE too — their values collect into `extras` and persist right
+  // after createPr returns the record id. (form.fields only ever holds HEADER-scope custom
+  // fields + segments + natives; LINE-scope custom fields are sublist columns, handled
+  // separately and still deferred until the record's lines have ids.)
+  const renderable = form.fields
   const { main, tabs: subtabFields } = splitSubtabs(renderable)
   const sections = buildSections(main)
   const formTabs = subtabFields.map(([name, fields]) => ({ key: name, label: name, sections: buildSections(fields) }))
 
   const setHeader = (k: string, v: string) => {
     setDirty(true)
-    if (k.startsWith('cf_') || k.startsWith('seg_')) setExtras((p) => ({ ...p, [k]: v }))
-    else setH((p) => ({ ...p, [k]: v }))
+    // CF-FIX5-T1: route by NATIVE-key membership, not a stale cf_/seg_ prefix test. Custom
+    // fields have been custbody_/custcol_ and segments seg_/custseg_ since the prefix
+    // migrations, so a prefix check silently dropped their edits into the native header
+    // bucket (never reaching extras/saveExtras). A native key is one of h's own keys.
+    if (k in h) setH((p) => ({ ...p, [k]: v }))
+    else setExtras((p) => ({ ...p, [k]: v }))
   }
   const setLine = (i: number, k: keyof EditLine, v: string) => {
     setDirty(true)
