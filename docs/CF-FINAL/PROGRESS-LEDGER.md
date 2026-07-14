@@ -67,7 +67,8 @@ Baselines (hold-or-raise every commit): **dotnet 541 · vitest 251 · e2e 98**. 
 - [x] "Hypernix eProcure" title renders Georgia, font-weight 400 (not bold), per reference · Build:9f19f08 · Test:CFF-T7
 - [x] Browser test / assertion: the title's font-family is Georgia and weight is 400 · Test:CFF-T7 (computed style)
 
-**SLICE 2 GATE** — [ ] all T4-T7 ticked or blocked; suites green; tag `v2.2-ui-polish`. **Only then Slice 3.**
+**SLICE 2 GATE** — [x] all T4-T7 ticked or blocked; suites green; tag `v2.2-ui-polish`. **Only then Slice 3.**
+  · dotnet 550 · vitest 256 · e2e 115 · tsc -b 0 · oxlint 0 · tag v2.2-ui-polish. Full e2e green (no regressions from the polish layer).
 
 ---
 

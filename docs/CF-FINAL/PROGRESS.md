@@ -8,3 +8,4 @@
 - 2026-07-14T11:13:22Z  CFF-T4 committed (7c40575): global Notify provider (banner+toast) wired to all 8 save surfaces, past-tense copy. CFF-T7 committed (9f19f08): header Georgia 400. Gates: dotnet 550, vitest 256, tsc 0, oxlint 0, e2e T4+T7 green.
 - 2026-07-14T11:23:33Z  CFF-T5 committed (4b680c0): primary Save/Submit top-right (transactions right-aligned, chead spacers fixed, modal headerAction on custom-field modal). e2e proves 3 surfaces. AD-6 recorded.
 - 2026-07-14T11:31:05Z  CFF-T6 committed (efcd8ac): button press/hover transitions, row-hover settle, Skeleton component (wired into Requisitions), panel-fade on builder. e2e proves skeleton-on-load + transitions.
+- 2026-07-14T11:40:55Z  SLICE 2 GATE PASSED: tag v2.2-ui-polish. Gates: dotnet 550, vitest 256, tsc 0, oxlint 0, e2e 115/115. T4-T7 all shipped (global banner/toast, Save top-right, transitions/skeletons, Georgia header). Proceeding to Slice 3.
