@@ -30,10 +30,10 @@ Baselines (hold-or-raise every commit): **dotnet 541 · vitest 251 · e2e 98**. 
 - [x] Browser test: create PR with a custom form + custom field → save → reopen → still on the custom form, the custom field shows, NO phantom fields/segments below the sublist · Test:CFF-T1
 
 ### T2 — Custom fields apply to CUSTOM forms only (standard forms stay source-controlled) — `CFF-T2:`
-- [ ] Server rule: a custom field can be placed on a NON-system form only; attempting to place on a `IsSystem` standard form is refused (400) · Build:___ · Test:___
-- [ ] UI: the form-picker in field creation offers only custom (non-system) forms · Build:___ · Test:___
-- [ ] Standard forms resolve their fields from source/seed only — unaffected by custom-field placement · Build:___ · Test:___
-- [ ] Browser test: try to apply a custom field to a Standard form → blocked; to a custom form → works · Test:___
+- [x] Server rule: a custom field can be placed on a NON-system form only; attempting to place on a `IsSystem` standard form is refused (400) · Build:fe1c9fb · Test:PlacementCascadeTests.CFF_T2_a_custom_field_cannot_be_placed_on_a_standard_system_form + CFF-T2
+- [x] UI: the form-picker in field creation offers only custom (non-system) forms · Build:fe1c9fb · Test:AdminCustomFields.test.tsx + CFF-T2 (picker options exclude Standard PR Form)
+- [x] Standard forms resolve their fields from source/seed only — unaffected by custom-field placement · Build:fe1c9fb · Test:ArchiveTierTests/PlacementCascadeTests (standard untouched; placements land on custom forms)
+- [x] Browser test: try to apply a custom field to a Standard form → blocked; to a custom form → works · Test:CFF-T2
 
 ### T3 — Standard PR: Est. Amount column (rate × qty) — `CFF-T3:`
 - [x] Add "Est. Amount" next to Est. Rate on the standard PR line grid = `qty × estRate`, live-computed, currency-formatted (grouped decimals, the CF1 money display) · Build:9a1d1ef · Test:CFF-T3
