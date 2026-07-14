@@ -33,7 +33,7 @@ public sealed record EntryFormDefDto(
     IReadOnlyList<EntryFormSubtabDto>? Subtabs = null, IReadOnlyList<EntryFormGroupDto>? Groups = null,
     IReadOnlyList<string>? SublistColumns = null);   // CF-FIX4-T3: ordered line-column keys (L4, flat)
 
-public sealed record SaveEntryFormRequest(string Name, string RecordType, List<EntryFormFieldDto> Fields);
+public sealed record SaveEntryFormRequest(string Name, string RecordType, List<EntryFormFieldDto> Fields, string? Code = null);
 
 public sealed record AssignRolesRequest(List<string> Roles);
 

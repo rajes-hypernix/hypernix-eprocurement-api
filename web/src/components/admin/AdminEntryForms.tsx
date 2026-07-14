@@ -7,9 +7,10 @@ import {
   getViewFields, type EntryFormDefDto, type EntryFormFieldDto, type EntryFormGroupDto,
 } from '../../api/client'
 import { SetupPage } from '../../ui/archetypes/SetupPage'
-import { Notice } from '../ui'
+import { Modal, Notice } from '../ui'
 import { Button } from '../../ui/Button'
 import { TextField } from '../../ui/TextField'
+import { CodeField } from '../../ui/CodeField'
 import { SelectField } from '../../ui/SelectField'
 import { CheckboxField } from '../../ui/CheckboxField'
 import type { FieldSpec } from '../../ui/fieldSpec'
@@ -52,20 +53,15 @@ export function AdminEntryForms() {
   const form = forms.find((f) => f.id === selected) ?? forms[0]
   const refresh = () => { void qc.invalidateQueries({ queryKey: ['entry-form-defs'] }); void qc.invalidateQueries({ queryKey: ['entry-form'] }) }
 
-  const copy = useMutation({
-    mutationFn: (source: EntryFormDefDto) => createEntryForm({
-      name: `${source.name} (copy)`, recordType: source.recordType, fields: source.fields,
-    }),
-    onSuccess: (d) => { setSelected(d.id); setListError(null); refresh() },
-    onError: (e) => setListError(e instanceof Error ? e.message : 'Could not copy the form.'),
-  })
+  // CF-FIX5-T8: New form opens a modal to set the Name + Internal ID (customform_ affix).
+  const [copying, setCopying] = useState<EntryFormDefDto | null>(null)
 
   return (
     <SetupPage
       title="Entry Forms"
       subtitle="Layouts per record type — field groups, subtabs, the item sublist, display types, required-at-submit, defaults. Zero deployments."
       primaryAction={form && (
-        <Button variant="primary" size="sm" icon="plus" busy={copy.isPending} onClick={() => copy.mutate(form)}>
+        <Button variant="primary" size="sm" icon="plus" onClick={() => setCopying(form)}>
           New form (copy of {form.name})
         </Button>
       )}
@@ -82,7 +78,40 @@ export function AdminEntryForms() {
             ? <FormDesigner key={form.id} form={form} onChanged={refresh} onDeleted={() => { setSelected(null); refresh() }} />
             : <p className="hint">No entry forms yet.</p>}
         </>}
-    />
+    >
+      {copying && (
+        <NewFormModal source={copying}
+          onClose={() => setCopying(null)}
+          onCreated={(d) => { setCopying(null); setSelected(d.id); setListError(null); refresh() }}
+          onError={setListError} />
+      )}
+    </SetupPage>
+  )
+}
+
+function NewFormModal({ source, onClose, onCreated, onError }: {
+  source: EntryFormDefDto
+  onClose: () => void
+  onCreated: (d: EntryFormDefDto) => void
+  onError: (msg: string | null) => void
+}) {
+  const [name, setName] = useState(`${source.name} (copy)`)
+  const [code, setCode] = useState('')   // CF-FIX5-T8: user-input customform_ id (auto-derived if blank)
+  const create = useMutation({
+    mutationFn: () => createEntryForm({ name: name.trim(), code: code.trim() || null, recordType: source.recordType, fields: source.fields }),
+    onSuccess: onCreated,
+    onError: (e) => onError(e instanceof Error ? e.message : 'Could not create the form.'),
+  })
+  return (
+    <Modal title="New entry form" icon="plus"
+      footer={<>
+        <button type="button" className="btn btn-out" onClick={onClose}>Cancel</button>
+        <button type="button" className="btn btn-pri" disabled={!name.trim() || create.isPending} onClick={() => create.mutate()}>Create form</button>
+      </>}>
+      <TextField spec={{ key: 'nf-name', label: 'Form name', dataType: 'text' }} value={name} onChange={(v) => setName(String(v ?? ''))} />
+      <CodeField spec={{ key: 'nf-id', label: 'Internal ID', dataType: 'code', affix: 'customform_', placeholder: 'auto-derived from the name' }}
+        value={code} onChange={setCode} />
+    </Modal>
   )
 }
 

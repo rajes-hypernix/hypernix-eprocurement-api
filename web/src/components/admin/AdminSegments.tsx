@@ -12,6 +12,7 @@ import { SetupPage } from '../../ui/archetypes/SetupPage'
 import { Modal, Notice } from '../ui'
 import { Button } from '../../ui/Button'
 import { TextField } from '../../ui/TextField'
+import { CodeField } from '../../ui/CodeField'
 import { SelectField } from '../../ui/SelectField'
 import { CheckboxField } from '../../ui/CheckboxField'
 import type { FieldSpec } from '../../ui/fieldSpec'
@@ -227,6 +228,7 @@ function DefModal({ def, onClose, onSaved }: {
   def: SegmentDefDto | null; onClose: () => void; onSaved: (d: SegmentDefDto) => void
 }) {
   const [name, setName] = useState(def?.name ?? '')
+  const [code, setCode] = useState('')   // CF-FIX5-T8: user-input custseg_ id (create only)
   const [hasHierarchy, setHasHierarchy] = useState(def?.hasHierarchy ?? false)
   const [required, setRequired] = useState(def?.required ?? false)
   const [error, setError] = useState<string | null>(null)
@@ -234,7 +236,7 @@ function DefModal({ def, onClose, onSaved }: {
   const save = useMutation({
     mutationFn: () => {
       const req = { name, hasHierarchy, required }
-      return def ? updateSegmentDef(def.id, req) : createSegmentDef(req)
+      return def ? updateSegmentDef(def.id, req) : createSegmentDef({ ...req, code: code.trim() || null })
     },
     onSuccess: onSaved,
     onError: (e) => setError(e instanceof Error ? e.message : 'Could not save the segment.'),
@@ -254,6 +256,11 @@ function DefModal({ def, onClose, onSaved }: {
       }
     >
       <TextField spec={spec('seg-name', 'Name', 'text')} value={name} onChange={(v) => setName(String(v ?? ''))} />
+      {!def && (
+        <CodeField spec={{ key: 'seg-id', label: 'Internal ID', dataType: 'code', affix: 'custseg_', placeholder: 'e.g. region' }}
+          value={code} onChange={setCode} />
+      )}
+      {def && <p className="hint">Internal ID <span className="mono">{def.code}</span> is immutable.</p>}
       <CheckboxField spec={spec('seg-hier', 'Hierarchical values (parent stored; rollup reporting arrives gate-driven)', 'boolean')}
         value={hasHierarchy} onChange={(v) => setHasHierarchy(v === true)} />
       <CheckboxField spec={spec('seg-req', 'Required (enforced at assignment-save)', 'boolean')}

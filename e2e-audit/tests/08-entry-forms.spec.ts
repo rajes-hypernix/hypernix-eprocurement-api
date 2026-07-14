@@ -56,8 +56,10 @@ test('entry-forms gate: standard → admin composes role form → buyer gets it;
   // CF-FIX4-T2: the rail now lists ALL record types' forms — select the PR standard first.
   await page.getByRole('button', { name: /Standard PR Form/ }).and(page.locator(':not(:has-text("(copy)"))')).first().click()
   await page.getByRole('button', { name: /New form \(copy of Standard PR Form\)/ }).click()
+  // CF-FIX5-T8: New form opens a modal (name + customform_ Internal ID). Set the name there.
+  await page.getByLabel('Form name', { exact: true }).fill(FORM_NAME)
+  await page.getByRole('button', { name: 'Create form' }).click()
   await page.waitForTimeout(1200)
-  await page.getByLabel('Form name').fill(FORM_NAME)
   await page.getByRole('button', { name: 'Remove Job' }).click()                       // hidden by removal
   await page.getByLabel('Category display').selectOption('Hidden')                     // hidden by display type
   await page.getByLabel('Department required at submit').check()

@@ -46,8 +46,26 @@ public sealed class SegmentService(
     {
         if (string.IsNullOrWhiteSpace(req.Name))
             throw new SegmentValidationException("A segment needs a name.");
-        var code = "seg_" + new string(req.Name.Trim().ToLowerInvariant()
-            .Select(ch => char.IsLetterOrDigit(ch) ? ch : '_').ToArray()).Trim('_');
+        // CF-FIX5-T8: NetSuite's custseg_ convention — the SAME custseg_ id serves a segment
+        // whether it is applied at header or line (it is ONE dimension, T7). Existing seg_*
+        // codes are grandfathered (immutable — no rename, no migration).
+        string code;
+        if (!string.IsNullOrWhiteSpace(req.Code))
+        {
+            var part = req.Code.Trim().ToLowerInvariant();
+            foreach (var known in new[] { "custseg_", "seg_" })
+                if (part.StartsWith(known)) { part = part[known.Length..]; break; }
+            if (part.Length == 0)
+                throw new SegmentValidationException("The Internal ID needs a value after the custseg_ prefix.");
+            if (!System.Text.RegularExpressions.Regex.IsMatch(part, "^[a-z0-9_]+$"))
+                throw new SegmentValidationException("The Internal ID may only use letters, digits and underscores.");
+            code = "custseg_" + part;
+        }
+        else
+        {
+            code = "custseg_" + new string(req.Name.Trim().ToLowerInvariant()
+                .Select(ch => char.IsLetterOrDigit(ch) ? ch : '_').ToArray()).Trim('_');
+        }
         if (code.Length > 60) code = code[..60];
         if (await db.SegmentDefs.AnyAsync(d => d.Code == code, ct))
             throw new SegmentValidationException($"A segment with code '{code}' already exists.");

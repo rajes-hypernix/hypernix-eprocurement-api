@@ -162,3 +162,42 @@ test('CF-FIX5-T7: a segment applies to BOTH header and line of a record type, sa
   await request.delete(`${API}/api/segments/${seg.id}/applications/PurchaseOrder?line=false`, { headers: ADMIN })
   expect((await request.delete(`${API}/api/segments/${seg.id}`, { headers: ADMIN })).status()).toBe(204)
 })
+
+test('CF-FIX5-T8: new form id → customform_, new segment id → custseg_ (same id header+line)', async ({ page, request }) => {
+  // --- New entry form gets a customform_ id from the user-keyed Internal ID ---
+  await goAs(page, 'u_admin', 'entryforms')
+  await page.waitForTimeout(1200)
+  await page.getByRole('button', { name: /Standard PR Form/ }).and(page.locator(':not(:has-text("(copy)"))')).first().click()
+  await page.getByRole('button', { name: /New form \(copy of/ }).click()
+  await page.getByLabel('Internal ID', { exact: true }).fill(`project${STAMP}`)
+  await page.getByRole('button', { name: 'Create form' }).click()
+  await page.waitForTimeout(1000)
+  await expect(page.getByText(`customform_project${STAMP}`)).toBeVisible()
+
+  // --- New segment gets a custseg_ id, and the SAME id shows on header AND line applies ---
+  await goAs(page, 'u_admin', 'segments')
+  await page.waitForTimeout(1200)
+  await page.getByRole('button', { name: 'New segment' }).click()
+  await page.getByLabel('Name', { exact: true }).fill(`Region ${STAMP}`)
+  await page.getByLabel('Internal ID', { exact: true }).fill(`region${STAMP}`)
+  await page.getByRole('button', { name: 'Create segment' }).click()
+  await page.waitForTimeout(1000)
+  await expect(page.getByText(`custseg_region${STAMP}`)).toBeVisible()   // the one dimension id
+
+  // Apply header + per-line on PurchaseOrder — one id, two levels.
+  await page.getByRole('button', { name: `Apply Region ${STAMP} to PurchaseOrder header`, exact: true }).click()
+  await page.getByRole('button', { name: 'Apply segment' }).click()
+  await page.waitForTimeout(700)
+  await page.getByRole('button', { name: `Apply Region ${STAMP} to PurchaseOrder per line`, exact: true }).click()
+  await page.waitForTimeout(700)
+  // The code shown in the detail header is still the single custseg_ id serving both.
+  await expect(page.getByText(`custseg_region${STAMP}`)).toBeVisible()
+
+  // cleanup
+  const seg = (await (await request.get(`${API}/api/segments`, { headers: ADMIN })).json()).find((s: { code: string }) => s.code === `custseg_region${STAMP}`)
+  await request.delete(`${API}/api/segments/${seg.id}/applications/PurchaseOrder?line=true`, { headers: ADMIN })
+  await request.delete(`${API}/api/segments/${seg.id}/applications/PurchaseOrder?line=false`, { headers: ADMIN })
+  await request.delete(`${API}/api/segments/${seg.id}`, { headers: ADMIN })
+  const form = (await (await request.get(`${API}/api/entry-forms?recordType=Requisition`, { headers: ADMIN })).json()).find((f: { code: string }) => f.code === `customform_project${STAMP}`)
+  if (form) await request.delete(`${API}/api/entry-forms/${form.id}`, { headers: ADMIN })
+})

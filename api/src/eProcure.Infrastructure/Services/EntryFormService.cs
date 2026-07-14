@@ -56,14 +56,34 @@ public sealed class EntryFormService(AppDbContext db, IClock clock, ICurrentUser
             throw new FormValidationException($"No entry surface consumes {type} forms yet (OD-D7-5) — the restriction lifts at that surface's migration gate.");
         if (string.IsNullOrWhiteSpace(req.Name))
             throw new FormValidationException("A form needs a name.");
-        var code = "ef_" + SourcingMapping.DimCode(req.Name).ToLowerInvariant().Replace('-', '_');
-        // SWEEP-FIX-T1: the code is an INTERNAL id — copying "X (copy)" twice is a legitimate
-        // action, so a collision de-dupes with a numeric suffix instead of failing forever.
-        if (await db.EntryFormDefs.AnyAsync(d => d.Code == code, ct))
+        // CF-FIX5-T8: NetSuite's customform_ convention — the user keys the meaningful part,
+        // the system guarantees the namespace. Existing ef_* codes are grandfathered
+        // (immutable, resolve unchanged — no rename, no migration).
+        string code;
+        if (!string.IsNullOrWhiteSpace(req.Code))
         {
-            var n = 2;
-            while (await db.EntryFormDefs.AnyAsync(d => d.Code == $"{code}_{n}", ct)) n++;
-            code = $"{code}_{n}";
+            var part = req.Code.Trim().ToLowerInvariant();
+            foreach (var known in new[] { "customform_", "ef_" })
+                if (part.StartsWith(known)) { part = part[known.Length..]; break; }
+            if (part.Length == 0)
+                throw new FormValidationException("The Internal ID needs a value after the customform_ prefix.");
+            if (!System.Text.RegularExpressions.Regex.IsMatch(part, "^[a-z0-9_]+$"))
+                throw new FormValidationException("The Internal ID may only use letters, digits and underscores.");
+            code = "customform_" + part;
+            if (await db.EntryFormDefs.AnyAsync(d => d.Code == code, ct))
+                throw new FormValidationException($"A form with Internal ID '{code}' already exists — choose another.");
+        }
+        else
+        {
+            // Auto-derived (e.g. "New form (copy of X)"): the code is an INTERNAL id, so a
+            // collision de-dupes with a numeric suffix instead of failing forever.
+            code = "customform_" + SourcingMapping.DimCode(req.Name).ToLowerInvariant().Replace('-', '_');
+            if (await db.EntryFormDefs.AnyAsync(d => d.Code == code, ct))
+            {
+                var n = 2;
+                while (await db.EntryFormDefs.AnyAsync(d => d.Code == $"{code}_{n}", ct)) n++;
+                code = $"{code}_{n}";
+            }
         }
         await ValidateFieldsAsync(type, req.Fields, ct);
 

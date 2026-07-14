@@ -230,7 +230,7 @@ export type SegmentDefDto = {
   id: string; code: string; name: string; hasHierarchy: boolean; required: boolean; active: boolean; isSystem: boolean
   values: SegmentValueDto[]; applications: SegmentApplicationDto[]
 }
-export type SaveSegmentDefRequest = { name: string; hasHierarchy: boolean; required: boolean }
+export type SaveSegmentDefRequest = { name: string; hasHierarchy: boolean; required: boolean; code?: string | null }
 export type SegmentAssignmentDto = {
   segmentCode: string; segmentName: string; required: boolean
   options: SegmentValueDto[]; valueCode?: string | null; valueLabel?: string | null
@@ -282,7 +282,7 @@ export type EntryFormDefDto = {
   subtabs?: EntryFormSubtabDto[]; groups?: EntryFormGroupDto[]
   sublistColumns?: string[] | null   // CF-FIX4-T3: ordered line-column keys (L4, flat)
 }
-export type SaveEntryFormRequest = { name: string; recordType: string; fields: EntryFormFieldDto[] }
+export type SaveEntryFormRequest = { name: string; recordType: string; fields: EntryFormFieldDto[] ; code?: string | null }
 export type ResolvedFormFieldDto = {
   fieldKey: string; label: string; dataType: string; kind: string; subtab?: string | null
   fieldGroup: string; sort: number; displayType: string; requiredOnForm: boolean

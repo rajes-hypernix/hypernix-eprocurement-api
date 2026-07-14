@@ -11,7 +11,7 @@ public sealed record SegmentValueDto(Guid Id, string Code, string Label, Guid? P
 
 public sealed record SegmentApplicationDto(string RecordType, bool LineLevel);
 
-public sealed record SaveSegmentDefRequest(string Name, bool HasHierarchy, bool Required);
+public sealed record SaveSegmentDefRequest(string Name, bool HasHierarchy, bool Required, string? Code = null);
 
 public sealed record SaveSegmentValueRequest(string Label, Guid? ParentValueId, int Sort);
 
