@@ -27,12 +27,16 @@ export function Notice({ tone = 'info', icon, children, style }: { tone?: Tone; 
   )
 }
 
-/** Generic centred modal shell (header + body + footer). */
-export function Modal({ title, icon = 'check', children, footer }: { title: ReactNode; icon?: string; children: ReactNode; footer: ReactNode }) {
+/** Generic centred modal shell (header + body + footer). CFF-T5: an optional `headerAction`
+ * renders the primary Save/Submit TOP-RIGHT of the modal header (consistent with the top-right
+ * placement on full-page create/edit panels). */
+export function Modal({ title, icon = 'check', children, footer, headerAction }: {
+  title: ReactNode; icon?: string; children: ReactNode; footer: ReactNode; headerAction?: ReactNode
+}) {
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
       <div className="modal">
-        <div className="mhead"><Icon name={icon} size={20} /><h3>{title}</h3></div>
+        <div className="mhead"><Icon name={icon} size={20} /><h3>{title}</h3>{headerAction && <span className="mhead-action">{headerAction}</span>}</div>
         <div className="mbody">{children}</div>
         <div className="mfoot">{footer}</div>
       </div>

@@ -212,12 +212,15 @@ function DefModal({ recordType, def, replacing, onClose, onSaved, onReplace }: {
     <Modal
       title={def ? `Edit field — ${def.label}` : replacing ? `Replacement for — ${replacing.label}` : `New custom field on ${recordTypeLabel(recordType)}`}
       icon="edit"
+      // CFF-T5: the primary Save/Create sits TOP-RIGHT of the modal header; Cancel stays in the footer.
+      headerAction={
+        <button type="button" className="btn btn-pri btn-sm" disabled={!label.trim() || save.isPending || (dataType === 'ListValue' && !listId)} onClick={() => save.mutate()}>
+          {def ? 'Save changes' : 'Create field'}
+        </button>
+      }
       footer={
         <>
           <button type="button" className="btn btn-out" onClick={onClose}>Cancel</button>
-          <button type="button" className="btn btn-pri" disabled={!label.trim() || save.isPending || (dataType === 'ListValue' && !listId)} onClick={() => save.mutate()}>
-            {def ? 'Save changes' : 'Create field'}
-          </button>
         </>
       }
     >

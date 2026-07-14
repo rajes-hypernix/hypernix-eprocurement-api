@@ -509,7 +509,16 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--t
 .rowactions { display: flex; justify-content: flex-end; align-items: center; gap: 8px; white-space: nowrap; }
 
 /* Form action row, shown at the top and bottom of long forms so it's always reachable. */
-.pr-actions { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+/* CFF-T5: the primary Save/Submit sits TOP-RIGHT of the panel it saves — consistent with
+   the admin SetupPage primary and the form-builder "Save form". Right-align the transaction
+   action bar and collapse its internal spacer so the actions cluster at the top-right. */
+.pr-actions { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; justify-content: flex-end; }
+.pr-actions .spacer { display: none; }
+/* CFF-T5: non-card headers (the form-builder + segment detail) right-align their actions —
+   the `.spacer` was inert here (flex only came from `.card .chead`), so "Save form" and the
+   segment verbs sat left. Give every chead a flex row with a growing spacer → Save top-right. */
+.chead { display: flex; align-items: center; gap: 10px; }
+.chead .spacer { flex: 1; }
 .prrow .chev { display: inline-block; transition: transform 0.15s; vertical-align: -2px; color: var(--muted); }
 .prrow.open .chev { transform: rotate(90deg); color: var(--teal); }
 .prrow.grp td { box-shadow: inset 3px 0 0 var(--teal); }
@@ -785,6 +794,8 @@ tr.out td { opacity: 0.6; }
 .modal { background: #fff; border-radius: var(--radius-modal); box-shadow: var(--shadow-l); width: 480px; max-width: 100%; max-height: 90vh; overflow: auto; }
 .modal .mhead { padding: 18px 22px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 10px; }
 .modal .mhead h3 { margin: 0; font-size: 16px; }
+/* CFF-T5: the modal's primary action, pinned top-right of the header. */
+.modal .mhead .mhead-action { margin-left: auto; }
 .modal .mbody { padding: 20px 22px; }
 .modal .mfoot { padding: 14px 22px; border-top: 1px solid var(--line); display: flex; justify-content: flex-end; gap: 10px; }
 .ckcol { display: flex; flex-direction: column; gap: 8px; margin-top: 2px; }

@@ -204,3 +204,44 @@ test('CFF-T4: saving a PR shows the banner; creating a custom field shows a toas
   if (mine) await hardDeleteField(request, mine)
   if (createdPr?.id) await request.post(`${API}/api/requisitions/${createdPr.id}/cancel`, { headers: { ...BUYER, ...JSON_H }, data: { reason: 't4 cleanup' } })
 })
+
+// ── T5 — primary Save/Submit standardized TOP-RIGHT ──────────────────────────
+test('CFF-T5: the primary Save/Submit sits top-right on a transaction, a modal, and a builder', async ({ page, request }) => {
+  const vw = page.viewportSize()!.width
+
+  // 1. Transaction — New PR: "Submit PR" in the right half, near the top of the content.
+  await goAs(page, 'u_faridah', 'reqs')
+  await page.waitForTimeout(1000)
+  await page.getByRole('button', { name: /Create PR/ }).click()
+  await page.waitForTimeout(1000)
+  const submit = await page.getByRole('button', { name: 'Submit PR' }).first().boundingBox()
+  expect(submit).not.toBeNull()
+  expect(submit!.x, 'Submit PR right half').toBeGreaterThan(vw * 0.5)
+  expect(submit!.y, 'Submit PR near top').toBeLessThan(320)
+
+  // 2. Custom-field modal — "Create field" top-right OF THE MODAL header.
+  await goAs(page, 'u_admin', 'customfields')
+  await page.waitForTimeout(1000)
+  await page.getByRole('button', { name: 'Requisition', exact: true }).click()
+  await page.getByRole('button', { name: 'New field' }).click()
+  const modalBox = await page.locator('.modal').boundingBox()
+  const createBox = await page.getByRole('button', { name: 'Create field' }).boundingBox()
+  expect(modalBox).not.toBeNull(); expect(createBox).not.toBeNull()
+  expect(createBox!.x, 'Create field right half of modal').toBeGreaterThan(modalBox!.x + modalBox!.width * 0.5)
+  expect(createBox!.y, 'Create field in modal header').toBeLessThan(modalBox!.y + 80)
+  await page.keyboard.press('Escape')
+
+  // 3. Entry-form builder — "Save form" in the right half, near the top.
+  const std = await stdReqForm(request)
+  const form = await (await request.post(`${API}/api/entry-forms`, { headers: { ...ADMIN, ...JSON_H },
+    data: { name: `CFF T5 Form ${STAMP}`, recordType: 'Requisition', fields: [...std.fields] } })).json()
+  await goAs(page, 'u_admin', 'entryforms')
+  await page.waitForTimeout(1000)
+  await page.getByRole('button', { name: `Open CFF T5 Form ${STAMP}`, exact: true }).click()
+  const saveForm = await page.getByRole('button', { name: 'Save form' }).boundingBox()
+  expect(saveForm).not.toBeNull()
+  expect(saveForm!.x, 'Save form right half').toBeGreaterThan(vw * 0.5)
+  expect(saveForm!.y, 'Save form near top').toBeLessThan(320)
+
+  await request.delete(`${API}/api/entry-forms/${form.id}`, { headers: ADMIN })
+})
