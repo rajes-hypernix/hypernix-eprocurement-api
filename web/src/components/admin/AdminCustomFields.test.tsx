@@ -22,12 +22,15 @@ describe('AdminCustomFields — CF-FIX4-T4 placement cascade', () => {
     vi.spyOn(client, 'getCustomFieldDefs').mockResolvedValue([])
     vi.spyOn(client, 'getCustomLists').mockResolvedValue([])
     vi.spyOn(client, 'getEntryForms').mockResolvedValue([
+      // CFF-T2: the standard (system) form is source-controlled — the picker offers CUSTOM forms only.
       { id: 'f-std', code: 'ef_standard_po_form', name: 'Standard PO Form', recordType: 'PurchaseOrder', isSystem: true, active: true, roles: [], fields: [],
         groups: [{ id: 'g-h', subtabId: null, title: 'Header', sort: 0, columnBreak: false, isHeader: true }] },
+      { id: 'f-cust', code: 'customform_po_extra', name: 'PO Extra Form', recordType: 'PurchaseOrder', isSystem: false, active: true, roles: [], fields: [],
+        groups: [{ id: 'g-ch', subtabId: null, title: 'Header', sort: 0, columnBreak: false, isHeader: true }] },
     ])
   })
 
-  it('creating a field pre-selects the STANDARD form (option c) and sends the cascade with Header default', async () => {
+  it('CFF-T2: creating a field pre-selects the first CUSTOM form (not the standard) with Header default', async () => {
     const create = vi.spyOn(client, 'createCustomFieldDef').mockResolvedValue(DEF)
     renderWithQuery(<AdminCustomFields />)
     await userEvent.click(await screen.findByRole('button', { name: 'New field' }))
@@ -37,7 +40,7 @@ describe('AdminCustomFields — CF-FIX4-T4 placement cascade', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Create field' }))
     await waitFor(() => expect(create).toHaveBeenCalled())
     expect(create.mock.calls[0][0].placements).toEqual([
-      { recordType: 'PurchaseOrder', formId: 'f-std', groupId: null },   // standard pre-selected, Header default
+      { recordType: 'PurchaseOrder', formId: 'f-cust', groupId: null },   // the custom form, NOT the standard; Header default
     ])
   })
 

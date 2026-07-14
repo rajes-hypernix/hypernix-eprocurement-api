@@ -97,6 +97,42 @@ test('CFF-T1/OD-D7-2: a chosen form cannot dodge the role form’s requireds at 
   expect((await request.delete(`${API}/api/entry-forms/${strict.id}`, { headers: ADMIN })).status()).toBe(204)
 })
 
+// ── SLICE 1 · T2 — custom fields on CUSTOM forms only ────────────────────────
+test('CFF-T2: a custom field is refused on a standard form, accepted on a custom form; picker offers custom only', async ({ page, request }) => {
+  const std = await stdReqForm(request)
+  const custom = await (await request.post(`${API}/api/entry-forms`, { headers: { ...ADMIN, ...JSON_H },
+    data: { name: `CFF T2 Form ${STAMP}`, recordType: 'Requisition', fields: [...std.fields] } })).json()
+
+  // SERVER: placing a custom field on the STANDARD (system) form is refused (400)...
+  const onStd = await request.post(`${API}/api/custom-fields`, { headers: { ...ADMIN, ...JSON_H },
+    data: { label: `T2 OnStd ${STAMP}`, recordType: 'Requisition', dataType: 'Text', required: false, helpText: '', sort: 0,
+      code: `cff_t2_std_${STAMP}`, placements: [{ recordType: 'Requisition', formId: std.id, groupId: null }] } })
+  expect(onStd.status()).toBe(400)
+  expect(await onStd.text()).toContain('standard form')
+
+  // ...while placing on the CUSTOM form works (200).
+  const onCustom = await request.post(`${API}/api/custom-fields`, { headers: { ...ADMIN, ...JSON_H },
+    data: { label: `T2 OnCustom ${STAMP}`, recordType: 'Requisition', dataType: 'Text', required: false, helpText: '', sort: 0,
+      code: `cff_t2_ok_${STAMP}`, placements: [{ recordType: 'Requisition', formId: custom.id, groupId: null }] } })
+  expect(onCustom.ok()).toBeTruthy()
+  const okDef = await onCustom.json()
+
+  // UI: the field-creation placement picker offers the custom form, NOT the standard form.
+  await goAs(page, 'u_admin', 'customfields')
+  await page.waitForTimeout(1200)
+  await page.getByRole('button', { name: 'Requisition', exact: true }).click()
+  await page.getByRole('button', { name: 'New field' }).click()
+  await expect(page.getByText(/Placement — where this field appears/)).toBeVisible()
+  await page.getByRole('button', { name: 'Requisition — form(s)' }).click()
+  const options = page.getByRole('listbox', { name: 'Requisition — form(s) options' })
+  await expect(options).toContainText(`CFF T2 Form ${STAMP}`)       // the custom form is offered
+  await expect(options).not.toContainText('Standard PR Form')       // the standard form is NOT offered
+
+  // cleanup
+  await hardDeleteField(request, okDef)
+  await request.delete(`${API}/api/entry-forms/${custom.id}`, { headers: ADMIN })
+})
+
 // ── SLICE 1 · T3 — Est. Amount column (qty × rate) ───────────────────────────
 test('CFF-T3: the PR line grid shows a live Est. Amount = qty × rate, currency-grouped', async ({ page }) => {
   await goAs(page, 'u_faridah', 'reqs')

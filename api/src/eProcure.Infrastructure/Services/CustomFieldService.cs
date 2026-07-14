@@ -164,9 +164,12 @@ public sealed class CustomFieldService(
                 throw new CustomFieldValidationException($"A placement names {w.Type}, which is not in the applies-to set — placement and applies-to can never disagree.");
         foreach (var t2 in scopeTypes)
         {
-            var hasForms = await db.EntryFormDefs.AnyAsync(f => f.RecordType == t2 && f.Active, ct);
+            // CFF-T2: custom fields live on CUSTOM forms only — the standard (system) form is
+            // source/seed-controlled. Only a NON-system form makes placement mandatory; a type
+            // whose only form is Standard leaves the field applied-but-unplaced (legacy seam).
+            var hasForms = await db.EntryFormDefs.AnyAsync(f => f.RecordType == t2 && f.Active && !f.IsSystem, ct);
             if (hasForms && def.Scope == "Header" && wanted.All(w => w.Type != t2))
-                throw new CustomFieldValidationException($"{t2} needs a form placement — pick which form(s) this field appears on (the group defaults to Header).");
+                throw new CustomFieldValidationException($"{t2} needs a form placement — pick which custom form(s) this field appears on (the group defaults to Header).");
         }
         foreach (var w in wanted.Where(x => scopeTypes.Contains(x.Type)))
         {
@@ -174,6 +177,10 @@ public sealed class CustomFieldService(
                 ?? throw new CustomFieldValidationException("A placement names a form that does not exist.");
             if (form.RecordType != w.Type || !form.Active)
                 throw new CustomFieldValidationException($"'{form.Name}' is not an active {w.Type} form.");
+            // CFF-T2: refuse placing a custom field on a standard (system) form — those are
+            // seed-controlled and must not accrue custom placements.
+            if (form.IsSystem)
+                throw new CustomFieldValidationException($"'{form.Name}' is a standard form — custom fields go on custom forms only. Create or pick a custom form.");
             var group = w.GroupId is { } gid
                 ? await db.EntryFormGroups.FirstOrDefaultAsync(g => g.Id == gid && g.FormDefId == form.Id, ct)
                     ?? throw new CustomFieldValidationException($"The chosen group does not belong to '{form.Name}'.")

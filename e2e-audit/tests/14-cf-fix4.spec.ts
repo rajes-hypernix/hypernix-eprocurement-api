@@ -191,13 +191,14 @@ test('CF-FIX4-T4: the creation cascade — standard pre-selected, Header default
   await page.getByRole('button', { name: 'New field' }).click()
   await page.getByLabel('Label', { exact: true }).fill(LABEL)
 
-  // The cascade block is THERE, standard pre-selected (option c) — switch to the work form.
+  // CFF-T2: the cascade block is THERE and offers CUSTOM forms only (the standard is
+  // source-controlled and never offered) — add the work form so it gets the placement.
   await expect(page.getByText(/Placement — where this field appears/)).toBeVisible()
   const formPicker = page.getByRole('button', { name: 'Requisition — form(s)' })
-  await expect(formPicker).toContainText('Standard PR Form')
+  await expect(formPicker).not.toContainText('Standard PR Form')
   await formPicker.click()
   await page.getByRole('combobox', { name: 'Search Requisition — form(s)' }).fill(`Fix4 Cascade Form ${STAMP}`)
-  await page.keyboard.press('Enter')   // ADD the work form (standard stays selected — both get the placement)
+  await page.keyboard.press('Enter')   // ADD the work form → it gets the placement (asserted below)
   await page.keyboard.press('Escape')
   await page.getByRole('button', { name: 'Create field' }).click()
   await page.waitForTimeout(1000)
@@ -356,8 +357,17 @@ test('CF-FIX4-T8: ARCHIVE — the value vanishes from form, view and record; aud
   const LABEL = `Fix4 Arch ${STAMP}`
   const def = await (await request.post(`${API}/api/custom-fields`, { headers: { ...ADMIN, ...JSON_H },
     data: { label: LABEL, recordType: 'Requisition', dataType: 'Text', required: false, helpText: '', sort: 0, code: `fix4_arch_${STAMP}` } })).json()
-  const prs = await (await request.get(`${API}/api/requisitions`, { headers: BUYER })).json()
-  const pr = prs.find((p: { headerStatus: string }) => p.headerStatus === 'Draft') ?? prs[0]
+  // CFF-T1/T2: a viewed PR renders ONLY its chosen form's placed fields (the ungoverned
+  // residual dump is gone; custom fields live on custom forms). So place the field on a CUSTOM
+  // form and put a fresh draft PR ON that form, so the archive/unarchive form-surface is real.
+  const std = (await (await request.get(`${API}/api/entry-forms?recordType=Requisition`, { headers: ADMIN })).json())
+    .find((f: { isSystem: boolean }) => f.isSystem)
+  const form = await (await request.post(`${API}/api/entry-forms`, { headers: { ...ADMIN, ...JSON_H },
+    data: { name: `Fix4 Arch Form ${STAMP}`, recordType: 'Requisition',
+      fields: [...std.fields, { fieldKey: def.code, subtab: null, fieldGroup: 'Header', sort: 99, displayType: 'Normal', requiredOnForm: false, defaultValue: null, sourceFieldKey: null, fullWidth: false, label: null, placeholder: null }] } })).json()
+  const pr = await (await request.post(`${API}/api/requisitions?submit=false`, { headers: { ...BUYER, ...JSON_H },
+    data: { requestor: 'Arch Buyer', department: '', location: '', category: '', job: '', memo: `arch ${STAMP}`, requiredDate: null,
+      entryFormId: form.id, lines: [{ id: null, itemCode: `ARCH-${STAMP}`, description: 'arch', qty: 1, uom: 'Unit', estUnitPrice: 1 }] } })).json()
   const req = await requiredCustomValues(request, 'Requisition', pr.id)
   await request.put(`${API}/api/custom-values/Requisition/${pr.id}`, { headers: { ...BUYER, ...JSON_H },
     data: { values: { ...req, [def.code]: 'archive me' } } })
@@ -400,5 +410,7 @@ test('CF-FIX4-T8: ARCHIVE — the value vanishes from form, view and record; aud
   await request.delete(`${API}/api/views/${view.id}`, { headers: BUYER })
   await request.put(`${API}/api/custom-values/Requisition/${pr.id}`, { headers: { ...BUYER, ...JSON_H },
     data: { values: { ...req, [def.code]: null } } })
+  await request.post(`${API}/api/requisitions/${pr.id}/cancel`, { headers: { ...BUYER, ...JSON_H }, data: { reason: 'fix4 arch cleanup' } })
   await hardDeleteField(request, def)
+  await request.delete(`${API}/api/entry-forms/${form.id}`, { headers: ADMIN })
 })

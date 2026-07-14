@@ -25,12 +25,15 @@ public sealed class ArchiveTierTests(EntryFormsFixture fx) : IClassFixture<Entry
         var admin = fx.ClientAs("u_admin");
         var buyer = fx.ClientAs("u_faridah");
 
-        // A placed field with a real value on a real PR, referenced by a view.
-        var forms = await admin.GetFromJsonAsync<List<EntryFormDefDto>>("/api/entry-forms?recordType=Requisition");
-        var std = forms!.Single(f => f.IsSystem);
+        // A placed field with a real value on a real PR, referenced by a view. CFF-T2: custom
+        // fields place on a CUSTOM form (the standard form refuses custom placements), so the
+        // form-surface checks resolve THAT form by id.
+        var form = (await (await admin.PostAsJsonAsync("/api/entry-forms",
+            new SaveEntryFormRequest($"T8 Form {suffix}", "Requisition", [EntryFormsFixture.Field("Department", 0)])))
+            .Content.ReadFromJsonAsync<EntryFormDefDto>())!;
         var def = (await (await admin.PostAsJsonAsync("/api/custom-fields", new SaveCustomFieldDefRequest(
             $"T8 Probe {suffix}", "Requisition", "Text", null, false, "", 0,
-            Placements: [new FieldPlacementRequest("Requisition", std.Id, null)])))
+            Placements: [new FieldPlacementRequest("Requisition", form.Id, null)])))
             .Content.ReadFromJsonAsync<CustomFieldDefDto>())!;
         var pr = (await (await buyer.PostAsJsonAsync("/api/requisitions", EntryFormsFixture.Pr())).Content
             .ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("id").GetGuid();
@@ -69,7 +72,7 @@ public sealed class ArchiveTierTests(EntryFormsFixture fx) : IClassFixture<Entry
         var palette = await buyer.GetFromJsonAsync<List<System.Text.Json.JsonElement>>("/api/views/fields?recordType=Requisition");
         palette!.Should().NotContain(p => p.GetProperty("fieldKey").GetString() == def.Code);
         // 4. Resolved form: the placement stays but the field does not render.
-        var resolved = await buyer.GetFromJsonAsync<ResolvedFormDto>("/api/entry-forms/resolve?recordType=Requisition");
+        var resolved = await buyer.GetFromJsonAsync<ResolvedFormDto>($"/api/entry-forms/resolve?recordType=Requisition&formId={form.Id}");
         resolved!.Fields.Should().NotContain(f => f.FieldKey == def.Code);
         // 5. Writes are rejected while archived.
         (await buyer.PutAsJsonAsync($"/api/custom-values/Requisition/{pr}",
@@ -87,7 +90,7 @@ public sealed class ArchiveTierTests(EntryFormsFixture fx) : IClassFixture<Entry
         (await admin.PostAsync($"/api/custom-fields/{def.Id}/unarchive", null)).EnsureSuccessStatusCode();
         (await buyer.GetFromJsonAsync<List<CustomValueDto>>($"/api/custom-values/Requisition/{pr}"))!
             .Should().Contain(v => v.Code == def.Code && v.Value == "hidden treasure", "reversible — the value reappears");
-        (await buyer.GetFromJsonAsync<ResolvedFormDto>("/api/entry-forms/resolve?recordType=Requisition"))!
+        (await buyer.GetFromJsonAsync<ResolvedFormDto>($"/api/entry-forms/resolve?recordType=Requisition&formId={form.Id}"))!
             .Fields.Should().Contain(f => f.FieldKey == def.Code, "the placement survived the archive round-trip");
         await fx.Factory.SeedAsync(db =>
         {

@@ -14,3 +14,13 @@
 - **Decision:** the committed tree failed `npx tsc -b` (the ledger's gate) on 4 errors, because root `tsconfig.json` has `files: []` so the previously-used `tsc --noEmit` checked NOTHING (vacuously green). Repaired as pure type-safety, no behavior change: Button gains a `title?` passthrough (AdminCustomFields tooltip now valid); `Record<string,JSX.Element>`→`ReactElement` in PrForm; `result.id!` in PrForm; `sent!` in AdminEntryForms.test.
 - **Why:** `tsc -b` green is the stated gate AND `npm run build` uses it — a red build is a broken handover. Correctness-first.
 - **Reverse:** revert the four one-line touch-ups; note the build will go red again.
+
+## AD-4 · Deleted required-ListValue litter that broke the shared e2e required-value helper (T2)
+- **Decision:** governed-deleted `custbody_partner_2` (label "Partner", ListValue, required, 0 values, applied to Requisition) — unplaced it from 9 litter forms first, then DELETE. It was manual demo litter (no test file references it; absent at the CF-FIX-5 baseline).
+- **Why:** the shared `requiredCustomValues` e2e helper sends the sentinel `'e2e'` to every required-and-empty def; for a required ListValue that is an invalid option → 400, which broke 5 unrelated specs (10-CF6, 12-cf-fix2, 14-T3/L6, 14-T8, 15-T1). Deactivating was insufficient (the admin field list still returned it, so it got placed + rendered as a non-input). This is T9's cleanup domain, done early only because it blocked Slice 1's gate.
+- **Reverse:** recreate a "Partner" ListValue required field via the Custom Fields screen. (T9 will formalize the broader litter cleanup.)
+
+## AD-5 · T2 test repoints — cascade tests target a custom form; archive test puts the PR on a custom form
+- **Decision:** repointed `PlacementCascadeTests`/`ArchiveTierTests` custom-field placements from the standard (system) form to a fresh CUSTOM form (added a `CustomPr` helper + a new "refused on a standard form" test), and rewrote e2e `14-T8 (archive)` to place the field on a custom form and open a PR that USES that form. Updated `AdminCustomFields.test.tsx` to expect the first CUSTOM form pre-selected (not the standard). `14-T4` now asserts the standard form is NOT offered in the placement picker.
+- **Why:** T2 forbids custom placements on system forms and T1 removed the ungoverned residual dump on PrForm, so a custom field only surfaces on a PR via a chosen custom form. The tests were exercising the mechanism through the standard form as a convenient target; the mechanism is unchanged.
+- **Reverse:** revert the test edits (they would then assert the pre-T2 standard-form placement, which the server now refuses).

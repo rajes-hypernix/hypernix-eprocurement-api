@@ -171,13 +171,16 @@ function DefModal({ recordType, def, replacing, onClose, onSaved, onReplace }: {
   const [placeGroups, setPlaceGroups] = useState<Record<string, string>>({})      // formId -> groupId
   const chosenTypes = (appliesTo ? appliesTo.split('|') : [recordType])
   const newTypes = def ? chosenTypes.filter((t) => !(def.recordTypes ?? []).includes(t)) : chosenTypes
-  const placementTypes = scope === 'Line' ? [] : newTypes.filter((t) => allForms.some((f) => f.recordType === t && f.active))
-  const formsFor = (t: string) => allForms.filter((f) => f.recordType === t && f.active)
+  // CFF-T2: custom fields go on CUSTOM forms only — the standard (system) form is
+  // source-controlled. The picker offers non-system forms, and placement is offered only
+  // when at least one custom form exists (otherwise the field is applied-but-unplaced).
+  const formsFor = (t: string) => allForms.filter((f) => f.recordType === t && f.active && !f.isSystem)
+  const placementTypes = scope === 'Line' ? [] : newTypes.filter((t) => formsFor(t).length > 0)
   const selectedFormIds = (t: string) => {
     const cur = placeForms[t]
     if (cur !== undefined) return cur ? cur.split('|') : []
-    const std = formsFor(t).find((f) => f.isSystem)
-    return std ? [std.id] : []            // option (c): standard pre-selected
+    const first = formsFor(t)[0]
+    return first ? [first.id] : []            // pre-select the first custom form
   }
   const buildPlacements = (): FieldPlacementRequest[] | null => {
     if (placementTypes.length === 0) return null   // legacy seam: nothing to place (or Line scope)
@@ -259,7 +262,7 @@ function DefModal({ recordType, def, replacing, onClose, onSaved, onReplace }: {
             <div key={t} style={{ marginBottom: 8 }}>
               <SelectField
                 spec={{ key: `cf-place-form-${t}`, label: `${recordTypeLabel(t)} — form(s)`, dataType: 'multiSelect', searchable: true,
-                  help: 'Mandatory. The standard form is pre-selected; the group defaults to Header.',
+                  help: 'Custom forms only — the standard form is source-controlled. The group defaults to Header.',
                   options: { kind: 'static', options: formsFor(t).map((f) => ({ code: f.id, label: f.name })) } }}
                 value={selectedFormIds(t).join('|')}
                 onChange={(v) => setPlaceForms((cur) => ({ ...cur, [t]: String(v ?? '') }))} />

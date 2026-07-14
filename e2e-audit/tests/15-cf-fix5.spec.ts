@@ -94,10 +94,11 @@ test('CF-FIX5-T1/OD-D7-2: a chosen form omitting a role-required field is STILL 
 })
 
 test('CF-FIX5-T3: drag is GONE (rows not draggable) and the ARROWS move a field CROSS-group', async ({ page, request }) => {
-  // A non-system form to design on (copy the standard PR form).
-  const std = await stdReqForm(request)
+  // A non-system form with a CONTROLLED field set — Requestor then Memo, so Memo is the
+  // guaranteed BOTTOM field of Header (the standard form may carry trailing segment placements,
+  // which would make "move Memo down" a within-group swap instead of a cross-group step).
   const form = await (await request.post(`${API}/api/entry-forms`, { headers: { ...ADMIN, ...JSON_H },
-    data: { name: `Fix5 T3 Form ${STAMP}`, recordType: 'Requisition', fields: std.fields } })).json()
+    data: { name: `Fix5 T3 Form ${STAMP}`, recordType: 'Requisition', fields: [place('Requestor', 0), place('Memo', 1)] } })).json()
 
   await goAs(page, 'u_admin', 'entryforms')
   await page.waitForTimeout(1200)

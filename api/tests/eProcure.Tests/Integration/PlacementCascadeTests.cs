@@ -25,14 +25,36 @@ public sealed class PlacementCascadeTests(EntryFormsFixture fx) : IClassFixture<
         return (std.Id, std.Groups.Single(g => g.IsHeader).Id, std);
     }
 
+    // CFF-T2: custom fields place on CUSTOM (non-system) forms only. The cascade tests now
+    // target a fresh custom form; placement on the standard form is refused (proven below).
+    private async Task<(Guid FormId, Guid HeaderId)> CustomPr(string suffix)
+    {
+        var form = (await (await fx.ClientAs("u_admin").PostAsJsonAsync("/api/entry-forms",
+            new SaveEntryFormRequest($"Cascade Form {suffix}", "Requisition", [EntryFormsFixture.Field("Department", 0)])))
+            .Content.ReadFromJsonAsync<EntryFormDefDto>())!;
+        return (form.Id, form.Groups.Single(g => g.IsHeader).Id);
+    }
+
     [Fact]
     public async Task Cascade_aware_create_with_no_placement_for_a_form_bearing_type_is_refused()
     {
+        await CustomPr(S);   // a non-system Requisition form now exists → placement is mandatory
         var resp = await fx.ClientAs("u_admin").PostAsJsonAsync("/api/custom-fields", new SaveCustomFieldDefRequest(
             $"T4 NoPlace {S}", "Requisition", "Text", null, false, "", 0,
             Placements: []));
         resp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await resp.Content.ReadAsStringAsync()).Should().Contain("needs a form placement");
+    }
+
+    [Fact]
+    public async Task CFF_T2_a_custom_field_cannot_be_placed_on_a_standard_system_form()
+    {
+        var (stdFormId, _, _) = await StandardPr();
+        var resp = await fx.ClientAs("u_admin").PostAsJsonAsync("/api/custom-fields", new SaveCustomFieldDefRequest(
+            $"T2 OnStd {S}", "Requisition", "Text", null, false, "", 0,
+            Placements: [new FieldPlacementRequest("Requisition", stdFormId, null)]));
+        resp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await resp.Content.ReadAsStringAsync()).Should().Contain("standard form");
     }
 
     [Fact]
@@ -46,8 +68,8 @@ public sealed class PlacementCascadeTests(EntryFormsFixture fx) : IClassFixture<
     [Fact]
     public async Task The_cascade_writes_THE_placement_row_group_defaults_to_Header_and_the_hint_lands()
     {
-        var (formId, headerId, _) = await StandardPr();
         var suffix = S;
+        var (formId, headerId) = await CustomPr(suffix);
         var def = (await (await fx.ClientAs("u_admin").PostAsJsonAsync("/api/custom-fields", new SaveCustomFieldDefRequest(
             $"T4 Cascade {suffix}", "Requisition", "Text", null, false, "", 0,
             Placements: [new FieldPlacementRequest("Requisition", formId, null)])))
@@ -56,22 +78,22 @@ public sealed class PlacementCascadeTests(EntryFormsFixture fx) : IClassFixture<
         await fx.Factory.SeedAsync(db =>
         {
             var row = db.EntryFormFields.Single(f => f.FieldKey == def.Code);
-            row.FormDefId.Should().Be(formId, "placement lands on the chosen form — the standard form accepts cascade rows");
+            row.FormDefId.Should().Be(formId, "placement lands on the chosen custom form (CFF-T2)");
             row.GroupId.Should().Be(headerId, "null group resolves to the form's Header (L3 — cannot miss)");
             db.CustomFieldDefApplications.Single(a => a.FieldDefId == def.Id)
                 .DefaultGroupTitle.Should().Be("Header", "the HINT is a title, never placement storage");
             return Task.CompletedTask;
         });
 
-        // The SAME row the designer moves: re-group it via the editor path and the field follows.
-        var resolved = await fx.ClientAs("u_faridah").GetFromJsonAsync<ResolvedFormDto>("/api/entry-forms/resolve?recordType=Requisition");
+        // The SAME row the designer moves: resolving THAT custom form shows the placed field.
+        var resolved = await fx.ClientAs("u_faridah").GetFromJsonAsync<ResolvedFormDto>($"/api/entry-forms/resolve?recordType=Requisition&formId={formId}");
         resolved!.Fields.Should().Contain(f => f.FieldKey == def.Code && f.FieldGroup == "Header");
     }
 
     [Fact]
     public async Task Placement_for_a_type_outside_the_applies_to_set_is_refused()
     {
-        var (formId, _, _) = await StandardPr();
+        var (formId, _) = await CustomPr(S);
         var resp = await fx.ClientAs("u_admin").PostAsJsonAsync("/api/custom-fields", new SaveCustomFieldDefRequest(
             $"T4 Disagree {S}", "Vendor", "Text", null, false, "", 0,
             RecordTypes: ["Vendor"],
@@ -83,8 +105,8 @@ public sealed class PlacementCascadeTests(EntryFormsFixture fx) : IClassFixture<
     [Fact]
     public async Task Direction_A_removing_an_applies_to_type_takes_its_placements_with_it()
     {
-        var (formId, _, _) = await StandardPr();
         var suffix = S;
+        var (formId, _) = await CustomPr(suffix);
         var def = (await (await fx.ClientAs("u_admin").PostAsJsonAsync("/api/custom-fields", new SaveCustomFieldDefRequest(
             $"T4 DirA {suffix}", "Requisition", "Text", null, false, "", 0,
             RecordTypes: ["Requisition", "Vendor"],
@@ -189,7 +211,7 @@ public sealed class PlacementCascadeTests(EntryFormsFixture fx) : IClassFixture<
     [Fact]
     public async Task A_placement_naming_a_wrong_form_or_foreign_group_is_refused()
     {
-        var (formId, _, _) = await StandardPr();
+        var (formId, _) = await CustomPr(S);
         var admin = fx.ClientAs("u_admin");
         (await admin.PostAsJsonAsync("/api/custom-fields", new SaveCustomFieldDefRequest(
             $"T4 BadForm {S}", "Requisition", "Text", null, false, "", 0,
