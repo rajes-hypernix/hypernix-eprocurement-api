@@ -101,7 +101,7 @@ test('CF-FIX5-T3: drag is GONE (rows not draggable) and the ARROWS move a field 
 
   await goAs(page, 'u_admin', 'entryforms')
   await page.waitForTimeout(1200)
-  await page.getByRole('button', { name: new RegExp(`Fix5 T3 Form ${STAMP}`) }).click()
+  await page.getByRole('button', { name: `Open Fix5 T3 Form ${STAMP}`, exact: true }).click()
 
   // Drag removed: the field rows carry no draggable affordance.
   expect(await page.locator('[aria-label="Field row Requestor"]').getAttribute('draggable')).not.toBe('true')
@@ -167,8 +167,8 @@ test('CF-FIX5-T8: new form id → customform_, new segment id → custseg_ (same
   // --- New entry form gets a customform_ id from the user-keyed Internal ID ---
   await goAs(page, 'u_admin', 'entryforms')
   await page.waitForTimeout(1200)
-  await page.getByRole('button', { name: /Standard PR Form/ }).and(page.locator(':not(:has-text("(copy)"))')).first().click()
-  await page.getByRole('button', { name: /New form \(copy of/ }).click()
+  // CF-FIX5-T6: Entry Forms is a LIST — Copy the standard row to open the New-form modal.
+  await page.getByRole('button', { name: 'Copy Standard PR Form', exact: true }).click()
   await page.getByLabel('Internal ID', { exact: true }).fill(`project${STAMP}`)
   await page.getByRole('button', { name: 'Create form' }).click()
   await page.waitForTimeout(1000)
@@ -233,7 +233,7 @@ test('CF-FIX5-T4: sublist is a VERTICAL list (top = leftmost), reorders, and add
 
   await goAs(page, 'u_admin', 'entryforms')
   await page.waitForTimeout(1200)
-  await page.getByRole('button', { name: new RegExp(`Fix5 T4 Form ${STAMP}`) }).click()
+  await page.getByRole('button', { name: `Open Fix5 T4 Form ${STAMP}`, exact: true }).click()
   await page.waitForTimeout(500)
 
   // VERTICAL list: the sublist columns render as rows; top row = leftmost (Item code).
@@ -260,4 +260,46 @@ test('CF-FIX5-T4: sublist is a VERTICAL list (top = leftmost), reorders, and add
     data: { fieldKeys: state.sublistColumns.filter((k: string) => k !== lineDef.code) } })
   await request.delete(`${API}/api/entry-forms/${form.id}`, { headers: ADMIN })
   await hardDeleteField(request, lineDef)
+})
+
+test('CF-FIX5-T6: Entry Forms is a LIST → full-page builder; the Back guard uses REAL dirty state', async ({ page, request }) => {
+  const std = await stdReqForm(request)
+  const form = await (await request.post(`${API}/api/entry-forms`, { headers: { ...ADMIN, ...JSON_H },
+    data: { name: `Fix5 T6 Form ${STAMP}`, recordType: 'Requisition', fields: std.fields } })).json()
+  const openBtn = { name: `Open Fix5 T6 Form ${STAMP}`, exact: true }
+
+  await goAs(page, 'u_admin', 'entryforms')
+  await page.waitForTimeout(1200)
+
+  // The screen is a LIST — the builder is NOT rendered until a form is opened.
+  await expect(page.getByRole('button', { name: 'Save form' })).toHaveCount(0)
+  await expect(page.getByRole('button', openBtn)).toBeVisible()
+
+  // Open → the builder takes the FULL PAGE (list gone; Back + Save present).
+  await page.getByRole('button', openBtn).click()
+  await expect(page.getByRole('button', { name: 'Back to forms' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Save form' })).toBeVisible()
+  await expect(page.getByRole('button', openBtn)).toHaveCount(0)
+
+  // REAL dirty detection (1): Back with NOTHING changed does NOT prompt — a warning that
+  // fires on "was opened" would train users to ignore it (the operator's explicit concern).
+  let dialogs = 0
+  const count = (d: import('@playwright/test').Dialog) => { dialogs++; void d.accept() }
+  page.on('dialog', count)
+  await page.getByRole('button', { name: 'Back to forms' }).click()
+  await page.waitForTimeout(400)
+  expect(dialogs).toBe(0)
+  await expect(page.getByRole('button', openBtn)).toBeVisible()   // returned to the list, unprompted
+
+  // REAL dirty detection (2): a genuine edit (rename) → Back DOES warn; dismiss keeps editing.
+  await page.getByRole('button', openBtn).click()
+  await page.getByLabel('Form name', { exact: true }).fill(`Fix5 T6 Form ${STAMP} edited`)
+  page.off('dialog', count)
+  page.once('dialog', (d) => { dialogs++; void d.dismiss() })     // user cancels the leave
+  await page.getByRole('button', { name: 'Back to forms' }).click()
+  await page.waitForTimeout(400)
+  expect(dialogs).toBe(1)                                         // real change → warned exactly once
+  await expect(page.getByRole('button', { name: 'Save form' })).toBeVisible()   // dismissed → still in the builder
+
+  expect((await request.delete(`${API}/api/entry-forms/${form.id}`, { headers: ADMIN })).status()).toBe(204)
 })

@@ -4,9 +4,8 @@ import {
   getEntryForms, createEntryForm, updateEntryForm, deleteEntryForm, assignEntryFormRoles, setEntryFormActive,
   saveEntryFormSubtab, deleteEntryFormSubtab, saveEntryFormGroup, deleteEntryFormGroup,
   saveEntryFormSublist, getLineCustomDefs,
-  getViewFields, type EntryFormDefDto, type EntryFormFieldDto, type EntryFormGroupDto,
+  getViewFields, type EntryFormDefDto, type EntryFormFieldDto, type EntryFormGroupDto, type EntryFormSubtabDto,
 } from '../../api/client'
-import { SetupPage } from '../../ui/archetypes/SetupPage'
 import { Modal, Notice } from '../ui'
 import { Button } from '../../ui/Button'
 import { TextField } from '../../ui/TextField'
@@ -55,44 +54,61 @@ const spec = (key: string, label: string, dataType: FieldSpec['dataType'], optio
 export function AdminEntryForms() {
   const qc = useQueryClient()
   const { data: forms = [] } = useQuery({ queryKey: ['entry-form-defs'], queryFn: () => getEntryForms() })
-  const [selected, setSelected] = useState<string | null>(null)
-  const [listError, setListError] = useState<string | null>(null)
-  const form = forms.find((f) => f.id === selected) ?? forms[0]
-  const refresh = () => { void qc.invalidateQueries({ queryKey: ['entry-form-defs'] }); void qc.invalidateQueries({ queryKey: ['entry-form'] }) }
-
-  // CF-FIX5-T8: New form opens a modal to set the Name + Internal ID (customform_ affix).
+  // CF-FIX5-T6: NetSuite-style — a LIST with Open/Edit/Copy per row; any action opens the
+  // builder in a DEDICATED FULL PAGE (no list), with a Back control + unsaved-changes guard.
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [copying, setCopying] = useState<EntryFormDefDto | null>(null)
+  const [listError, setListError] = useState<string | null>(null)
+  const refresh = () => { void qc.invalidateQueries({ queryKey: ['entry-form-defs'] }); void qc.invalidateQueries({ queryKey: ['entry-form'] }) }
+  const editing = forms.find((f) => f.id === editingId)
 
+  // ---- Full-page builder (list hidden) ----
+  if (editing) {
+    return (
+      <FormDesigner key={editing.id} form={editing}
+        onBack={() => setEditingId(null)}
+        onChanged={refresh}
+        onDeleted={() => { setEditingId(null); refresh() }} />
+    )
+  }
+
+  // ---- The form LIST (NetSuite-style: a plain table, not the rail archetype) ----
   return (
-    <SetupPage
-      title="Entry Forms"
-      subtitle="Layouts per record type — field groups, subtabs, the item sublist, display types, required-at-submit, defaults. Zero deployments."
-      primaryAction={form && (
-        <Button variant="primary" size="sm" icon="plus" onClick={() => setCopying(form)}>
-          New form (copy of {form.name})
-        </Button>
-      )}
-      railItems={forms.map((f) => ({
-        key: f.id, label: f.name,
-        hint: `${recordTypeLabel(f.recordType)}${f.isSystem ? ' · standard' : f.roles.length > 0 ? ` · ${f.roles.join(', ')}` : ''}`,
-      }))}
-      selectedKey={form?.id ?? ''}
-      onSelect={setSelected}
-      detail={
-        <>
-          {listError && <Notice tone="error">{listError}</Notice>}
-          {form
-            ? <FormDesigner key={form.id} form={form} onChanged={refresh} onDeleted={() => { setSelected(null); refresh() }} />
-            : <p className="hint">No entry forms yet.</p>}
-        </>}
-    >
+    <>
+      <div className="pagehead">
+        <div><h1>Entry Forms</h1></div>
+        <div className="spacer" />
+      </div>
+      {listError && <Notice tone="error">{listError}</Notice>}
+      <table>
+        <thead><tr><th>Form</th><th>Record type</th><th /></tr></thead>
+        <tbody>
+          {forms.map((f) => (
+            <tr key={f.id}>
+              <td style={{ fontWeight: 600 }}>{f.name}
+                <span className="mono hint" style={{ marginLeft: 8, fontWeight: 400 }}>{f.code}</span>
+                {f.isSystem && <span className="badge b-blue" style={{ marginLeft: 8 }}>standard</span>}
+              </td>
+              <td>{recordTypeLabel(f.recordType)}</td>
+              <td className="amt">
+                <div className="rowactions">
+                  <Button variant="ghost" size="sm" onClick={() => setEditingId(f.id)} ariaLabel={`Open ${f.name}`}>Open</Button>
+                  {!f.isSystem && <Button variant="ghost" size="sm" onClick={() => setEditingId(f.id)} ariaLabel={`Edit ${f.name}`}>Edit</Button>}
+                  <Button variant="ghost" size="sm" onClick={() => setCopying(f)} ariaLabel={`Copy ${f.name}`}>Copy</Button>
+                </div>
+              </td>
+            </tr>
+          ))}
+          {forms.length === 0 && <tr><td colSpan={3} className="hint">No entry forms yet.</td></tr>}
+        </tbody>
+      </table>
       {copying && (
         <NewFormModal source={copying}
           onClose={() => setCopying(null)}
-          onCreated={(d) => { setCopying(null); setSelected(d.id); setListError(null); refresh() }}
+          onCreated={(d) => { setCopying(null); setEditingId(d.id); setListError(null); refresh() }}
           onError={setListError} />
       )}
-    </SetupPage>
+    </>
   )
 }
 
@@ -122,8 +138,8 @@ function NewFormModal({ source, onClose, onCreated, onError }: {
   )
 }
 
-function FormDesigner({ form, onChanged, onDeleted }: {
-  form: EntryFormDefDto; onChanged: () => void; onDeleted: () => void
+function FormDesigner({ form, onChanged, onDeleted, onBack }: {
+  form: EntryFormDefDto; onChanged: () => void; onDeleted: () => void; onBack: () => void
 }) {
   const [name, setName] = useState(form.name)
   const [fields, setFields] = useState<EntryFormFieldDto[]>(form.fields)
@@ -253,10 +269,21 @@ function FormDesigner({ form, onChanged, onDeleted }: {
   }
 
   const ro = form.isSystem
+  // CF-FIX5-T6: REAL unsaved-changes detection (current vs loaded) — staged property edits,
+  // added/removed fields, or a name/roles edit. Structure moves (arrows, group/subtab CRUD,
+  // sublist) persist immediately, so they are NOT "unsaved". Back warns only when it's real.
+  const hasUnsavedChanges = () => {
+    const s = staged.current
+    return s.added.length > 0 || s.removed.size > 0 || s.patched.size > 0 || nameEdited.current || rolesEdited.current
+  }
+  const back = () => {
+    if (!hasUnsavedChanges() || window.confirm('You have unsaved changes — all changes will be lost. Leave anyway?')) onBack()
+  }
   return (
     <div>
       <div className="chead" style={{ paddingLeft: 0 }}>
-        <h3>{form.name} <span className="mono hint" style={{ fontWeight: 400 }}>{form.code}</span>
+        <Button variant="ghost" size="sm" icon="back" onClick={back} ariaLabel="Back to forms">Back</Button>
+        <h3 style={{ marginLeft: 8 }}>{form.name} <span className="mono hint" style={{ fontWeight: 400 }}>{form.code}</span>
           <span className="badge b-grey" style={{ marginLeft: 8 }}>{recordTypeLabel(form.recordType)}</span>
         </h3>
         <div className="spacer" />
@@ -304,9 +331,11 @@ function FormDesigner({ form, onChanged, onDeleted }: {
                 && (f.subtab ?? null) === (subtabs.find((s) => s.id === g.subtabId)?.name ?? null)
                 && (f.fieldGroup || 'Header') === g.title))}
             labelFor={(key) => registry.find((r) => r.fieldKey === key)?.label ?? key}
+            subtabs={subtabs}
             onFieldChange={setField}
             onRemoveField={removeField}
             onArrow={arrowMove} onGroupArrow={(dir) => groupArrow(g, dir)}
+            onMoveToContainer={(subtabId) => { setActiveTab(subtabId); void saveEntryFormGroup(form.id, { title: g.title, subtabId, sort: g.sort, columnBreak: g.columnBreak }, g.id).then(ok, fail) }}
             onOk={ok} onFail={fail} />
         ))}
         {tabGroups.length === 0 && <p className="hint">No field groups in this container yet.</p>}
@@ -373,14 +402,16 @@ function FormDesigner({ form, onChanged, onDeleted }: {
   )
 }
 
-function GroupCard({ form, group, ro, fields, labelFor, onFieldChange, onRemoveField, onArrow, onGroupArrow, onOk, onFail }: {
+function GroupCard({ form, group, ro, fields, labelFor, subtabs, onFieldChange, onRemoveField, onArrow, onGroupArrow, onMoveToContainer, onOk, onFail }: {
   form: EntryFormDefDto; group: EntryFormGroupDto; ro: boolean
   fields: EntryFormFieldDto[]
   labelFor: (key: string) => string
+  subtabs: EntryFormSubtabDto[]
   onFieldChange: (key: string, patch: Partial<EntryFormFieldDto>) => void
   onRemoveField: (key: string) => void
   onArrow: (key: string, dir: -1 | 1) => void
   onGroupArrow: (dir: -1 | 1) => void
+  onMoveToContainer: (subtabId: string | null) => void
   onOk: () => void; onFail: (e: unknown) => void
 }) {
   const [title, setTitle] = useState(group.title)
@@ -404,6 +435,16 @@ function GroupCard({ form, group, ro, fields, labelFor, onFieldChange, onRemoveF
           <>
             <button type="button" className="btn btn-sm btn-out" aria-label={`Move group ${group.title} up`} onClick={() => onGroupArrow(-1)}>↑</button>
             <button type="button" className="btn btn-sm btn-out" aria-label={`Move group ${group.title} down`} onClick={() => onGroupArrow(1)}>↓</button>
+            {/* CF-FIX5-T6: move a group (and its fields) between Body and a subtab — the
+                non-drag replacement for the removed cross-container drag. Header stays on Body (L3). */}
+            {!group.isHeader && (
+              <span style={{ width: 150 }}>
+                <SelectField chrome="bare"
+                  spec={{ key: `g-container-${group.id}`, label: `Container for ${group.title}`, dataType: 'select', searchable: true,
+                    options: { kind: 'static', options: [{ code: '', label: 'Body' }, ...subtabs.map((s) => ({ code: s.id, label: s.name }))] } }}
+                  value={group.subtabId ?? ''} onChange={(v) => onMoveToContainer(String(v ?? '') || null)} />
+              </span>
+            )}
             {title.trim() !== group.title && (
               <Button variant="outline" size="sm" ariaLabel={`Rename group ${group.title}`}
                 onClick={() => void saveEntryFormGroup(form.id,

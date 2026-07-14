@@ -223,7 +223,7 @@ test('CF2-T6: uniform lifecycle on screen — segment value edit/delete, def dea
     data: { name: `Lifecycle Form ${STAMP}`, recordType: 'Requisition', fields: std.fields } })).json()
   await goAs(page, 'u_admin', 'entryforms')
   await page.waitForTimeout(1200)
-  await page.getByRole('button', { name: new RegExp(`Lifecycle Form ${STAMP}`) }).first().click()
+  await page.getByRole('button', { name: `Open Lifecycle Form ${STAMP}`, exact: true }).click()
   await page.getByRole('button', { name: 'Deactivate form' }).click()
   await page.waitForTimeout(800)
   const after = await (await request.get(`${API}/api/entry-forms?recordType=Requisition`, { headers: ADMIN })).json()
@@ -497,7 +497,8 @@ async function makeCf5Form(request: import('@playwright/test').APIRequestContext
 const openForm = async (page: import('@playwright/test').Page, name: string) => {
   await goAs(page, 'u_admin', 'entryforms')
   await page.waitForTimeout(1200)
-  await page.getByRole('button', { name: new RegExp(name) }).first().click()
+  // CF-FIX5-T6: Entry Forms is a LIST — Open the row into the full-page builder.
+  await page.getByRole('button', { name: `Open ${name}`, exact: true }).click()
 }
 
 /** Buyer opens the first PR — the resolved role form renders there. */
@@ -552,7 +553,7 @@ test('CF5-T3: column break on a field group — the buyer form renders TWO colum
   await page.waitForTimeout(600)
   for (const key of ['Job', 'Memo']) await moveFieldViaForm(request, 'Requisition', form.id, key, { group: GROUP })
   await page.reload({ waitUntil: 'networkidle' })
-  await page.getByRole('button', { name: new RegExp(FORM) }).first().click()
+  await page.getByRole('button', { name: `Open ${FORM}`, exact: true }).click()
   await page.waitForTimeout(600)
 
   // Flip the new group's column break (controlled checkbox: click, then the refetch confirms).
@@ -582,14 +583,14 @@ test('CF5-T4: drag a field between containers — placement persists across relo
 
   // PERSISTED: reload the designer — Job renders inside the subtab's container.
   await page.reload({ waitUntil: 'networkidle' })
-  await page.getByRole('button', { name: new RegExp(FORM) }).first().click()
+  await page.getByRole('button', { name: `Open ${FORM}`, exact: true }).click()
   await page.getByLabel(`Subtab ${TAB}`, { exact: true }).click()
   await expect(page.locator('[aria-label="Field row Job"]')).toBeVisible()
 
   // And back: move Job to Body — the subtab empties but SURVIVES as an object.
   await moveFieldViaForm(request, 'Requisition', form.id, 'Job', { subtab: null })
   await page.reload({ waitUntil: 'networkidle' })
-  await page.getByRole('button', { name: new RegExp(FORM) }).first().click()
+  await page.getByRole('button', { name: `Open ${FORM}`, exact: true }).click()
   await expect(page.getByLabel(`Subtab ${TAB}`, { exact: true })).toBeVisible()   // empty subtab object persists
 
   expect((await request.delete(`${API}/api/entry-forms/${form.id}`, { headers: ADMIN })).status()).toBe(204)

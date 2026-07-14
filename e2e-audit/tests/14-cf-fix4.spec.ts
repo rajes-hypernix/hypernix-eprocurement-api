@@ -14,9 +14,11 @@ test('CF-FIX4-T2: Entry Forms lists a Standard form for PR, PO, GRN and Invoice 
   await goAs(page, 'u_admin', 'entryforms')
   await page.waitForTimeout(1200)
   for (const name of ['Standard PR Form', 'Standard PO Form', 'Standard GRN Form', 'Standard Invoice Form']) {
-    await page.getByRole('button', { name: new RegExp(name) }).and(page.locator(':not(:has-text("(copy)"))')).first().click()
+    // CF-FIX5-T6: the screen is a LIST — Open the row into the full-page builder, then Back.
+    await page.getByRole('button', { name: `Open ${name}`, exact: true }).click()
     await expect(page.getByText('Standard — the parity baseline, read-only')).toBeVisible()
     await expect(page.getByText('Header — always present')).toBeVisible()   // the L3 badge on the Header card
+    await page.getByRole('button', { name: 'Back to forms' }).click()
   }
 })
 
@@ -29,7 +31,7 @@ test('CF-FIX4-T1+T3: designer — create group, drag a field from Header into it
 
   await goAs(page, 'u_admin', 'entryforms')
   await page.waitForTimeout(1200)
-  await page.getByRole('button', { name: new RegExp(`Fix4 Designer ${STAMP}`) }).click()
+  await page.getByRole('button', { name: `Open Fix4 Designer ${STAMP}`, exact: true }).click()
 
   // Create a group on screen.
   await page.getByLabel('New group title', { exact: true }).fill('Logistics')
@@ -40,7 +42,7 @@ test('CF-FIX4-T1+T3: designer — create group, drag a field from Header into it
   // object moves through the whole-form save (arrows proven separately). L1 unchanged.
   await moveFieldViaForm(request, 'Requisition', form.id, 'Department', { group: 'Logistics' })
   await page.reload({ waitUntil: 'networkidle' })
-  await page.getByRole('button', { name: new RegExp(`Fix4 Designer ${STAMP}`) }).click()
+  await page.getByRole('button', { name: `Open Fix4 Designer ${STAMP}`, exact: true }).click()
   await page.waitForTimeout(600)
   await expect(page.locator('[aria-label="Field group Logistics"]')).toContainText('Department')
 
@@ -57,7 +59,7 @@ test('CF-FIX4-T1+T3: designer — create group, drag a field from Header into it
   await page.waitForTimeout(600)
   await moveFieldViaForm(request, 'Requisition', form.id, 'Memo', { subtab: 'Extras' })
   await page.reload({ waitUntil: 'networkidle' })
-  await page.getByRole('button', { name: new RegExp(`Fix4 Designer ${STAMP}`) }).click()
+  await page.getByRole('button', { name: `Open Fix4 Designer ${STAMP}`, exact: true }).click()
   await page.getByRole('button', { name: 'Subtab Extras' }).click()
   await expect(page.locator('[aria-label^="Field group"]').first()).toContainText('Memo')
 
@@ -101,7 +103,7 @@ test('CF-FIX4-T3/L6: remove-from-form is DATA-SAFE — the value survives on the
   // THE REMOVE, on screen: open the designer, hit the field's ✕ (placement only), save.
   await goAs(page, 'u_admin', 'entryforms')
   await page.waitForTimeout(1200)
-  await page.getByRole('button', { name: new RegExp(`Fix4 L6 Form ${STAMP}`) }).click()
+  await page.getByRole('button', { name: `Open Fix4 L6 Form ${STAMP}`, exact: true }).click()
   await page.getByRole('button', { name: `Remove ${def.code}` }).click()
   await page.getByRole('button', { name: 'Save form' }).click()
   await page.waitForTimeout(1000)
@@ -134,7 +136,7 @@ test('CF-FIX4-T3fix: labels not ids, searchable add-field, NO default control, a
 
   await goAs(page, 'u_admin', 'entryforms')
   await page.waitForTimeout(1200)
-  await page.getByRole('button', { name: new RegExp(`Fix4 T3fix ${STAMP}`) }).click()
+  await page.getByRole('button', { name: `Open Fix4 T3fix ${STAMP}`, exact: true }).click()
 
   // (2) label leads, id is secondary: the Job row shows its census label, not just the key.
   const jobRow = page.locator('[aria-label="Field row Job"]')
@@ -211,13 +213,13 @@ test('CF-FIX4-T4: the creation cascade — standard pre-selected, Header default
   // Rearrange in the designer — the SAME row moves (L1, one object two surfaces).
   await goAs(page, 'u_admin', 'entryforms')
   await page.waitForTimeout(1200)
-  await page.getByRole('button', { name: new RegExp(`Fix4 Cascade Form ${STAMP}`) }).click()
+  await page.getByRole('button', { name: `Open Fix4 Cascade Form ${STAMP}`, exact: true }).click()
   await page.getByLabel('New group title', { exact: true }).fill('Cascade Landing')
   await page.getByRole('button', { name: 'Add group' }).click()
   await page.waitForTimeout(600)
   await moveFieldViaForm(request, 'Requisition', work.id, def.code, { group: 'Cascade Landing' })
   await page.reload({ waitUntil: 'networkidle' })
-  await page.getByRole('button', { name: new RegExp(`Fix4 Cascade Form ${STAMP}`) }).click()
+  await page.getByRole('button', { name: `Open Fix4 Cascade Form ${STAMP}`, exact: true }).click()
   await page.waitForTimeout(1000)
   state = (await (await request.get(`${API}/api/entry-forms?recordType=Requisition`, { headers: ADMIN })).json())
     .find((f: { id: string }) => f.id === work.id)

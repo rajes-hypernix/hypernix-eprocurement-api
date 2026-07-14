@@ -53,9 +53,8 @@ test('entry-forms gate: standard → admin composes role form → buyer gets it;
   // ---- 2. ADMIN composes the role form in the Setup composer ----
   await goAs(page, 'u_admin', 'entryforms')
   await page.waitForTimeout(1500)
-  // CF-FIX4-T2: the rail now lists ALL record types' forms — select the PR standard first.
-  await page.getByRole('button', { name: /Standard PR Form/ }).and(page.locator(':not(:has-text("(copy)"))')).first().click()
-  await page.getByRole('button', { name: /New form \(copy of Standard PR Form\)/ }).click()
+  // CF-FIX5-T6: Entry Forms is now a LIST — Copy the PR standard's row to spawn a new form.
+  await page.getByRole('button', { name: 'Copy Standard PR Form' }).click()
   // CF-FIX5-T8: New form opens a modal (name + customform_ Internal ID). Set the name there.
   await page.getByLabel('Form name', { exact: true }).fill(FORM_NAME)
   await page.getByRole('button', { name: 'Create form' }).click()
