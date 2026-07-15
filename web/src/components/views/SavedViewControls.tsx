@@ -208,7 +208,7 @@ export function ViewBuilder({ recordType, existing, defaultColumns, onClose, onS
           <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'flex-end', marginBottom: 6, flexWrap: 'wrap' }}>
             <SelectField
               spec={{
-                key: `crit-${i}-field`, label: 'Field', dataType: 'select',
+                key: `crit-${i}-field`, label: 'Field', dataType: 'select', searchable: true,
                 options: {
                   kind: 'static',
                   options: [
@@ -226,7 +226,7 @@ export function ViewBuilder({ recordType, existing, defaultColumns, onClose, onS
               onChange={(v) => setRow(i, { fieldKey: String(v ?? ''), operator: 'Eq', value: '', value2: '' })}
             />
             <SelectField
-              spec={spec(`crit-${i}-op`, 'Operator', 'select', ops)}
+              spec={{ ...spec(`crit-${i}-op`, 'Operator', 'select', ops), searchable: true }}
               value={c.operator}
               onChange={(v) => setRow(i, { operator: String(v ?? 'Eq') })}
             />
@@ -266,7 +266,7 @@ export function ViewBuilder({ recordType, existing, defaultColumns, onClose, onS
         ))}
       </div>
       <SelectField
-        spec={spec('add-col', 'Add column', 'select', fields.map((f) => f.fieldKey).filter((k) => !columns.includes(k)))}
+        spec={{ ...spec('add-col', 'Add column', 'select', fields.map((f) => f.fieldKey).filter((k) => !columns.includes(k))), searchable: true }}
         value=""
         onChange={(v) => { const k = String(v ?? ''); if (k) setColumns((cols) => [...cols, k]) }}
       />

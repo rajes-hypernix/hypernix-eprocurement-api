@@ -55,8 +55,12 @@ export function reportHealth(w: ReturnType<typeof watch>, info: TestInfo, name: 
 
 /** CF-FIX2-T2: drive the searchable select — open by label, type-to-filter, Enter picks
  *  the highlighted match (its proven keyboard contract). */
-export async function pickSearch(page: Page, label: string, filter: string) {
-  await page.getByRole('button', { name: label, exact: true }).click()
+export async function pickSearch(page: Page, label: string, filter: string, nth = 0) {
+  // nth targets the n-th control with this label (multi-criterion rows reuse 'Field'/'Operator');
+  // nth < 0 targets the LAST such control. Only the OPEN control renders its combobox/listbox, so
+  // those stay unique once clicked.
+  const btns = page.getByRole('button', { name: label, exact: true })
+  await (nth < 0 ? btns.last() : btns.nth(nth)).click()
   const box = page.getByRole('combobox', { name: `Search ${label}` })
   await box.fill(filter)
   await page.getByRole('listbox', { name: `${label} options` }).getByRole('option').first().waitFor()

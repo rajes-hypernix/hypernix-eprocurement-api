@@ -46,7 +46,9 @@ describe('SavedViewsHome — the builder’s front door (D7.5 task 1)', () => {
     ])
     renderWithProviders(<SavedViewsHome onOpenList={() => {}} />)
     await userEvent.click(await screen.findByRole('button', { name: /New view/ }))
-    await userEvent.selectOptions(screen.getByLabelText('Record type'), 'Requisition')
+    // T7: Record type is now a searchable SearchSelectField (button → option), not a native select.
+    await userEvent.click(screen.getByLabelText('Record type'))
+    await userEvent.click(await screen.findByRole('option', { name: 'Requisition' }))
     await userEvent.click(screen.getByRole('button', { name: 'Choose fields…' }))
     expect(await screen.findByText('New saved view')).toBeInTheDocument()   // the D3 builder, reused
     expect(screen.getByLabelText('View name')).toBeInTheDocument()

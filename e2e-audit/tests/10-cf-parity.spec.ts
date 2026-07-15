@@ -367,12 +367,12 @@ test('CF3-T11: reminder/KPI pickers are populated by seeded example views; an em
   // Create a view ON SCREEN and bind it to a KPI — the full create→bind loop.
   await goAs(page, 'u_lim', 'views')
   await page.getByRole('button', { name: /New view/ }).click()
-  await page.getByLabel('Record type', { exact: true }).last().selectOption('Requisition')
+  await pickSearch(page, 'Record type', 'Requisition')   // T7: modal pickers are searchable now
   await page.getByRole('button', { name: 'Choose fields…' }).click()
   await page.getByLabel('View name', { exact: true }).fill(`CF View ${STAMP}`)
   await page.getByRole('button', { name: 'Add criterion' }).click()
-  await page.getByLabel('Field', { exact: true }).selectOption('HeaderStatus')
-  await page.getByLabel('Operator', { exact: true }).selectOption('Eq')
+  await pickSearch(page, 'Field', 'PR status')
+  await pickSearch(page, 'Operator', 'Eq')
   await page.getByLabel('PR status', { exact: true }).selectOption('Submitted')
   await page.getByRole('button', { name: 'Save view' }).click()
   await page.waitForTimeout(1000)
@@ -699,12 +699,12 @@ test('CF7: builder speaks the new operators and grouped-OR — (Draft OR Submitt
 
   await goAs(page, 'u_faridah', 'views')
   await page.getByRole('button', { name: /New view/ }).click()
-  await page.getByLabel('Record type', { exact: true }).last().selectOption('Requisition')
+  await pickSearch(page, 'Record type', 'Requisition')   // T7: modal pickers are searchable now
   await page.getByRole('button', { name: 'Choose fields…' }).click()
   await page.getByLabel('View name', { exact: true }).fill(NAME)
   await page.getByRole('button', { name: 'Add criterion' }).click()
-  await page.getByLabel('Field', { exact: true }).selectOption('HeaderStatus')
-  await page.getByLabel('Operator', { exact: true }).selectOption('Eq')
+  await pickSearch(page, 'Field', 'PR status')
+  await pickSearch(page, 'Operator', 'Eq')
   await page.getByLabel('PR status', { exact: true }).selectOption('Draft')
   await page.getByRole('button', { name: 'Or with criterion 1' }).click()      // the CF7-T2 affordance
   await expect(page.getByText('or-group 1')).toHaveCount(2)                    // both rows carry the group
@@ -722,8 +722,8 @@ test('CF7: builder speaks the new operators and grouped-OR — (Draft OR Submitt
   // A NEW operator drives on screen too: edit the view to IsNotEmpty on Department.
   await page.getByRole('button', { name: `Edit ${NAME}`, exact: true }).click()
   await page.getByRole('button', { name: 'Add criterion' }).click()
-  await page.getByLabel('Field', { exact: true }).last().selectOption('Department')
-  await page.getByLabel('Operator', { exact: true }).last().selectOption('IsNotEmpty')
+  await pickSearch(page, 'Field', 'Department', -1)   // T7: last (newest) criterion's searchable pickers
+  await pickSearch(page, 'Operator', 'IsNotEmpty', -1)
   await page.getByRole('button', { name: 'Save changes' }).click()   // edit mode's save label
   await page.waitForTimeout(1000)
   const run2 = await (await request.get(`${API}/api/views/${mine.id}/run`, { headers: BUYER })).json()

@@ -51,13 +51,14 @@ test('the journey: home → view → reminder + KPI → dashboard live → filte
   await page.waitForTimeout(1500)
   await shot(page, 'D75-journey-1-home')
   await page.getByRole('button', { name: /New view/ }).click()
-  // Two 'Record type' controls exist here (the home's facet + the modal's select) — take the modal's.
-  await page.getByLabel('Record type').last().selectOption('Requisition')
+  // T7: the modal's Record type is now a searchable button (the home's facet stays a chip/select),
+  // so the searchable 'Record type' button is unambiguous.
+  await pickSearch(page, 'Record type', 'Requisition')
   await page.getByRole('button', { name: 'Choose fields…' }).click()
   await page.getByLabel('View name').fill(VIEW_NAME)
   await page.getByRole('button', { name: 'Add criterion' }).click()
-  await page.getByLabel('Field').selectOption('HeaderStatus')
-  await page.getByLabel('Operator').selectOption('Eq')
+  await pickSearch(page, 'Field', 'PR status')
+  await pickSearch(page, 'Operator', 'Eq')
   await page.getByLabel('PR status', { exact: true }).selectOption('Submitted')
   await shot(page, 'D75-journey-2-view')
   await page.getByRole('button', { name: 'Save view' }).click()

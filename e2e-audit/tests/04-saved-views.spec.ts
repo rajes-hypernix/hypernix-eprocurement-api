@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { goAs, shot } from './helpers'
+import { goAs, shot, pickSearch } from './helpers'
 
 // D3 Phase 3 GATE (as ruled): a PERSON builds and shares "Open RFQs closing this month"
 // entirely in the UI as the buyer; a second internal persona picks it and sees the same
@@ -21,13 +21,14 @@ test('saved views gate: buyer builds + shares; approver sees the same rows; vend
   await page.getByLabel('View name').fill(VIEW_NAME)
 
   await page.getByRole('button', { name: 'Add criterion' }).click()
-  await page.getByLabel('Field').selectOption('Status')
-  await page.getByLabel('Operator').selectOption('Eq')
+  // T7: Field + Operator are now searchable SearchSelectFields (typeable), not native selects.
+  await pickSearch(page, 'Field', 'Status')
+  await pickSearch(page, 'Operator', 'Eq')
   await page.getByLabel('Status', { exact: true }).selectOption('Open')
 
   await page.getByRole('button', { name: 'Add criterion' }).click()
-  await page.getByLabel('Field').nth(1).selectOption('ClosesUtc')
-  await page.getByLabel('Operator').nth(1).selectOption('Between')
+  await pickSearch(page, 'Field', 'Closes', 1)
+  await pickSearch(page, 'Operator', 'Between', 1)
   await page.getByLabel('Value', { exact: true }).nth(0).selectOption('@startOfMonth')
   await page.getByLabel('Value', { exact: true }).nth(1).selectOption('@endOfMonth')
 

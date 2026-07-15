@@ -103,7 +103,7 @@ export function SavedViewsHome({ onOpenList }: {
         >
           <SelectField
             spec={{
-              key: 'nv-type', label: 'Record type', dataType: 'select',
+              key: 'nv-type', label: 'Record type', dataType: 'select', searchable: true,
               options: { kind: 'static', options: recordTypeOptions(RECORD_TYPES) },
             }}
             value={newType} onChange={(v) => setNewType(String(v ?? 'Requisition'))} />

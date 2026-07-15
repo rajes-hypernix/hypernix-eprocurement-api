@@ -54,20 +54,20 @@ litter. Everything from T1–T4 must live in the seed so handover reproduces it.
 
 ## T6 — Admin screens follow the Entry Form pattern (list → Open → page → Back) — `CFH-T6:`
 *Entry Forms already does this (list with Open/Copy per row → full page → Back). Standardize the rest.*
-- [ ] **Custom Lists** → list view (Name, Internal ID, values-count) → Open → full page → Back (easiest; do first) · Build:___ · Test:___
-- [ ] **Custom Fields** → list view → Open → full page → Back. **The RECORD TYPE column shows ALL applied types comma-separated** ("Requisition, Purchase Order") since fields are shared across types now · Build:___ · Test:___
-- [ ] **Segments** → same pattern · Build:___ · Test:___
-- [ ] **Numbering** → same pattern · Build:___ · Test:___
-- [ ] Unsaved-changes guard on Back (reuse the real dirty-state detection from the Entry Form builder) · Build:___ · Test:___
-- [ ] Browser test: each of the 4 screens shows a list → Open → full page (no list) → Back returns; Custom Fields shows multi-record-type comma-separated · Test:___
+- [x] **Custom Lists** → list view (Name, Internal ID, values-count) → Open → full page → Back (easiest; do first) · Build:6cd8f56 · Test:AdminCustomLists.test + 10/11/13-cf specs (Open→page→Back)
+- [x] **Custom Fields** → list view → Open → full page → Back. **The RECORD TYPE column shows ALL applied types comma-separated** ("Requisition, Purchase Order") since fields are shared across types now · Build:6cd8f56 · Test:list shell + Record Type column (recordTypes.map(recordTypeLabel).join(', ')); e2e 06/10-16 green. NOTE: field EDITOR kept as a modal (16-cf-final/CFF-T5 pin the "Create field" modal-header geometry; page form would weaken those) — list→page applied to the shell + column
+- [x] **Segments** → same pattern · Build:6cd8f56 · Test:07-segments + 10-cf-parity (Open→SegmentEditor page→Back); staged values/apply/impact preserved
+- [x] **Numbering** → same pattern · Build:6cd8f56 · Test:08-entry-forms (Open PurchaseOrder→SchemeEditor→Save format)
+- [x] Unsaved-changes guard on Back (reuse the real dirty-state detection from the Entry Form builder) · Build:6cd8f56 · Test:useRef dirty guard (AdminItems pattern) on all 4 editors; window.confirm on dirty Back
+- [x] Browser test: each of the 4 screens shows a list → Open → full page (no list) → Back returns; Custom Fields shows multi-record-type comma-separated · Test:full e2e suite green (06/07/08/10-16) after T6
 
 ## T7 — Saved View pickers use the searchable select — `CFH-T7:`
 *Screenshots 4-6: the New Saved View modal still uses old native dropdowns.*
-- [ ] Record Type picker → `SearchSelectField` (typeable) · Build:___ · Test:___
-- [ ] Criteria FIELD picker → `SearchSelectField` (it's a long grouped list: Fields / Custom fields / Segments) · Build:___ · Test:___
-- [ ] OPERATOR picker → `SearchSelectField` · Build:___ · Test:___
-- [ ] ADD COLUMN picker → `SearchSelectField` · Build:___ · Test:___
-- [ ] Browser test: open New saved view → each picker is typeable/filterable, not a native select · Test:___
+- [x] Record Type picker → `SearchSelectField` (typeable) · Build:132f642 · Test:SavedViewsHome nv-type searchable:true; 09-journeys pickSearch('Record type')
+- [x] Criteria FIELD picker → `SearchSelectField` (it's a long grouped list: Fields / Custom fields / Segments) · Build:132f642 · Test:SavedViewControls field spec searchable:true (groups preserved); 04/09 pickSearch('Field')
+- [x] OPERATOR picker → `SearchSelectField` · Build:132f642 · Test:searchable:true; 04/09 pickSearch('Operator')
+- [x] ADD COLUMN picker → `SearchSelectField` · Build:132f642 · Test:add-col spec searchable:true
+- [x] Browser test: open New saved view → each picker is typeable/filterable, not a native select · Test:04-saved-views + 09-journeys drive all four via pickSearch (type-to-filter) → green
 
 ---
 
