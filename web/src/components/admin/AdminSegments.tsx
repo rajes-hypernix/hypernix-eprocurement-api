@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   getSegmentDefs, createSegmentDef, updateSegmentDef, addSegmentValue, applySegment, unapplySegment,
@@ -8,7 +8,6 @@ import {
 } from '../../api/client'
 import { ImpactReportDialog } from './ImpactReportDialog'
 import { getEntryForms } from '../../api/client'
-import { SetupPage } from '../../ui/archetypes/SetupPage'
 import { Modal, Notice } from '../ui'
 import { Button } from '../../ui/Button'
 import { TextField } from '../../ui/TextField'
@@ -40,33 +39,53 @@ const spec = (key: string, label: string, dataType: FieldSpec['dataType'], optio
 export function AdminSegments() {
   const qc = useQueryClient()
   const { data: defs = [] } = useQuery({ queryKey: ['segment-defs'], queryFn: getSegmentDefs })
-  const [selected, setSelected] = useState<string | null>(null)
+  const [openId, setOpenId] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
-  const def = defs.find((d) => d.id === selected) ?? defs[0]
   const refresh = () => { void qc.invalidateQueries({ queryKey: ['segment-defs'] }) }
+  const opened = defs.find((d) => d.id === openId)
+
+  if (opened) {
+    return <SegmentEditor key={opened.id} def={opened} onBack={() => setOpenId(null)} onChanged={refresh} />
+  }
 
   return (
-    <SetupPage
-      title="Segments"
-      primaryAction={<Button variant="primary" size="sm" icon="plus" onClick={() => setCreating(true)}>New segment</Button>}
-      railItems={defs.map((d) => ({
-        key: d.id, label: d.name,
-        hint: d.isSystem ? 'system' : `${d.values.length} value(s)`,
-      }))}
-      selectedKey={def?.id ?? ''}
-      onSelect={setSelected}
-      detail={def ? <SegmentDetail def={def} onChanged={refresh} /> : <p className="hint">No segments defined yet.</p>}
-    >
+    <div className="panel-fade">
+      <div className="pagehead">
+        <div><h1>Segments</h1></div>
+        <div className="spacer" />
+        <Button variant="primary" size="sm" icon="plus" onClick={() => setCreating(true)}>New segment</Button>
+      </div>
+      <table>
+        <thead><tr><th>Segment</th><th>Internal ID</th><th>Values</th><th>Status</th><th /></tr></thead>
+        <tbody>
+          {defs.map((d) => (
+            <tr key={d.id}>
+              <td style={{ fontWeight: 600 }}><span>{d.name}</span>
+                {d.isSystem && <span className="badge b-blue" style={{ marginLeft: 8 }}>system</span>}
+              </td>
+              <td className="mono">{d.code}</td>
+              <td className="amt">{d.values.length}</td>
+              <td><span className={`badge ${d.active ? 'b-green' : 'b-grey'}`}>{d.active ? 'Active' : 'Inactive'}</span></td>
+              <td className="amt">
+                <div className="rowactions">
+                  <Button variant="ghost" size="sm" onClick={() => setOpenId(d.id)} ariaLabel={`Open ${d.name}`}>Open</Button>
+                </div>
+              </td>
+            </tr>
+          ))}
+          {defs.length === 0 && <tr><td colSpan={5} className="hint">No segments defined yet.</td></tr>}
+        </tbody>
+      </table>
       {creating && (
         <DefModal def={null}
           onClose={() => setCreating(false)}
-          onSaved={(d) => { setCreating(false); setSelected(d.id); refresh() }} />
+          onSaved={(d) => { setCreating(false); setOpenId(d.id); refresh() }} />
       )}
-    </SetupPage>
+    </div>
   )
 }
 
-function SegmentDetail({ def, onChanged }: { def: SegmentDefDto; onChanged: () => void }) {
+function SegmentEditor({ def, onBack, onChanged }: { def: SegmentDefDto; onBack: () => void; onChanged: () => void }) {
   const [editing, setEditing] = useState(false)
   const [editingValue, setEditingValue] = useState<SegmentValueDto | null>(null)
   // CF-FIX4-T6: destructive verbs open the CF-FIX-3 impact dialog — the admin SEES what
@@ -78,6 +97,13 @@ function SegmentDetail({ def, onChanged }: { def: SegmentDefDto; onChanged: () =
   const [applying, setApplying] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const byId = new Map(def.values.map((v) => [v.id, v]))
+  // Unsaved-changes guard (the Entry Forms pattern): staged, not-yet-committed values mark
+  // the page dirty. Structure actions (apply/unapply, edits via modals) persist immediately.
+  const dirty = useRef(false)
+  const onDirtyChange = useCallback((d: boolean) => { dirty.current = d }, [])
+  const back = () => {
+    if (!dirty.current || window.confirm('You have unsaved changes — all changes will be lost. Leave anyway?')) onBack()
+  }
 
   const apply = useMutation({
     mutationFn: (req: { recordType: string; lineLevel: boolean; placements?: { formId: string; groupId?: string | null }[] }) =>
@@ -98,9 +124,10 @@ function SegmentDetail({ def, onChanged }: { def: SegmentDefDto; onChanged: () =
   })
 
   return (
-    <div>
+    <div className="panel-fade">
       <div className="chead" style={{ paddingLeft: 0 }}>
-        <h3>{def.name} <span className="mono hint" style={{ fontWeight: 400 }}>{def.code}</span></h3>
+        <Button variant="ghost" size="sm" icon="back" onClick={back} ariaLabel="Back to segments">Back</Button>
+        <h3 style={{ marginLeft: 8 }}>{def.name} <span className="mono hint" style={{ fontWeight: 400 }}>{def.code}</span></h3>
         <div className="spacer" />
         {def.isSystem
           ? <span className="badge b-blue">System — mirrors the PR's dimension columns</span>
@@ -139,7 +166,7 @@ function SegmentDetail({ def, onChanged }: { def: SegmentDefDto; onChanged: () =
           {def.values.length === 0 && <tr><td colSpan={def.hasHierarchy ? 5 : 4} className="hint">No values yet.</td></tr>}
         </tbody>
       </table>
-      {!def.isSystem && <StagedValues def={def} onChanged={onChanged} onError={setError} />}
+      {!def.isSystem && <StagedValues def={def} onChanged={onChanged} onError={setError} onDirtyChange={onDirtyChange} />}
 
       <h4 style={{ marginTop: 18 }}>Applied to</h4>
       <table>
@@ -318,13 +345,15 @@ function ApplyCascadeModal({ def, recordType, onClose, onApply }: {
  * value (staged:<idx>, resolved to the real id on save). Pickers are the standardized
  * searchable select.
  */
-function StagedValues({ def, onChanged, onError }: {
+function StagedValues({ def, onChanged, onError, onDirtyChange }: {
   def: SegmentDefDto; onChanged: () => void; onError: (msg: string | null) => void
+  onDirtyChange: (dirty: boolean) => void
 }) {
   const [label, setLabel] = useState('')
   const [parent, setParent] = useState('')
   const [staged, setStaged] = useState<{ label: string; parent: string }[]>([])
   const notify = useNotify()
+  useEffect(() => { onDirtyChange(staged.length > 0) }, [staged.length, onDirtyChange])
 
   const save = useMutation({
     mutationFn: async () => {

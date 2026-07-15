@@ -6,7 +6,6 @@ import {
   getCustomLists, type CustomFieldDefDto, type FieldPlacementRequest,
 } from '../../api/client'
 import { ImpactReportDialog } from './ImpactReportDialog'
-import { SetupPage } from '../../ui/archetypes/SetupPage'
 import { Modal, Notice } from '../ui'
 import { Button } from '../../ui/Button'
 import { TextField } from '../../ui/TextField'
@@ -74,50 +73,55 @@ export function AdminCustomFields() {
   })
 
   return (
-    <SetupPage
-      title="Custom Fields"
-      primaryAction={<Button variant="primary" size="sm" icon="plus" onClick={() => setEditing({ def: null })}>New field</Button>}
-      railItems={RECORD_TYPES.map((rt) => ({ key: rt, label: recordTypeLabel(rt), hint: rt === recordType ? `${defs.length} field(s)` : undefined }))}
-      selectedKey={recordType}
-      onSelect={setRecordType}
-      detail={
-        <div>
-          <table>
-            <thead><tr><th>Field</th><th>Code</th><th>Type</th><th>Values</th><th>Status</th><th /></tr></thead>
-            <tbody>
-              {defs.map((d) => (
-                <tr key={d.id}>
-                  <td>{d.label}{d.required && <span title="Required at value-save"> *</span>}
-                    {(d.recordTypes?.length ?? 0) > 1 && <span className="badge b-blue" style={{ marginLeft: 6 }} title={d.recordTypes!.map(recordTypeLabel).join(', ')}>shared ×{d.recordTypes!.length}</span>}
-                  </td>
-                  <td className="mono">{d.code}</td>
-                  <td>{dataTypeLabel(d.dataType)}{d.scope === 'Line' && <span className="badge b-grey" style={{ marginLeft: 6 }}>line</span>}</td>
-                  <td className="amt">{d.valueCount}</td>
-                  <td>
-                    <span className={`badge ${d.archived ? 'b-grey' : d.active ? 'b-green' : 'b-grey'}`}>
-                      {d.archived ? 'Archived' : d.active ? 'Active' : 'Deactivated'}
-                    </span>
-                  </td>
-                  <td className="amt">
-                    <Button variant="ghost" size="sm" onClick={() => setEditing({ def: d })}>Edit</Button>
-                    <Button variant="ghost" size="sm" onClick={() => toggle.mutate(d)} ariaLabel={`${d.active ? 'Deactivate' : 'Reactivate'} ${d.label}`}>
-                      {d.active ? 'Deactivate' : 'Reactivate'}
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => archive.mutate(d)}
-                      ariaLabel={`${d.archived ? 'Unarchive' : 'Archive'} ${d.label}`}
-                      title={d.archived ? 'Restore the values to every surface' : 'Hide the values from every surface, reversibly — they stay in storage and the audit trail'}>
-                      {d.archived ? 'Unarchive' : 'Archive'}
-                    </Button>
-                    <Button variant="ghost" size="sm" red onClick={() => setImpact(d)} ariaLabel={`Delete ${d.label}`}>Delete</Button>
-                  </td>
-                </tr>
-              ))}
-              {defs.length === 0 && <tr><td colSpan={6} className="hint">No custom fields on {recordTypeLabel(recordType)} yet.</td></tr>}
-            </tbody>
-          </table>
-        </div>
-      }
-    >
+    <div className="panel-fade">
+      <div className="pagehead">
+        <div><h1>Custom Fields</h1></div>
+        <div className="spacer" />
+        <Button variant="primary" size="sm" icon="plus" onClick={() => setEditing({ def: null })}>New field</Button>
+      </div>
+      {/* Record-type scope tabs — the list is scoped to one type, but the Record Type CELL
+          shows each field's FULL applied set (fields are shared across types now). */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
+        {RECORD_TYPES.map((rt) => (
+          <button key={rt} type="button" className={`btn btn-sm ${rt === recordType ? 'btn-pri' : 'btn-out'}`}
+            onClick={() => setRecordType(rt)}>{recordTypeLabel(rt)}</button>
+        ))}
+      </div>
+      <table>
+        <thead><tr><th>Field</th><th>Code</th><th>Type</th><th>Record Type</th><th>Values</th><th>Status</th><th /></tr></thead>
+        <tbody>
+          {defs.map((d) => (
+            <tr key={d.id}>
+              <td>{d.label}{d.required && <span title="Required at value-save"> *</span>}
+                {(d.recordTypes?.length ?? 0) > 1 && <span className="badge b-blue" style={{ marginLeft: 6 }} title={d.recordTypes!.map(recordTypeLabel).join(', ')}>shared ×{d.recordTypes!.length}</span>}
+              </td>
+              <td className="mono">{d.code}</td>
+              <td>{dataTypeLabel(d.dataType)}{d.scope === 'Line' && <span className="badge b-grey" style={{ marginLeft: 6 }}>line</span>}</td>
+              {/* ALL applied record types, comma-separated, via the friendly-name helper. */}
+              <td>{(d.recordTypes?.length ? d.recordTypes : [d.recordType]).map(recordTypeLabel).join(', ')}</td>
+              <td className="amt">{d.valueCount}</td>
+              <td>
+                <span className={`badge ${d.archived ? 'b-grey' : d.active ? 'b-green' : 'b-grey'}`}>
+                  {d.archived ? 'Archived' : d.active ? 'Active' : 'Deactivated'}
+                </span>
+              </td>
+              <td className="amt">
+                <Button variant="ghost" size="sm" onClick={() => setEditing({ def: d })}>Edit</Button>
+                <Button variant="ghost" size="sm" onClick={() => toggle.mutate(d)} ariaLabel={`${d.active ? 'Deactivate' : 'Reactivate'} ${d.label}`}>
+                  {d.active ? 'Deactivate' : 'Reactivate'}
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => archive.mutate(d)}
+                  ariaLabel={`${d.archived ? 'Unarchive' : 'Archive'} ${d.label}`}
+                  title={d.archived ? 'Restore the values to every surface' : 'Hide the values from every surface, reversibly — they stay in storage and the audit trail'}>
+                  {d.archived ? 'Unarchive' : 'Archive'}
+                </Button>
+                <Button variant="ghost" size="sm" red onClick={() => setImpact(d)} ariaLabel={`Delete ${d.label}`}>Delete</Button>
+              </td>
+            </tr>
+          ))}
+          {defs.length === 0 && <tr><td colSpan={7} className="hint">No custom fields on {recordTypeLabel(recordType)} yet.</td></tr>}
+        </tbody>
+      </table>
       {editing && (
         <DefModal key={editing.def?.id ?? (editing.replacing ? `repl-${editing.replacing.id}` : 'new')}
           recordType={recordType} def={editing.def} replacing={editing.replacing}
@@ -136,7 +140,7 @@ export function AdminCustomFields() {
           onClose={(changed) => { setImpact(null); if (changed) refresh() }}
         />
       )}
-    </SetupPage>
+    </div>
   )
 }
 

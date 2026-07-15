@@ -16,7 +16,7 @@ test('CF-FIX1-T1: full record-type names, renamed options, no lifecycle prose', 
 
   // Full professional names on the rail (display only — storage unchanged).
   await expect(page.getByRole('button', { name: 'Request For Quote' })).toBeVisible()
-  await expect(page.getByRole('button', { name: /Purchase Order \d+ field/ })).toBeVisible()   // the rail item (selected → carries its count; 'Purchase Orders' nav is separate)
+  await expect(page.getByRole('button', { name: 'Purchase Order', exact: true })).toBeVisible()   // the record-type scope tab (selected by default)
   await expect(page.getByRole('button', { name: 'Advance Shipment Notice' })).toBeVisible()
   await expect(page.getByText('Rfq', { exact: true })).toHaveCount(0)
 
@@ -74,7 +74,9 @@ test('CF-FIX1-T4: lists carry ONE Internal ID — labelled as such, duplicate bl
   await page.getByRole('button', { name: 'Create list' }).click()
   await page.waitForTimeout(1000)
 
-  // Duplicate Internal ID → blocked with the Internal ID message.
+  // Duplicate Internal ID → blocked with the Internal ID message. Create lands on the
+  // dedicated editor page — step Back to the list to reach New list again.
+  await page.getByRole('button', { name: 'Back to lists' }).click()
   await page.getByRole('button', { name: 'New list' }).click()
   await page.getByLabel('Internal ID', { exact: true }).fill(ID)
   await page.getByLabel('Name', { exact: true }).fill('Dup attempt')

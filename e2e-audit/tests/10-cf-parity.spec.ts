@@ -67,7 +67,7 @@ test('CF1-T2: edit a custom list — rename, alphabetical order-mode, guarded de
   // The list-self EDIT the operator asked for: rename + flip to alphabetical, in the UI.
   await goAs(page, 'u_admin', 'lists')
   await page.waitForTimeout(1200)
-  await page.getByRole('button', { name: `CF List ${STAMP}` }).click()
+  await page.getByRole('button', { name: `Open CF List ${STAMP}` }).click()
   await page.getByRole('button', { name: 'Edit list' }).click()
   await page.getByLabel('Name').fill(`CF List ${STAMP} v2`)
   await pickSearch(page, 'Show options in', 'Alphabetical')
@@ -89,7 +89,7 @@ test('CF1-T2: edit a custom list — rename, alphabetical order-mode, guarded de
   // Guarded delete: the bound list DEACTIVATES (badge), never vanishes under the field.
   await goAs(page, 'u_admin', 'lists')
   await page.waitForTimeout(1200)
-  await page.getByRole('button', { name: `CF List ${STAMP} v2` }).click()
+  await page.getByRole('button', { name: `Open CF List ${STAMP} v2` }).click()
   await page.getByRole('button', { name: 'Delete list' }).click()
   await page.waitForTimeout(1000)
   await expect(page.getByText('Inactive')).toBeVisible()
@@ -185,7 +185,7 @@ test('CF2-T6: uniform lifecycle on screen — segment value edit/delete, def dea
 
   await goAs(page, 'u_admin', 'segments')
   await page.waitForTimeout(1200)
-  await page.getByRole('button', { name: new RegExp(`Cost Pool ${STAMP}.*value`) }).click()   // the rail item (its name carries the hint)
+  await page.getByRole('button', { name: `Open Cost Pool ${STAMP}` }).click()   // list → dedicated editor page
 
   // EDIT a value on screen (the verb that didn't exist).
   await page.getByRole('button', { name: 'Edit value Pool One' }).click()
@@ -214,7 +214,7 @@ test('CF2-T6: uniform lifecycle on screen — segment value edit/delete, def dea
   await expect(page.getByText(/can be deleted safely/)).toBeVisible()
   await page.getByRole('dialog').getByRole('button', { name: 'Delete segment', exact: true }).click()   // the header verb shares the name
   await page.waitForTimeout(800)
-  await expect(page.getByRole('button', { name: new RegExp(`Cost Pool ${STAMP}.*value`) })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: `Open Cost Pool ${STAMP}` })).toHaveCount(0)
 
   // ENTRY-FORM inactivate (the missing verb): copy Standard, deactivate, verify via API, delete.
   const forms = await (await request.get(`${API}/api/entry-forms?recordType=Requisition`, { headers: ADMIN })).json()
@@ -414,7 +414,7 @@ test('CF4-T12: field authoring — display=Inline renders as text, show-in-list 
 
   // Author BOTH fields on screen through the def modal (the CF4 authoring surface).
   await goAs(page, 'u_admin', 'customfields')
-  await page.getByRole('button', { name: /Purchase Order \d+ field/ }).click()   // rail item (full name since CF-FIX1-T1)
+  await page.getByRole('button', { name: 'Purchase Order', exact: true }).click()   // record-type scope tab (full name since CF-FIX1-T1)
   await page.getByRole('button', { name: 'New field' }).click()
   await page.getByLabel('Label', { exact: true }).fill(ANCHOR)
   await page.getByRole('button', { name: 'Create field' }).click()

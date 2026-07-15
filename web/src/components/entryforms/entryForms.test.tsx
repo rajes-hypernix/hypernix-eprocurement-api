@@ -121,8 +121,8 @@ describe('AdminNumbering — format is Setup configuration (A70)', () => {
 
     renderWithProviders(<AdminNumbering />)
     expect(await screen.findAllByText('PO-2026-0013')).not.toHaveLength(0)
-    await userEvent.click(screen.getByRole('button', { name: 'Edit PurchaseOrder numbering' }))
-    const prefix = screen.getByLabelText('Prefix (A–Z, 0–9, dash)')
+    await userEvent.click(screen.getByRole('button', { name: 'Open PurchaseOrder' }))
+    const prefix = await screen.findByLabelText('Prefix (A–Z, 0–9, dash)')
     await userEvent.clear(prefix)
     await userEvent.type(prefix, 'SPO')
     const digits = screen.getByLabelText('Digits (3–6)')

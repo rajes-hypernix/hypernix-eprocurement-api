@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   getCustomLists, createCustomList, addCustomListValue, updateCustomListValue, updateCustomList, setCustomListActive, deleteCustomList, deleteCustomListValue,
@@ -6,8 +6,7 @@ import {
   type CustomList, type CustomListValue,
 } from '../../api/client'
 import { ImpactReportDialog } from './ImpactReportDialog'
-import { Modal, Spinner } from '../ui'
-import { SetupPage } from '../../ui/archetypes/SetupPage'
+import { Modal, Notice, Spinner } from '../ui'
 import type { FieldOption } from '../../ui/fieldSpec'
 import { TextField } from '../../ui/TextField'
 import { TextAreaField } from '../../ui/TextAreaField'
@@ -24,83 +23,126 @@ import { useNotify } from '../../ui/Notify'
  * value set (COUNTRY, BANK, PAYMENT_TERMS…) that fields are tagged to; values store a CODE (source of
  * truth) and a LABEL (shown). Dependent lists (STATE→COUNTRY, CITY→STATE) scope each value to a parent
  * value. Editable here without a code change — the forms read the same lists live.
- * D2: the rail + detail shell is the Setup archetype; editor fields are ui/ primitives.
+ * T6: the Entry Forms navigation shell — a LIST of value sets → Open → a dedicated FULL PAGE
+ * editor (list hidden) with a Back control. New list rides as a modal off the list view.
  */
 export function AdminCustomLists() {
   const qc = useQueryClient()
   const { data: lists = [], isPending } = useQuery({ queryKey: ['custom-lists'], queryFn: getCustomLists })
-  const [selCode, setSelCode] = useState<string | null>(null)
+  const [openCode, setOpenCode] = useState<string | null>(null)
   const [newList, setNewList] = useState(false)
-  const [editList, setEditList] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
   const refresh = () => { void qc.invalidateQueries({ queryKey: ['custom-lists'] }) }
   const onErr = (e: Error) => setErr(e.message)
 
+  if (isPending) return <Spinner label="Loading custom lists…" />
+
+  const opened = lists.find((l) => l.code === openCode) ?? null
+
+  if (opened) {
+    const parentList = opened.parentListCode ? lists.find((l) => l.code === opened.parentListCode) : undefined
+    return <ListEditor list={opened} parentList={parentList} onBack={() => setOpenCode(null)} onRefresh={refresh}
+      onDeleted={() => { setOpenCode(null); refresh() }} />
+  }
+
+  return (
+    <div className="panel-fade">
+      <div className="pagehead">
+        <div><h1>Custom Lists</h1><p>Reusable value sets tagged to fields — like NetSuite Custom Lists.</p></div>
+        <div className="spacer" />
+        <Button variant="primary" icon="plus" onClick={() => setNewList(true)}>New list</Button>
+      </div>
+      {err && <Notice tone="error" icon="x">{err}</Notice>}
+      <table>
+        <thead><tr><th>List</th><th>Internal ID</th><th>Depends on</th><th>Values</th><th>Status</th><th /></tr></thead>
+        <tbody>
+          {lists.map((l) => (
+            <tr key={l.code}>
+              <td style={{ fontWeight: 600 }}><span>{l.name}</span>
+                {l.orderMode === 'Alphabetical' && <span className="badge b-blue" style={{ marginLeft: 8 }}>A→Z</span>}
+              </td>
+              <td className="mono">{l.code}</td>
+              <td className="hint">{l.parentListCode ? `↳ ${l.parentListCode}` : '—'}</td>
+              <td className="amt">{l.values.length}</td>
+              <td><StatusBadge tone={l.active === false ? 'grey' : 'green'}>{l.active === false ? 'Inactive' : 'Active'}</StatusBadge></td>
+              <td className="amt">
+                <div className="rowactions">
+                  <Button variant="ghost" size="sm" onClick={() => setOpenCode(l.code)} ariaLabel={`Open ${l.name}`}>Open</Button>
+                </div>
+              </td>
+            </tr>
+          ))}
+          {lists.length === 0 && <tr><td colSpan={6} className="hint">No lists yet.</td></tr>}
+        </tbody>
+      </table>
+      {newList && <NewListModal lists={lists} onClose={() => setNewList(false)}
+        onCreated={(code) => { setNewList(false); setOpenCode(code); void refresh() }} onErr={onErr} />}
+    </div>
+  )
+}
+
+function ListEditor({ list, parentList, onBack, onRefresh, onDeleted }: {
+  list: CustomList; parentList?: CustomList; onBack: () => void; onRefresh: () => void; onDeleted: () => void
+}) {
+  const [editList, setEditList] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+  const onErr = (e: Error) => setErr(e.message)
+  // Unsaved-changes guard (the Entry Forms pattern): staged, not-yet-committed values mark
+  // the page dirty; Back warns before discarding them.
+  const dirty = useRef(false)
+  const onDirtyChange = useCallback((d: boolean) => { dirty.current = d }, [])
+  const back = () => {
+    if (!dirty.current || window.confirm('You have unsaved changes — all changes will be lost. Leave anyway?')) onBack()
+  }
+
   const setListActive = useMutation({
     mutationFn: (v: { code: string; active: boolean }) => setCustomListActive(v.code, v.active),
-    onSuccess: refresh, onError: onErr,
+    onSuccess: onRefresh, onError: onErr,
   })
   const removeList = useMutation({
     mutationFn: (code: string) => deleteCustomList(code),
-    // A guarded delete DEACTIVATES (returns the list) — keep it selected so the admin
-    // SEES the Inactive badge; only a hard delete (204/no body) clears the selection.
-    onSuccess: (result) => { if (!result) setSelCode(null); refresh() }, onError: onErr,
+    // A guarded delete DEACTIVATES (returns the list) — stay on the page so the admin SEES
+    // the Inactive badge; only a hard delete (204/no body) returns to the list.
+    onSuccess: (result) => { if (!result) onDeleted(); else onRefresh() }, onError: onErr,
   })
 
-  if (isPending) return <Spinner label="Loading custom lists…" />
-
-  const selected = lists.find((l) => l.code === selCode) ?? lists[0] ?? null
-  const parentList = selected?.parentListCode ? lists.find((l) => l.code === selected.parentListCode) : undefined
-
   return (
-    <SetupPage
-      title="Custom Lists"
-      subtitle="Reusable value sets tagged to fields — like NetSuite Custom Lists."
-      primaryAction={<Button variant="primary" icon="plus" onClick={() => setNewList(true)}>New list</Button>}
-      error={err}
-      railItems={lists.map((l) => ({ key: l.code, label: l.name, hint: `${l.code}${l.parentListCode ? ` · ↳ ${l.parentListCode}` : ''}` }))}
-      selectedKey={selected?.code ?? null}
-      onSelect={setSelCode}
-      railEmpty="No lists yet."
-      detail={selected && (
-        <div>
-          {/* CF1-T2: the list-SELF verbs the operator's complaint named. */}
-          <div className="chead" style={{ paddingLeft: 0 }}>
-            <h3>{selected.name} <span className="mono hint" style={{ fontWeight: 400 }}>{selected.code}</span>
-              {selected.active === false && <span className="badge b-grey" style={{ marginLeft: 8 }}>Inactive</span>}
-              {selected.orderMode === 'Alphabetical' && <span className="badge b-blue" style={{ marginLeft: 8 }}>A→Z</span>}
-            </h3>
-            <div className="spacer" />
-            <Button variant="ghost" size="sm" icon="edit" onClick={() => setEditList(true)} ariaLabel="Edit list">Edit list</Button>
-            {!selected.isSystem && (
-              <>
-                <Button variant="ghost" size="sm"
-                  onClick={() => setListActive.mutate({ code: selected.code, active: !(selected.active ?? true) })}
-                  ariaLabel={selected.active === false ? 'Reactivate list' : 'Deactivate list'}>
-                  {selected.active === false ? 'Reactivate' : 'Deactivate'}
-                </Button>
-                <Button variant="ghost" size="sm" red onClick={() => removeList.mutate(selected.code)} ariaLabel="Delete list">Delete</Button>
-              </>
-            )}
-          </div>
-          <ListValues list={selected} parentList={parentList} onRefresh={refresh} onErr={onErr} clearErr={() => setErr(null)} />
-        </div>
-      )}
-    >
-      {newList && <NewListModal lists={lists} onClose={() => setNewList(false)}
-        onCreated={(code) => { setNewList(false); setSelCode(code); void refresh() }} onErr={onErr} />}
-      {editList && selected && <EditListModal list={selected} onClose={() => setEditList(false)}
-        onSaved={() => { setEditList(false); void refresh() }} onErr={onErr} />}
-    </SetupPage>
+    <div className="panel-fade">
+      <div className="chead" style={{ paddingLeft: 0 }}>
+        <Button variant="ghost" size="sm" icon="back" onClick={back} ariaLabel="Back to lists">Back</Button>
+        {/* CF1-T2: the list-SELF verbs the operator's complaint named. */}
+        <h3 style={{ marginLeft: 8 }}>{list.name} <span className="mono hint" style={{ fontWeight: 400 }}>{list.code}</span>
+          {list.active === false && <span className="badge b-grey" style={{ marginLeft: 8 }}>Inactive</span>}
+          {list.orderMode === 'Alphabetical' && <span className="badge b-blue" style={{ marginLeft: 8 }}>A→Z</span>}
+        </h3>
+        <div className="spacer" />
+        <Button variant="ghost" size="sm" icon="edit" onClick={() => setEditList(true)} ariaLabel="Edit list">Edit list</Button>
+        {!list.isSystem && (
+          <>
+            <Button variant="ghost" size="sm"
+              onClick={() => setListActive.mutate({ code: list.code, active: !(list.active ?? true) })}
+              ariaLabel={list.active === false ? 'Reactivate list' : 'Deactivate list'}>
+              {list.active === false ? 'Reactivate' : 'Deactivate'}
+            </Button>
+            <Button variant="ghost" size="sm" red onClick={() => removeList.mutate(list.code)} ariaLabel="Delete list">Delete</Button>
+          </>
+        )}
+      </div>
+      {err && <Notice tone="error" icon="x">{err}</Notice>}
+      <ListValues list={list} parentList={parentList} onRefresh={onRefresh} onErr={onErr} clearErr={() => setErr(null)} onDirtyChange={onDirtyChange} />
+      {editList && <EditListModal list={list} onClose={() => setEditList(false)}
+        onSaved={() => { setEditList(false); onRefresh() }} onErr={onErr} />}
+    </div>
   )
 }
 
 const parentOptions = (parentList: CustomList): FieldOption[] =>
   parentList.values.map((p) => ({ code: p.code, label: p.label }))
 
-function ListValues({ list, parentList, onRefresh, onErr, clearErr }: {
+function ListValues({ list, parentList, onRefresh, onErr, clearErr, onDirtyChange }: {
   list: CustomList; parentList?: CustomList; onRefresh: () => void; onErr: (e: Error) => void; clearErr: () => void
+  onDirtyChange: (dirty: boolean) => void
 }) {
   const [label, setLabel] = useState('')
   const [parentValue, setParentValue] = useState('')
@@ -113,6 +155,7 @@ function ListValues({ list, parentList, onRefresh, onErr, clearErr }: {
   // (referenced as staged:<idx>, resolved to the real system-assigned id on save).
   const [staged, setStaged] = useState<{ label: string; parent: string }[]>([])
   const notify = useNotify()
+  useEffect(() => { onDirtyChange(staged.length > 0) }, [staged.length, onDirtyChange])
 
   const save = useMutation({
     mutationFn: async () => {

@@ -93,7 +93,11 @@ test('CF-FIX3-T4: the value X opens the report — filter-VALUE blocks naming th
   const openValueDialog = async (code: string) => {
     await goAs(page, 'u_admin', 'lists')
     await page.waitForTimeout(1200)
-    await page.getByRole('button', { name: new RegExp(`Fix3 List ${STAMP}`) }).click()
+    // list → dedicated editor page; if a prior editor is still open (same-route re-nav),
+    // step Back to the list first.
+    const back = page.getByRole('button', { name: 'Back to lists' })
+    if (await back.count()) await back.click()
+    await page.getByRole('button', { name: new RegExp(`Open Fix3 List ${STAMP}`) }).click()
     await page.getByRole('button', { name: `Delete ${code}` }).click()
     await expect(page.getByTestId('impact-report')).toBeVisible()
   }

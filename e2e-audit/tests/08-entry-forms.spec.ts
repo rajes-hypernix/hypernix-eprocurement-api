@@ -136,8 +136,8 @@ test('entry-forms gate: standard → admin composes role form → buyer gets it;
   // ---- 4. NUMBERING: admin changes the PO format in Setup ----
   await goAs(page, 'u_admin', 'numbering')
   await page.waitForTimeout(1500)
-  await page.getByRole('button', { name: 'PurchaseOrder' }).click()
-  await page.getByRole('button', { name: 'Edit PurchaseOrder numbering' }).click()
+  // T6: numbering is a LIST → Open → dedicated editor page (no rail / "Edit … numbering" button).
+  await page.getByRole('button', { name: 'Open PurchaseOrder', exact: true }).click()
   const prefix = page.getByLabel('Prefix (A–Z, 0–9, dash)')
   await prefix.fill(`SP${STAMP.slice(-2)}`)
   await page.getByLabel('Digits (3–6)').fill('5')

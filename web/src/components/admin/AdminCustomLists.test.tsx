@@ -20,21 +20,22 @@ describe('AdminCustomLists (NetSuite-style custom lists)', () => {
     vi.spyOn(client, 'getCustomLists').mockResolvedValue(LISTS)
   })
 
-  it('lists the value sets and shows the selected list’s values (code + label)', async () => {
+  it('lists the value sets and, once Opened, shows the list’s values (code + label)', async () => {
     renderWithQuery(<AdminCustomLists />)
-    // left rail lists all sets
-    expect(await screen.findByRole('button', { name: /Payment terms/ })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Country/ })).toBeInTheDocument()
-    // first list is selected by default → its values render
-    expect(screen.getByText('NET30')).toBeInTheDocument()
+    // the list table names all sets
+    expect(await screen.findByText('Payment terms')).toBeInTheDocument()
+    expect(screen.getByText('Country')).toBeInTheDocument()
+    // Open the first list → its values render on the dedicated page
+    await userEvent.click(screen.getByRole('button', { name: 'Open Payment terms' }))
+    expect(await screen.findByText('NET30')).toBeInTheDocument()
     expect(screen.getByText('30 days')).toBeInTheDocument()
   })
 
   it('STAGES values then commits on one Save (CF-FIX2-T5: no auto-save)', async () => {
     const add = vi.spyOn(client, 'addCustomListValue').mockResolvedValue(val('3', '90 days', null, 2))
     renderWithQuery(<AdminCustomLists />)
-    await screen.findByRole('button', { name: /Payment terms/ })
-    await userEvent.type(screen.getByLabelText('Label'), '90 days')
+    await userEvent.click(await screen.findByRole('button', { name: 'Open Payment terms' }))
+    await userEvent.type(await screen.findByLabelText('Label'), '90 days')
     await userEvent.click(screen.getByRole('button', { name: /Add value/ }))
     expect(add).not.toHaveBeenCalled()                                  // staged, NOT persisted
     expect(screen.getByText('1 unsaved value')).toBeInTheDocument()
@@ -44,8 +45,8 @@ describe('AdminCustomLists (NetSuite-style custom lists)', () => {
 
   it('a dependent list exposes the parent-value picker', async () => {
     renderWithQuery(<AdminCustomLists />)
-    await screen.findByRole('button', { name: /Payment terms/ })
-    await userEvent.click(screen.getByRole('button', { name: /State/ }))
+    await screen.findByText('Payment terms')
+    await userEvent.click(screen.getByRole('button', { name: 'Open State' }))
     // parent value dropdown appears (State depends on Country)
     expect(await screen.findByLabelText('Country')).toBeInTheDocument()
     expect(screen.getByRole('option', { name: 'Malaysia' })).toBeInTheDocument()
@@ -60,8 +61,8 @@ describe('AdminCustomLists (NetSuite-style custom lists)', () => {
     })
     const del = vi.spyOn(client, 'deleteCustomListValue')
     renderWithQuery(<AdminCustomLists />)
-    await screen.findByRole('button', { name: /Payment terms/ })
-    await userEvent.click(screen.getByRole('button', { name: 'Delete NET30' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Open Payment terms' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Delete NET30' }))
 
     expect(await screen.findByText(/3 live record\(s\) hold this value/)).toBeInTheDocument()
     expect(screen.getByText('Master data columns')).toBeInTheDocument()
@@ -77,8 +78,8 @@ describe('AdminCustomLists (NetSuite-style custom lists)', () => {
     })
     const del = vi.spyOn(client, 'deleteCustomListValue').mockResolvedValue(undefined)
     renderWithQuery(<AdminCustomLists />)
-    await screen.findByRole('button', { name: /Payment terms/ })
-    await userEvent.click(screen.getByRole('button', { name: 'Delete NET60' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Open Payment terms' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Delete NET60' }))
     const btn = await screen.findByRole('button', { name: 'Delete list value' })
     await waitFor(() => expect(btn).toBeEnabled())
     await userEvent.click(btn)
@@ -90,7 +91,7 @@ describe('AdminCustomLists (NetSuite-style custom lists)', () => {
       id: 'l9', code: 'INCOTERM', name: 'Incoterms', description: null, parentListCode: null, isSystem: false, values: [],
     })
     renderWithQuery(<AdminCustomLists />)
-    await screen.findByRole('button', { name: /Payment terms/ })
+    await screen.findByText('Payment terms')
     await userEvent.click(screen.getByRole('button', { name: /New list/ }))
     await userEvent.type(screen.getByLabelText('Internal ID'), 'incoterm')
     await userEvent.type(screen.getByLabelText('Name'), 'Incoterms')
