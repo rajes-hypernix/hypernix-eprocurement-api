@@ -20,12 +20,12 @@ casualties (the current screens work; they're just not yet consistent). T1–T5 
 ## T2 — Hard-delete the litter config (now possible — values are gone) — `CFH-T2:`
 *Last round could only DEACTIVATE these (83 fields on PO alone, screenshot) because the data-safety
 guard refuses to delete a field in live use. With T1 done they have ZERO values → genuinely deletable.*
-- [ ] Hard-delete the litter custom fields (`CF4 Star nnnnnn`, `Fix3/Fix4/Fix5 *`, `Budget Cap/Ref nnnnnn`, `Site Ref nnnnnn`, `Partner N`, test/demo junk) across ALL record types — not deactivate, DELETE · Build:___ · Test:___
-- [ ] Hard-delete litter custom lists (`CF List nnnnnn`, `Fix1 Values nnnnnn`, `_CUSTOMER`, `CUSTLIST_PARTNER` if test-only) · Build:___ · Test:___
-- [ ] Hard-delete litter segments (`Project nnnnnn` ×N) **and specifically delete the `Project Code Grouped` segment (operator named it)** · Build:___ · Test:___
-- [ ] Hard-delete litter saved views (`VIEW-DEMO-*` test noise, `Requisition with Partnets` typo view, etc.) — keep the System views · Build:___ · Test:___
-- [ ] Use the governed lifecycle where anything still holds a reference; nothing orphaned; purges snapshot to audit · Build:___ · Test:___
-- [ ] Verify: Custom Fields / Lists / Segments / Saved Views screens show a CLEAN set — **no wall of "Deactivated" badges** (that's the failure mode from last round) · Test:___
+- [x] Hard-delete the litter custom fields (`CF4 Star nnnnnn`, `Fix3/Fix4/Fix5 *`, `Budget Cap/Ref nnnnnn`, `Site Ref nnnnnn`, `Partner N`, test/demo junk) across ALL record types — not deactivate, DELETE · Build:8a52b6a · Test:118 deleted → CustomFieldDefs=1 (Remarks), 0 deactivated
+- [x] Hard-delete litter custom lists (`CF List nnnnnn`, `Fix1 Values nnnnnn`, `_CUSTOMER`, `CUSTLIST_PARTNER` if test-only) · Build:8a52b6a · Test:_CUSTOMER + CUSTLIST_PARTNER deleted → CustomLists=11
+- [x] Hard-delete litter segments (`Project nnnnnn` ×N) **and specifically delete the `Project Code Grouped` segment (operator named it)** · Build:8a52b6a · Test:11 deleted incl. Project Code Grouped → SegmentDefs=4/4 system
+- [x] Hard-delete litter saved views (`VIEW-DEMO-*` test noise, `Requisition with Partnets` typo view, etc.) — keep the System views · Build:8a52b6a · Test:SavedViews=6/6 system (VIEW-DEMO/typo/personal deleted). VIEW-DEMO reseed removed in T5.
+- [x] Use the governed lifecycle where anything still holds a reference; nothing orphaned; purges snapshot to audit · Build:8a52b6a · Test:API delete/purge for fields+segments; 0 orphan applications; dangling registry cleaned
+- [x] Verify: Custom Fields / Lists / Segments / Saved Views screens show a CLEAN set — **no wall of "Deactivated" badges** (that's the failure mode from last round) · Test:data assertion — all remaining defs ACTIVE, zero Deactivated
 
 ## T3 — Real reference data: Department, Location, Project, Category as segments — `CFH-T3:`
 - [ ] Create 4 segments — **Department, Location, Project, Category** — each with **5 realistic Malaysian oil-and-gas procurement values** (e.g. Department: Maintenance, Production, HSE, Instrumentation, Electrical; Location: Bintulu Plant, Samalaju Terminal, Kuching HQ, Kemaman Yard, Tanjung Pelepas; Project/Category likewise plausible) · Build:___ · Test:___
