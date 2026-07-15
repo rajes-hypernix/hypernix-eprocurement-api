@@ -28,10 +28,10 @@ guard refuses to delete a field in live use. With T1 done they have ZERO values 
 - [x] Verify: Custom Fields / Lists / Segments / Saved Views screens show a CLEAN set — **no wall of "Deactivated" badges** (that's the failure mode from last round) · Test:data assertion — all remaining defs ACTIVE, zero Deactivated
 
 ## T3 — Real reference data: Department, Location, Project, Category as segments — `CFH-T3:`
-- [ ] Create 4 segments — **Department, Location, Project, Category** — each with **5 realistic Malaysian oil-and-gas procurement values** (e.g. Department: Maintenance, Production, HSE, Instrumentation, Electrical; Location: Bintulu Plant, Samalaju Terminal, Kuching HQ, Kemaman Yard, Tanjung Pelepas; Project/Category likewise plausible) · Build:___ · Test:___
-- [ ] Each applied at **BOTH Header AND Line** (T7 of CF-FIX-5 made this possible), on Requisition + the other transaction types where sensible · Build:___ · Test:___
-- [ ] Standard on the transaction forms — the PR's `Department`/`Location`/`Category`/`Job` are FREE TEXT today (plain strings on PurchaseRequisition, with companion `*Code` columns that already exist) → make them **segment-backed pickers** using the searchable select, writing both label and code · Build:___ · Test:___
-- [ ] Browser test: New PR → Department/Location/Category are searchable pickers (not free text) → pick one → saves label+code; segment available on the line too · Test:___
+- [x] Create 4 segments — **Department, Location, Project, Category** — each with **5 realistic Malaysian oil-and-gas procurement values** · Build:2e861bb · Test:5 segments (Dept/Loc/Category/Job system + Project new) × 5 curated values each
+- [x] Each applied at **BOTH Header AND Line** (T7 of CF-FIX-5 made this possible), on Requisition + the other transaction types where sensible · Build:2e861bb · Test:apps Header+Line on Requisition + PurchaseOrder for all 5
+- [x] Standard on the transaction forms — the PR's `Department`/`Location`/`Category`/`Job` are FREE TEXT today ... → make them **segment-backed pickers** using the searchable select, writing both label and code · Build:2e861bb · Test:resolver attaches same-named segment values as options; DB shows Department="Maintenance"/DepartmentCode="MAINTENANCE"
+- [x] Browser test: New PR → Department/Location/Category are searchable pickers (not free text) → pick one → saves label+code; segment available on the line too · Test:CFH-T3
 
 ## T4 — Item Master (new, minimal-and-safe) — `CFH-T4:`
 *Scoping ruling (do it THIS way): `ItemCode` is a plain string on every line entity (PR/PO/Bid/Invoice/Delivery).
