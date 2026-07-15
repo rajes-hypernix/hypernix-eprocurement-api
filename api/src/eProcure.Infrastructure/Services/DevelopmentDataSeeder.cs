@@ -77,7 +77,65 @@ public sealed class DevelopmentDataSeeder(
 
     /// <summary>CFH-T5 placeholder — filled in T5 with ~10 realistic sample PRs on the curated items +
     /// segment values (a spread of statuses). No-op hook for now.</summary>
-    private Task SeedHandoverPrsAsync(CancellationToken ct) => Task.CompletedTask;
+    /// <summary>CFH-T5: ~10 curated showcase PRs built on the Item Master codes + curated segment
+    /// values, with a realistic spread of header statuses (Draft / Submitted / Sourced /
+    /// PartiallySourced). Codes are PR-2026-09xx so they sort AFTER the P2P demo PRs (list is
+    /// ordered by Code) — prs[0] stays the demo PR, so the e2e fixtures are undisturbed. Their
+    /// curated dims project only values already in the segments (no new litter). Idempotent by
+    /// marker code. Runs before ProjectPrSegments so the lines' dims are projected.</summary>
+    private async Task SeedHandoverPrsAsync(CancellationToken ct)
+    {
+        if (await db.PurchaseRequisitions.AnyAsync(p => p.Code == "PR-2026-0901", ct)) return;
+        var now = clock.UtcNow;
+        var items = HandoverItems.ToDictionary(i => i.Code, i => (i.Description, i.Uom));
+
+        PrLine Line(string code, decimal qty, decimal rate, PrLineStatus st = PrLineStatus.Open)
+            => PrLine.Create(code, items[code].Description, qty, items[code].Uom, rate, st);
+
+        PurchaseRequisition Pr(string code, string requestor, string dept, string loc, string cat, string job,
+            string project, string memo, string costCentre, int raisedAgo, int needIn, bool submitted, string statusLabel, List<PrLine> lines)
+        {
+            var pr = new PurchaseRequisition
+            {
+                Code = code, Requestor = requestor, Department = dept, Location = loc, Category = cat, Job = job,
+                Project = project, Memo = memo, CostCentre = costCentre, Currency = "MYR",
+                Submitted = submitted, Lines = lines, Value = lines.Sum(l => l.Qty * l.EstUnitPrice),
+                DepartmentCode = SourcingMapping.DimCode(dept), LocationCode = SourcingMapping.DimCode(loc),
+                CategoryCode = SourcingMapping.DimCode(cat), JobCode = SourcingMapping.DimCode(job),
+                RaisedOn = DateOnly.FromDateTime(now).AddDays(-raisedAgo), RequiredOn = DateOnly.FromDateTime(now).AddDays(needIn),
+                CreatedUtc = now, UpdatedUtc = now,
+            }.SeededAs(statusLabel);
+            pr.RecomputeHeaderStatus();   // derive header from line states (§2.5)
+            return pr;
+        }
+
+        db.PurchaseRequisitions.AddRange(
+            // Draft (not yet submitted)
+            Pr("PR-2026-0901", "Aishah Karim",   "Maintenance",     "Bintulu Plant",     "Rotating Equipment", "Routine Maintenance", "Compressor Overhaul",  "Compressor station spare pump + drive", "CC-MAINT-01", 6, 45, false, "Draft",
+                [Line("MEP-PMP-075", 2, 41000m), Line("ELE-VFD-075", 2, 8200m)]),
+            Pr("PR-2026-0902", "Lim Chee Keong",  "Production",      "Samalaju Terminal", "Piping",             "Shutdown Q3",         "Tank Farm Integrity",  "Tank farm CS piping replacement",       "CC-OPS-02",   4, 60, false, "Draft",
+                [Line("PIP-CS-0080", 120, 920m), Line("VLV-GT-0150", 8, 3100m)]),
+            Pr("PR-2026-0910", "Siti Aminah",     "HSE",             "Kemaman Yard",      "Safety / PPE",       "Breakdown Repair",    "Offshore Tie-in",      "PPE + fire extinguisher restock",       "CC-HSE-03",   2, 30, false, "Draft",
+                [Line("PPE-HRN-002", 20, 340m), Line("HSE-EXT-009", 9, 210m)]),
+            // Submitted (has demand, none sourced)
+            Pr("PR-2026-0903", "Nurul Izzah",     "HSE",             "Kuching HQ",        "Safety / PPE",       "Capex Works",         "Bintulu Debottleneck", "Working-at-height PPE programme",        "CC-HSE-03",   8, 40, true,  "Submitted",
+                [Line("PPE-HRN-002", 40, 340m), Line("GAS-DET-004", 6, 2650m)]),
+            Pr("PR-2026-0904", "Tan Wei Loon",    "Instrumentation", "Bintulu Plant",     "Instrumentation",    "Turnaround 2026",     "Offshore Tie-in",      "Pressure transmitters, TA scope",       "CC-OPS-02",   9, 55, true,  "Submitted",
+                [Line("INS-PT-0100", 12, 1500m), Line("GAS-DET-004", 6, 2650m)]),
+            Pr("PR-2026-0905", "Nurul Izzah",     "Electrical",      "Kemaman Yard",      "Electrical",         "Breakdown Repair",    "Samalaju Expansion",   "Motor + cable, breakdown recovery",     "CC-PROJ-07", 11, 35, true,  "Submitted",
+                [Line("ELE-MTR-200", 3, 62000m), Line("CBL-ARM-025", 200, 85m)]),
+            Pr("PR-2026-0909", "Ramesh Nair",     "Electrical",      "Kuching HQ",        "Electrical",         "Capex Works",         "Samalaju Expansion",   "Feeder cable + VFD, capex",             "CC-PROJ-07", 13, 50, true,  "Submitted",
+                [Line("CBL-ARM-025", 150, 85m), Line("ELE-VFD-075", 2, 8200m)]),
+            // Sourced (submitted, all lines awarded)
+            Pr("PR-2026-0906", "Aishah Karim",   "Maintenance",     "Tanjung Pelepas",   "Rotating Equipment", "Turnaround 2026",     "Compressor Overhaul",  "Pump + motor overhaul, TA-2026",        "CC-MAINT-01",14, 28, true,  "Approved",
+                [Line("MEP-PMP-075", 1, 41000m, PrLineStatus.Awarded), Line("ELE-MTR-200", 1, 62000m, PrLineStatus.Awarded)]),
+            Pr("PR-2026-0907", "Lim Chee Keong",  "Production",      "Bintulu Plant",     "Piping",             "Routine Maintenance", "Tank Farm Integrity",  "Line 6 CS pipe + valves",               "CC-OPS-02",  15, 25, true,  "Approved",
+                [Line("PIP-CS-0080", 60, 920m, PrLineStatus.Awarded), Line("VLV-GT-0150", 4, 3100m, PrLineStatus.Awarded)]),
+            // Partially sourced (one line awarded, one still open)
+            Pr("PR-2026-0908", "Tan Wei Loon",    "Instrumentation", "Samalaju Terminal", "Instrumentation",    "Shutdown Q3",         "Offshore Tie-in",      "Transmitters awarded; detectors open",  "CC-OPS-02",  12, 45, true,  "Partially Sourced",
+                [Line("INS-PT-0100", 20, 1500m, PrLineStatus.Awarded), Line("GAS-DET-004", 4, 2650m)]));
+        await db.SaveChangesAsync(ct);
+    }
 
     // CFH-T3: the curated reference dimensions — realistic Malaysian O&G procurement values.
     // Department/Location/Category/Job back the PR native pickers (segment name == field key);
