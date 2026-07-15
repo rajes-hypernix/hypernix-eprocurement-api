@@ -63,16 +63,16 @@ litter. Everything from T1–T4 must live in the seed so handover reproduces it.
 
 ## T7 — Saved View pickers use the searchable select — `CFH-T7:`
 *Screenshots 4-6: the New Saved View modal still uses old native dropdowns.*
-- [x] Record Type picker → `SearchSelectField` (typeable) · Build:132f642 · Test:SavedViewsHome nv-type searchable:true; 09-journeys pickSearch('Record type')
-- [x] Criteria FIELD picker → `SearchSelectField` (it's a long grouped list: Fields / Custom fields / Segments) · Build:132f642 · Test:SavedViewControls field spec searchable:true (groups preserved); 04/09 pickSearch('Field')
-- [x] OPERATOR picker → `SearchSelectField` · Build:132f642 · Test:searchable:true; 04/09 pickSearch('Operator')
-- [x] ADD COLUMN picker → `SearchSelectField` · Build:132f642 · Test:add-col spec searchable:true
+- [x] Record Type picker → `SearchSelectField` (typeable) · Build:8a593ee · Test:SavedViewsHome nv-type searchable:true; 09-journeys pickSearch('Record type')
+- [x] Criteria FIELD picker → `SearchSelectField` (it's a long grouped list: Fields / Custom fields / Segments) · Build:8a593ee · Test:SavedViewControls field spec searchable:true (groups preserved); 04/09 pickSearch('Field')
+- [x] OPERATOR picker → `SearchSelectField` · Build:8a593ee · Test:searchable:true; 04/09 pickSearch('Operator')
+- [x] ADD COLUMN picker → `SearchSelectField` · Build:8a593ee · Test:add-col spec searchable:true
 - [x] Browser test: open New saved view → each picker is typeable/filterable, not a native select · Test:04-saved-views + 09-journeys drive all four via pickSearch (type-to-filter) → green
 
 ---
 
 ## FINAL
-- [ ] Every box `[x]` or in BLOCKERS. Zero silent gaps.
-- [ ] Full suites green: dotnet ___ · vitest ___ · e2e ___ (hold-or-raise vs 550/256/117).
-- [ ] `docs/CF-HANDOVER/CF-HANDOVER-REPORT.md`: five-lens review, per-task summary, AUTO-DECISIONS, the before/after config counts (fields/lists/segments/views/transactions), and a line-by-line map of the operator's 5 asks → commit → proof.
-- [ ] `AUTO-DECISIONS.md` + `BLOCKERS.md` + timestamped `PROGRESS.md`. Tag `v2.4-handover`.
+- [x] Every box `[x]` or in BLOCKERS. Zero silent gaps. (B-1 = pre-existing 14-T6 flake, logged.)
+- [x] Full suites green: dotnet **552** · vitest **256** · e2e **121** (hold-or-raise vs 550/256/117 — all raised/held; tsc 0, oxlint 0).
+- [x] `docs/CF-HANDOVER/CF-HANDOVER-REPORT.md`: five-lens review, per-task summary, AUTO-DECISIONS, the before/after config counts, and the operator's asks → commit → proof map. Written.
+- [x] `AUTO-DECISIONS.md` (AD-1…AD-6) + `BLOCKERS.md` (B-1) + timestamped `PROGRESS.md`. Tag `v2.4-handover`.

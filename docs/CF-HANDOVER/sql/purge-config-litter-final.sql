@@ -24,4 +24,17 @@ DELETE FROM "SegmentApplications" WHERE "SegmentDefId" IN (SELECT "Id" FROM "Seg
 DELETE FROM "FieldRegistry"      WHERE "SegmentDefId" IN (SELECT "Id" FROM "SegmentDefs" WHERE "Name" ~ '^(Fix4 Seg|Project) [0-9]{5,6}$');
 DELETE FROM "SegmentDefs"        WHERE "Name" ~ '^(Fix4 Seg|Project) [0-9]{5,6}$';
 
+-- Litter custom lists: test-created run-stamped lists (e.g. "CF List 123456", "Fix3 List 123456")
+-- whose name ends in a 5-6 digit stamp. The curated procurement lists have plain names. Values
+-- first (FK), then the list. (A def still bound to one would block on the def's FK — but the field
+-- sweep above already removed the stamped test fields that bound them.)
+DELETE FROM "CustomListValues" WHERE "CustomListId" IN (SELECT "Id" FROM "CustomLists" WHERE "Name" ~ '[0-9]{5,6}$');
+DELETE FROM "CustomLists"      WHERE "Name" ~ '[0-9]{5,6}$';
+
+-- Litter saved views: anything that is NOT a System view and NOT one of the 5 curated VIEW-DEMO
+-- examples (AD-5) is test-created run litter. Columns + filters first (FK Restrict), then the view.
+DELETE FROM "SavedViewColumns" WHERE "SavedViewId" IN (SELECT "Id" FROM "SavedViews" WHERE "IsSystem" = false AND "Code" NOT LIKE 'VIEW-DEMO%');
+DELETE FROM "SavedViewFilters" WHERE "SavedViewId" IN (SELECT "Id" FROM "SavedViews" WHERE "IsSystem" = false AND "Code" NOT LIKE 'VIEW-DEMO%');
+DELETE FROM "SavedViews"       WHERE "IsSystem" = false AND "Code" NOT LIKE 'VIEW-DEMO%';
+
 COMMIT;
