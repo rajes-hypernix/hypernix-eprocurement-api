@@ -33,6 +33,10 @@ public sealed class EntryFormService(AppDbContext db, IClock clock, ICurrentUser
     public static readonly IReadOnlyList<string> RolePrecedence =
         ["Buyer", "Approver", "TechEvaluator", "CommEvaluator", "Admin", "Vendor"];
 
+    // CFH-T3: native dimension fields that render as segment-backed pickers (options from a
+    // same-named segment's values). The PR write derives the *Code companion via DimCode.
+    private static readonly string[] DimensionFieldKeys = ["Department", "Location", "Category", "Job"];
+
     // ---------- definitions (A69) ----------
 
     public async Task<IReadOnlyList<EntryFormDefDto>> ListAsync(string? recordType, CancellationToken ct = default)
@@ -278,6 +282,23 @@ public sealed class EntryFormService(AppDbContext db, IClock clock, ICurrentUser
 
         var registry = await db.FieldRegistry.AsNoTracking()
             .Where(r => r.RecordType == type).ToDictionaryAsync(r => r.FieldKey, ct);
+        // CFH-T3: a native DIMENSION field (Department/Location/Category/Job) whose key matches
+        // a segment's Name renders as a segment-backed searchable PICKER of that segment's active
+        // values — not free text. The picker writes the value label to the native column; the
+        // companion *Code is derived server-side by the same DimCode the value codes use (aligned).
+        var dimSegs = await db.SegmentDefs.AsNoTracking()
+            .Where(d => DimensionFieldKeys.Contains(d.Name)).ToListAsync(ct);
+        var dimOptions = new Dictionary<string, List<SegmentOptionDto>>();
+        foreach (var seg in dimSegs)
+        {
+            // The picker STORES the value into the native label column (Department = "Maintenance");
+            // the *Code companion is derived on save via DimCode. So the option's stored value is
+            // the LABEL, not the segment value code — code==label here by design.
+            var vals = await db.SegmentValues.AsNoTracking()
+                .Where(v => v.SegmentDefId == seg.Id && v.Active).OrderBy(v => v.Sort).ThenBy(v => v.Label)
+                .Select(v => new SegmentOptionDto(v.Label, v.Label)).ToListAsync(ct);
+            if (vals.Count > 0) dimOptions[seg.Name] = vals;
+        }
         var resolved = new List<ResolvedFormFieldDto>(fields.Count);
         foreach (var f in fields)
         {
@@ -303,6 +324,10 @@ public sealed class EntryFormService(AppDbContext db, IClock clock, ICurrentUser
                 options = await db.SegmentValues.AsNoTracking()
                     .Where(v => v.SegmentDefId == segId && v.Active).OrderBy(v => v.Sort).ThenBy(v => v.Label)
                     .Select(v => new SegmentOptionDto(v.Code, v.Label)).ToListAsync(ct);
+            }
+            else if (reg.Kind == FieldKind.Native && dimOptions.TryGetValue(f.FieldKey, out var dimVals))
+            {
+                options = dimVals;   // CFH-T3: dimension native → segment-backed picker
             }
 
             var (subtabName, groupTitle) = placement[f.GroupId];

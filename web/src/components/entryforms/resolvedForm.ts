@@ -30,7 +30,9 @@ export const stateKey = (fieldKey: string): string =>
 export const toSpec = (f: ResolvedFormFieldDto): FieldSpec => ({
   key: stateKey(f.fieldKey),
   label: f.label,
-  dataType: SPEC_TYPE[f.dataType] ?? 'text',
+  // CFH-T3: a field carrying concrete options IS a select (a native dimension field backed
+  // by a segment's values renders as the searchable picker, not free text).
+  dataType: f.options && f.options.length > 0 ? 'select' : SPEC_TYPE[f.dataType] ?? 'text',
   required: f.requiredOnForm,
   placeholder: f.placeholder ?? undefined,
   displayType: DISPLAY[f.displayType] ?? 'normal',

@@ -4,8 +4,11 @@ using eProcure.Domain.Communication;
 using eProcure.Domain.Files;
 using eProcure.Domain.Identity;
 using eProcure.Domain.Procurement;
+using eProcure.Domain.Segments;
 using eProcure.Domain.Sourcing;
 using eProcure.Domain.Suppliers;
+using eProcure.Domain.Views;
+using eProcure.Application.Segments;
 using eProcure.Infrastructure.Persistence;
 using eProcure.Infrastructure.Seed;
 using Microsoft.EntityFrameworkCore;
@@ -37,29 +40,77 @@ public sealed class DevelopmentDataSeeder(
 
     public async Task SeedAsync(CancellationToken ct = default)
     {
+        // ---- Reference / config (kept) ----
         await SeedSwecAsync(ct);
         await SeedVendorsAsync(ct);
         await SeedUsersAsync(ct);
         await SeedVendorLoginsAsync(ct);
-        await SeedRequisitionsAsync(ct);
         await SeedFormsAsync(ct);
         await SeedOnboardingFormsAsync(ct);
         await SeedCustomListsAsync(ct);
-        await SeedRfqsAsync(ct);
-        await SeedBidsAsync(ct);
-        await SeedRfqGovernanceDemoAsync(ct);
-        await SeedTechnicalScoresAsync(ct);
-        await SeedAwardAsync(ct);
-        await SeedPurchaseOrdersAsync(ct);
-        await SeedDeliveriesAsync(ct);
-        await SeedInvoicesAsync(ct);
-        await SeedClarificationsAsync(ct);
         await SeedFilesAsync(ct);
-        await SeedPrLineageDemoAsync(ct);
         await SeedNumberSequencesAsync(ct);
-        await SeedExampleViewsAsync(ct);
-        await ProjectPrSegmentsAsync(ct);
-        logger.LogInformation("DataSeeder complete (Slice 1–8 master + sourcing + full P2P + clarifications).");
+        // CFH-T3/T5: the OLD test transaction seeds + the demo saved views + the PR→segment
+        // projection are RETIRED (CFH-T1/T2 purged them; re-seeding them on every restart would
+        // repollute the clean handover state). CFH-T5 replaces them with a curated realistic set:
+        //   await SeedRequisitionsAsync / RfqsAsync / BidsAsync / RfqGovernanceDemoAsync /
+        //   TechnicalScoresAsync / AwardAsync / PurchaseOrdersAsync / DeliveriesAsync /
+        //   InvoicesAsync / ClarificationsAsync / PrLineageDemoAsync / ExampleViewsAsync /
+        //   ProjectPrSegmentsAsync  ← all retired; CFH-T5 seeds clean PRs + curated segments.
+        await SeedHandoverConfigAsync(ct);   // CFH-T3+: curated segments (Dept/Loc/Category/Job/Project) + values + applications
+        await SeedHandoverTransactionsAsync(ct);   // CFH-T5: ~10 realistic sample PRs
+        logger.LogInformation("DataSeeder complete (handover-clean: config + curated segments + realistic PRs).");
+    }
+
+    /// <summary>CFH-T5 placeholder — filled in T5 with ~10 realistic sample PRs on the curated
+    /// items + segment values. Kept as a no-op hook so T3's restart doesn't reseed old litter.</summary>
+    private Task SeedHandoverTransactionsAsync(CancellationToken ct) => Task.CompletedTask;
+
+    // CFH-T3: the curated reference dimensions — realistic Malaysian O&G procurement values.
+    // Department/Location/Category/Job back the PR native pickers (segment name == field key);
+    // Project is an extra header+line dimension. Value codes are DimCode(label) so the PR write's
+    // companion *Code lines up. Applied Header AND Line on Requisition + PurchaseOrder.
+    private static readonly (string Code, string Name, bool System, string[] Values)[] HandoverSegments =
+    [
+        ("seg_department", "Department", true,  ["Maintenance", "Production", "HSE", "Instrumentation", "Electrical"]),
+        ("seg_location",   "Location",   true,  ["Bintulu Plant", "Samalaju Terminal", "Kuching HQ", "Kemaman Yard", "Tanjung Pelepas"]),
+        ("seg_category",   "Category",   true,  ["Rotating Equipment", "Piping", "Instrumentation", "Electrical", "Safety / PPE"]),
+        ("seg_job",        "Job",        true,  ["Turnaround 2026", "Routine Maintenance", "Shutdown Q3", "Breakdown Repair", "Capex Works"]),
+        ("seg_project",    "Project",    false, ["Bintulu Debottleneck", "Samalaju Expansion", "Tank Farm Integrity", "Offshore Tie-in", "Compressor Overhaul"]),
+    ];
+
+    /// <summary>CFH-T3: seed the curated dimension segments (values + Header/Line applications +
+    /// registry). Idempotent by code — adds only what's missing, so it lands cleanly on the
+    /// migration-seeded system segments AND on a fresh DB.</summary>
+    private async Task SeedHandoverConfigAsync(CancellationToken ct)
+    {
+        var now = clock.UtcNow;
+        var applyTypes = new[] { RecordType.Requisition, RecordType.PurchaseOrder };
+        foreach (var (code, name, isSystem, values) in HandoverSegments)
+        {
+            var def = await db.SegmentDefs.FirstOrDefaultAsync(d => d.Code == code, ct);
+            if (def is null)
+            {
+                def = new SegmentDef { Id = SegmentSeed.DefId(code), Code = code, Name = name, IsSystem = isSystem, Active = true, CreatedUtc = now, UpdatedUtc = now };
+                db.SegmentDefs.Add(def);
+            }
+            var haveVals = await db.SegmentValues.Where(v => v.SegmentDefId == def.Id).Select(v => v.Code).ToListAsync(ct);
+            for (var i = 0; i < values.Length; i++)
+            {
+                var vcode = SourcingMapping.DimCode(values[i]);
+                if (!haveVals.Contains(vcode))
+                    db.SegmentValues.Add(new SegmentValue { Id = SegmentSeed.ValueId(def.Id, vcode), SegmentDefId = def.Id, Code = vcode, Label = values[i], Active = true, Sort = i });
+            }
+            foreach (var rt in applyTypes)
+            {
+                foreach (var line in new[] { false, true })
+                    if (!await db.SegmentApplications.AnyAsync(a => a.SegmentDefId == def.Id && a.RecordType == rt && a.LineLevel == line, ct))
+                        db.SegmentApplications.Add(new SegmentApplication { Id = Guid.NewGuid(), SegmentDefId = def.Id, RecordType = rt, LineLevel = line });
+                if (!await db.FieldRegistry.AnyAsync(r => r.SegmentDefId == def.Id && r.RecordType == rt, ct))
+                    db.FieldRegistry.Add(new FieldRegistryEntry { Id = Guid.NewGuid(), RecordType = rt, FieldKey = code, Kind = FieldKind.Segment, Label = name, DataType = FieldDataType.Enum, SegmentDefId = def.Id });
+            }
+        }
+        await db.SaveChangesAsync(ct);
     }
 
     /// <summary>D6 (iii-a): seeder-created PRs bypass RequisitionService, so the seeder is the
