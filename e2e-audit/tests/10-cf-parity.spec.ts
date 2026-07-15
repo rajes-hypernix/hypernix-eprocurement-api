@@ -526,7 +526,8 @@ test('CF5-T2: subtabs are OBJECTS — create empty, drop a field in, hide it; th
   // The buyer's PR form gains the tab; Category lives behind it.
   await openPrAsBuyer(page, request)
   await page.getByRole('button', { name: TAB }).click()
-  await expect(page.getByRole('textbox', { name: 'Category' })).toBeVisible()   // the FORM field (a Segments card also names Category)
+  // CFH-T3 made the native Category dimension a segment-backed searchable picker (a button, not a textbox).
+  await expect(page.getByRole('button', { name: 'Category', exact: true }).first()).toBeVisible()   // the FORM field (a Segments card also names Category)
 
   // Hide it → the tab disappears from the buyer form (fields excluded server-side).
   // CF-FIX4-T3: the hide verb lives under the ACTIVE tab.

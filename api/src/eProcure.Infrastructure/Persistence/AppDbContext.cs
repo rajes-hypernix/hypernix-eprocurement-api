@@ -34,6 +34,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Asn> Asns => Set<Asn>();
     public DbSet<Grn> Grns => Set<Grn>();
     public DbSet<Invoice> Invoices => Set<Invoice>();
+    public DbSet<Item> Items => Set<Item>();   // CFH-T4: Item Master lookup source
     public DbSet<Clarification> Clarifications => Set<Clarification>();
     public DbSet<StoredFile> StoredFiles => Set<StoredFile>();
     public DbSet<Domain.Configuration.CustomList> CustomLists => Set<Domain.Configuration.CustomList>();
@@ -489,6 +490,16 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.OwnsMany(x => x.Lines, o => { o.ToTable("GrnLines"); o.HasKey(l => l.Id); o.Property(l => l.Id).ValueGeneratedNever(); });            // stable grain key (Slice H T1)
             e.HasOne<PurchaseOrder>().WithMany().HasForeignKey(x => x.PoId).OnDelete(DeleteBehavior.Restrict);    // DBA-1
             e.HasOne<Asn>().WithMany().HasForeignKey(x => x.AsnId).OnDelete(DeleteBehavior.Restrict);             // DBA-1 (AsnId required — model is right)
+        });
+
+        b.Entity<Item>(e =>
+        {
+            e.ToTable("Items");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => x.ItemCode).IsUnique();
+            e.Property(x => x.ItemCode).HasMaxLength(50).IsRequired();
+            e.Property(x => x.Description).HasMaxLength(300);
+            e.Property(x => x.Uom).HasMaxLength(30);
         });
 
         b.Entity<Invoice>(e =>

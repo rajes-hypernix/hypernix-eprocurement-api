@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   getRequisition, createPr, updatePr, cancelPr, submitPr, resolveEntryForm,
   getCustomValues, saveCustomValues, getSegmentAssignments, saveSegmentAssignments,
-  getLineCustomDefs, getLineCustomValues, saveLineCustomValues,
+  getLineCustomDefs, getLineCustomValues, saveLineCustomValues, getItems,
   type RequisitionDto, type SavePrRequest,
 } from '../../api/client'
 import { renderField } from '../../ui/renderField'
@@ -13,6 +13,7 @@ import { Modal, Spinner } from '../ui'
 import { PrHeaderBadge } from '../../lib/prStatus'
 import type { FieldSpec } from '../../ui/fieldSpec'
 import { SelectField } from '../../ui/SelectField'
+import { SearchSelectField } from '../../ui/SearchSelectField'
 import { TextField } from '../../ui/TextField'
 import { TextAreaField } from '../../ui/TextAreaField'
 import { NumberField } from '../../ui/NumberField'
@@ -131,6 +132,16 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
   const hasLiveLine = lines.some((l) => l.lifecycleStatus === 'InRfq' || l.lifecycleStatus === 'Awarded')
   const headerStatus = pr?.headerStatus
   const { data: lineDefs = [] } = useQuery({ queryKey: ['line-defs', 'Requisition'], queryFn: () => getLineCustomDefs('Requisition'), staleTime: 60_000 })
+  // CFH-T4: the line Item Code is a searchable picker from the Item Master; selecting an item
+  // auto-fills Description + UoM on that line. Lines still store ItemCode as a plain string.
+  const { data: items = [] } = useQuery({ queryKey: ['items', 'active'], queryFn: () => getItems(true), staleTime: 60_000 })
+  const itemByCode = new Map(items.map((it) => [it.itemCode, it]))
+  const itemOptions = { kind: 'static' as const, options: items.map((it) => ({ code: it.itemCode, label: `${it.itemCode} — ${it.description}` })) }
+  const pickItem = (i: number, code: string) => {
+    const it = itemByCode.get(code)
+    setDirty(true)
+    setLines((ls) => ls.map((l, x) => (x === i ? { ...l, itemCode: code, ...(it ? { description: it.description, uom: it.uom } : {}) } : l)))
+  }
   // CF-FIX5-T4: custcol_ line fields render in the sublist ORDER (interleaved with natives);
   // applied line fields NOT placed in the order append after (CF6 default-shown, non-breaking).
   const lineDefByCode = new Map(lineDefs.map((d) => [d.code, d]))
@@ -308,7 +319,11 @@ export function PrForm({ id, onBack }: { id: string | null; onBack: () => void }
               const ro = !isNew && !l.editable
               const nativeCell = (k: string) => {
                 switch (k) {
-                  case 'ItemCode': return <td key={k}><TextField chrome="bare" spec={lineSpec(i, 'item code', { placeholder: 'ITEM-CODE', readOnly: ro })} value={l.itemCode} onChange={(v) => setLine(i, 'itemCode', v)} /></td>
+                  case 'ItemCode': return <td key={k}>{ro
+                    ? <TextField chrome="bare" spec={lineSpec(i, 'item code', { readOnly: true })} value={l.itemCode} onChange={() => {}} />
+                    : <SearchSelectField chrome="bare"
+                        spec={{ ...lineSpec(i, 'item code', { dataType: 'select', placeholder: 'Pick an item' }), searchable: true, options: itemOptions }}
+                        value={l.itemCode} onChange={(v) => pickItem(i, String(v ?? ''))} />}</td>
                   case 'Description': return <td key={k}><TextField chrome="bare" spec={lineSpec(i, 'description', { placeholder: 'Description', readOnly: ro })} value={l.description} onChange={(v) => setLine(i, 'description', v)} /></td>
                   case 'Qty': return <td key={k}><NumberField chrome="bare" spec={lineSpec(i, 'qty', { dataType: 'number', placeholder: '0', readOnly: ro, validation: { min: 0 } })} value={l.qty} onChange={(v) => setLine(i, 'qty', v)} /></td>
                   case 'Uom': return <td key={k}><TextField chrome="bare" spec={lineSpec(i, 'uom', { placeholder: 'Unit', readOnly: ro })} value={l.uom} onChange={(v) => setLine(i, 'uom', v)} /></td>

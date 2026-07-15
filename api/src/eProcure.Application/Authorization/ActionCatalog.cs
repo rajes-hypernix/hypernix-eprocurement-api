@@ -31,6 +31,7 @@ public static class ActionCatalog
             [ApiActions.DownloadFile] = [B, Ap, TE, CE, Ad, V],           // A4 (FileAccessPolicy scopes vendors)
             [ApiActions.UploadFile] = [B, V],                             // A5 (OD-5)
             [ApiActions.ViewCustomLists] = [B, Ap, TE, CE, Ad, V],        // A6
+            [ApiActions.ViewItems] = [B, Ap, TE, CE, Ad, V],              // A74 (CFH-T4: Item Master picker — every PR raiser reads it)
 
             // ---- A7–A23 internal reads ----
             [ApiActions.ViewRequisitions] = [B, Ap, Ad],                  // A7 (OD-1/OD-2)
@@ -77,6 +78,7 @@ public static class ActionCatalog
             [ApiActions.ReviewOnboardingApplication] = [B],               // A44
             [ApiActions.ManageForms] = [B, Ad],                           // A45 (OD-3: forms are administrative)
             [ApiActions.ManageCustomLists] = [Ad],                        // A46
+            [ApiActions.ManageItems] = [Ad],                              // A75 (CFH-T4: Item Master maintenance is admin-only)
             [ApiActions.ManageUsers] = [Ad],                              // A47
             [ApiActions.SendClarification] = [B, TE, CE, V],              // A48 (REG row 10; Ap/Ad deny-by-default)
 

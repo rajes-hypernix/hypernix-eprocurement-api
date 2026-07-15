@@ -35,6 +35,7 @@ const adminRoutes: [string, string][] = [
   ['lists', 'U11-admin-custom-lists'],
   ['customfields', 'U50-admin-custom-fields'],
   ['segments', 'U51-admin-segments'],
+  ['items', 'U54-admin-item-master'],
   ['entryforms', 'U52-admin-entry-forms'],
   ['numbering', 'U53-admin-numbering'],
 ]

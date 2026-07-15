@@ -331,6 +331,16 @@ export const getNumberingSchemes = () => http<NumberingSchemeDto[]>('/numbering'
 export const updateNumberingScheme = (recordType: string, req: { prefix: string; yearSegment: boolean; digits: number }) =>
   http<NumberingSchemeDto>(`/numbering/${recordType}`, { method: 'PUT', body: JSON.stringify(req) })
 
+// --- CFH-T4: Item Master (a lookup source; lines keep storing ItemCode as a string) ---
+export type ItemDto = { id: string; itemCode: string; description: string; uom: string; active: boolean }
+export type SaveItemRequest = { itemCode: string; description: string; uom: string }
+export const getItems = (activeOnly = false) => http<ItemDto[]>(`/items${activeOnly ? '?activeOnly=true' : ''}`)
+export const getItem = (id: string) => http<ItemDto>(`/items/${id}`)
+export const createItem = (req: SaveItemRequest) => http<ItemDto>('/items', { method: 'POST', body: JSON.stringify(req) })
+export const updateItem = (id: string, req: SaveItemRequest) => http<ItemDto>(`/items/${id}`, { method: 'PUT', body: JSON.stringify(req) })
+export const setItemActive = (id: string, active: boolean) => http<ItemDto>(`/items/${id}/active`, { method: 'POST', body: JSON.stringify(active) })
+export const deleteItem = (id: string) => http<undefined>(`/items/${id}`, { method: 'DELETE' })
+
 // --- Vendor portal: invitations + bidding ---
 export const getMyInvitations = () => http<InvitationDto[]>('/my/rfqs')
 export const getMyBid = (rfqId: string) =>

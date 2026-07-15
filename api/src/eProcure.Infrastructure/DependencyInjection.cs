@@ -38,6 +38,7 @@ public static class DependencyInjection
         services.AddScoped<Application.Procurement.IPoService, PoService>();
         services.AddScoped<Application.Procurement.IDeliveryService, DeliveryService>();
         services.AddScoped<Application.Procurement.IInvoiceService, InvoiceService>();
+        services.AddScoped<Application.Procurement.IItemService, ItemService>();   // CFH-T4: Item Master
         services.AddScoped<Application.Procurement.IStatementService, StatementService>();
         services.AddScoped<Application.Communication.IClarificationService, ClarificationService>();
         services.AddScoped<Application.Files.IFileStore, FileStore>();

@@ -11,6 +11,7 @@ import { AdminCustomFields } from './components/admin/AdminCustomFields'
 import { AdminSegments } from './components/admin/AdminSegments'
 import { AdminEntryForms } from './components/admin/AdminEntryForms'
 import { AdminNumbering } from './components/admin/AdminNumbering'
+import { AdminItems } from './components/admin/AdminItems'
 import { SavedViewsHome } from './components/views/SavedViewsHome'
 import { LIST_ROUTE } from './lib/listRoutes'
 import { Requisitions } from './components/sourcing/Requisitions'
@@ -63,7 +64,7 @@ function PvPlaceholder() {
 // list went stale — caught by the operator, never again by a human).
 export const IMPLEMENTED_BASES = [
   'dashboard', 'views', 'vendors', 'onboarding', 'admin', 'lists', 'customfields',
-  'segments', 'entryforms', 'numbering', 'reqs', 'consolidate', 'rfqs', 'forms',
+  'segments', 'items', 'entryforms', 'numbering', 'reqs', 'consolidate', 'rfqs', 'forms',
   'openings', 'awards', 'pos', 'deliveries', 'invoices', 'statements', 'chats',
   'payments', 'design',
 ]
@@ -146,6 +147,7 @@ export default function App() {
               {base === 'segments' && <AdminSegments />}
               {base === 'entryforms' && <AdminEntryForms />}
               {base === 'numbering' && <AdminNumbering />}
+              {base === 'items' && <AdminItems />}
               {base === 'reqs' &&
                 (active.startsWith('reqs/open/') ? (
                   // CF1-T5: global-search deep link straight to the PR's form.

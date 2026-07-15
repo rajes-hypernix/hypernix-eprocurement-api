@@ -99,7 +99,7 @@ test('entry-forms gate: standard → admin composes role form → buyer gets it;
   // Empty required blocks SUBMIT (client face of the boundary)...
   await page.getByLabel('Requestor').fill('Gate Persona')
   await page.getByLabel('Memo / Justification').fill(`d7 gate ${STAMP}`)   // run-stamp for the lookup below
-  await page.getByLabel('Line 1 item code').fill('GATE-1')
+  await pickSearch(page, 'Line 1 item code', 'VLV-GT-0150')
   await page.getByLabel('Line 1 qty').fill('1')
   await page.getByRole('button', { name: 'Submit PR' }).first().click()
   await expect(page.getByText(/Required on your form before submit: Department/).first()).toBeVisible()
@@ -118,7 +118,7 @@ test('entry-forms gate: standard → admin composes role form → buyer gets it;
   const draftPr = await draft.json()
 
   // With the required field filled, the same submit sails through the UI.
-  await page.getByLabel('Department').fill('Maintenance')
+  await pickSearch(page, 'Department', 'Maintenance')
   await page.getByRole('button', { name: 'Submit PR' }).first().click()
   await page.waitForTimeout(1500)
 

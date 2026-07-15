@@ -43,7 +43,7 @@ test('CFF-T1: a PR persists its chosen form; reopen stays on it, its field shows
   await expect(page.getByLabel(`Placed ${STAMP}`, { exact: true })).toBeVisible()   // placed field renders on create
 
   await page.getByLabel('Requestor', { exact: true }).fill('T1 Buyer')
-  await page.getByLabel('Line 1 item code', { exact: true }).fill(`T1-${STAMP}`)
+  await pickSearch(page, 'Line 1 item code', 'VLV-GT-0150')
   await page.getByLabel('Line 1 qty', { exact: true }).fill('2')
 
   const [resp] = await Promise.all([
@@ -170,7 +170,7 @@ test('CFF-T4: saving a PR shows the banner; creating a custom field shows a toas
   await page.getByRole('button', { name: /Create PR/ }).click()
   await page.waitForTimeout(1000)
   await page.getByLabel('Requestor', { exact: true }).fill('T4 Buyer')
-  await page.getByLabel('Line 1 item code', { exact: true }).fill(`T4-${STAMP}`)
+  await pickSearch(page, 'Line 1 item code', 'PIP-CS-0080')
   await page.getByLabel('Line 1 qty', { exact: true }).fill('1')
   const [prResp] = await Promise.all([
     page.waitForResponse((r) => r.url().includes('/api/requisitions') && r.request().method() === 'POST'),
@@ -333,5 +333,6 @@ test('CFF-T9: the Custom Fields / Lists / Segments screens show a clean, realist
   await goAs(page, 'u_admin', 'segments')
   await page.waitForTimeout(1200)
   await expect(page.getByText('Department', { exact: true })).toBeVisible()
-  await expect(page.getByText('Project Code Grouped')).toBeVisible()
+  // CFH-T2 deleted the "Project Code Grouped" litter segment; the curated "Project" segment is the realistic replacement.
+  await expect(page.getByText('Project', { exact: true }).first()).toBeVisible()
 })

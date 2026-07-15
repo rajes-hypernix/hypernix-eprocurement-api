@@ -1,6 +1,7 @@
 using eProcure.Application.Abstractions;
 using eProcure.Domain;
 using eProcure.Domain.Communication;
+using eProcure.Domain.CustomFields;
 using eProcure.Domain.Files;
 using eProcure.Domain.Identity;
 using eProcure.Domain.Procurement;
@@ -50,21 +51,33 @@ public sealed class DevelopmentDataSeeder(
         await SeedCustomListsAsync(ct);
         await SeedFilesAsync(ct);
         await SeedNumberSequencesAsync(ct);
-        // CFH-T3/T5: the OLD test transaction seeds + the demo saved views + the PR→segment
-        // projection are RETIRED (CFH-T1/T2 purged them; re-seeding them on every restart would
-        // repollute the clean handover state). CFH-T5 replaces them with a curated realistic set:
-        //   await SeedRequisitionsAsync / RfqsAsync / BidsAsync / RfqGovernanceDemoAsync /
-        //   TechnicalScoresAsync / AwardAsync / PurchaseOrdersAsync / DeliveriesAsync /
-        //   InvoicesAsync / ClarificationsAsync / PrLineageDemoAsync / ExampleViewsAsync /
-        //   ProjectPrSegmentsAsync  ← all retired; CFH-T5 seeds clean PRs + curated segments.
-        await SeedHandoverConfigAsync(ct);   // CFH-T3+: curated segments (Dept/Loc/Category/Job/Project) + values + applications
-        await SeedHandoverTransactionsAsync(ct);   // CFH-T5: ~10 realistic sample PRs
-        logger.LogInformation("DataSeeder complete (handover-clean: config + curated segments + realistic PRs).");
+        // CFH: the curated config (segments + Item Master) lands BEFORE the transaction seeds so the
+        // demo PRs can reference the master. The rich P2P demo (RFQ→bid→award→PO→ASN→GRN→invoice) is
+        // KEPT — the e2e suite + the handover walkthrough depend on it. CFH-T1 purged only the
+        // ACCUMULATED e2e-run litter from the dev DB; a restart reseeds this ~30-record clean demo.
+        await SeedHandoverConfigAsync(ct);   // CFH-T3: curated segments (Dept/Loc/Category/Job/Project) + values + applications
+        await SeedHandoverFieldsAsync(ct);   // CFH-T5: curated operator shared fields (Partner, Remarks)
+        await SeedItemsAsync(ct);            // CFH-T4: curated Item Master lookup source
+        await SeedRequisitionsAsync(ct);
+        await SeedRfqsAsync(ct);
+        await SeedBidsAsync(ct);
+        await SeedRfqGovernanceDemoAsync(ct);
+        await SeedTechnicalScoresAsync(ct);
+        await SeedAwardAsync(ct);
+        await SeedPurchaseOrdersAsync(ct);
+        await SeedDeliveriesAsync(ct);
+        await SeedInvoicesAsync(ct);
+        await SeedClarificationsAsync(ct);
+        await SeedPrLineageDemoAsync(ct);
+        await SeedHandoverPrsAsync(ct);      // CFH-T5: ~10 realistic sample PRs on the curated items + segments
+        await SeedExampleViewsAsync(ct);
+        await ProjectPrSegmentsAsync(ct);
+        logger.LogInformation("DataSeeder complete (handover: curated config + Item Master + P2P demo).");
     }
 
-    /// <summary>CFH-T5 placeholder — filled in T5 with ~10 realistic sample PRs on the curated
-    /// items + segment values. Kept as a no-op hook so T3's restart doesn't reseed old litter.</summary>
-    private Task SeedHandoverTransactionsAsync(CancellationToken ct) => Task.CompletedTask;
+    /// <summary>CFH-T5 placeholder — filled in T5 with ~10 realistic sample PRs on the curated items +
+    /// segment values (a spread of statuses). No-op hook for now.</summary>
+    private Task SeedHandoverPrsAsync(CancellationToken ct) => Task.CompletedTask;
 
     // CFH-T3: the curated reference dimensions — realistic Malaysian O&G procurement values.
     // Department/Location/Category/Job back the PR native pickers (segment name == field key);
@@ -110,6 +123,58 @@ public sealed class DevelopmentDataSeeder(
                     db.FieldRegistry.Add(new FieldRegistryEntry { Id = Guid.NewGuid(), RecordType = rt, FieldKey = code, Kind = FieldKind.Segment, Label = name, DataType = FieldDataType.Enum, SegmentDefId = def.Id });
             }
         }
+        await db.SaveChangesAsync(ct);
+    }
+
+    // CFH-T5: the operator's curated shared custom fields — the realistic set CFF-T9 asserts.
+    // Applied to Requisition but UNPLACED on the standard form, so they appear on the Custom
+    // Fields screen and are addable via the entry-form add-field picker. Non-required, so no
+    // record-create path is gated. Code doubles as the registry FieldKey (custbody_*).
+    private static readonly (string Code, string Label, CustomFieldDataType Type)[] HandoverFields =
+    [
+        ("custbody_partner", "Partner", CustomFieldDataType.Text),
+        ("custbody_remarks", "Remarks", CustomFieldDataType.LongText),
+    ];
+
+    /// <summary>CFH-T5: seed the curated operator shared fields (def + Requisition application +
+    /// registry row), matching CustomFieldService.CreateDefAsync's wiring. Idempotent by code.</summary>
+    private async Task SeedHandoverFieldsAsync(CancellationToken ct)
+    {
+        var now = clock.UtcNow;
+        foreach (var (code, label, type) in HandoverFields)
+        {
+            if (await db.CustomFieldDefs.AnyAsync(d => d.Code == code, ct)) continue;
+            var def = new CustomFieldDef { Code = code, Label = label, DataType = type, Required = false, Scope = "Header", CreatedUtc = now, UpdatedUtc = now };
+            db.CustomFieldDefs.Add(def);
+            db.CustomFieldDefApplications.Add(new CustomFieldDefApplication { FieldDefId = def.Id, RecordType = RecordType.Requisition });
+            db.FieldRegistry.Add(new FieldRegistryEntry { Id = def.Id, RecordType = RecordType.Requisition, FieldKey = code, Kind = FieldKind.Custom, Label = label, DataType = CustomFieldService.RegistryTypeOf(type), CustomFieldDefId = def.Id });
+        }
+        await db.SaveChangesAsync(ct);
+    }
+
+    // CFH-T4: the curated Item Master — realistic Malaysian O&G procurement items. Lines store
+    // ItemCode as a plain string; the entry-form picker auto-fills Description + UoM from here.
+    private static readonly (string Code, string Description, string Uom)[] HandoverItems =
+    [
+        ("VLV-GT-0150", "Gate Valve, DN150, PN16, CS",            "EA"),
+        ("PIP-CS-0080", "Carbon Steel Pipe, 80mm, Sch40",        "M"),
+        ("MEP-PMP-075", "Centrifugal Pump, 75 kW, end-suction",  "Unit"),
+        ("ELE-VFD-075", "VFD Drive, 75 kW, IP55",                "Unit"),
+        ("ELE-MTR-200", "Electric Motor, 200 kW, TEFC",          "Unit"),
+        ("INS-PT-0100", "Pressure Transmitter, 0-100 bar",       "Unit"),
+        ("CBL-ARM-025", "Armoured Cable, 4-core, 25mm2",         "M"),
+        ("PPE-HRN-002", "Full-body Safety Harness, twin-lanyard","EA"),
+        ("HSE-EXT-009", "Fire Extinguisher, 9 kg ABC",           "Unit"),
+        ("GAS-DET-004", "Portable 4-gas Detector",               "Unit"),
+    ];
+
+    /// <summary>CFH-T4: seed the curated Item Master. Idempotent — skips if any item exists.</summary>
+    private async Task SeedItemsAsync(CancellationToken ct)
+    {
+        if (await db.Items.AnyAsync(ct)) return;
+        var now = clock.UtcNow;
+        foreach (var (code, description, uom) in HandoverItems)
+            db.Items.Add(new Item { ItemCode = code, Description = description, Uom = uom, Active = true, CreatedUtc = now, UpdatedUtc = now });
         await db.SaveChangesAsync(ct);
     }
 

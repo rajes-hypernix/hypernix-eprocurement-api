@@ -19,6 +19,7 @@ public static class ApiActions
     public const string DownloadFile = "DownloadFile";
     public const string UploadFile = "UploadFile";
     public const string ViewCustomLists = "ViewCustomLists";
+    public const string ViewItems = "ViewItems";
 
     // A7–A23 — internal reads
     public const string ViewRequisitions = "ViewRequisitions";
@@ -65,6 +66,7 @@ public static class ApiActions
     public const string ReviewOnboardingApplication = "ReviewOnboardingApplication";
     public const string ManageForms = "ManageForms";
     public const string ManageCustomLists = "ManageCustomLists";
+    public const string ManageItems = "ManageItems";
     public const string ManageUsers = "ManageUsers";
     public const string SendClarification = "SendClarification";
 

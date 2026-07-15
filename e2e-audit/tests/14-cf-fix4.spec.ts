@@ -133,6 +133,13 @@ test('CF-FIX4-T3fix: labels not ids, searchable add-field, NO default control, a
     .find((f: { isSystem: boolean }) => f.isSystem)
   const form = await (await request.post(`${API}/api/entry-forms`, { headers: { ...ADMIN, ...JSON_H },
     data: { name: `Fix4 T3fix ${STAMP}`, recordType: 'Requisition', fields: std.fields } })).json()
+  // A dedicated throwaway field to add + re-group — self-contained, so it never mutates the shared
+  // seeded 'Partner' (deleting this form cascades the added field's application away; consuming
+  // Partner here would strip its Requisition application and break CFF-T9's clean-set assertion).
+  const FLD = `Extra Field ${STAMP}`
+  const fdef = await (await request.post(`${API}/api/custom-fields`, { headers: { ...ADMIN, ...JSON_H },
+    data: { label: FLD, recordType: 'Requisition', dataType: 'Text', required: false, helpText: '', sort: 0 } })).json()
+  const KEY: string = fdef.code
 
   await goAs(page, 'u_admin', 'entryforms')
   await page.waitForTimeout(1200)
@@ -145,36 +152,37 @@ test('CF-FIX4-T3fix: labels not ids, searchable add-field, NO default control, a
   await expect(page.getByLabel(/default$/)).toHaveCount(0)
   await expect(page.getByText('Default', { exact: true })).toHaveCount(0)
 
-  // (1) the add-field picker is the standardized SearchSelectField: type-to-filter by LABEL.
-  //     'Partner' (custbody_partner) — picked by its name, never its internal id.
-  await pickSearch(page, 'Add field', 'Partner')
-  await expect(page.locator('[aria-label="Field row custbody_partner"]')).toContainText('Partner')
+  // (1) the add-field picker is the standardized SearchSelectField: type-to-filter by LABEL —
+  //     picked by its name, never its internal id.
+  await pickSearch(page, 'Add field', FLD)
+  await expect(page.locator(`[aria-label="Field row ${KEY}"]`)).toContainText(FLD)
 
   // (4) move the STAGED (unsaved) field into a new group via the ARROW — the exact case the
   //     operator hit (drag removed in CF-FIX5-T3; persistFields saves staged fields too).
-  //     Partner was appended to the bottom of Header, so one Move-down crosses into Partners.
-  await page.getByLabel('New group title', { exact: true }).fill('Partners')
+  //     The field was appended to the bottom of Header, so one Move-down crosses into Extras.
+  await page.getByLabel('New group title', { exact: true }).fill('Extras')
   await page.getByRole('button', { name: 'Add group' }).click()
   await page.waitForTimeout(600)
-  await page.getByRole('button', { name: 'Move custbody_partner down' }).click()
+  await page.getByRole('button', { name: `Move ${KEY} down` }).click()
   await page.waitForTimeout(1000)
-  await expect(page.locator('[aria-label="Field group Partners"]')).toContainText('Partner')
+  await expect(page.locator('[aria-label="Field group Extras"]')).toContainText(FLD)
   // …and it PERSISTED (no 'is not placed on this form' error, the placement row exists).
   await expect(page.getByText(/is not placed on this form/)).toHaveCount(0)
   let state = (await (await request.get(`${API}/api/entry-forms?recordType=Requisition`, { headers: ADMIN })).json())
     .find((x: { id: string }) => x.id === form.id)
-  const partnersGroup = state.groups.find((g: { title: string }) => g.title === 'Partners')
-  expect(state.fields.find((x: { fieldKey: string }) => x.fieldKey === 'custbody_partner').groupId).toBe(partnersGroup.id)
+  const extrasGroup = state.groups.find((g: { title: string }) => g.title === 'Extras')
+  expect(state.fields.find((x: { fieldKey: string }) => x.fieldKey === KEY).groupId).toBe(extrasGroup.id)
 
-  // (5) arrows: move the field UP out of Partners — it crosses back into Header, persisted.
-  await page.getByRole('button', { name: 'Move custbody_partner up' }).click()
+  // (5) arrows: move the field UP out of Extras — it crosses back into Header, persisted.
+  await page.getByRole('button', { name: `Move ${KEY} up` }).click()
   await page.waitForTimeout(1000)
   state = (await (await request.get(`${API}/api/entry-forms?recordType=Requisition`, { headers: ADMIN })).json())
     .find((x: { id: string }) => x.id === form.id)
   const headerGroup = state.groups.find((g: { isHeader: boolean }) => g.isHeader)
-  expect(state.fields.find((x: { fieldKey: string }) => x.fieldKey === 'custbody_partner').groupId).toBe(headerGroup.id)
+  expect(state.fields.find((x: { fieldKey: string }) => x.fieldKey === KEY).groupId).toBe(headerGroup.id)
 
   expect((await request.delete(`${API}/api/entry-forms/${form.id}`, { headers: ADMIN })).status()).toBe(204)
+  await request.delete(`${API}/api/custom-fields/${fdef.id}`, { headers: ADMIN })
 })
 
 test('CF-FIX4-T4: the creation cascade — standard pre-selected, Header default, ONE row the designer then re-groups', async ({ page, request }) => {

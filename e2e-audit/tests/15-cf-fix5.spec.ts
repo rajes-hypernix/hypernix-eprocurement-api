@@ -48,7 +48,7 @@ test('CF-FIX5-T1: a chosen form’s CUSTOM fields render on New PR and PERSIST o
   await page.getByLabel(`Fix5 CF ${STAMP}`, { exact: true }).fill('rendered on create')
   for (const d of requiredHeader) await page.getByLabel(d.label, { exact: true }).first().fill('req')
   await page.getByLabel('Requestor', { exact: true }).fill('T1 Buyer')
-  await page.getByLabel('Line 1 item code', { exact: true }).fill(`T1-${STAMP}`)
+  await pickSearch(page, 'Line 1 item code', 'VLV-GT-0150')
   await page.getByLabel('Line 1 qty', { exact: true }).fill('1')
 
   // Save draft → capture the created id from the response, then prove the value PERSISTED.
