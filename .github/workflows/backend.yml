@@ -47,11 +47,7 @@ jobs:
         with:
           filters: |
             backend:
-              - 'BuildingBlocks/**',
-              - 'Host/**',
-              - 'Modules/**',
-              - 'Tests/**',
-              - 'Tools/**'
+              - 'src/**'
               - 'global.json'
               - 'coverage.runsettings'
               - '.github/workflows/backend.yml'
@@ -78,31 +74,31 @@ jobs:
           restore-keys: ${{ runner.os }}-nuget-
 
       - name: Restore
-        run: dotnet restore FSH.Starter.slnx
+        run: dotnet restore src/FSH.Starter.slnx
 
       - name: Build
-        run: dotnet build FSH.Starter.slnx -c Release --no-restore -warnaserror
+        run: dotnet build src/FSH.Starter.slnx -c Release --no-restore -warnaserror
 
       # Gate on DIRECT vulnerable packages (the ones we control). Transitive
       # advisories are surfaced but not blocking — they often can't be fixed
       # without an upstream bump.
       - name: Audit dependencies for known vulnerabilities
         run: |
-          if dotnet list FSH.Starter.slnx package --vulnerable 2>&1 | tee vuln-direct.txt | grep -q 'has the following vulnerable'; then
+          if dotnet list src/FSH.Starter.slnx package --vulnerable 2>&1 | tee vuln-direct.txt | grep -q 'has the following vulnerable'; then
             echo "::error::Direct package(s) with known vulnerabilities detected — see log."
             cat vuln-direct.txt
             exit 1
           fi
           echo "No direct vulnerable packages."
           echo "::group::Transitive advisories (informational)"
-          dotnet list FSH.Starter.slnx package --vulnerable --include-transitive 2>&1 | tee vuln-transitive.txt || true
+          dotnet list src/FSH.Starter.slnx package --vulnerable --include-transitive 2>&1 | tee vuln-transitive.txt || true
           echo "::endgroup::"
 
       - name: Run unit tests with coverage
         run: |
           for proj in Architecture Auditing Caching Generic Identity Multitenancy Billing Catalog Chat Files Framework Webhooks; do
             echo "::group::${proj}.Tests"
-            dotnet test "Tests/${proj}.Tests" -c Release --no-build \
+            dotnet test "src/Tests/${proj}.Tests" -c Release --no-build \
               --collect:"XPlat Code Coverage" --settings coverage.runsettings \
               --results-directory ./TestResults \
               --logger "trx;LogFileName=${proj}.trx"
@@ -147,17 +143,17 @@ jobs:
           restore-keys: ${{ runner.os }}-nuget-
 
       - name: Restore
-        run: dotnet restore FSH.Starter.slnx
+        run: dotnet restore src/FSH.Starter.slnx
 
       # Integration tests build a host with WebApplicationFactory + Testcontainers.
       # Middleware tests live in a separate assembly (own process) because a 2nd
       # production-middleware host resets the static ModuleLoader.
       - name: Run integration tests with coverage
         run: |
-          dotnet test Tests/Integration.Tests -c Release \
+          dotnet test src/Tests/Integration.Tests -c Release \
             --collect:"XPlat Code Coverage" --settings coverage.runsettings \
             --results-directory ./TestResults --logger "trx;LogFileName=Integration.Tests.trx"
-          dotnet test Tests/Integration.Middleware.Tests -c Release \
+          dotnet test src/Tests/Integration.Middleware.Tests -c Release \
             --collect:"XPlat Code Coverage" --settings coverage.runsettings \
             --results-directory ./TestResults --logger "trx;LogFileName=Integration.Middleware.Tests.trx"
 
@@ -216,7 +212,7 @@ jobs:
 
       - name: Publish DbMigrator container (local daemon)
         run: |
-          dotnet publish Host/FSH.Starter.DbMigrator/FSH.Starter.DbMigrator.csproj \
+          dotnet publish src/Host/FSH.Starter.DbMigrator/FSH.Starter.DbMigrator.csproj \
             -c Release -r linux-x64 \
             /t:PublishContainer \
             -p:ContainerRepository=hypernix-db-migrator \
@@ -315,7 +311,7 @@ jobs:
 
       - name: Publish API container image
         run: |
-          dotnet publish Host/FSH.Starter.Api/FSH.Starter.Api.csproj \
+          dotnet publish src/Host/FSH.Starter.Api/FSH.Starter.Api.csproj \
             -c Release -r linux-x64 \
             /t:PublishContainer \
             -p:ContainerRegistry=ghcr.io \
@@ -324,7 +320,7 @@ jobs:
 
       - name: Publish DbMigrator container image
         run: |
-          dotnet publish Host/FSH.Starter.DbMigrator/FSH.Starter.DbMigrator.csproj \
+          dotnet publish src/Host/FSH.Starter.DbMigrator/FSH.Starter.DbMigrator.csproj \
             -c Release -r linux-x64 \
             /t:PublishContainer \
             -p:ContainerRegistry=ghcr.io \
@@ -370,8 +366,8 @@ jobs:
 
       - name: Restore and Build with version
         run: |
-          dotnet restore FSH.Starter.slnx
-          dotnet build FSH.Starter.slnx -c Release --no-restore -p:Version=${{ steps.version.outputs.version }}
+          dotnet restore src/FSH.Starter.slnx
+          dotnet build src/FSH.Starter.slnx -c Release --no-restore -p:Version=${{ steps.version.outputs.version }}
 
       - name: Login to GHCR
         uses: docker/login-action@v4
@@ -382,7 +378,7 @@ jobs:
 
       - name: Build and push API container
         run: |
-          dotnet publish Host/FSH.Starter.Api/FSH.Starter.Api.csproj \
+          dotnet publish src/Host/FSH.Starter.Api/FSH.Starter.Api.csproj \
             -c Release -r linux-x64 \
             /t:PublishContainer \
             -p:ContainerRegistry=ghcr.io \
@@ -391,7 +387,7 @@ jobs:
 
       - name: Build and push DbMigrator container
         run: |
-          dotnet publish Host/FSH.Starter.DbMigrator/FSH.Starter.DbMigrator.csproj \
+          dotnet publish src/Host/FSH.Starter.DbMigrator/FSH.Starter.DbMigrator.csproj \
             -c Release -r linux-x64 \
             /t:PublishContainer \
             -p:ContainerRegistry=ghcr.io \

@@ -118,14 +118,14 @@ if [[ "$BUILD_API" == true ]]; then
   API_REPO="${REGISTRY_PATH:+$REGISTRY_PATH/}$API_IMAGE_NAME"
   MIGRATOR_REPO="${REGISTRY_PATH:+$REGISTRY_PATH/}$MIGRATOR_IMAGE_NAME"
   echo "==> Building & pushing API image $REGISTRY_HOST/$API_REPO:$IMAGE_TAG"
-  dotnet publish "$REPO_ROOT/Host/FSH.Starter.Api/FSH.Starter.Api.csproj" \
+  dotnet publish "$REPO_ROOT/src/Host/FSH.Starter.Api/FSH.Starter.Api.csproj" \
     -c Release -r linux-x64 \
     /t:PublishContainer \
     -p:ContainerRegistry="$REGISTRY_HOST" \
     -p:ContainerRepository="$API_REPO" \
     -p:ContainerImageTags="$IMAGE_TAG"
   echo "==> Building & pushing migrator image $REGISTRY_HOST/$MIGRATOR_REPO:$IMAGE_TAG"
-  dotnet publish "$REPO_ROOT/Host/FSH.Starter.DbMigrator/FSH.Starter.DbMigrator.csproj" \
+  dotnet publish "$REPO_ROOT/src/Host/FSH.Starter.DbMigrator/FSH.Starter.DbMigrator.csproj" \
     -c Release -r linux-x64 \
     /t:PublishContainer \
     -p:ContainerRegistry="$REGISTRY_HOST" \

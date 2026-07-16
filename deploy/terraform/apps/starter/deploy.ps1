@@ -91,7 +91,7 @@ if ($BuildApi) {
   $apiRepo = if ($registryPath) { "$registryPath/$ApiImageName" } else { $ApiImageName }
   $migratorRepo = if ($registryPath) { "$registryPath/$MigratorImageName" } else { $MigratorImageName }
   Write-Host "==> Building & pushing API image $registryHost/$apiRepo`:$ImageTag"
-  dotnet publish "$RepoRoot/Host/FSH.Starter.Api/FSH.Starter.Api.csproj" `
+  dotnet publish "$RepoRoot/src/Host/FSH.Starter.Api/FSH.Starter.Api.csproj" `
     -c Release -r linux-x64 `
     /t:PublishContainer `
     -p:ContainerRegistry="$registryHost" `
@@ -102,7 +102,7 @@ if ($BuildApi) {
   # through and only surfaces later as an ECS CannotPullContainerError.
   if ($LASTEXITCODE -ne 0) { Die "API image build/push failed (exit $LASTEXITCODE) — check you're logged in to '$registryHost' and have push access to '$apiRepo' (a fork can't push to ghcr.io/fullstackhero; pass -Registry <your-registry> or -ImageTag <a-published-tag>)." }
   Write-Host "==> Building & pushing migrator image $registryHost/$migratorRepo`:$ImageTag"
-  dotnet publish "$RepoRoot/Host/FSH.Starter.DbMigrator/FSH.Starter.DbMigrator.csproj" `
+  dotnet publish "$RepoRoot/src/Host/FSH.Starter.DbMigrator/FSH.Starter.DbMigrator.csproj" `
     -c Release -r linux-x64 `
     /t:PublishContainer `
     -p:ContainerRegistry="$registryHost" `

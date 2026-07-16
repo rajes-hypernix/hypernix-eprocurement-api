@@ -2,11 +2,11 @@
 
 FSH-based backend for eProcurement, migrated from the legacy POC API.
 
-## Repo layout
+## Repo layout (standard FullStackHero structure)
 
 | Path | Purpose |
 |---|---|
-| `BuildingBlocks/`, `Host/`, `Modules/`, `Tests/`, `Tools/` | .NET API (FullStackHero modular monolith) |
+| `src/` | .NET API — BuildingBlocks, Host, Modules, Tests, Tools |
 | `clients/admin` | FSH operator console — **reference UI** for migration |
 | `clients/dashboard` | FSH tenant dashboard — **reference UI** for migration |
 | `deploy/docker` | Local full-stack via Docker Compose |
@@ -17,8 +17,8 @@ Your production frontend will eventually replace the FSH clients. Keep them here
 ## Quick start (API only)
 
 ```bash
-dotnet restore FSH.Starter.slnx
-dotnet build Host/FSH.Starter.Api/FSH.Starter.Api.csproj
+dotnet restore src/FSH.Starter.slnx
+dotnet build src/Host/FSH.Starter.Api/FSH.Starter.Api.csproj
 ```
 
 ## Quick start (full stack with Docker)
