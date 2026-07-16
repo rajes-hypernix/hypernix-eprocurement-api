@@ -1,0 +1,32 @@
+namespace FSH.Modules.Suppliers.Contracts.Dtos;
+
+/// <summary>The buyer-facing full review of an application, including a non-blocking duplicate-vendor warning.</summary>
+public sealed record OnboardingReviewDto(
+    Guid Id,
+    string Code,
+    string Status,
+    string Type,
+    string Source,
+    string Name,
+    string RegisteredName,
+    string RegistrationNo,
+    string TaxId,
+    string Email,
+    string ContactName,
+    string ContactPhone,
+    string Region,
+    string State,
+    string City,
+    string Country,
+    IReadOnlyList<string> Categories,
+    IReadOnlyList<VendorContactDto> Contacts,
+    IReadOnlyList<VendorAddressDto> Addresses,
+    IReadOnlyList<VendorBankAccountDto> BankAccounts,
+    IReadOnlyList<VendorCertificationDto> Certifications,
+    OnboardingFinancialViewDto? Financial,
+    IReadOnlyList<OnboardingDocumentDto> Documents,
+    IReadOnlyList<OnboardingRoundDto> Rounds,
+    string? DuplicateWarning,
+    DateTime CreatedUtc,
+    DateTime? SubmittedUtc,
+    DateTime? DecisionUtc);

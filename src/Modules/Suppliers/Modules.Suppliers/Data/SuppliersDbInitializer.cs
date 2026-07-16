@@ -17,5 +17,13 @@ public sealed class SuppliersDbInitializer(
         }
     }
 
-    public Task SeedAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    public async Task SeedAsync(CancellationToken cancellationToken)
+    {
+        if (!await dbContext.SwecCategories.AnyAsync(cancellationToken).ConfigureAwait(false))
+        {
+            dbContext.SwecCategories.AddRange(SwecTaxonomySeedData.Build());
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            logger.LogInformation("[Suppliers] seeded SWEC taxonomy");
+        }
+    }
 }

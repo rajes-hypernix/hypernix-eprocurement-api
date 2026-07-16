@@ -3,12 +3,13 @@
   <PropertyGroup>
     <RootNamespace>FSH.Modules.Suppliers</RootNamespace>
     <AssemblyName>FSH.Modules.Suppliers</AssemblyName>
-    <NoWarn>$(NoWarn);CA1031;CA1812;CA1859;S3267</NoWarn>
+    <NoWarn>$(NoWarn);CA1031;CA1812;CA1859;S3267;CA1002;CA1032;S1244;CA1030;CA1308;S3358</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\BuildingBlocks\Persistence\Persistence.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\Web\Web.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\Storage\Storage.csproj" />
     <ProjectReference Include="..\Modules.Suppliers.Contracts\Modules.Suppliers.Contracts.csproj" />
   </ItemGroup>
 

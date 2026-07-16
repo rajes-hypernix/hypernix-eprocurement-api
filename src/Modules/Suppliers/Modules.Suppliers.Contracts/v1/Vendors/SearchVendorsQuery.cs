@@ -9,4 +9,4 @@ public sealed record SearchVendorsQuery(
     int PageNumber = 1,
     int PageSize = 20,
     string? SortBy = null,
-    string? SortDir = null) : IQuery<PagedResponse<VendorDto>>;
+    string? SortDir = null) : IQuery<PagedResponse<VendorListItemDto>>;

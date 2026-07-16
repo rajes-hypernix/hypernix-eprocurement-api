@@ -9,9 +9,9 @@ using Microsoft.EntityFrameworkCore;
 namespace FSH.Modules.Suppliers.Features.v1.Vendors.SearchVendors;
 
 public sealed class SearchVendorsQueryHandler(SuppliersDbContext dbContext)
-    : IQueryHandler<SearchVendorsQuery, PagedResponse<VendorDto>>
+    : IQueryHandler<SearchVendorsQuery, PagedResponse<VendorListItemDto>>
 {
-    public async ValueTask<PagedResponse<VendorDto>> Handle(SearchVendorsQuery query, CancellationToken cancellationToken)
+    public async ValueTask<PagedResponse<VendorListItemDto>> Handle(SearchVendorsQuery query, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(query);
 
@@ -32,21 +32,19 @@ public sealed class SearchVendorsQueryHandler(SuppliersDbContext dbContext)
         int skip = (query.PageNumber - 1) * query.PageSize;
         var vendors = await q.Skip(skip).Take(query.PageSize).ToListAsync(cancellationToken).ConfigureAwait(false);
 
-        return new PagedResponse<VendorDto>
+        return new PagedResponse<VendorListItemDto>
         {
             Items = vendors
-                .Select(v => new VendorDto(
+                .Select(v => new VendorListItemDto(
                     v.Id,
                     v.Code,
                     v.Name,
-                    v.RegisteredName,
                     v.Type,
-                    v.Status,
-                    v.Country,
+                    v.Categories,
+                    v.Region,
+                    v.State,
                     v.Rating,
-                    v.CreditLimit,
-                    v.CreatedUtc,
-                    v.UpdatedUtc))
+                    v.Status))
                 .ToList(),
             PageNumber = query.PageNumber,
             PageSize = query.PageSize,

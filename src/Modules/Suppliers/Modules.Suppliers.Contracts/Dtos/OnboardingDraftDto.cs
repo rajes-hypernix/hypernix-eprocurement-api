@@ -1,0 +1,25 @@
+namespace FSH.Modules.Suppliers.Contracts.Dtos;
+
+public sealed record OnboardingDraftDto(
+    Guid Id,
+    string Code,
+    string Status,
+    string Type,
+    string Name,
+    string RegisteredName,
+    string RegistrationNo,
+    string TaxId,
+    string Email,
+    string ContactName,
+    string ContactPhone,
+    string Region,
+    string State,
+    string City,
+    string Country,
+    IReadOnlyList<string> Categories,
+    IReadOnlyList<VendorContactDto> Contacts,
+    IReadOnlyList<VendorAddressDto> Addresses,
+    IReadOnlyList<VendorBankAccountDto> BankAccounts,
+    IReadOnlyList<VendorCertificationDto> Certifications,
+    IReadOnlyList<OnboardingFinancialYearDto> FinancialYears,
+    IReadOnlyList<OnboardingDocumentDto> Documents);
