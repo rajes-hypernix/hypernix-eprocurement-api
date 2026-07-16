@@ -1,0 +1,93 @@
+## .NET / Visual Studio — standard ignores for build output and IDE files
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio
+.vs/
+*.DotSettings.user
+
+# Test / coverage
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+coverage*.json
+coverage*.xml
+coverage*.info
+**/TestResults/
+
+# .NET
+project.lock.json
+project.fragment.lock.json
+artifacts/
+*.binlog
+
+# NuGet
+*.nupkg
+*.snupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# IDE
+.idea/
+*.sln.iml
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# OS
+.DS_Store
+Thumbs.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
+
+# Publish
+publish/
+*.pubxml
+*.publishproj
+
+# ReSharper / Rider
+_ReSharper*/
+*.[Rr]e[Ss]harper
+
+# Local uploads (if any)
+**/wwwroot/uploads/*
+
+# Clients (Next.js / React reference apps)
+clients/**/node_modules/
+clients/**/.next/
+clients/**/.turbo/
+clients/**/dist/
+clients/**/.env.local
+
+# Terraform
+*.terraform
+terraform.tfstate
+deploy/terraform/**/.terraform/
