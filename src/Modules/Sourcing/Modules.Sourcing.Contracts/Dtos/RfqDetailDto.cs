@@ -1,0 +1,25 @@
+namespace FSH.Modules.Sourcing.Contracts.Dtos;
+
+public sealed record RfqDetailDto(
+    Guid Id,
+    string Code,
+    string Title,
+    string Envelope,
+    string Status,
+    string Currency,
+    string? OwnerUserId,
+    DateTime? OpensUtc,
+    DateTime? ClosesUtc,
+    DateTime? OriginalClosesUtc,
+    int ExtensionCount,
+    DateTime? ReleasedUtc,
+    DateTime? ClosedUtc,
+    IReadOnlyList<string> PrRefs,
+    IReadOnlyList<RfqLineDto> Lines,
+    IReadOnlyList<FormItemDto> FormItems,
+    IReadOnlyList<string> TechnicalSections,
+    IReadOnlyList<string> CommercialSections,
+    IReadOnlyList<RfqInvitationDto> Invitations,
+    IReadOnlyList<RfqEventDto> Events,
+    DateTime CreatedUtc,
+    DateTime UpdatedUtc);

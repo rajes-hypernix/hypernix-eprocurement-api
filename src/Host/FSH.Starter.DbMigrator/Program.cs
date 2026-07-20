@@ -16,6 +16,7 @@ using FSH.Modules.Multitenancy.Data;
 using FSH.Modules.Multitenancy.Features.v1.GetTenantStatus;
 using FSH.Modules.Tickets;
 using FSH.Modules.Suppliers;
+using FSH.Modules.Sourcing;
 using FSH.Modules.Webhooks;
 using FSH.Starter.DbMigrator;
 using FSH.Starter.DbMigrator.DemoSeed;
@@ -96,6 +97,8 @@ builder.Services.AddMediator(o =>
         typeof(FSH.Modules.Catalog.CatalogModule),
         typeof(FSH.Modules.Suppliers.Contracts.SuppliersContractsMarker),
         typeof(FSH.Modules.Suppliers.SuppliersModule),
+        typeof(FSH.Modules.Sourcing.Contracts.SourcingContractsMarker),
+        typeof(FSH.Modules.Sourcing.SourcingModule),
         typeof(FSH.Modules.Tickets.Contracts.TicketsContractsMarker),
         typeof(FSH.Modules.Tickets.TicketsModule),
         typeof(FSH.Modules.Files.Contracts.v1.Commands.RequestUploadUrlCommand),
@@ -117,6 +120,7 @@ var moduleAssemblies = new Assembly[]
     typeof(BillingModule).Assembly,
     typeof(CatalogModule).Assembly,
     typeof(SuppliersModule).Assembly,
+    typeof(SourcingModule).Assembly,
     typeof(TicketsModule).Assembly,
     typeof(FSH.Modules.Chat.ChatModule).Assembly,
     typeof(FSH.Modules.Notifications.NotificationsModule).Assembly,
