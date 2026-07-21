@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using FSH.Framework.Core.Context;
+using FSH.Modules.Platform.Contracts.Services;
 using FSH.Modules.Suppliers.Contracts.Dtos;
 using FSH.Modules.Suppliers.Contracts.v1.Onboarding;
 using FSH.Modules.Suppliers.Data;
@@ -15,12 +16,16 @@ public sealed class CreateOnboardingInvitationCommandHandler(
     ISuppliersCodeGenerator codeGenerator,
     IOnboardingNotifier notifier,
     ICurrentUser currentUser,
-    IOptions<OnboardingOptions> options)
+    IOptions<OnboardingOptions> options,
+    IFormTemplateCatalog formTemplates)
     : ICommandHandler<CreateOnboardingInvitationCommand, OnboardingInvitationDto>
 {
     public async ValueTask<OnboardingInvitationDto> Handle(CreateOnboardingInvitationCommand command, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(command);
+
+        var templateIds = command.SelectedTemplateIds ?? [];
+        await formTemplates.EnsureActiveTemplatesAsync(templateIds, cancellationToken).ConfigureAwait(false);
 
         string email = string.IsNullOrWhiteSpace(command.Email) ? options.Value.DefaultVendorEmail : command.Email;
         string rawToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
@@ -29,7 +34,7 @@ public sealed class CreateOnboardingInvitationCommandHandler(
         var invitation = VendorOnboardingInvitation.Create(
             email,
             command.Type,
-            command.SelectedTemplateIds ?? [],
+            templateIds,
             rawToken,
             currentUser.GetUserId().ToString(),
             currentUser.Name ?? "Buyer",

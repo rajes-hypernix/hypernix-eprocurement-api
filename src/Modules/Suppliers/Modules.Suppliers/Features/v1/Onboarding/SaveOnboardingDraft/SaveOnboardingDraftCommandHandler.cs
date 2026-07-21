@@ -1,3 +1,4 @@
+using FSH.Modules.Platform.Contracts.Services;
 using FSH.Modules.Suppliers.Contracts.Dtos;
 using FSH.Modules.Suppliers.Contracts.v1.Onboarding;
 using FSH.Modules.Suppliers.Data;
@@ -7,7 +8,9 @@ using Mediator;
 
 namespace FSH.Modules.Suppliers.Features.v1.Onboarding.SaveOnboardingDraft;
 
-public sealed class SaveOnboardingDraftCommandHandler(SuppliersDbContext dbContext)
+public sealed class SaveOnboardingDraftCommandHandler(
+    SuppliersDbContext dbContext,
+    IFormTemplateCatalog formTemplates)
     : ICommandHandler<SaveOnboardingDraftCommand, OnboardingDraftDto>
 {
     public async ValueTask<OnboardingDraftDto> Handle(SaveOnboardingDraftCommand command, CancellationToken cancellationToken)
@@ -42,7 +45,6 @@ public sealed class SaveOnboardingDraftCommandHandler(SuppliersDbContext dbConte
             application.ReplaceCertifications(command.Certifications.Select(c => new VendorCertification(c.Name, c.Number, c.ValidTo, c.Status)));
         }
 
-        // Financial figures only apply to Non-SWEC applications (SWEC is pre-qual-waived) — silently ignored otherwise.
         if (command.FinancialYears is not null && application.Type == "NonSwec")
         {
             OnboardingFinancialValidation.Validate(command.FinancialYears);
@@ -56,6 +58,18 @@ public sealed class SaveOnboardingDraftCommandHandler(SuppliersDbContext dbConte
             {
                 application.Financial.ReplaceYears(years);
             }
+        }
+
+        if (command.Answers is not null)
+        {
+            await formTemplates.ValidateAnswersAsync(
+                application.SelectedTemplateIds,
+                [.. command.Answers.Select(a => new FormAnswerInput(a.FormTemplateId, a.QuestionOrder, a.Value))],
+                requireRequired: false,
+                cancellationToken).ConfigureAwait(false);
+
+            application.ReplaceAnswers(command.Answers.Select(a =>
+                new OnboardingAnswer(a.FormTemplateId, a.QuestionOrder, a.Value)));
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

@@ -36,7 +36,7 @@ public sealed class SourcingRfqGovernanceTests
         var newCloses = originalCloses.AddDays(3);
         using var extend = await buyer.PostAsJsonAsync(
             $"{TestConstants.SourcingBasePath}/rfqs/{rfqId}/extend",
-            new { newClosesUtc = newCloses, reasonCode = "MORE_TIME", note = "vendors asked" });
+            new { newClosesUtc = newCloses, reasonCode = "MORE_BIDS", note = "vendors asked" });
         await EprocureFlowHelper.EnsureSuccessAsync(extend, "Extend");
 
         using var after = await buyer.GetAsync($"{TestConstants.SourcingBasePath}/rfqs/{rfqId}");

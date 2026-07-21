@@ -11,4 +11,5 @@ public sealed record OnboardingInvitationDto(
     DateTime ExpiresUtc,
     Guid? ApplicationId,
     string? ApplicationCode,
-    string? MagicLink);
+    string? MagicLink,
+    IReadOnlyList<Guid> SelectedTemplateIds);

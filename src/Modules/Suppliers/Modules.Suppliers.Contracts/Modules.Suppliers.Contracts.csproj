@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\BuildingBlocks\Shared\Shared.csproj" />
+    <ProjectReference Include="..\..\Platform\Modules.Platform.Contracts\Modules.Platform.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

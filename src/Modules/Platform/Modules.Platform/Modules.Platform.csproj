@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>FSH.Modules.Platform</RootNamespace>
+    <AssemblyName>FSH.Modules.Platform</AssemblyName>
+    <NoWarn>$(NoWarn);CA1031;CA1812;CA1859;S3267;CA1002;CA1032;S1244;CA1030;CA1308;S3358;CA1720</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\Persistence\Persistence.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\Web\Web.csproj" />
+    <ProjectReference Include="..\Modules.Platform.Contracts\Modules.Platform.Contracts.csproj" />
+    <ProjectReference Include="..\..\Identity\Modules.Identity.Contracts\Modules.Identity.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

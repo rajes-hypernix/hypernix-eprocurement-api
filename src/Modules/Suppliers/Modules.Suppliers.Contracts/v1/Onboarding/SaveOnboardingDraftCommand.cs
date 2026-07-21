@@ -22,4 +22,5 @@ public sealed record SaveOnboardingDraftCommand(
     IReadOnlyList<VendorAddressDto>? Addresses = null,
     IReadOnlyList<VendorBankAccountDto>? BankAccounts = null,
     IReadOnlyList<VendorCertificationDto>? Certifications = null,
-    IReadOnlyList<OnboardingFinancialYearDto>? FinancialYears = null) : ICommand<OnboardingDraftDto>;
+    IReadOnlyList<OnboardingFinancialYearDto>? FinancialYears = null,
+    IReadOnlyList<OnboardingAnswerDto>? Answers = null) : ICommand<OnboardingDraftDto>;

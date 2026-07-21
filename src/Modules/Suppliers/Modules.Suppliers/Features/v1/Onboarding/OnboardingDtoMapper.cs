@@ -19,7 +19,8 @@ internal static class OnboardingDtoMapper
             invitation.ExpiresUtc,
             invitation.ApplicationId,
             applicationCode,
-            magicLink);
+            magicLink,
+            invitation.SelectedTemplateIds);
     }
 
     internal static OnboardingApplicationDto ToDto(VendorOnboardingApplication application)
@@ -79,7 +80,9 @@ internal static class OnboardingDtoMapper
             ToBankAccountDtos(application.BankAccounts),
             ToCertificationDtos(application.Certifications),
             ToFinancialYearDtos(application.Financial),
-            ToDocumentDtos(application.Documents));
+            ToDocumentDtos(application.Documents),
+            application.SelectedTemplateIds,
+            [.. application.Answers.Select(a => new OnboardingAnswerDto(a.FormTemplateId, a.QuestionOrder, a.Value))]);
     }
 
     internal static OnboardingReviewDto ToReviewDto(VendorOnboardingApplication application, string? duplicateWarning)

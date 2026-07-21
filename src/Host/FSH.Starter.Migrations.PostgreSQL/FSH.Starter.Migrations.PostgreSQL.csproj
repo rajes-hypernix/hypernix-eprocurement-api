@@ -16,6 +16,7 @@
 	  <ProjectReference Include="..\..\Modules\Webhooks\Modules.Webhooks\Modules.Webhooks.csproj" />
 	  <ProjectReference Include="..\..\Modules\Billing\Modules.Billing\Modules.Billing.csproj" />
 	  <ProjectReference Include="..\..\Modules\Catalog\Modules.Catalog\Modules.Catalog.csproj" />
+	  <ProjectReference Include="..\..\Modules\Platform\Modules.Platform\Modules.Platform.csproj" />
 	  <ProjectReference Include="..\..\Modules\Suppliers\Modules.Suppliers\Modules.Suppliers.csproj" />
 	  <ProjectReference Include="..\..\Modules\Sourcing\Modules.Sourcing\Modules.Sourcing.csproj" />
 	  <ProjectReference Include="..\..\Modules\Procurement\Modules.Procurement\Modules.Procurement.csproj" />
@@ -30,6 +31,7 @@
 	  <Folder Include="MultiTenancy\" />
 	  <Folder Include="Billing\" />
 	  <Folder Include="Catalog\" />
+	  <Folder Include="Platform\" />
 	  <Folder Include="Suppliers\" />
 	  <Folder Include="Sourcing\" />
 	  <Folder Include="Procurement\" />

@@ -1,5 +1,7 @@
 using FSH.Framework.Core.Context;
 using FSH.Framework.Core.Exceptions;
+using FSH.Modules.Platform.Contracts;
+using FSH.Modules.Platform.Contracts.Services;
 using FSH.Modules.Sourcing.Contracts.v1.Rfqs;
 using FSH.Modules.Sourcing.Data;
 using FSH.Modules.Sourcing.Services;
@@ -9,12 +11,24 @@ using Microsoft.Extensions.Options;
 
 namespace FSH.Modules.Sourcing.Features.v1.Rfqs.ExtendRfq;
 
-public sealed class ExtendRfqCommandHandler(SourcingDbContext dbContext, ICurrentUser currentUser, IOptions<RfqGovernanceOptions> governance)
+public sealed class ExtendRfqCommandHandler(
+    SourcingDbContext dbContext,
+    ICurrentUser currentUser,
+    IOptions<RfqGovernanceOptions> governance,
+    IReasonCodeValidator reasonCodes)
     : ICommandHandler<ExtendRfqCommand, Guid>
 {
     public async ValueTask<Guid> Handle(ExtendRfqCommand command, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(command);
+
+        string? reasonCode = null;
+        if (!string.IsNullOrWhiteSpace(command.ReasonCode))
+        {
+            await reasonCodes.EnsureActiveAsync(CustomListKeys.RfqExtend, command.ReasonCode, cancellationToken)
+                .ConfigureAwait(false);
+            reasonCode = command.ReasonCode.Trim().ToUpperInvariant();
+        }
 
         var rfq = await dbContext.Rfqs
             .Include(r => r.Events)
@@ -25,7 +39,7 @@ public sealed class ExtendRfqCommandHandler(SourcingDbContext dbContext, ICurren
         rfq.Extend(
             command.NewClosesUtc,
             governance.Value.MaxExtensions,
-            command.ReasonCode,
+            reasonCode,
             command.Note,
             DateTime.UtcNow,
             currentUser.IsAuthenticated() ? currentUser.GetUserId().ToString() : null);

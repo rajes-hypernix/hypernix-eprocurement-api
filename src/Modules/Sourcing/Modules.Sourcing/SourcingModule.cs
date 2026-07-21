@@ -37,6 +37,7 @@ using FSH.Modules.Sourcing.Features.v1.Requisitions.UpdateRequisition;
 using FSH.Modules.Sourcing.Features.v1.Rfqs.CancelRfq;
 using FSH.Modules.Sourcing.Features.v1.Rfqs.CloseRfq;
 using FSH.Modules.Sourcing.Features.v1.Rfqs.CreateRfqDraft;
+using FSH.Modules.Sourcing.Features.v1.Rfqs.DeclineInvitation;
 using FSH.Modules.Sourcing.Features.v1.Rfqs.ExtendRfq;
 using FSH.Modules.Sourcing.Features.v1.Rfqs.GetRfqById;
 using FSH.Modules.Sourcing.Features.v1.Rfqs.InviteVendor;
@@ -104,6 +105,7 @@ public sealed class SourcingModule : IModule
         group.MapUpdateRfqDraftEndpoint();
         group.MapInviteVendorEndpoint();
         group.MapRescindInvitationEndpoint();
+        group.MapDeclineInvitationEndpoint();
         group.MapExtendRfqEndpoint();
         group.MapReleaseRfqEndpoint();
         group.MapCloseRfqEndpoint();

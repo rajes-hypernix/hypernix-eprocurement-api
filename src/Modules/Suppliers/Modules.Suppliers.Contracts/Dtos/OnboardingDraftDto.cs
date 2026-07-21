@@ -22,4 +22,6 @@ public sealed record OnboardingDraftDto(
     IReadOnlyList<VendorBankAccountDto> BankAccounts,
     IReadOnlyList<VendorCertificationDto> Certifications,
     IReadOnlyList<OnboardingFinancialYearDto> FinancialYears,
-    IReadOnlyList<OnboardingDocumentDto> Documents);
+    IReadOnlyList<OnboardingDocumentDto> Documents,
+    IReadOnlyList<Guid> SelectedTemplateIds,
+    IReadOnlyList<OnboardingAnswerDto> Answers);

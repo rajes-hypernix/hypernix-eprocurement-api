@@ -15,7 +15,7 @@ public static class GetOnboardingLookupsEndpoint
                 async (GetOnboardingLookupsQuery query, IMediator mediator, CancellationToken ct) =>
                     Results.Ok(await mediator.Send(query, ct)))
             .WithName("GetOnboardingLookups")
-            .WithSummary("Get onboarding form lookups (SWEC taxonomy)")
+            .WithSummary("Get onboarding form lookups (SWEC + geo/banks)")
             .AllowAnonymous();
     }
 }

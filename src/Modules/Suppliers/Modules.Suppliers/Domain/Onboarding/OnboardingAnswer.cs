@@ -2,8 +2,7 @@ namespace FSH.Modules.Suppliers.Domain.Onboarding;
 
 /// <summary>
 /// One questionnaire answer: identifies the item by its template + order and stores the value.
-/// Opaque for now — no dynamic Form Template module exists yet (Platform work), so this just
-/// carries whatever the client submitted without server-side template validation.
+/// Validated against Platform form templates on draft save / submit.
 /// </summary>
 public sealed class OnboardingAnswer
 {
