@@ -11,6 +11,8 @@ public sealed class RfqEventConfiguration : IEntityTypeConfiguration<RfqEvent>
         ArgumentNullException.ThrowIfNull(builder);
         builder.ToTable("RfqEvents");
         builder.HasKey(x => x.Id);
+        // App-assigned Guid v7. Without ValueGeneratedNever, EF tracks new nav children as Modified → UPDATE-0-rows.
+        builder.Property(x => x.Id).ValueGeneratedNever();
         builder.Property(x => x.EventType).IsRequired().HasConversion<string>().HasMaxLength(30);
         builder.Property(x => x.ActorUserId).HasMaxLength(100);
         builder.Property(x => x.ActorVendorUserId).HasMaxLength(100);

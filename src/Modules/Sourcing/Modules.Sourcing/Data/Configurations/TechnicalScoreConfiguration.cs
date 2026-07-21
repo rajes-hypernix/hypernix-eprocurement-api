@@ -11,6 +11,7 @@ public sealed class TechnicalScoreConfiguration : IEntityTypeConfiguration<Techn
         ArgumentNullException.ThrowIfNull(builder);
         builder.ToTable("TechnicalScores");
         builder.HasKey(x => x.Id);
+        builder.Property(x => x.Id).ValueGeneratedNever();
         builder.Property(x => x.EvaluatorId).IsRequired().HasMaxLength(450);
         builder.Property(x => x.Criterion).IsRequired().HasConversion<string>().HasMaxLength(20);
         builder.HasIndex(x => new { x.RfqId, x.VendorId, x.EvaluatorId, x.Criterion }).IsUnique();

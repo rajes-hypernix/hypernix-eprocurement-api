@@ -20,7 +20,8 @@ internal static class BidAuthorization
             .ConfigureAwait(false)
             ?? throw new NotFoundException($"RFQ {rfqId} not found.");
 
-        if (!rfq.Invitations.Any(i => i.VendorId == vendorId))
+        // Rescinded invitations are not live — treat like never invited (404, never 403).
+        if (!rfq.LiveInvitedVendorIds.Contains(vendorId))
         {
             throw new NotFoundException($"RFQ {rfqId} not found.");
         }

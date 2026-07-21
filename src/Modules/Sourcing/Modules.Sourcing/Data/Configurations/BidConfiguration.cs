@@ -11,6 +11,7 @@ public sealed class BidConfiguration : IEntityTypeConfiguration<Bid>
         ArgumentNullException.ThrowIfNull(builder);
         builder.ToTable("Bids");
         builder.HasKey(x => x.Id);
+        builder.Property(x => x.Id).ValueGeneratedNever();
         builder.HasIndex(x => x.Code).IsUnique();
         builder.Property(x => x.Code).IsRequired().HasMaxLength(50);
         builder.HasIndex(x => new { x.RfqId, x.VendorId }).IsUnique();

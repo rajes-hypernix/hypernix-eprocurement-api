@@ -207,7 +207,7 @@ public sealed class Rfq : AggregateRoot<Guid>
     public RfqEvent MarkReleased(DateTime nowUtc, string? actorUserId)
     {
         RequireStatus(RfqStatus.Draft, "release");
-        if (_invitations.Count == 0)
+        if (LiveInvitedVendorIds.Count == 0)
         {
             throw new SourcingRuleException("Invite at least one vendor before releasing the RFQ.");
         }

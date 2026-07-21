@@ -11,6 +11,7 @@ public sealed class PrLineConfiguration : IEntityTypeConfiguration<PrLine>
         ArgumentNullException.ThrowIfNull(builder);
         builder.ToTable("PrLines");
         builder.HasKey(x => x.Id);
+        builder.Property(x => x.Id).ValueGeneratedNever();
         builder.Property(x => x.ItemCode).IsRequired().HasMaxLength(50);
         builder.Property(x => x.Description).HasMaxLength(500);
         builder.Property(x => x.Uom).HasMaxLength(20);

@@ -11,6 +11,7 @@ public sealed class OnboardingClarificationRoundConfiguration : IEntityTypeConfi
         ArgumentNullException.ThrowIfNull(builder);
         builder.ToTable("OnboardingClarificationRounds");
         builder.HasKey(x => x.Id);
+        builder.Property(x => x.Id).ValueGeneratedNever();
         builder.Property(x => x.Direction).IsRequired().HasConversion<string>().HasMaxLength(20);
         builder.Property(x => x.Status).IsRequired().HasConversion<string>().HasMaxLength(20);
         builder.Property(x => x.Message).HasMaxLength(4000);
@@ -24,9 +25,12 @@ public sealed class OnboardingClarificationRoundConfiguration : IEntityTypeConfi
             o.ToTable("OnboardingClarificationItems");
             o.WithOwner().HasForeignKey("RoundId");
             o.HasKey(i => i.Id);
+            // Client Guid v7 — without this EF tracks new items as Modified → UPDATE 0 rows.
+            o.Property(i => i.Id).ValueGeneratedNever();
             o.Property(i => i.Topic).HasMaxLength(300);
             o.Property(i => i.Request).HasMaxLength(2000);
             o.Property(i => i.Response).HasMaxLength(2000);
         });
+        builder.Navigation(x => x.Items).UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }

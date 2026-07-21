@@ -11,6 +11,7 @@ public sealed class ClarificationConfiguration : IEntityTypeConfiguration<Clarif
         ArgumentNullException.ThrowIfNull(builder);
         builder.ToTable("Clarifications");
         builder.HasKey(x => x.Id);
+        builder.Property(x => x.Id).ValueGeneratedNever();
         builder.Property(x => x.Scope).IsRequired().HasMaxLength(50);
         builder.Property(x => x.SenderKind).IsRequired().HasConversion<string>().HasMaxLength(20);
         builder.Property(x => x.SenderName).IsRequired().HasMaxLength(200);

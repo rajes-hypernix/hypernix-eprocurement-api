@@ -41,7 +41,11 @@ public sealed class PrLine
 
     public PrLineTransition Cancel(string? reason, DateTime nowUtc)
     {
-        Require(PrLineStatus.Open);
+        if (LifecycleStatus is not (PrLineStatus.Open or PrLineStatus.InDraftRfq))
+        {
+            throw new SourcingRuleException($"Cannot perform this action on a line that is {LifecycleStatus} (expected Open or InDraftRfq).");
+        }
+
         return To(PrLineStatus.Cancelled, "Line cancelled", reason, nowUtc);
     }
 

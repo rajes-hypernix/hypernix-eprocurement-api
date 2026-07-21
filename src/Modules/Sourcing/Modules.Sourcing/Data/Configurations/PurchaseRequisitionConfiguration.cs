@@ -11,6 +11,7 @@ public sealed class PurchaseRequisitionConfiguration : IEntityTypeConfiguration<
         ArgumentNullException.ThrowIfNull(builder);
         builder.ToTable("PurchaseRequisitions");
         builder.HasKey(x => x.Id);
+        builder.Property(x => x.Id).ValueGeneratedNever();
         builder.HasIndex(x => x.Code).IsUnique();
         builder.Property(x => x.Code).IsRequired().HasMaxLength(50);
         builder.Property(x => x.Requestor).IsRequired().HasMaxLength(200);
@@ -32,6 +33,7 @@ public sealed class PurchaseRequisitionConfiguration : IEntityTypeConfiguration<
         builder.HasMany(x => x.Lines).WithOne()
             .HasForeignKey(l => l.PurchaseRequisitionId)
             .OnDelete(DeleteBehavior.Cascade);
+        builder.Navigation(x => x.Lines).UsePropertyAccessMode(PropertyAccessMode.Field);
 
         builder.Ignore(x => x.DomainEvents);
     }

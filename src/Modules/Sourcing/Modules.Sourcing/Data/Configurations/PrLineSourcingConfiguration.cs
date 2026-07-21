@@ -11,6 +11,7 @@ public sealed class PrLineSourcingConfiguration : IEntityTypeConfiguration<PrLin
         ArgumentNullException.ThrowIfNull(builder);
         builder.ToTable("PrLineSourcings");
         builder.HasKey(x => x.Id);
+        builder.Property(x => x.Id).ValueGeneratedNever();
         builder.Property(x => x.RfqLineCode).IsRequired().HasMaxLength(50);
         builder.Property(x => x.QtySourced).HasPrecision(18, 4);
         builder.Property(x => x.LinkStatus).IsRequired().HasConversion<string>().HasMaxLength(20);

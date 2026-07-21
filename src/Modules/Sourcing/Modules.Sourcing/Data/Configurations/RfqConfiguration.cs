@@ -23,6 +23,7 @@ public sealed class RfqConfiguration : IEntityTypeConfiguration<Rfq>
         ArgumentNullException.ThrowIfNull(builder);
         builder.ToTable("Rfqs");
         builder.HasKey(x => x.Id);
+        builder.Property(x => x.Id).ValueGeneratedNever();
         builder.HasIndex(x => x.Code).IsUnique();
         builder.Property(x => x.Code).IsRequired().HasMaxLength(50);
         builder.Property(x => x.Title).HasMaxLength(300);
@@ -73,10 +74,12 @@ public sealed class RfqConfiguration : IEntityTypeConfiguration<Rfq>
         builder.HasMany(x => x.Invitations).WithOne()
             .HasForeignKey(i => i.RfqId)
             .OnDelete(DeleteBehavior.Cascade);
+        builder.Navigation(x => x.Invitations).UsePropertyAccessMode(PropertyAccessMode.Field);
 
         builder.HasMany(x => x.Events).WithOne()
             .HasForeignKey(e => e.RfqId)
             .OnDelete(DeleteBehavior.Cascade);
+        builder.Navigation(x => x.Events).UsePropertyAccessMode(PropertyAccessMode.Field);
 
         builder.Ignore(x => x.DomainEvents);
     }

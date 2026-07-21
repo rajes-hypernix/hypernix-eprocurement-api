@@ -139,6 +139,7 @@ public sealed class VendorOnboardingApplicationConfiguration : IEntityTypeConfig
         builder.HasMany(x => x.Rounds).WithOne()
             .HasForeignKey(r => r.ApplicationId)
             .OnDelete(DeleteBehavior.Cascade);
+        builder.Navigation(x => x.Rounds).UsePropertyAccessMode(PropertyAccessMode.Field);
 
         builder.Ignore(x => x.DomainEvents);
     }
