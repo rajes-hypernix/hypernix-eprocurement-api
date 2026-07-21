@@ -1,6 +1,10 @@
+using System.Diagnostics;
+using System.Security.Cryptography;
 using FSH.Framework.Core.Context;
 using FSH.Framework.Core.Exceptions;
+using FSH.Framework.Eventing.Abstractions;
 using FSH.Framework.Web.Origin;
+using FSH.Modules.Communication.Contracts.Events;
 using FSH.Modules.Identity.Contracts.DTOs;
 using FSH.Modules.Identity.Contracts.Services;
 using FSH.Modules.Suppliers.Contracts.Dtos;
@@ -12,7 +16,6 @@ using FSH.Modules.Suppliers.Services.Onboarding;
 using Mediator;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using System.Security.Cryptography;
 
 namespace FSH.Modules.Suppliers.Features.v1.Onboarding.ApproveOnboardingApplication;
 
@@ -32,7 +35,8 @@ public sealed class ApproveOnboardingApplicationCommandHandler(
     IUserRegistrationService userRegistrationService,
     IUserRoleService userRoleService,
     IUserPasswordService userPasswordService,
-    IOptions<OriginOptions> originOptions)
+    IOptions<OriginOptions> originOptions,
+    IEventBus eventBus)
     : ICommandHandler<ApproveOnboardingApplicationCommand, OnboardingApproveResultDto>
 {
     public async ValueTask<OnboardingApproveResultDto> Handle(ApproveOnboardingApplicationCommand command, CancellationToken cancellationToken)
@@ -109,6 +113,22 @@ public sealed class ApproveOnboardingApplicationCommandHandler(
 
         await ProvisionVendorLoginAsync(vendorUser, cancellationToken).ConfigureAwait(false);
         await notifier.SendApprovedAsync(application, vendorUser, cancellationToken).ConfigureAwait(false);
+
+        if (!string.IsNullOrWhiteSpace(vendorUser.IdentityUserId))
+        {
+            var correlationId = Activity.Current?.TraceId.ToString() ?? Guid.NewGuid().ToString();
+            await eventBus.PublishAsync(
+                new OnboardingApprovedIntegrationEvent(
+                    Guid.NewGuid(),
+                    DateTime.UtcNow,
+                    currentUser.GetTenant(),
+                    correlationId,
+                    "Suppliers",
+                    vendor.Id,
+                    vendor.Code,
+                    vendorUser.IdentityUserId),
+                cancellationToken).ConfigureAwait(false);
+        }
 
         return new OnboardingApproveResultDto(vendor.Id, vendor.Code, duplicateWarning);
     }

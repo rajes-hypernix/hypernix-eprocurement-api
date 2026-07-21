@@ -41,6 +41,10 @@
     <Project Path="Modules/Multitenancy/Modules.Multitenancy.Contracts/Modules.Multitenancy.Contracts.csproj" Id="61165a24-94b0-402c-9d9f-345898ce79c4" />
     <Project Path="Modules/Multitenancy/Modules.Multitenancy/Modules.Multitenancy.csproj" Id="69bca64d-0cf5-4236-8da6-1d775aa2a1cc" />
   </Folder>
+  <Folder Name="/Modules/Communication/">
+    <Project Path="Modules/Communication/Modules.Communication.Contracts/Modules.Communication.Contracts.csproj" />
+    <Project Path="Modules/Communication/Modules.Communication/Modules.Communication.csproj" />
+  </Folder>
   <Folder Name="/Modules/Notifications/">
     <Project Path="Modules/Notifications/Modules.Notifications.Contracts/Modules.Notifications.Contracts.csproj" />
     <Project Path="Modules/Notifications/Modules.Notifications/Modules.Notifications.csproj" />
@@ -52,6 +56,10 @@
   <Folder Name="/Modules/Sourcing/">
     <Project Path="Modules/Sourcing/Modules.Sourcing.Contracts/Modules.Sourcing.Contracts.csproj" />
     <Project Path="Modules/Sourcing/Modules.Sourcing/Modules.Sourcing.csproj" />
+  </Folder>
+  <Folder Name="/Modules/Platform/">
+    <Project Path="Modules/Platform/Modules.Platform.Contracts/Modules.Platform.Contracts.csproj" />
+    <Project Path="Modules/Platform/Modules.Platform/Modules.Platform.csproj" />
   </Folder>
   <Folder Name="/Modules/Procurement/">
     <Project Path="Modules/Procurement/Modules.Procurement.Contracts/Modules.Procurement.Contracts.csproj" />
@@ -93,6 +101,8 @@
     <Project Path="Tests/Integration.Middleware.Tests/Integration.Middleware.Tests.csproj" />
     <Project Path="Tests/Multitenancy.Tests/Multitenancy.Tests.csproj" Id="985345a2-edb4-4ef9-9a1b-59b704f523b6" />
     <Project Path="Tests/Sourcing.Tests/Sourcing.Tests.csproj" />
+    <Project Path="Tests/Communication.Tests/Communication.Tests.csproj" />
+    <Project Path="Tests/Platform.Tests/Platform.Tests.csproj" />
     <Project Path="Tests/Procurement.Tests/Procurement.Tests.csproj" />
     <Project Path="Tests/Suppliers.Tests/Suppliers.Tests.csproj" />
   </Folder>

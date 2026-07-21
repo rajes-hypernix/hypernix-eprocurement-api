@@ -32,9 +32,9 @@ public sealed class SuppliersDbInitializer(
     }
 
     /// <summary>
-    /// Vendor-portal logins get a non-default "Vendor" role purely for identification — vendor
-    /// endpoints scope by the VendorId claim, not by permission, so this role is never granted
-    /// any FshPermission. Idempotent: a matching role name is left untouched.
+    /// Vendor-portal logins get a non-default "Vendor" role. Domain endpoints scope by VendorId
+    /// claim; inbox/platform/procurement permissions are merged onto this role by later modules.
+    /// Idempotent: a matching role name is left untouched.
     /// </summary>
     private async Task SeedVendorRoleAsync(CancellationToken cancellationToken)
     {

@@ -1,5 +1,8 @@
+using System.Diagnostics;
 using FSH.Framework.Core.Context;
 using FSH.Framework.Core.Exceptions;
+using FSH.Framework.Eventing.Abstractions;
+using FSH.Modules.Communication.Contracts.Events;
 using FSH.Modules.Sourcing.Contracts.v1.Rfqs;
 using FSH.Modules.Sourcing.Data;
 using FSH.Modules.Sourcing.Domain;
@@ -12,7 +15,10 @@ namespace FSH.Modules.Sourcing.Features.v1.Rfqs.ReleaseRfq;
 /// Writes PrLineSourcing lineage and flips source PR lines InDraftRfq -&gt; InRfq in the same
 /// transaction as the RFQ Draft -&gt; Open transition and the Released event (all-or-nothing).
 /// </summary>
-public sealed class ReleaseRfqCommandHandler(SourcingDbContext dbContext, ICurrentUser currentUser)
+public sealed class ReleaseRfqCommandHandler(
+    SourcingDbContext dbContext,
+    ICurrentUser currentUser,
+    IEventBus eventBus)
     : ICommandHandler<ReleaseRfqCommand, Guid>
 {
     public async ValueTask<Guid> Handle(ReleaseRfqCommand command, CancellationToken cancellationToken)
@@ -67,6 +73,25 @@ public sealed class ReleaseRfqCommandHandler(SourcingDbContext dbContext, ICurre
         rfq.MarkReleased(DateTime.UtcNow, currentUser.IsAuthenticated() ? currentUser.GetUserId().ToString() : null);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        var vendorIds = rfq.LiveInvitedVendorIds;
+        if (vendorIds.Count > 0)
+        {
+            var correlationId = Activity.Current?.TraceId.ToString() ?? Guid.NewGuid().ToString();
+            await eventBus.PublishAsync(
+                new RfqReleasedIntegrationEvent(
+                    Guid.NewGuid(),
+                    DateTime.UtcNow,
+                    currentUser.GetTenant(),
+                    correlationId,
+                    "Sourcing",
+                    rfq.Id,
+                    rfq.Code,
+                    rfq.Title,
+                    vendorIds),
+                cancellationToken).ConfigureAwait(false);
+        }
+
         return rfq.Id;
     }
 }

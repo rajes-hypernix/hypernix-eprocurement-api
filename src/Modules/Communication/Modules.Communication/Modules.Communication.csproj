@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>FSH.Modules.Communication</RootNamespace>
+    <AssemblyName>FSH.Modules.Communication</AssemblyName>
+    <NoWarn>$(NoWarn);CA1031;CA1812;CA1859;S3267;CA1002;CA1032;CA1711</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\Web\Web.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\Eventing\Eventing.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\Persistence\Persistence.csproj" />
+    <ProjectReference Include="..\Modules.Communication.Contracts\Modules.Communication.Contracts.csproj" />
+    <ProjectReference Include="..\..\Notifications\Modules.Notifications.Contracts\Modules.Notifications.Contracts.csproj" />
+    <ProjectReference Include="..\..\Suppliers\Modules.Suppliers.Contracts\Modules.Suppliers.Contracts.csproj" />
+    <ProjectReference Include="..\..\Identity\Modules.Identity.Contracts\Modules.Identity.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

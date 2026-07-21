@@ -1,5 +1,8 @@
+using System.Diagnostics;
 using FSH.Framework.Core.Context;
 using FSH.Framework.Core.Exceptions;
+using FSH.Framework.Eventing.Abstractions;
+using FSH.Modules.Communication.Contracts.Events;
 using FSH.Modules.Sourcing.Contracts.Dtos;
 using FSH.Modules.Sourcing.Contracts.v1.Awards;
 using FSH.Modules.Sourcing.Data;
@@ -14,7 +17,10 @@ namespace FSH.Modules.Sourcing.Features.v1.Awards.ApproveAward;
 /// <c>Awarded</c> for lines that received an allocation, and back to <c>Open</c> (link Returned)
 /// for lines that didn't. No <c>PurchaseOrder</c> is created — that's a future Procurement module.
 /// </summary>
-public sealed class ApproveAwardCommandHandler(SourcingDbContext dbContext, ICurrentUser currentUser)
+public sealed class ApproveAwardCommandHandler(
+    SourcingDbContext dbContext,
+    ICurrentUser currentUser,
+    IEventBus eventBus)
     : ICommandHandler<ApproveAwardCommand, AwardDto>
 {
     public async ValueTask<AwardDto> Handle(ApproveAwardCommand command, CancellationToken cancellationToken)
@@ -42,6 +48,26 @@ public sealed class ApproveAwardCommandHandler(SourcingDbContext dbContext, ICur
         await SettleProvenanceAsync(rfq, award, now, cancellationToken).ConfigureAwait(false);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        var awardedVendorIds = award.Allocations.Select(a => a.VendorId).Distinct().ToList();
+        if (awardedVendorIds.Count > 0)
+        {
+            var correlationId = Activity.Current?.TraceId.ToString() ?? Guid.NewGuid().ToString();
+            await eventBus.PublishAsync(
+                new AwardApprovedIntegrationEvent(
+                    Guid.NewGuid(),
+                    DateTime.UtcNow,
+                    currentUser.GetTenant(),
+                    correlationId,
+                    "Sourcing",
+                    rfq.Id,
+                    rfq.Code,
+                    award.Id,
+                    award.Code,
+                    awardedVendorIds),
+                cancellationToken).ConfigureAwait(false);
+        }
+
         return AwardDtoMapper.ToDto(award);
     }
 
@@ -76,7 +102,6 @@ public sealed class ApproveAwardCommandHandler(SourcingDbContext dbContext, ICur
 
             if (awardedLineCodes.Contains(link.RfqLineCode))
             {
-                // Link stays Active — it's the fulfilled provenance record now that the PR line is Awarded (terminal).
                 pr.MarkLineAwarded(link.PrLineId, now);
             }
             else

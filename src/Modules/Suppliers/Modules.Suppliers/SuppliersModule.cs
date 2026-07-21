@@ -32,6 +32,8 @@ using FSH.Modules.Suppliers.Features.v1.Vendors.SearchVendors;
 using FSH.Modules.Suppliers.Features.v1.Vendors.SetVendorCategories;
 using FSH.Modules.Suppliers.Features.v1.Vendors.ToggleVendorStatus;
 using FSH.Modules.Suppliers.Features.v1.Vendors.UpdateVendor;
+using FSH.Modules.Suppliers.Contracts.Services;
+using FSH.Modules.Suppliers.Services;
 using FSH.Modules.Suppliers.Services.Onboarding;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
@@ -55,6 +57,7 @@ public sealed class SuppliersModule : IModule
         builder.Services.AddScoped<ISuppliersCodeGenerator, SuppliersCodeGenerator>();
         builder.Services.Configure<OnboardingOptions>(builder.Configuration.GetSection("Onboarding"));
         builder.Services.AddScoped<IOnboardingNotifier, OnboardingNotifier>();
+        builder.Services.AddScoped<IVendorPortalUserDirectory, VendorPortalUserDirectory>();
         builder.Services.AddHealthChecks()
             .AddDbContextCheck<SuppliersDbContext>(
                 name: "db:suppliers",

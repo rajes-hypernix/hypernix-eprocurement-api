@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>FSH.Modules.Communication.Contracts</RootNamespace>
+    <AssemblyName>FSH.Modules.Communication.Contracts</AssemblyName>
+    <NoWarn>$(NoWarn);S2094;CA1819</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Mediator.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\Eventing.Abstractions\Eventing.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>

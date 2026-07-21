@@ -10,8 +10,10 @@
     <ProjectReference Include="..\..\..\BuildingBlocks\Persistence\Persistence.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\Web\Web.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\Storage\Storage.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\Eventing\Eventing.csproj" />
     <ProjectReference Include="..\Modules.Suppliers.Contracts\Modules.Suppliers.Contracts.csproj" />
     <ProjectReference Include="..\..\Platform\Modules.Platform.Contracts\Modules.Platform.Contracts.csproj" />
+    <ProjectReference Include="..\..\Communication\Modules.Communication.Contracts\Modules.Communication.Contracts.csproj" />
     <ProjectReference Include="..\..\Identity\Modules.Identity.Contracts\Modules.Identity.Contracts.csproj" />
   </ItemGroup>
 

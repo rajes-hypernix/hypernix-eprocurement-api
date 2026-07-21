@@ -73,6 +73,7 @@ builder.Services.AddMediator(o =>
         typeof(FSH.Modules.Chat.ChatModule),
         typeof(FSH.Modules.Notifications.Contracts.v1.Commands.MarkNotificationReadCommand),
         typeof(FSH.Modules.Notifications.NotificationsModule)];
+    // Communication has no Mediator messages — only IIntegrationEventHandler registrations.
 });
 
 var moduleAssemblies = new Assembly[]
@@ -91,6 +92,7 @@ var moduleAssemblies = new Assembly[]
     typeof(TicketsModule).Assembly,
     typeof(FSH.Modules.Chat.ChatModule).Assembly,
     typeof(FSH.Modules.Notifications.NotificationsModule).Assembly,
+    typeof(FSH.Modules.Communication.CommunicationModule).Assembly,
 };
 
 builder.AddHeroPlatform(o =>
