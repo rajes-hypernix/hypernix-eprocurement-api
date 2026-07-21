@@ -16,6 +16,9 @@ public sealed class VendorUser : AggregateRoot<Guid>
     public DateTime CreatedUtc { get; private set; }
     public DateTime UpdatedUtc { get; private set; }
 
+    /// <summary>The provisioned FSH Identity user's Id (string — matches AspNetUsers.Id), once vendor login is set up.</summary>
+    public string? IdentityUserId { get; private set; }
+
     private VendorUser() { }
 
     public static VendorUser Create(string code, Guid vendorId, string name, string email)
@@ -35,5 +38,13 @@ public sealed class VendorUser : AggregateRoot<Guid>
             CreatedUtc = now,
             UpdatedUtc = now,
         };
+    }
+
+    /// <summary>Links this vendor-portal login to a provisioned FSH Identity user, once one exists.</summary>
+    public void LinkIdentity(string identityUserId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(identityUserId);
+        IdentityUserId = identityUserId;
+        UpdatedUtc = DateTime.UtcNow;
     }
 }

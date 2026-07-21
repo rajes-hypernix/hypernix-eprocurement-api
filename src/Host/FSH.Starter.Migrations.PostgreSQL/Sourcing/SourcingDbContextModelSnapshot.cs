@@ -23,9 +23,189 @@ namespace FSH.Starter.Migrations.PostgreSQL.Sourcing
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.HasSequence("AwardCodeSeq", "sourcing");
+
+            modelBuilder.HasSequence("BidCodeSeq", "sourcing");
+
             modelBuilder.HasSequence("PrCodeSeq", "sourcing");
 
             modelBuilder.HasSequence("RfqCodeSeq", "sourcing");
+
+            modelBuilder.Entity("FSH.Modules.Sourcing.Domain.Award", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ApprovedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ApproverUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("CreatedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("RfqId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code", "TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Awards_Code");
+
+                    b.HasIndex("RfqId", "TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Awards_RfqId");
+
+                    b.ToTable("Awards", "sourcing");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
+            modelBuilder.Entity("FSH.Modules.Sourcing.Domain.Bid", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Lead")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("RfqId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("SavedDraft")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("Submitted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("SubmittedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("VendorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Warranty")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime?>("WithdrawnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code", "TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Bids_Code");
+
+                    b.HasIndex("RfqId", "VendorId", "TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Bids_RfqId_VendorId");
+
+                    b.ToTable("Bids", "sourcing");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
+            modelBuilder.Entity("FSH.Modules.Sourcing.Domain.Clarification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("Published")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("ReadByBuyer")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("ReadByVendor")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("RecipientUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<string>("Scope")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("SenderKind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("SenderName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("VendorId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Scope", "VendorId");
+
+                    b.ToTable("Clarifications", "sourcing");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
 
             modelBuilder.Entity("FSH.Modules.Sourcing.Domain.PrLine", b =>
                 {
@@ -270,6 +450,13 @@ namespace FSH.Starter.Migrations.PostgreSQL.Sourcing
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
+                    b.Property<string>("CommercialEvaluatorIds")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("CommercialOpened")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("CommercialSections")
                         .IsRequired()
                         .HasColumnType("text");
@@ -314,6 +501,16 @@ namespace FSH.Starter.Migrations.PostgreSQL.Sourcing
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
+
+                    b.Property<bool>("TechFinalized")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("TechnicalEvaluatorIds")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("TechnicalOpened")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("TechnicalSections")
                         .IsRequired()
@@ -466,6 +663,206 @@ namespace FSH.Starter.Migrations.PostgreSQL.Sourcing
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
 
+            modelBuilder.Entity("FSH.Modules.Sourcing.Domain.TechnicalScore", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Criterion")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("EvaluatorId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<Guid>("RfqId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Score")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("VendorId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RfqId", "VendorId", "EvaluatorId", "Criterion", "TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_TechnicalScores_RfqId_VendorId_EvaluatorId_Criterion");
+
+                    b.ToTable("TechnicalScores", "sourcing");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
+            modelBuilder.Entity("FSH.Modules.Sourcing.Domain.Award", b =>
+                {
+                    b.HasOne("FSH.Modules.Sourcing.Domain.Rfq", null)
+                        .WithMany()
+                        .HasForeignKey("RfqId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.OwnsMany("FSH.Modules.Sourcing.Domain.AwardAllocation", "Allocations", b1 =>
+                        {
+                            b1.Property<Guid>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("uuid");
+
+                            b1.Property<Guid>("AwardId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<decimal>("Qty")
+                                .HasPrecision(18, 4)
+                                .HasColumnType("numeric(18,4)");
+
+                            b1.Property<string>("RfqLineCode")
+                                .IsRequired()
+                                .HasMaxLength(50)
+                                .HasColumnType("character varying(50)");
+
+                            b1.Property<decimal>("UnitPrice")
+                                .HasPrecision(18, 4)
+                                .HasColumnType("numeric(18,4)");
+
+                            b1.Property<Guid>("VendorId")
+                                .HasColumnType("uuid");
+
+                            b1.HasKey("Id");
+
+                            b1.HasIndex("AwardId");
+
+                            b1.ToTable("AwardAllocations", "sourcing");
+
+                            b1.WithOwner()
+                                .HasForeignKey("AwardId");
+                        });
+
+                    b.Navigation("Allocations");
+                });
+
+            modelBuilder.Entity("FSH.Modules.Sourcing.Domain.Bid", b =>
+                {
+                    b.HasOne("FSH.Modules.Sourcing.Domain.Rfq", null)
+                        .WithMany()
+                        .HasForeignKey("RfqId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.OwnsMany("FSH.Modules.Sourcing.Domain.BidAnswer", "Answers", b1 =>
+                        {
+                            b1.Property<Guid>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("uuid");
+
+                            b1.Property<Guid>("BidId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<int>("QuestionOrder")
+                                .HasColumnType("integer");
+
+                            b1.Property<string>("Value")
+                                .IsRequired()
+                                .HasMaxLength(2000)
+                                .HasColumnType("character varying(2000)");
+
+                            b1.HasKey("Id");
+
+                            b1.HasIndex("BidId");
+
+                            b1.ToTable("BidAnswers", "sourcing");
+
+                            b1.WithOwner()
+                                .HasForeignKey("BidId");
+                        });
+
+                    b.OwnsMany("FSH.Modules.Sourcing.Domain.BidAttachment", "Files", b1 =>
+                        {
+                            b1.Property<Guid>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("uuid");
+
+                            b1.Property<Guid>("BidId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("FileName")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.HasKey("Id");
+
+                            b1.HasIndex("BidId");
+
+                            b1.ToTable("BidAttachments", "sourcing");
+
+                            b1.WithOwner()
+                                .HasForeignKey("BidId");
+                        });
+
+                    b.OwnsMany("FSH.Modules.Sourcing.Domain.BidLine", "Lines", b1 =>
+                        {
+                            b1.Property<Guid>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("AltItem")
+                                .HasMaxLength(50)
+                                .HasColumnType("character varying(50)");
+
+                            b1.Property<Guid>("BidId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<bool>("Bidding")
+                                .HasColumnType("boolean");
+
+                            b1.Property<string>("ItemCode")
+                                .IsRequired()
+                                .HasMaxLength(50)
+                                .HasColumnType("character varying(50)");
+
+                            b1.Property<bool>("Partial")
+                                .HasColumnType("boolean");
+
+                            b1.Property<decimal>("Price")
+                                .HasPrecision(18, 4)
+                                .HasColumnType("numeric(18,4)");
+
+                            b1.Property<decimal>("Qty")
+                                .HasPrecision(18, 4)
+                                .HasColumnType("numeric(18,4)");
+
+                            b1.HasKey("Id");
+
+                            b1.HasIndex("BidId");
+
+                            b1.ToTable("BidLines", "sourcing");
+
+                            b1.WithOwner()
+                                .HasForeignKey("BidId");
+                        });
+
+                    b.Navigation("Answers");
+
+                    b.Navigation("Files");
+
+                    b.Navigation("Lines");
+                });
+
             modelBuilder.Entity("FSH.Modules.Sourcing.Domain.PrLine", b =>
                 {
                     b.HasOne("FSH.Modules.Sourcing.Domain.PurchaseRequisition", null)
@@ -605,6 +1002,15 @@ namespace FSH.Starter.Migrations.PostgreSQL.Sourcing
                 {
                     b.HasOne("FSH.Modules.Sourcing.Domain.Rfq", null)
                         .WithMany("Invitations")
+                        .HasForeignKey("RfqId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FSH.Modules.Sourcing.Domain.TechnicalScore", b =>
+                {
+                    b.HasOne("FSH.Modules.Sourcing.Domain.Rfq", null)
+                        .WithMany()
                         .HasForeignKey("RfqId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();

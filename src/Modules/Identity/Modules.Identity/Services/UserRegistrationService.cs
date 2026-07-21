@@ -59,11 +59,12 @@ internal sealed class UserRegistrationService(
         string confirmPassword,
         string phoneNumber,
         string origin,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Guid? vendorId = null)
     {
         ValidatePasswordMatch(password, confirmPassword);
 
-        var user = await CreateUserWithPasswordAsync(firstName, lastName, email, userName, password, phoneNumber);
+        var user = await CreateUserWithPasswordAsync(firstName, lastName, email, userName, password, phoneNumber, vendorId);
         await AssignDefaultRoleAndGroupsAsync(user, "System", cancellationToken);
         await SendConfirmationEmailAsync(user, origin, cancellationToken);
         await PublishUserRegisteredAsync(user, "Identity", cancellationToken);
@@ -243,7 +244,8 @@ internal sealed class UserRegistrationService(
         string email,
         string userName,
         string password,
-        string phoneNumber)
+        string phoneNumber,
+        Guid? vendorId = null)
     {
         var user = new FshUser
         {
@@ -255,6 +257,7 @@ internal sealed class UserRegistrationService(
             IsActive = true,
             EmailConfirmed = false,
             PhoneNumberConfirmed = false,
+            VendorId = vendorId,
         };
 
         var result = await userManager.CreateAsync(user, password);

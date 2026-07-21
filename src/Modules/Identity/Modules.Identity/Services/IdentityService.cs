@@ -304,8 +304,8 @@ public sealed class IdentityService : IIdentityService
     private static List<Claim> CreateBasicClaims(FshUser user, string tenantId)
     {
         var fullName = $"{user.FirstName} {user.LastName}".Trim();
-        return
-        [
+        var claims = new List<Claim>
+        {
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             // RFC 7519 short-form sub/name/email emitted alongside legacy ClaimTypes.* so JWT consumers read them per spec.
             // `name` is published explicitly because the default outbound map turns ClaimTypes.Name into `unique_name`, not `name`.
@@ -320,7 +320,14 @@ public sealed class IdentityService : IIdentityService
             new(ClaimTypes.Surname, user.LastName ?? string.Empty),
             new(ClaimConstants.Tenant, tenantId),
             new(ClaimConstants.ImageUrl, user.ImageUrl?.ToString() ?? string.Empty)
-        ];
+        };
+
+        if (user.VendorId is { } vendorId)
+        {
+            claims.Add(new Claim(ClaimConstants.VendorId, vendorId.ToString()));
+        }
+
+        return claims;
     }
 
     private async Task AddRoleClaimsAsync(List<Claim> claims, FshUser user, CancellationToken ct)

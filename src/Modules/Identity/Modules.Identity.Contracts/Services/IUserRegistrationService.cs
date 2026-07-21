@@ -10,6 +10,19 @@ public interface IUserRegistrationService
     /// <summary>
     /// Registers a new user with password.
     /// </summary>
+    /// <param name="firstName">First name.</param>
+    /// <param name="lastName">Last name.</param>
+    /// <param name="email">Email address.</param>
+    /// <param name="userName">Username.</param>
+    /// <param name="password">Password.</param>
+    /// <param name="confirmPassword">Password confirmation.</param>
+    /// <param name="phoneNumber">Phone number.</param>
+    /// <param name="origin">Request base URL used to build the confirmation link.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="vendorId">
+    /// Set only when provisioning a vendor-portal login — stamps <c>FshUser.VendorId</c> so the
+    /// JWT carries a <c>vendorId</c> claim. Null for ordinary internal-user registration.
+    /// </param>
     Task<string> RegisterAsync(
         string firstName,
         string lastName,
@@ -19,7 +32,8 @@ public interface IUserRegistrationService
         string confirmPassword,
         string phoneNumber,
         string origin,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        Guid? vendorId = null);
 
     /// <summary>
     /// Gets or creates a user from an external authentication principal.

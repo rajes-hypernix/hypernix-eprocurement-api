@@ -11,6 +11,7 @@
     <ProjectReference Include="..\..\..\BuildingBlocks\Web\Web.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\Storage\Storage.csproj" />
     <ProjectReference Include="..\Modules.Suppliers.Contracts\Modules.Suppliers.Contracts.csproj" />
+    <ProjectReference Include="..\..\Identity\Modules.Identity.Contracts\Modules.Identity.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

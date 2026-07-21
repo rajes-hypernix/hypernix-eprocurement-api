@@ -16,6 +16,7 @@ public sealed class VendorUserConfiguration : IEntityTypeConfiguration<VendorUse
         builder.Property(x => x.Name).IsRequired().HasMaxLength(200);
         builder.Property(x => x.Email).IsRequired().HasMaxLength(200);
         builder.HasIndex(x => x.Email).IsUnique();
+        builder.Property(x => x.IdentityUserId).HasMaxLength(450);
         builder.HasOne<Vendor>().WithMany().HasForeignKey(x => x.VendorId).OnDelete(DeleteBehavior.Cascade);
         builder.Ignore(x => x.DomainEvents);
     }

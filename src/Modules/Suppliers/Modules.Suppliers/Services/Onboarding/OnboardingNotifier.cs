@@ -37,9 +37,9 @@ public sealed class OnboardingNotifier(IMailService mailService, IOptions<Onboar
     {
         ArgumentNullException.ThrowIfNull(application);
         ArgumentNullException.ThrowIfNull(vendorUser);
-        string setPasswordLink = $"{Options.PortalBaseUrl.TrimEnd('/')}/?vu={vendorUser.Id}#set-password";
         string body = $"Your onboarding application {application.Code} has been approved. " +
-            $"Vendor code: {vendorUser.Code}. Set your portal password here: {setPasswordLink}";
+            $"Vendor code: {vendorUser.Code}. A separate email with a link to set your portal " +
+            "password is on its way.";
         return SendAsync(application.Email, $"Onboarding approved — {application.Code}", body, cancellationToken);
     }
 

@@ -16,6 +16,18 @@ public sealed class SourcingCodeGenerator(SourcingDbContext dbContext) : ISourci
         return $"RFQ-{DateTime.UtcNow.Year}-{next:D4}";
     }
 
+    public async Task<string> NextBidCodeAsync(CancellationToken cancellationToken)
+    {
+        long next = await NextValueAsync("BidCodeSeq", cancellationToken).ConfigureAwait(false);
+        return $"BID-{DateTime.UtcNow.Year}-{next:D4}";
+    }
+
+    public async Task<string> NextAwardCodeAsync(CancellationToken cancellationToken)
+    {
+        long next = await NextValueAsync("AwardCodeSeq", cancellationToken).ConfigureAwait(false);
+        return $"AWD-{DateTime.UtcNow.Year}-{next:D4}";
+    }
+
     private async Task<long> NextValueAsync(string sequenceName, CancellationToken cancellationToken)
     {
         string qualifiedName = $"{SourcingDbContext.Schema}.\"{sequenceName}\"";

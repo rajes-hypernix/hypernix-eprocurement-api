@@ -509,6 +509,10 @@ namespace FSH.Starter.Migrations.PostgreSQL.Suppliers
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<string>("IdentityUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 

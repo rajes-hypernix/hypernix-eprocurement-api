@@ -13,4 +13,6 @@ public sealed record UpdateRfqDraftCommand(
     IReadOnlyList<RfqLineInput> Lines,
     IReadOnlyList<FormItemDto> FormItems,
     IReadOnlyList<string> TechnicalSections,
-    IReadOnlyList<string> CommercialSections) : ICommand<Guid>;
+    IReadOnlyList<string> CommercialSections,
+    IReadOnlyList<string> TechnicalEvaluatorIds,
+    IReadOnlyList<string> CommercialEvaluatorIds) : ICommand<Guid>;

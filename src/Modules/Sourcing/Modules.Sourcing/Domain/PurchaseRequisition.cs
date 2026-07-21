@@ -187,6 +187,15 @@ public sealed class PurchaseRequisition : AggregateRoot<Guid>
         return result;
     }
 
+    /// <summary>InRfq -&gt; Awarded (terminal), on award approval.</summary>
+    public PrLineTransition MarkLineAwarded(Guid lineId, DateTime nowUtc)
+    {
+        var result = GetLine(lineId).MarkAwarded(nowUtc);
+        RecomputeHeaderStatus();
+        UpdatedUtc = nowUtc;
+        return result;
+    }
+
     public PrLineTransition CancelLine(Guid lineId, string? reason, DateTime nowUtc)
     {
         var result = GetLine(lineId).Cancel(reason, nowUtc);

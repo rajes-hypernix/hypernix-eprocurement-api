@@ -23,7 +23,9 @@ public sealed class UpdateRfqDraftCommandHandler(SourcingDbContext dbContext)
         var lines = command.Lines.Select(l => new RfqLine(l.LineCode, l.ItemCode, l.Description, l.Qty, l.Uom, l.PrRef, l.SourcePrLineIds?.ToList()));
         var formItems = command.FormItems.Select(f => new FormItem(f.Kind, f.Group, f.Section, f.Label, f.Type, f.Required, f.ConfigJson, f.Help, f.Order));
 
-        rfq.UpdateDraft(command.Title, envelope, command.Currency, command.OpensUtc, command.ClosesUtc, [.. lines], [.. formItems], command.TechnicalSections, command.CommercialSections);
+        rfq.UpdateDraft(
+            command.Title, envelope, command.Currency, command.OpensUtc, command.ClosesUtc, [.. lines], [.. formItems],
+            command.TechnicalSections, command.CommercialSections, command.TechnicalEvaluatorIds, command.CommercialEvaluatorIds);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return rfq.Id;

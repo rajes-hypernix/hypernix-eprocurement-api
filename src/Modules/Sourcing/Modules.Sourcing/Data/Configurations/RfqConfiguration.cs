@@ -35,6 +35,8 @@ public sealed class RfqConfiguration : IEntityTypeConfiguration<Rfq>
         builder.Property(x => x.PrRefs).HasConversion(StringListConverter).Metadata.SetValueComparer(StringListComparer);
         builder.Property(x => x.TechnicalSections).HasConversion(StringListConverter).Metadata.SetValueComparer(StringListComparer);
         builder.Property(x => x.CommercialSections).HasConversion(StringListConverter).Metadata.SetValueComparer(StringListComparer);
+        builder.Property(x => x.TechnicalEvaluatorIds).HasConversion(StringListConverter).Metadata.SetValueComparer(StringListComparer);
+        builder.Property(x => x.CommercialEvaluatorIds).HasConversion(StringListConverter).Metadata.SetValueComparer(StringListComparer);
 
         builder.OwnsMany(x => x.Lines, o =>
         {

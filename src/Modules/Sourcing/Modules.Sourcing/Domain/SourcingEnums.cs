@@ -17,4 +17,11 @@ public enum RfqStatus { Draft, Open, Closed, Evaluation, Awarded, Cancelled }
 public enum RfqInvitationStatus { Invited, Viewed, IntendToBid, Declined, BidSubmitted, Rescinded }
 
 /// <summary>Append-only business-fact log, separate from generic audit entries.</summary>
-public enum RfqEventType { Released, Extended, VendorInvited, InvitationRescinded, VendorDeclined, DeclineReversed, BidWithdrawn, Closed, Cancelled }
+public enum RfqEventType { Released, Extended, VendorInvited, InvitationRescinded, VendorDeclined, DeclineReversed, BidSubmitted, BidWithdrawn, Closed, Cancelled, Awarded }
+
+/// <summary>The 4 fixed technical-evaluation criteria — weights live on <see cref="TechnicalCriteria.Weights"/>.</summary>
+public enum TechnicalCriterion { Compliance, Experience, Delivery, QA }
+
+public enum AwardStatus { PendingApproval, Approved }
+
+public enum ClarificationSenderKind { Buyer, Vendor }

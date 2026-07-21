@@ -1,5 +1,8 @@
 using FSH.Framework.Core.Context;
 using FSH.Framework.Core.Exceptions;
+using FSH.Framework.Web.Origin;
+using FSH.Modules.Identity.Contracts.DTOs;
+using FSH.Modules.Identity.Contracts.Services;
 using FSH.Modules.Suppliers.Contracts.Dtos;
 using FSH.Modules.Suppliers.Contracts.v1.Onboarding;
 using FSH.Modules.Suppliers.Data;
@@ -8,6 +11,8 @@ using FSH.Modules.Suppliers.Features.v1.Vendors;
 using FSH.Modules.Suppliers.Services.Onboarding;
 using Mediator;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using System.Security.Cryptography;
 
 namespace FSH.Modules.Suppliers.Features.v1.Onboarding.ApproveOnboardingApplication;
 
@@ -15,12 +20,19 @@ namespace FSH.Modules.Suppliers.Features.v1.Onboarding.ApproveOnboardingApplicat
 /// Promotion order matters: the in-memory Vendor/VendorUser are fully built BEFORE
 /// <c>application.Approve(...)</c> is called, so an illegal or replayed approval never partially
 /// writes the master — nothing is added to the DbContext until the domain guard has passed.
+/// Vendor Identity provisioning (real FSH Identity login) happens AFTER the Suppliers rows are
+/// committed: Suppliers state is the source of truth, and login provisioning is a best-effort
+/// follow-up — a vendor with no login yet is recoverable, a login pointing at nothing is not.
 /// </summary>
 public sealed class ApproveOnboardingApplicationCommandHandler(
     SuppliersDbContext dbContext,
     ISuppliersCodeGenerator codeGenerator,
     ICurrentUser currentUser,
-    IOnboardingNotifier notifier)
+    IOnboardingNotifier notifier,
+    IUserRegistrationService userRegistrationService,
+    IUserRoleService userRoleService,
+    IUserPasswordService userPasswordService,
+    IOptions<OriginOptions> originOptions)
     : ICommandHandler<ApproveOnboardingApplicationCommand, OnboardingApproveResultDto>
 {
     public async ValueTask<OnboardingApproveResultDto> Handle(ApproveOnboardingApplicationCommand command, CancellationToken cancellationToken)
@@ -95,9 +107,68 @@ public sealed class ApproveOnboardingApplicationCommandHandler(
         dbContext.VendorUsers.Add(vendorUser);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
+        await ProvisionVendorLoginAsync(vendorUser, cancellationToken).ConfigureAwait(false);
         await notifier.SendApprovedAsync(application, vendorUser, cancellationToken).ConfigureAwait(false);
 
         return new OnboardingApproveResultDto(vendor.Id, vendor.Code, duplicateWarning);
+    }
+
+    /// <summary>
+    /// Provisions a real FSH Identity login for the vendor: registers a password-based user
+    /// carrying <c>VendorId</c> (so their JWT gets a <c>vendorId</c> claim), skips the
+    /// self-service email-confirmation step (the vendor never requested this registration),
+    /// swaps the auto-assigned Basic role for the non-default Vendor role, and sends a real
+    /// forgot-password email so the vendor sets their own password — replacing the old system's
+    /// dead "set your password" link with Identity's existing, tested reset flow.
+    /// </summary>
+    private async Task ProvisionVendorLoginAsync(VendorUser vendorUser, CancellationToken cancellationToken)
+    {
+        var origin = originOptions.Value?.OriginUrl?.ToString();
+        if (string.IsNullOrWhiteSpace(origin))
+        {
+            throw new InvalidOperationException("Origin URL is not configured.");
+        }
+
+        string tempPassword = GenerateTempPassword();
+        string[] nameParts = vendorUser.Name.Split(' ', 2, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        string firstName = nameParts.Length > 0 ? nameParts[0] : vendorUser.Name;
+        string lastName = nameParts.Length > 1 ? nameParts[1] : string.Empty;
+
+        string identityUserId = await userRegistrationService.RegisterAsync(
+            firstName,
+            lastName,
+            vendorUser.Email,
+            vendorUser.Code,
+            tempPassword,
+            tempPassword,
+            phoneNumber: string.Empty,
+            origin,
+            cancellationToken,
+            vendorId: vendorUser.VendorId).ConfigureAwait(false);
+
+        await userRegistrationService.AdminConfirmEmailAsync(identityUserId, cancellationToken).ConfigureAwait(false);
+
+        await userRoleService.AssignRolesAsync(
+            identityUserId,
+            [
+                new UserRoleDto { RoleName = "Vendor", Enabled = true },
+                new UserRoleDto { RoleName = "Basic", Enabled = false },
+            ],
+            cancellationToken).ConfigureAwait(false);
+
+        await userPasswordService.ForgotPasswordAsync(vendorUser.Email, origin, cancellationToken).ConfigureAwait(false);
+
+        vendorUser.LinkIdentity(identityUserId);
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private static string GenerateTempPassword()
+    {
+        string token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(16))
+            .Replace("+", "A", StringComparison.Ordinal)
+            .Replace("/", "b", StringComparison.Ordinal)
+            .Replace("=", string.Empty, StringComparison.Ordinal);
+        return $"Tv1{token}"[..16];
     }
 
     private static void PromoteContactsAndAddresses(Domain.Onboarding.VendorOnboardingApplication application, Vendor vendor)

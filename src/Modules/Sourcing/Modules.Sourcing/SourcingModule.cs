@@ -4,6 +4,25 @@ using FSH.Framework.Shared.Constants;
 using FSH.Framework.Web.Modules;
 using FSH.Modules.Sourcing.Contracts.Authorization;
 using FSH.Modules.Sourcing.Data;
+using FSH.Modules.Sourcing.Features.v1.Bids.GetMyBid;
+using FSH.Modules.Sourcing.Features.v1.Bids.ListMyInvitations;
+using FSH.Modules.Sourcing.Features.v1.Bids.SaveBidDraft;
+using FSH.Modules.Sourcing.Features.v1.Bids.SubmitBid;
+using FSH.Modules.Sourcing.Features.v1.Bids.WithdrawBid;
+using FSH.Modules.Sourcing.Features.v1.Clarifications.GetClarificationThread;
+using FSH.Modules.Sourcing.Features.v1.Clarifications.ListClarificationThreads;
+using FSH.Modules.Sourcing.Features.v1.Clarifications.SendClarification;
+using FSH.Modules.Sourcing.Features.v1.Awards.ApproveAward;
+using FSH.Modules.Sourcing.Features.v1.Awards.GetAward;
+using FSH.Modules.Sourcing.Features.v1.Awards.GetAwardEligibility;
+using FSH.Modules.Sourcing.Features.v1.Awards.ListAwards;
+using FSH.Modules.Sourcing.Features.v1.Awards.SubmitAward;
+using FSH.Modules.Sourcing.Features.v1.Evaluation.FinalizeTechnical;
+using FSH.Modules.Sourcing.Features.v1.Evaluation.GetBidOpening;
+using FSH.Modules.Sourcing.Features.v1.Evaluation.GetTechnicalEval;
+using FSH.Modules.Sourcing.Features.v1.Evaluation.OpenCommercialEnvelope;
+using FSH.Modules.Sourcing.Features.v1.Evaluation.OpenTechnicalEnvelope;
+using FSH.Modules.Sourcing.Features.v1.Evaluation.SetScore;
 using FSH.Modules.Sourcing.Features.v1.Requisitions.CancelRequisition;
 using FSH.Modules.Sourcing.Features.v1.Requisitions.CancelRequisitionLine;
 using FSH.Modules.Sourcing.Features.v1.Requisitions.CreateRequisition;
@@ -91,5 +110,30 @@ public sealed class SourcingModule : IModule
         group.MapCancelRfqEndpoint();
         group.MapListRfqsEndpoint();
         group.MapGetRfqByIdEndpoint();
+
+        // Vendor-portal, bare RequireAuthorization (no RequirePermission) — scoped by the
+        // caller's vendorId claim in-handler, per the Bid module's authorization convention.
+        group.MapListMyInvitationsEndpoint();
+        group.MapGetMyBidEndpoint();
+        group.MapSaveBidDraftEndpoint();
+        group.MapSubmitBidEndpoint();
+        group.MapWithdrawBidEndpoint();
+
+        group.MapGetBidOpeningEndpoint();
+        group.MapOpenTechnicalEnvelopeEndpoint();
+        group.MapOpenCommercialEnvelopeEndpoint();
+        group.MapGetTechnicalEvalEndpoint();
+        group.MapSetScoreEndpoint();
+        group.MapFinalizeTechnicalEndpoint();
+
+        group.MapGetAwardEligibilityEndpoint();
+        group.MapGetAwardEndpoint();
+        group.MapListAwardsEndpoint();
+        group.MapSubmitAwardEndpoint();
+        group.MapApproveAwardEndpoint();
+
+        group.MapListClarificationThreadsEndpoint();
+        group.MapGetClarificationThreadEndpoint();
+        group.MapSendClarificationEndpoint();
     }
 }

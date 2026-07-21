@@ -1,0 +1,98 @@
+using FSH.Framework.Core.Domain;
+
+namespace FSH.Modules.Sourcing.Domain;
+
+/// <summary>
+/// The single award for an RFQ — one row per RFQ, resubmittable while PendingApproval.
+/// Approval requires Delegation-of-Authority (gated by <c>SourcingPermissions.Award.Approve</c> at
+/// the endpoint) and segregation of duties (enforced here — the approver must differ from the
+/// submitter). No <c>PurchaseOrder</c> is generated here — that's a future Procurement module,
+/// reading <see cref="Allocations"/> once it exists.
+/// </summary>
+public sealed class Award : AggregateRoot<Guid>
+{
+    private readonly List<AwardAllocation> _allocations = [];
+
+    public string Code { get; private set; } = default!;
+    public Guid RfqId { get; private set; }
+    public AwardStatus Status { get; private set; } = AwardStatus.PendingApproval;
+    public string CreatedByUserId { get; private set; } = default!;
+    public string? ApproverUserId { get; private set; }
+    public DateTime? ApprovedUtc { get; private set; }
+    public DateTime CreatedUtc { get; private set; }
+    public DateTime UpdatedUtc { get; private set; }
+
+    public IReadOnlyList<AwardAllocation> Allocations => _allocations;
+
+    /// <summary>Computed from allocations, never persisted.</summary>
+    public decimal TotalValue => _allocations.Sum(a => a.Qty * a.UnitPrice);
+
+    private Award() { }
+
+    public static Award Create(string code, Guid rfqId, string createdByUserId, IReadOnlyList<AwardAllocation> allocations)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(code);
+        ArgumentException.ThrowIfNullOrWhiteSpace(createdByUserId);
+        ArgumentNullException.ThrowIfNull(allocations);
+        if (allocations.Count == 0)
+        {
+            throw new SourcingRuleException("An award needs at least one allocation.");
+        }
+
+        var now = DateTime.UtcNow;
+        var award = new Award
+        {
+            Id = Guid.CreateVersion7(),
+            Code = code.Trim(),
+            RfqId = rfqId,
+            CreatedByUserId = createdByUserId,
+            CreatedUtc = now,
+            UpdatedUtc = now,
+        };
+        award._allocations.AddRange(allocations);
+        return award;
+    }
+
+    /// <summary>Resubmission — replaces allocations wholesale and resets the approval fields.</summary>
+    public void MarkPendingApproval(IReadOnlyList<AwardAllocation> allocations)
+    {
+        ArgumentNullException.ThrowIfNull(allocations);
+        if (allocations.Count == 0)
+        {
+            throw new SourcingRuleException("An award needs at least one allocation.");
+        }
+
+        if (Status == AwardStatus.Approved)
+        {
+            throw new SourcingRuleException("An approved award cannot be resubmitted.");
+        }
+
+        _allocations.Clear();
+        _allocations.AddRange(allocations);
+        Status = AwardStatus.PendingApproval;
+        ApproverUserId = null;
+        ApprovedUtc = null;
+        UpdatedUtc = DateTime.UtcNow;
+    }
+
+    /// <summary>Segregation of duties: the approver must differ from whoever submitted the award.</summary>
+    public void Approve(string approverUserId, DateTime nowUtc)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(approverUserId);
+
+        if (Status != AwardStatus.PendingApproval)
+        {
+            throw new SourcingRuleException($"Cannot approve an award that is {Status}.");
+        }
+
+        if (string.Equals(approverUserId, CreatedByUserId, StringComparison.Ordinal))
+        {
+            throw new SourcingRuleException("The approver must be different from the person who submitted the award (segregation of duties).");
+        }
+
+        Status = AwardStatus.Approved;
+        ApproverUserId = approverUserId;
+        ApprovedUtc = nowUtc;
+        UpdatedUtc = nowUtc;
+    }
+}

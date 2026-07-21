@@ -35,6 +35,17 @@ public sealed class Rfq : AggregateRoot<Guid>
     public List<string> PrRefs { get; private set; } = [];
     public List<string> TechnicalSections { get; private set; } = [];
     public List<string> CommercialSections { get; private set; } = [];
+
+    /// <summary>FSH Identity user ids assigned to score the sealed technical envelope.</summary>
+    public List<string> TechnicalEvaluatorIds { get; private set; } = [];
+
+    /// <summary>FSH Identity user ids permitted to open the sealed commercial envelope.</summary>
+    public List<string> CommercialEvaluatorIds { get; private set; } = [];
+
+    public bool TechnicalOpened { get; private set; }
+    public bool TechFinalized { get; private set; }
+    public bool CommercialOpened { get; private set; }
+
     public DateTime CreatedUtc { get; private set; }
     public DateTime UpdatedUtc { get; private set; }
 
@@ -42,6 +53,13 @@ public sealed class Rfq : AggregateRoot<Guid>
     public IReadOnlyList<FormItem> FormItems => _formItems;
     public IReadOnlyList<RfqInvitation> Invitations => _invitations;
     public IReadOnlyList<RfqEvent> Events => _events;
+
+    /// <summary>Single envelopes were never sealed on price; Dual only reveals pricing once the commercial envelope opens.</summary>
+    public bool CommercialRevealed => Envelope == RfqEnvelope.Single || CommercialOpened;
+
+    /// <summary>Vendors still meaningfully part of this RFQ — everyone invited except a Rescinded invitation.</summary>
+    public IReadOnlyList<Guid> LiveInvitedVendorIds =>
+        [.. _invitations.Where(i => i.Status != RfqInvitationStatus.Rescinded).Select(i => i.VendorId)];
 
     private Rfq() { }
 
@@ -83,7 +101,9 @@ public sealed class Rfq : AggregateRoot<Guid>
         IReadOnlyList<RfqLine> lines,
         IReadOnlyList<FormItem> formItems,
         IReadOnlyList<string> technicalSections,
-        IReadOnlyList<string> commercialSections)
+        IReadOnlyList<string> commercialSections,
+        IReadOnlyList<string> technicalEvaluatorIds,
+        IReadOnlyList<string> commercialEvaluatorIds)
     {
         RequireStatus(RfqStatus.Draft, "update");
         Title = title;
@@ -97,6 +117,89 @@ public sealed class Rfq : AggregateRoot<Guid>
         _formItems.AddRange(formItems);
         TechnicalSections = [.. technicalSections];
         CommercialSections = [.. commercialSections];
+        TechnicalEvaluatorIds = [.. technicalEvaluatorIds];
+        CommercialEvaluatorIds = [.. commercialEvaluatorIds];
+        UpdatedUtc = DateTime.UtcNow;
+    }
+
+    /// <summary>Dual-only, requires Closed/Evaluation (not Draft/Open) — one-time gate.</summary>
+    public void OpenTechnicalEnvelope()
+    {
+        if (Envelope != RfqEnvelope.Dual)
+        {
+            throw new SourcingRuleException("Only Dual-envelope RFQs have a separate technical envelope.");
+        }
+
+        if (Status is not (RfqStatus.Closed or RfqStatus.Evaluation))
+        {
+            throw new SourcingRuleException($"Cannot open the technical envelope while the RFQ is {Status}.");
+        }
+
+        if (TechnicalOpened)
+        {
+            throw new SourcingRuleException("The technical envelope has already been opened.");
+        }
+
+        TechnicalOpened = true;
+        UpdatedUtc = DateTime.UtcNow;
+    }
+
+    /// <summary>Single: no gate beyond not Draft/Open. Dual: requires <see cref="TechFinalized"/> first (sealed-bid sequencing).</summary>
+    public void OpenCommercialEnvelope()
+    {
+        if (Status is not (RfqStatus.Closed or RfqStatus.Evaluation))
+        {
+            throw new SourcingRuleException($"Cannot open the commercial envelope while the RFQ is {Status}.");
+        }
+
+        if (Envelope == RfqEnvelope.Dual && !TechFinalized)
+        {
+            throw new SourcingRuleException("Finalize the technical evaluation before opening the commercial envelope.");
+        }
+
+        if (CommercialOpened)
+        {
+            throw new SourcingRuleException("The commercial envelope has already been opened.");
+        }
+
+        CommercialOpened = true;
+        UpdatedUtc = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Requires the technical envelope open, at least one submitted bid, and every submitted
+    /// vendor fully scored. <paramref name="hasSubmittedBids"/>/<paramref name="allScored"/> are
+    /// supplied by the caller — Bid/TechnicalScore live in separate aggregates this domain can't
+    /// query directly.
+    /// </summary>
+    public void FinalizeTechnical(bool hasSubmittedBids, bool allScored)
+    {
+        if (Envelope != RfqEnvelope.Dual)
+        {
+            throw new SourcingRuleException("Only Dual-envelope RFQs have a technical finalization step.");
+        }
+
+        if (!TechnicalOpened)
+        {
+            throw new SourcingRuleException("Open the technical envelope before finalizing.");
+        }
+
+        if (TechFinalized)
+        {
+            throw new SourcingRuleException("The technical evaluation has already been finalized.");
+        }
+
+        if (!hasSubmittedBids)
+        {
+            throw new SourcingRuleException("No submitted bids to finalize.");
+        }
+
+        if (!allScored)
+        {
+            throw new SourcingRuleException("Every submitted bid must be fully scored before finalizing.");
+        }
+
+        TechFinalized = true;
         UpdatedUtc = DateTime.UtcNow;
     }
 
@@ -277,6 +380,39 @@ public sealed class Rfq : AggregateRoot<Guid>
         FindInvitation(vendorId).ToDeclined(reasonCode, note, nowUtc);
         UpdatedUtc = nowUtc;
         return AppendEvent(RfqEventType.VendorDeclined, nowUtc, vendorId: vendorId, reasonCode: reasonCode, reasonNote: note);
+    }
+
+    /// <summary>Any non-terminal state -&gt; Awarded, once the award is approved.</summary>
+    public RfqEvent MarkAwarded(DateTime nowUtc, string? actorUserId)
+    {
+        if (Terminal.Contains(Status))
+        {
+            throw new SourcingRuleException($"Cannot award an RFQ that is already {Status}.");
+        }
+
+        Status = RfqStatus.Awarded;
+        UpdatedUtc = nowUtc;
+        return AppendEvent(RfqEventType.Awarded, nowUtc, actorUserId: actorUserId);
+    }
+
+    /// <summary>T5 — driven by <c>Bid.Submit</c> in the same transaction. Requires Open + before close.</summary>
+    public RfqEvent RecordBidSubmitted(Guid vendorId, DateTime nowUtc, string? actorVendorUserId)
+    {
+        RequireOpenBeforeClose(nowUtc, "submit a bid on");
+        FindInvitation(vendorId).ToBidSubmitted();
+        UpdatedUtc = nowUtc;
+        return AppendEvent(RfqEventType.BidSubmitted, nowUtc, vendorId: vendorId, actorVendorUserId: actorVendorUserId);
+    }
+
+    /// <summary>
+    /// T6 — driven by <c>Bid.Withdraw</c> in the same transaction. No open-window guard: a vendor
+    /// may formally withdraw even after close, independent of the RFQ's own status.
+    /// </summary>
+    public RfqEvent WithdrawInvitationBid(Guid vendorId, DateTime nowUtc, string? actorVendorUserId)
+    {
+        FindInvitation(vendorId).ToIntendFromBid();
+        UpdatedUtc = nowUtc;
+        return AppendEvent(RfqEventType.BidWithdrawn, nowUtc, vendorId: vendorId, actorVendorUserId: actorVendorUserId);
     }
 
     private RfqInvitation FindInvitation(Guid vendorId) =>

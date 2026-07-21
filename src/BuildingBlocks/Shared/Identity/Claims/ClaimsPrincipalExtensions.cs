@@ -33,6 +33,13 @@ public static class ClaimsPrincipalExtensions
     public static string? GetUserId(this ClaimsPrincipal principal) =>
         principal?.FindFirstValue(ClaimTypes.NameIdentifier);
 
+    // Retrieves the vendor-portal VendorId claim, present only for vendor-portal users.
+    public static Guid? GetVendorId(this ClaimsPrincipal principal)
+    {
+        var value = principal?.FindFirstValue(CustomClaims.VendorId);
+        return Guid.TryParse(value, out var vendorId) ? vendorId : null;
+    }
+
     // Retrieves the user's image URL as Uri
     public static Uri? GetImageUrl(this ClaimsPrincipal principal)
     {

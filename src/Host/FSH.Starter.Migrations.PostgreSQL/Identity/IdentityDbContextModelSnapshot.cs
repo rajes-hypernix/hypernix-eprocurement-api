@@ -247,6 +247,9 @@ namespace FSH.Starter.Migrations.PostgreSQL.Identity
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
+                    b.Property<Guid?>("VendorId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
                     b.HasIndex("NormalizedEmail")

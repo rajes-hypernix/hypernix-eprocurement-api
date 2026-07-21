@@ -25,6 +25,10 @@ public sealed class SourcingDbContext : BaseDbContext
     public DbSet<Rfq> Rfqs => Set<Rfq>();
     public DbSet<RfqInvitation> RfqInvitations => Set<RfqInvitation>();
     public DbSet<RfqEvent> RfqEvents => Set<RfqEvent>();
+    public DbSet<Bid> Bids => Set<Bid>();
+    public DbSet<TechnicalScore> TechnicalScores => Set<TechnicalScore>();
+    public DbSet<Award> Awards => Set<Award>();
+    public DbSet<Clarification> Clarifications => Set<Clarification>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -33,6 +37,8 @@ public sealed class SourcingDbContext : BaseDbContext
 
         modelBuilder.HasSequence<long>("PrCodeSeq", Schema).StartsAt(1);
         modelBuilder.HasSequence<long>("RfqCodeSeq", Schema).StartsAt(1);
+        modelBuilder.HasSequence<long>("BidCodeSeq", Schema).StartsAt(1);
+        modelBuilder.HasSequence<long>("AwardCodeSeq", Schema).StartsAt(1);
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(SourcingDbContext).Assembly);
         base.OnModelCreating(modelBuilder);

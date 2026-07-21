@@ -17,6 +17,9 @@ public class FshUser : IdentityUser, IHasDomainEvents
 
     public string? ObjectId { get; set; }
 
+    /// <summary>Set only for vendor-portal logins — links this Identity user to a Suppliers Vendor.</summary>
+    public Guid? VendorId { get; set; }
+
     /// <summary>Timestamp when the user last changed their password</summary>
     public DateTime LastPasswordChangeDate { get; set; } = TimeProvider.System.GetUtcNow().UtcDateTime;
 
