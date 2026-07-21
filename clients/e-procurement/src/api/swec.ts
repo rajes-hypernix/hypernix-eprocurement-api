@@ -12,7 +12,7 @@ export interface SwecIndex {
   path: (code: string) => string;
 }
 
-function buildIndex(rows: SwecCategoryDto[]): SwecIndex {
+export function buildSwecIndex(rows: SwecCategoryDto[]): SwecIndex {
   const byCode = new Map<string, SwecCategoryDto>();
   for (const r of rows) if (r.code) byCode.set(r.code, r);
 
@@ -37,6 +37,6 @@ export function useSwec() {
     queryKey: ["swec"],
     queryFn: listSwecCategories,
     staleTime: Infinity,
-    select: buildIndex,
+    select: buildSwecIndex,
   });
 }

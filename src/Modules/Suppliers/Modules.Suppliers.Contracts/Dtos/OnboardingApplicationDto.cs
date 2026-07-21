@@ -1,5 +1,9 @@
 namespace FSH.Modules.Suppliers.Contracts.Dtos;
 
+/// <summary>
+/// Slim application summary used by resolve / start-review / clarify / reject / resubmit.
+/// Rounds are included so the anonymous clarification-resubmit UI can render open items.
+/// </summary>
 public sealed record OnboardingApplicationDto(
     Guid Id,
     string Code,
@@ -8,4 +12,6 @@ public sealed record OnboardingApplicationDto(
     string Name,
     string Email,
     DateTime CreatedUtc,
-    DateTime? SubmittedUtc);
+    DateTime? SubmittedUtc,
+    IReadOnlyList<Guid> SelectedTemplateIds,
+    IReadOnlyList<OnboardingRoundDto> Rounds);

@@ -14,7 +14,11 @@ export function VendorsPage() {
 
   if (route === "new") {
     return (
-      <NewVendorChooserPage onManual={() => go("vendors/manual")} onBack={() => go("vendors")} />
+      <NewVendorChooserPage
+        onManual={() => go("vendors/manual")}
+        onInvite={() => go("onboarding/invite")}
+        onBack={() => go("vendors")}
+      />
     );
   }
   if (route === "manual") {

@@ -99,6 +99,7 @@ export const VENDOR_CENTER_TABS: CenterTab[] = [
 export const BUYER_NAV: NavGroup[] = tabsToNavGroups(BUYER_CENTER_TABS);
 export const VENDOR_NAV: NavGroup[] = tabsToNavGroups(VENDOR_CENTER_TABS);
 
+/** Buyer labels win on shared keys (e.g. dashboard) so PlaceholderPage titles stay correct for buyers. */
 export const NAV_LABELS: Record<string, string> = Object.fromEntries(
-  [...BUYER_NAV, ...VENDOR_NAV].flatMap((g) => g.items.map((i) => [i.key, i.label])),
+  [...VENDOR_NAV, ...BUYER_NAV].flatMap((g) => g.items.map((i) => [i.key, i.label])),
 );

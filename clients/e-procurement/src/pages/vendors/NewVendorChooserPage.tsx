@@ -1,13 +1,15 @@
 import { Icon } from "@/components/Icon";
 
 /**
- * New Vendor chooser — manual entry now; invite onboarding in Phase 3.
+ * New Vendor chooser — manual entry or invite onboarding.
  */
 export function NewVendorChooserPage({
   onManual,
+  onInvite,
   onBack,
 }: {
   onManual: () => void;
+  onInvite: () => void;
   onBack: () => void;
 }) {
   return (
@@ -36,7 +38,7 @@ export function NewVendorChooserPage({
             Best for a known supplier you’re setting up quickly.
           </p>
         </button>
-        <button type="button" className="choice" disabled title="Coming in Phase 3 — Onboarding">
+        <button type="button" className="choice" onClick={onInvite}>
           <div className="ci">
             <Icon name="send" size={22} />
           </div>
@@ -44,9 +46,6 @@ export function NewVendorChooserPage({
           <p>
             Send a secure link. The vendor fills their own profile, financials and your selected
             questions, then it routes to you to review and approve.
-          </p>
-          <p className="hint" style={{ marginTop: 8 }}>
-            Coming in Phase 3
           </p>
         </button>
       </div>

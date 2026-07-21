@@ -34,7 +34,9 @@ internal static class OnboardingDtoMapper
             application.Name,
             application.Email,
             application.CreatedUtc,
-            application.SubmittedUtc);
+            application.SubmittedUtc,
+            application.SelectedTemplateIds,
+            [.. application.Rounds.OrderBy(r => r.RoundNo).Select(ToRoundDto)]);
     }
 
     internal static OnboardingQueueItemDto ToQueueItemDto(VendorOnboardingApplication application)
@@ -113,6 +115,7 @@ internal static class OnboardingDtoMapper
             ToFinancialViewDto(application.Financial),
             ToDocumentDtos(application.Documents),
             [.. application.Rounds.OrderBy(r => r.RoundNo).Select(ToRoundDto)],
+            [.. application.Answers.Select(a => new OnboardingAnswerDto(a.FormTemplateId, a.QuestionOrder, a.Value))],
             duplicateWarning,
             application.CreatedUtc,
             application.SubmittedUtc,

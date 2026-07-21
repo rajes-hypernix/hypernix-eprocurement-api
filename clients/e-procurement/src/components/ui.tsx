@@ -37,3 +37,74 @@ export function Notice({
     </div>
   );
 }
+
+export function Modal({
+  title,
+  icon = "check",
+  children,
+  footer,
+}: {
+  title: ReactNode;
+  icon?: string;
+  children: ReactNode;
+  footer: ReactNode;
+}) {
+  return (
+    <div className="modal-backdrop" role="dialog" aria-modal="true">
+      <div className="modal">
+        <div className="mhead">
+          <Icon name={icon} size={20} />
+          <h3>{title}</h3>
+        </div>
+        <div className="mbody">{children}</div>
+        <div className="mfoot">{footer}</div>
+      </div>
+    </div>
+  );
+}
+
+export function ConfirmModal({
+  title,
+  icon = "check",
+  body,
+  confirmLabel,
+  cancelLabel = "Cancel",
+  danger = false,
+  busy = false,
+  onCancel,
+  onConfirm,
+}: {
+  title: ReactNode;
+  icon?: string;
+  body: ReactNode;
+  confirmLabel: string;
+  cancelLabel?: string;
+  danger?: boolean;
+  busy?: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <Modal
+      title={title}
+      icon={icon}
+      footer={
+        <>
+          <button type="button" className="btn btn-out" onClick={onCancel}>
+            {cancelLabel}
+          </button>
+          <button
+            type="button"
+            className={`btn btn-pri${danger ? " btn-danger" : ""}`}
+            disabled={busy}
+            onClick={onConfirm}
+          >
+            {confirmLabel}
+          </button>
+        </>
+      }
+    >
+      {typeof body === "string" ? <p className="hint" style={{ marginTop: 0 }}>{body}</p> : body}
+    </Modal>
+  );
+}

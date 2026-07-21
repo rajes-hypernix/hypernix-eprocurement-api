@@ -12,7 +12,7 @@ public sealed class OnboardingNotifier(IMailService mailService, IOptions<Onboar
     private OnboardingOptions Options => options.Value;
 
     public string BuildMagicLink(string rawToken) =>
-        $"{Options.PortalBaseUrl.TrimEnd('/')}/onboarding?token={Uri.EscapeDataString(rawToken)}";
+        $"{Options.PortalBaseUrl.TrimEnd('/')}/onboard?token={Uri.EscapeDataString(rawToken)}";
 
     public Task SendInvitationAsync(VendorOnboardingInvitation invitation, string rawToken, CancellationToken cancellationToken)
     {

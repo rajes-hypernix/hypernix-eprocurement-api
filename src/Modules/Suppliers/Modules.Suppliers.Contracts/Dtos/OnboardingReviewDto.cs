@@ -26,6 +26,7 @@ public sealed record OnboardingReviewDto(
     OnboardingFinancialViewDto? Financial,
     IReadOnlyList<OnboardingDocumentDto> Documents,
     IReadOnlyList<OnboardingRoundDto> Rounds,
+    IReadOnlyList<OnboardingAnswerDto> Answers,
     string? DuplicateWarning,
     DateTime CreatedUtc,
     DateTime? SubmittedUtc,

@@ -50,6 +50,11 @@ export function VendorDetailPage({ id, onBack }: { id: string; onBack: () => voi
   if (isPending || !v) return <Spinner label="Loading vendor…" />;
 
   const cats = v.categories ?? [];
+  const contacts = v.contacts ?? [];
+  const addresses = v.addresses ?? [];
+  const bankAccounts = v.bankAccounts ?? [];
+  const certifications = v.certifications ?? [];
+  const currencies = v.currencies ?? [];
   const displayName = v.registeredName || v.name;
 
   const content: Record<string, React.ReactNode> = {
@@ -118,11 +123,11 @@ export function VendorDetailPage({ id, onBack }: { id: string; onBack: () => voi
         <div className="chead">
           <h3>Contacts</h3>
           <div className="spacer" />
-          <span className="hint">{v.contacts.length} contact(s)</span>
+          <span className="hint">{contacts.length} contact(s)</span>
         </div>
         <div className="cbody">
-          {v.contacts.length === 0 ? <p className="hint">No contacts on file.</p> : null}
-          {v.contacts.map((c, i) => (
+          {contacts.length === 0 ? <p className="hint">No contacts on file.</p> : null}
+          {contacts.map((c, i) => (
             <div className="ctc" key={i}>
               <div className="ctc-av">{initials(c.name)}</div>
               <div style={{ flex: 1 }}>
@@ -145,11 +150,11 @@ export function VendorDetailPage({ id, onBack }: { id: string; onBack: () => voi
         <div className="chead">
           <h3>Addresses</h3>
           <div className="spacer" />
-          <span className="hint">{v.addresses.length} address(es)</span>
+          <span className="hint">{addresses.length} address(es)</span>
         </div>
         <div className="cbody grid g2">
-          {v.addresses.length === 0 ? <p className="hint">No addresses on file.</p> : null}
-          {v.addresses.map((a, i) => (
+          {addresses.length === 0 ? <p className="hint">No addresses on file.</p> : null}
+          {addresses.map((a, i) => (
             <div className="addr" key={i}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                 <span className="pill b-grey">{a.type}</span>
@@ -175,8 +180,8 @@ export function VendorDetailPage({ id, onBack }: { id: string; onBack: () => voi
             <h3>Transacting Currencies</h3>
           </div>
           <div className="cbody">
-            {v.currencies.length === 0 ? <span className="hint">None</span> : null}
-            {v.currencies.map((c) => (
+            {currencies.length === 0 ? <span className="hint">None</span> : null}
+            {currencies.map((c) => (
               <span key={c.code} className="swchip">
                 {c.code}
                 {c.isPrimary ? " · primary" : ""}
@@ -201,14 +206,14 @@ export function VendorDetailPage({ id, onBack }: { id: string; onBack: () => voi
               </tr>
             </thead>
             <tbody>
-              {v.bankAccounts.length === 0 ? (
+              {bankAccounts.length === 0 ? (
                 <tr>
                   <td colSpan={5}>
                     <span className="hint">No bank accounts on file.</span>
                   </td>
                 </tr>
               ) : null}
-              {v.bankAccounts.map((b, i) => (
+              {bankAccounts.map((b, i) => (
                 <tr key={i}>
                   <td style={{ fontWeight: 600 }}>{b.bank}</td>
                   <td>{b.accountNo}</td>
@@ -237,14 +242,14 @@ export function VendorDetailPage({ id, onBack }: { id: string; onBack: () => voi
             </tr>
           </thead>
           <tbody>
-            {v.certifications.length === 0 ? (
+            {certifications.length === 0 ? (
               <tr>
                 <td colSpan={4}>
                   <span className="hint">No certifications on file.</span>
                 </td>
               </tr>
             ) : null}
-            {v.certifications.map((c, i) => (
+            {certifications.map((c, i) => (
               <tr key={i}>
                 <td style={{ fontWeight: 600 }}>{c.name}</td>
                 <td>{c.number}</td>

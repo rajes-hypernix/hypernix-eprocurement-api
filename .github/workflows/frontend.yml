@@ -1,6 +1,6 @@
 name: Frontend CI
 
-# Frontend pipeline for the two React apps (clients/admin, clients/dashboard).
+# Frontend pipeline for React apps (clients/admin, clients/dashboard, clients/e-procurement).
 # Only does real work when clients/** changed; a backend-only PR still triggers
 # the workflow but the heavy jobs skip and the always-running "Frontend CI" gate
 # reports green so required status checks resolve. Playwright suites are
@@ -44,7 +44,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app: [admin, dashboard]
+        app: [admin, dashboard, e-procurement]
     defaults:
       run:
         working-directory: clients/${{ matrix.app }}
@@ -77,7 +77,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app: [admin, dashboard]
+        app: [admin, dashboard, e-procurement]
     defaults:
       run:
         working-directory: clients/${{ matrix.app }}
