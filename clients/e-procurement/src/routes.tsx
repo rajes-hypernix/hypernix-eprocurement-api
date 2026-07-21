@@ -3,6 +3,7 @@ import { ProtectedRoute } from "@/auth/protected-route";
 import { AppShell } from "@/components/AppShell";
 import { LoginPage } from "@/pages/LoginPage";
 import { PlaceholderPage } from "@/pages/PlaceholderPage";
+import { VendorsPage } from "@/pages/vendors/VendorsPage";
 
 export const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
@@ -13,6 +14,7 @@ export const router = createBrowserRouter([
         element: <AppShell />,
         children: [
           { index: true, element: <Navigate to="/dashboard" replace /> },
+          { path: "vendors/*", element: <VendorsPage /> },
           { path: ":pageKey", element: <PlaceholderPage /> },
           { path: ":pageKey/*", element: <PlaceholderPage /> },
         ],

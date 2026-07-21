@@ -1,4 +1,4 @@
-import { Outlet, useNavigate, useParams } from "react-router-dom";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { TopBar } from "@/components/TopBar";
 import { Sidebar } from "@/components/Sidebar";
 import { useAuth } from "@/auth/use-auth";
@@ -8,7 +8,8 @@ import { BUYER_NAV, VENDOR_NAV } from "@/nav";
 export function AppShell() {
   const { isVendor } = useAuth();
   const navigate = useNavigate();
-  const { pageKey = "dashboard" } = useParams();
+  const { pathname } = useLocation();
+  const pageKey = pathname.split("/").filter(Boolean)[0] ?? "dashboard";
   const nav = isVendor ? VENDOR_NAV : BUYER_NAV;
 
   return (

@@ -1,5 +1,4 @@
 using FSH.Framework.Persistence;
-using FSH.Modules.Identity.Contracts.DTOs;
 using FSH.Modules.Identity.Contracts.Services;
 using FSH.Modules.Sourcing.Contracts.Authorization;
 using Microsoft.EntityFrameworkCore;
@@ -22,17 +21,13 @@ public sealed class SourcingDbInitializer(
     }
 
     /// <summary>
-    /// Seeds the old system's Buyer/Approver/TechEvaluator/CommEvaluator role/action matrix as
-    /// real FSH roles (Admin already covers everything; Vendor is seeded by Suppliers). None of
-    /// these are <see cref="FSH.Framework.Shared.Constants.RoleConstants.DefaultRoles"/>, so they
-    /// get zero permissions automatically — every grant below is explicit. Idempotent: permission
-    /// lists are pushed via <see cref="IRoleService.UpdatePermissionsAsync"/>, which reconciles
-    /// (adds missing, removes stale) rather than only inserting, so a later matrix change here
-    /// self-heals on the next seed run.
+    /// Seeds Buyer/Approver/TechEvaluator/CommEvaluator grants for Sourcing.
+    /// Merges onto existing role permissions (same pattern as Platform/Procurement/Communication)
+    /// so module seed order cannot wipe other modules' grants.
     /// </summary>
     public async Task SeedAsync(CancellationToken cancellationToken)
     {
-        await SeedRoleAsync(
+        await MergeRolePermissionsAsync(
             "Buyer",
             "Buyer — creates requisitions, manages RFQs, submits awards.",
             [
@@ -53,7 +48,7 @@ public sealed class SourcingDbInitializer(
             ],
             cancellationToken).ConfigureAwait(false);
 
-        await SeedRoleAsync(
+        await MergeRolePermissionsAsync(
             "Approver",
             "Approver — Delegation-of-Authority sign-off on awards.",
             [
@@ -62,7 +57,7 @@ public sealed class SourcingDbInitializer(
             ],
             cancellationToken).ConfigureAwait(false);
 
-        await SeedRoleAsync(
+        await MergeRolePermissionsAsync(
             "TechEvaluator",
             "Technical evaluator — scores sealed bids, blind to vendor identity.",
             [
@@ -73,7 +68,7 @@ public sealed class SourcingDbInitializer(
             ],
             cancellationToken).ConfigureAwait(false);
 
-        await SeedRoleAsync(
+        await MergeRolePermissionsAsync(
             "CommEvaluator",
             "Commercial evaluator — opens the sealed commercial envelope.",
             [
@@ -82,19 +77,28 @@ public sealed class SourcingDbInitializer(
             cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task SeedRoleAsync(string roleName, string description, List<string> permissions, CancellationToken cancellationToken)
+    private async Task MergeRolePermissionsAsync(
+        string roleName,
+        string description,
+        List<string> permissionsToAdd,
+        CancellationToken cancellationToken)
     {
-        var existing = await roleService.GetRolesAsync(1, 1, roleName, cancellationToken).ConfigureAwait(false);
-        var role = existing.Items.FirstOrDefault(r => string.Equals(r.Name, roleName, StringComparison.Ordinal));
+        var catalog = await roleService.GetRolesAsync(1, 100, search: null, cancellationToken).ConfigureAwait(false);
+        var role = catalog.Items.FirstOrDefault(r => string.Equals(r.Name, roleName, StringComparison.Ordinal));
         if (role is null)
         {
-            role = await roleService.CreateOrUpdateRoleAsync(string.Empty, roleName, description, cancellationToken).ConfigureAwait(false);
+            role = await roleService.CreateOrUpdateRoleAsync(string.Empty, roleName, description, cancellationToken)
+                .ConfigureAwait(false);
             if (logger.IsEnabled(LogLevel.Information))
-            {
                 logger.LogInformation("[Sourcing] seeded {Role} role", roleName);
-            }
         }
 
-        await roleService.UpdatePermissionsAsync(role.Id, permissions, cancellationToken).ConfigureAwait(false);
+        var withPerms = await roleService.GetWithPermissionsAsync(role.Id, cancellationToken).ConfigureAwait(false);
+        var merged = (withPerms.Permissions ?? [])
+            .Concat(permissionsToAdd)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        await roleService.UpdatePermissionsAsync(role.Id, merged, cancellationToken).ConfigureAwait(false);
     }
 }

@@ -4,7 +4,9 @@ import path from "node:path";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
-  const apiBase = env.VITE_API_BASE_URL ?? "http://localhost:5030";
+  // Prefer HTTPS. HTTP :5030 issues a 307 → :7030 that strips Authorization on redirect
+  // (browser + many proxies), which surfaces as 401 "No Authorization header".
+  const apiBase = env.VITE_API_BASE_URL ?? "https://localhost:7030";
 
   return {
     plugins: [react()],

@@ -1,5 +1,6 @@
 import { apiFetch } from "@/lib/api-client";
+import { ApiPaths } from "@/api/types";
 
 export async function getMyPermissions(): Promise<string[]> {
-  return (await apiFetch<string[] | null>("/api/v1/identity/permissions")) ?? [];
+  return (await apiFetch<string[] | null>(`${ApiPaths.identity}/permissions`)) ?? [];
 }
