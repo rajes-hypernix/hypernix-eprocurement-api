@@ -18,6 +18,7 @@
 	  <ProjectReference Include="..\..\Modules\Catalog\Modules.Catalog\Modules.Catalog.csproj" />
 	  <ProjectReference Include="..\..\Modules\Suppliers\Modules.Suppliers\Modules.Suppliers.csproj" />
 	  <ProjectReference Include="..\..\Modules\Sourcing\Modules.Sourcing\Modules.Sourcing.csproj" />
+	  <ProjectReference Include="..\..\Modules\Procurement\Modules.Procurement\Modules.Procurement.csproj" />
 	  <ProjectReference Include="..\..\Modules\Tickets\Modules.Tickets\Modules.Tickets.csproj" />
 	  <ProjectReference Include="..\..\Modules\Chat\Modules.Chat\Modules.Chat.csproj" />
 	  <ProjectReference Include="..\..\Modules\Notifications\Modules.Notifications\Modules.Notifications.csproj" />
@@ -31,6 +32,7 @@
 	  <Folder Include="Catalog\" />
 	  <Folder Include="Suppliers\" />
 	  <Folder Include="Sourcing\" />
+	  <Folder Include="Procurement\" />
 	  <Folder Include="Tickets\" />
 	  <Folder Include="Chat\" />
 	  <Folder Include="Notifications\" />

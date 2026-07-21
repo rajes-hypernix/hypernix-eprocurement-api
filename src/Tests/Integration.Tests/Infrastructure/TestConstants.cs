@@ -18,4 +18,5 @@ public static class TestConstants
     public const string TicketsBasePath = "/api/v1";
     public const string SuppliersBasePath = "/api/v1/suppliers";
     public const string SourcingBasePath = "/api/v1/sourcing";
+    public const string ProcurementBasePath = "/api/v1/procurement";
 }
