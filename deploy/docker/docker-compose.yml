@@ -142,6 +142,8 @@ services:
       HangfireOptions__Password: ${HANGFIRE_PASSWORD:?HANGFIRE_PASSWORD is required}
       CorsOptions__AllowedOrigins__0: ${FSH_ADMIN_URL:?FSH_ADMIN_URL is required}
       CorsOptions__AllowedOrigins__1: ${FSH_DASHBOARD_URL:?FSH_DASHBOARD_URL is required}
+      CorsOptions__AllowedOrigins__2: ${FSH_EPROCUREMENT_URL:?FSH_EPROCUREMENT_URL is required}
+      Onboarding__PortalBaseUrl: ${FSH_EPROCUREMENT_URL}/
       OpenTelemetryOptions__Exporter__Otlp__Endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     ports:
       - "${FSH_API_PORT:-8080}:8080"
@@ -174,6 +176,20 @@ services:
       FSH_DEFAULT_TENANT: ${FSH_DEFAULT_TENANT:-root}
     ports:
       - "${FSH_DASHBOARD_PORT:-8082}:80"
+
+  e-procurement:
+    build:
+      context: ../../clients/e-procurement
+    image: hypernix/e-procurement:local
+    container_name: hypernix-e-procurement
+    restart: unless-stopped
+    depends_on:
+      migrator: { condition: service_completed_successfully }
+    environment:
+      FSH_API_URL: ${FSH_API_URL}
+      FSH_DEFAULT_TENANT: ${FSH_DEFAULT_TENANT:-root}
+    ports:
+      - "${FSH_EPROCUREMENT_PORT:-8083}:80"
 
 volumes:
   pg_data:

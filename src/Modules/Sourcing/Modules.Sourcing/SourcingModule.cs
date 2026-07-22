@@ -5,6 +5,7 @@ using FSH.Framework.Web.Modules;
 using FSH.Modules.Sourcing.Contracts.Authorization;
 using FSH.Modules.Sourcing.Data;
 using FSH.Modules.Sourcing.Features.v1.Bids.GetMyBid;
+using FSH.Modules.Sourcing.Features.v1.Bids.GetRfqForBidding;
 using FSH.Modules.Sourcing.Features.v1.Bids.ListMyInvitations;
 using FSH.Modules.Sourcing.Features.v1.Bids.SaveBidDraft;
 using FSH.Modules.Sourcing.Features.v1.Bids.SubmitBid;
@@ -116,6 +117,7 @@ public sealed class SourcingModule : IModule
         // Vendor-portal, bare RequireAuthorization (no RequirePermission) — scoped by the
         // caller's vendorId claim in-handler, per the Bid module's authorization convention.
         group.MapListMyInvitationsEndpoint();
+        group.MapGetRfqForBiddingEndpoint();
         group.MapGetMyBidEndpoint();
         group.MapSaveBidDraftEndpoint();
         group.MapSubmitBidEndpoint();

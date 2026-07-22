@@ -1,0 +1,24 @@
+using FSH.Modules.Procurement.Contracts.Dtos;
+using FSH.Modules.Procurement.Contracts.v1.Statements;
+using FSH.Modules.Procurement.Data;
+using FSH.Modules.Procurement.Features.v1.Statements.Internal;
+using Mediator;
+
+namespace FSH.Modules.Procurement.Features.v1.Statements.ListStatements;
+
+public sealed class ListStatementsQueryHandler(ProcurementDbContext dbContext)
+    : IQueryHandler<ListStatementsQuery, IReadOnlyList<StatementSummaryDto>>
+{
+    public async ValueTask<IReadOnlyList<StatementSummaryDto>> Handle(
+        ListStatementsQuery query,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+
+        var calc = await StatementDataLoader.LoadAsync(dbContext, cancellationToken).ConfigureAwait(false);
+        return calc.VendorIds
+            .Select(calc.ToSummary)
+            .OrderByDescending(s => s.Balance + s.Grni)
+            .ToList();
+    }
+}

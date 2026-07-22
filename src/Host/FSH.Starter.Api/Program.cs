@@ -13,6 +13,7 @@ using FSH.Modules.Tickets;
 using FSH.Modules.Suppliers;
 using FSH.Modules.Sourcing;
 using FSH.Modules.Multitenancy.Features.v1.GetTenantStatus;
+using FSH.Starter.Api.Features.Search;
 using System.Reflection;
 using System.Text.Json.Serialization;
 
@@ -110,6 +111,7 @@ builder.AddModules(moduleAssemblies);
 // Self-heal deployments carrying retired per-module `{module}-outbox-dispatcher` Hangfire recurring jobs
 // (the outbox is now dispatched by OutboxDispatcherHostedService). No-op once the storage is clean.
 builder.Services.AddHostedService<FSH.Starter.Api.OrphanedOutboxRecurringJobCleanupService>();
+builder.Services.AddScoped<GlobalSearchService>();
 
 // Demo data is provisioned by the DbMigrator's `seed-demo` verb, not the API — the API never mutates data on startup.
 // See src/Host/FSH.Starter.DbMigrator/README.md.
@@ -129,4 +131,7 @@ app.UseHeroPlatform(p =>
 app.MapGet("/", () => Results.Ok(new { message = "hello world!" }))
    .WithTags("PlayGround")
    .AllowAnonymous();
+
+app.MapGlobalSearch();
+
 await app.RunAsync();

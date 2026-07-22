@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import { mockJsonResponse } from "./api-mocks";
 
-/** Buyer permission set used by Vendor Master Phase 2 screens. */
+/** Buyer permission set used by Vendor Master Phase 2 screens (+ Phase 6 inbox). */
 export const BUYER_PERMS = [
   "Permissions.Suppliers.Vendors.View",
   "Permissions.Suppliers.Vendors.Create",
@@ -13,7 +13,8 @@ export const BUYER_PERMS = [
   "Permissions.Suppliers.Onboarding.Revoke",
   "Permissions.Suppliers.Onboarding.Review",
   "Permissions.Sourcing.Requisitions.View",
-  "Permissions.Notifications.View",
+  "Permissions.Notifications.Inbox.View",
+  "Permissions.Notifications.Inbox.MarkRead",
 ] as const;
 
 export function paged<T>(
@@ -45,5 +46,7 @@ export async function installEprocShellMocks(
 ): Promise<void> {
   await mockJsonResponse(page, "**/api/v1/identity/permissions", [...perms]);
   await mockJsonResponse(page, "**/api/v1/notifications/unread-count**", 0);
+  await mockJsonResponse(page, "**/api/v1/notifications/?*", []);
+  await mockJsonResponse(page, "**/api/v1/notifications", []);
   await mockJsonResponse(page, "**/api/v1/sourcing/requisitions**", []);
 }

@@ -30,6 +30,13 @@ public static class ProcurementPermissions
         public const string ResolveException = $"Permissions.{Resource}.ResolveException";
     }
 
+    public static class Statements
+    {
+        public const string Resource = "Procurement.Statements";
+        public const string View = $"Permissions.{Resource}.View";
+        public const string ViewMine = $"Permissions.{Resource}.ViewMine";
+    }
+
     public static IReadOnlyList<FshPermission> All { get; } =
     [
         new("View Purchase Orders", ActionConstants.View, PurchaseOrders.Resource, IsBasic: true),
@@ -45,5 +52,8 @@ public static class ProcurementPermissions
         new("Submit Invoice", "Submit", Invoices.Resource),
         new("Approve Invoice", "Approve", Invoices.Resource),
         new("Resolve Invoice Exception", "ResolveException", Invoices.Resource),
+
+        new("View Statements", ActionConstants.View, Statements.Resource, IsBasic: true),
+        new("View My Statement", "ViewMine", Statements.Resource, IsBasic: true),
     ];
 }

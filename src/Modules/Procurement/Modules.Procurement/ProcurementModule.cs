@@ -6,6 +6,7 @@ using FSH.Modules.Procurement.Contracts.Authorization;
 using FSH.Modules.Procurement.Data;
 using FSH.Modules.Procurement.Features.v1.Asns.CreateAsn;
 using FSH.Modules.Procurement.Features.v1.Asns.GetAsn;
+using FSH.Modules.Procurement.Features.v1.Asns.ListAsns;
 using FSH.Modules.Procurement.Features.v1.Grns.GetGrnByAsn;
 using FSH.Modules.Procurement.Features.v1.Grns.ReceiveAsn;
 using FSH.Modules.Procurement.Features.v1.Invoices.ApproveInvoice;
@@ -18,6 +19,9 @@ using FSH.Modules.Procurement.Features.v1.PurchaseOrders.CreateFromAward;
 using FSH.Modules.Procurement.Features.v1.PurchaseOrders.GetPurchaseOrder;
 using FSH.Modules.Procurement.Features.v1.PurchaseOrders.IssuePurchaseOrder;
 using FSH.Modules.Procurement.Features.v1.PurchaseOrders.ListPurchaseOrders;
+using FSH.Modules.Procurement.Features.v1.Statements.GetMyStatement;
+using FSH.Modules.Procurement.Features.v1.Statements.GetStatement;
+using FSH.Modules.Procurement.Features.v1.Statements.ListStatements;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
@@ -67,6 +71,7 @@ public sealed class ProcurementModule : IModule
         group.MapAcknowledgePurchaseOrderEndpoint();
 
         group.MapCreateAsnEndpoint();
+        group.MapListAsnsEndpoint();
         group.MapGetAsnEndpoint();
 
         group.MapReceiveAsnEndpoint();
@@ -77,5 +82,9 @@ public sealed class ProcurementModule : IModule
         group.MapListInvoicesEndpoint();
         group.MapApproveInvoiceEndpoint();
         group.MapResolveInvoiceExceptionEndpoint();
+
+        group.MapListStatementsEndpoint();
+        group.MapGetMyStatementEndpoint();
+        group.MapGetStatementEndpoint();
     }
 }

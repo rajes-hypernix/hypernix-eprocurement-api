@@ -131,5 +131,8 @@
          AccessViolation). Transitive pinning is enabled, so this entry alone bumps it.
          Remove once the SignalR backplane package depends on a patched version itself. -->
     <PackageVersion Include="MessagePack" Version="2.5.301" />
+    <!-- Pulled transitively by ASP.NET / Identity stacks; 10.0.0–10.0.9 fail NuGet audit
+         (NU1903: GHSA-23rf-6693-g89p and related XML crypto DoS advisories). -->
+    <PackageVersion Include="System.Security.Cryptography.Xml" Version="10.0.10" />
   </ItemGroup>
 </Project>

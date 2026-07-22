@@ -3,9 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 import { searchVendors, type VendorListItemDto } from "@/api/suppliers";
 import { useSwec } from "@/api/swec";
 import { Icon } from "@/components/Icon";
+import { Gated } from "@/components/Gated";
 import { EmptyState, Spinner } from "@/components/ui";
 import { StatusBadge, TypeBadge } from "@/components/vendors/badges";
 import { formatVendorType, isSwecType } from "@/lib/format";
+import { FshPermissions } from "@/lib/fsh-permissions";
 
 const REGIONS = ["Peninsular", "Sarawak", "Sabah"];
 
@@ -56,9 +58,11 @@ export function VendorMasterPage({
           </p>
         </div>
         <div className="spacer" />
-        <button type="button" className="btn btn-pri btn-sm" onClick={() => onNavigate("vendors/new")}>
-          <Icon name="plus" size={15} /> New vendor
-        </button>
+        <Gated permission={FshPermissions.vendors.create}>
+          <button type="button" className="btn btn-pri btn-sm" onClick={() => onNavigate("vendors/new")}>
+            <Icon name="plus" size={15} /> New vendor
+          </button>
+        </Gated>
       </div>
 
       <div className="ribbon">

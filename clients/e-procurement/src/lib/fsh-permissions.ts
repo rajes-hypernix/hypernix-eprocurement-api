@@ -64,6 +64,10 @@ export const FshPermissions = {
     approve: "Permissions.Procurement.Invoices.Approve",
     resolveException: "Permissions.Procurement.Invoices.ResolveException",
   },
+  statements: {
+    view: "Permissions.Procurement.Statements.View",
+    viewMine: "Permissions.Procurement.Statements.ViewMine",
+  },
   lookups: {
     view: "Permissions.Platform.Lookups.View",
     manage: "Permissions.Platform.Lookups.Manage",

@@ -4,27 +4,32 @@ This brings up the full stack on a single host:
 
 | Service | Image | Host port | What it is |
 |---|---|---|---|
-| `api` | `fsh/api:local` (built locally) | `FSH_API_PORT` (default 8080) | ASP.NET Core API |
-| `admin` | `fsh/admin:local` | `FSH_ADMIN_PORT` (default 8081) | Operator console (nginx + React) |
-| `dashboard` | `fsh/dashboard:local` | `FSH_DASHBOARD_PORT` (default 8082) | Tenant dashboard (nginx + React) |
-| `migrator` | `fsh/dbmigrator:local` | — | One-shot: applies EF migrations + seeds the root tenant + creates the default admin user |
-| `postgres` | `postgres:17-alpine` | (internal) | Identity, tenant catalog, module schemas |
-| `redis` | `redis:7-alpine` | (internal) | HybridCache L2, Data Protection keys, idempotency store |
+| `api` | `hypernix/api:local` (built locally) | `FSH_API_PORT` (default 8080) | ASP.NET Core API |
+| `admin` | `hypernix/admin:local` | `FSH_ADMIN_PORT` (default 8081) | Operator console (nginx + React) |
+| `dashboard` | `hypernix/dashboard:local` | `FSH_DASHBOARD_PORT` (default 8082) | Tenant dashboard (nginx + React) |
+| `e-procurement` | `hypernix/e-procurement:local` | `FSH_EPROCUREMENT_PORT` (default 8083) | **Primary** buyer + vendor SPA |
+| `migrator` | `hypernix/dbmigrator:local` | — | One-shot: applies EF migrations + seeds the root tenant + creates the default admin user |
+| `postgres` | `postgres:18-alpine` | (internal) | Identity, tenant catalog, module schemas |
+| `redis` | `valkey/valkey` | (internal) | HybridCache L2, Data Protection keys, idempotency store |
 | `minio` | `minio/minio:latest` | (internal) | S3-compatible blob store for the Files module |
 
 The compose file does **not** include a reverse proxy or TLS terminator. You bring your own edge — Cloudflare Tunnel, AWS ALB, Tailscale Funnel, your existing nginx, anything that can route a TLS subdomain to a host:port on this machine.
+
+**Cutover:** point end-user DNS at `e-procurement` (8083). Keep `admin` for operators. See [docs/CUTOVER.md](../../docs/CUTOVER.md).
+
 
 ## Prerequisites
 
 - Docker Engine 24+ with the Compose plugin (`docker compose version` should print v2.x).
 - 2 GB free RAM, 5 GB disk for first-run images + builds.
-- Ports 8080–8082 free on the host (or set custom ports in `.env`).
+- Ports 8080–8083 free on the host (or set custom ports in `.env`).
 
 ## Five-minute deploy
 
 ```bash
 cp .env.example .env
-$EDITOR .env             # fill JWT_SIGNING_KEY, SEED_ADMIN_PASSWORD, the data-plane passwords, and your three URLs
+$EDITOR .env             # fill JWT_SIGNING_KEY, SEED_ADMIN_PASSWORD, passwords, and public URLs
+                        # (incl. FSH_EPROCUREMENT_URL for CORS + onboarding magic links)
 
 docker compose up -d --build
 ```

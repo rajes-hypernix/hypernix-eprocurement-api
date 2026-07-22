@@ -20,6 +20,13 @@ export function dateMY(iso: string | null | undefined): string {
   return d.toLocaleDateString("en-MY", { day: "2-digit", month: "short", year: "numeric" });
 }
 
+export function dateTimeMY(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString("en-MY", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
 /** Normalize vendor type for display / filters (API may store NonSwec or Non-SWEC). */
 export function formatVendorType(type: string | null | undefined): string {
   if (!type) return "—";

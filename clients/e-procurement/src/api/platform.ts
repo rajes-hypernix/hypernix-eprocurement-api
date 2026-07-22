@@ -54,6 +54,22 @@ export type CustomListDto = {
   isActive: boolean;
 };
 
+export type CustomListItemDto = {
+  id: string;
+  listId: string;
+  code: string;
+  label: string;
+  sortOrder: number;
+  isActive: boolean;
+};
+
+/** Reason-code list keys used by Sourcing governance actions. */
+export const CustomListKeys = {
+  rfqRescind: "RFQRescind",
+  rfqExtend: "RFQExtend",
+  bidDecline: "BidDecline",
+} as const;
+
 export type FormTemplateListItemDto = {
   id: string;
   key: string;
@@ -86,6 +102,10 @@ export function listOrgUnits(): Promise<OrgUnitDto[]> {
 
 export function listCustomLists(): Promise<CustomListDto[]> {
   return apiFetch<CustomListDto[]>(`${ROOT}/custom-lists`);
+}
+
+export function listCustomListItems(listKey: string, activeOnly = true): Promise<CustomListItemDto[]> {
+  return apiFetch<CustomListItemDto[]>(`${ROOT}/custom-lists/${listKey}/items${toQuery({ activeOnly })}`);
 }
 
 export function listFormTemplates(): Promise<FormTemplateListItemDto[]> {

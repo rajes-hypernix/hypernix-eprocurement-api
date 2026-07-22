@@ -36,6 +36,7 @@ public sealed class ProcurementDbInitializer(
                 ProcurementPermissions.Invoices.View,
                 ProcurementPermissions.Invoices.Approve,
                 ProcurementPermissions.Invoices.ResolveException,
+                ProcurementPermissions.Statements.View,
             ],
             cancellationToken).ConfigureAwait(false);
 
@@ -49,6 +50,7 @@ public sealed class ProcurementDbInitializer(
                 ProcurementPermissions.Deliveries.CreateAsn,
                 ProcurementPermissions.Invoices.View,
                 ProcurementPermissions.Invoices.Submit,
+                ProcurementPermissions.Statements.ViewMine,
             ],
             cancellationToken).ConfigureAwait(false);
     }

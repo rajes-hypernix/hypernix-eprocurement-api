@@ -1,4 +1,6 @@
 import { useAuth } from "@/auth/use-auth";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { TopBarNav } from "@/components/TopBarNav";
 import { initials } from "@/lib/format";
 
 export function TopBar() {
@@ -32,9 +34,10 @@ export function TopBar() {
         </span>
       </div>
       <div className="tb-center">
-        {/* GlobalSearch / New / Recents ported with screens in later phases */}
+        <TopBarNav />
       </div>
       <div className="spacer" />
+      <NotificationBell />
       <div className="whoami">
         <div className="prof-chip" style={{ marginLeft: 4 }}>
           <span className="av">{initials(name)}</span>

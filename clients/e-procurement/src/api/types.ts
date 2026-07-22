@@ -6,6 +6,7 @@ export const ApiPaths = {
   procurement: "/api/v1/procurement",
   notifications: "/api/v1/notifications",
   identity: "/api/v1/identity",
+  search: "/api/v1/search",
 } as const;
 
 export type PagedResponse<T> = {

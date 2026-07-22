@@ -48,6 +48,7 @@ builder.AddContainer("redis-insight", "redis/redisinsight", "latest")
 const string MinioBucket = "fsh-uploads";
 const string AdminOrigin = "http://localhost:5173";
 const string DashboardOrigin = "http://localhost:5174";
+const string EprocurementOrigin = "http://localhost:5175";
 
 var minioUser = builder.AddParameter("minio-user", "minioadmin");
 var minioPassword = builder.AddParameter("minio-password", "minioadmin", secret: true);
@@ -58,7 +59,7 @@ var minio = builder.AddContainer("minio", "minio/minio")
     .WithHttpEndpoint(port: 9001, targetPort: 9001, name: "console")
     .WithEnvironment("MINIO_ROOT_USER", minioUser)
     .WithEnvironment("MINIO_ROOT_PASSWORD", minioPassword)
-    .WithEnvironment("MINIO_API_CORS_ALLOW_ORIGIN", $"{AdminOrigin},{DashboardOrigin}")
+    .WithEnvironment("MINIO_API_CORS_ALLOW_ORIGIN", $"{AdminOrigin},{DashboardOrigin},{EprocurementOrigin}")
     .WithVolume($"{appPrefix}-minio-data", "/data")
     .WithLifetime(ContainerLifetime.Persistent);
 
@@ -135,7 +136,11 @@ var api = builder.AddProject<Projects.FSH_Starter_Api>($"{appPrefix}-api")
     .WithEnvironment("Storage__S3__AccessKey", minioUser)
     .WithEnvironment("Storage__S3__SecretKey", minioPassword)
     .WithEnvironment("Storage__S3__ForcePathStyle", "true")
-    .WithEnvironment("Storage__S3__PublicBaseUrl", ReferenceExpression.Create($"{minioApiEndpoint}/{MinioBucket}"));
+    .WithEnvironment("Storage__S3__PublicBaseUrl", ReferenceExpression.Create($"{minioApiEndpoint}/{MinioBucket}"))
+    .WithEnvironment("Onboarding__PortalBaseUrl", $"{EprocurementOrigin}/")
+    .WithEnvironment("CorsOptions__AllowedOrigins__0", AdminOrigin)
+    .WithEnvironment("CorsOptions__AllowedOrigins__1", DashboardOrigin)
+    .WithEnvironment("CorsOptions__AllowedOrigins__2", EprocurementOrigin);
 
 //#if (frontend)
 // Admin console (React + Vite). Target the API's HTTPS endpoint directly — UseHttpsRedirection's 307 to https is cross-origin and strips the Authorization header.
@@ -153,6 +158,15 @@ builder.AddJavaScriptApp($"{appPrefix}-dashboard", "../../../clients/dashboard",
     .WithReference(api)
     .WaitFor(api)
     .WithHttpEndpoint(port: 5174, targetPort: 5174, isProxied: false)
+    .WithExternalHttpEndpoints()
+    .WithEnvironment("VITE_API_BASE_URL", api.GetEndpoint("https"));
+
+// Primary e-procurement SPA (buyer + vendor)
+builder.AddJavaScriptApp($"{appPrefix}-e-procurement", "../../../clients/e-procurement", "dev")
+    .WithNpm()
+    .WithReference(api)
+    .WaitFor(api)
+    .WithHttpEndpoint(port: 5175, targetPort: 5175, isProxied: false)
     .WithExternalHttpEndpoints()
     .WithEnvironment("VITE_API_BASE_URL", api.GetEndpoint("https"));
 //#else

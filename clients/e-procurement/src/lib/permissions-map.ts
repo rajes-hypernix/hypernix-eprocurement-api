@@ -1,16 +1,16 @@
 import { FshPermissions } from "@/lib/fsh-permissions";
+import type { NavGroup } from "@/nav";
 
 /**
  * Maps old eProcure AUTHORIZATION-MATRIX action names (nav `action` / `<Gated>`)
  * to FSH permission strings.
  *
- * Phase 1: map only — do NOT wire sidebar/`Gated` yet (Phase 6).
- * `null` = no backend equivalent yet / deferred screen — leave ungated or hide in Phase 6 triage.
+ * `null` = deferred / no FSH equivalent → hidden by `hasOldAction` (except AUTH_ONLY).
  */
 export const OLD_ACTION_TO_FSH: Record<string, string | null> = {
   // Sourcing / dashboards
-  UseDashboards: null, // no dedicated FSH perm; treat as authenticated-only later
-  UseSavedViews: null, // deferred POC feature
+  UseDashboards: null, // authenticated-only — see AUTH_ONLY_ACTIONS
+  UseSavedViews: null, // deferred POC
   ViewRequisitions: FshPermissions.requisitions.view,
   ViewRfqs: FshPermissions.rfqs.view,
   ViewAwards: FshPermissions.award.view,
@@ -21,22 +21,34 @@ export const OLD_ACTION_TO_FSH: Record<string, string | null> = {
   ViewPos: FshPermissions.purchaseOrders.view,
   ViewAsns: FshPermissions.deliveries.view,
   ViewInvoices: FshPermissions.invoices.view,
-  ViewStatements: null, // deferred — no Statements module yet
+  ViewStatements: FshPermissions.statements.view,
 
   // Setup
   ViewVendors: FshPermissions.vendors.view,
   ViewOnboarding: FshPermissions.onboarding.view,
   ViewForms: FshPermissions.formTemplates.view,
 
-  // Administration (old Manage* → Platform/Identity)
+  // Administration
   ManageUsers: FshPermissions.users.view,
   ManageCustomLists: FshPermissions.customLists.manage,
-  ManageCustomFields: null, // deferred
-  ManageSegments: null, // deferred
-  ManageItems: null, // deferred
-  ManageEntryForms: null, // deferred
-  ManageNumbering: null, // deferred
+  ManageCustomFields: null,
+  ManageSegments: null,
+  ManageItems: null,
+  ManageEntryForms: null,
+  ManageNumbering: null,
+  ViewNotifications: FshPermissions.notifications.view,
 };
+
+/** Old actions with no FSH perm that stay visible for any signed-in user. */
+const AUTH_ONLY_ACTIONS = new Set([
+  "UseDashboards",
+  "UseSavedViews",
+  "ManageCustomFields",
+  "ManageSegments",
+  "ManageItems",
+  "ManageEntryForms",
+  "ManageNumbering",
+]);
 
 /** Resolve FSH permission for an old matrix action (or null if unmapped/deferred). */
 export function fshPermissionForOldAction(action: string | undefined): string | null {
@@ -47,9 +59,8 @@ export function fshPermissionForOldAction(action: string | undefined): string | 
 }
 
 /**
- * Phase 6 helper — returns true when the user holds the mapped FSH permission.
- * Unmapped/deferred actions (`null`) currently return true so we don't hide
- * nav until triage decides; flip that policy when wiring gateNav.
+ * Returns true when the user may see a nav item / control gated by an old action name.
+ * Deferred (`null`) actions are hidden unless listed in AUTH_ONLY_ACTIONS.
  */
 export function hasOldAction(
   granted: readonly string[],
@@ -57,6 +68,19 @@ export function hasOldAction(
 ): boolean {
   if (!action) return true;
   const mapped = fshPermissionForOldAction(action);
-  if (mapped === null) return true; // Phase 6: revisit deferred keys
+  if (mapped === null) return AUTH_ONLY_ACTIONS.has(action);
+  if (action === "ViewStatements") {
+    return granted.includes(mapped) || granted.includes(FshPermissions.statements.viewMine);
+  }
   return granted.includes(mapped);
+}
+
+/** Filter sidebar groups — drops empty groups after permission filtering. */
+export function gateNav(groups: NavGroup[], granted: readonly string[]): NavGroup[] {
+  return groups
+    .map((g) => ({
+      ...g,
+      items: g.items.filter((item) => hasOldAction(granted, item.action)),
+    }))
+    .filter((g) => g.items.length > 0);
 }
