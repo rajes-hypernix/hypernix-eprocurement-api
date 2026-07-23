@@ -29,6 +29,8 @@ export type BankDto = {
   swiftCode?: string | null;
   countryCode: string;
   isActive: boolean;
+  /** Present for newest-first sort only — not a substitute for History. */
+  createdOnUtc: string;
 };
 
 export type OrgUnitDto = {
@@ -152,6 +154,19 @@ export function setCountryActive(id: string, isActive: boolean): Promise<string>
   });
 }
 
+export function deleteCountry(id: string): Promise<void> {
+  return apiFetch<void>(`${ROOT}/countries/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
+
+export function updateCountry(id: string, input: { code: string; name: string }): Promise<string> {
+  return apiFetch<string>(`${ROOT}/countries/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
 export function createState(input: { countryId: string; code: string; name: string }): Promise<string> {
   return apiFetch<string>(`${ROOT}/states`, {
     method: "POST",
@@ -159,10 +174,50 @@ export function createState(input: { countryId: string; code: string; name: stri
   });
 }
 
+export function updateState(id: string, input: { code: string; name: string }): Promise<string> {
+  return apiFetch<string>(`${ROOT}/states/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+export function setStateActive(id: string, isActive: boolean): Promise<string> {
+  return apiFetch<string>(`${ROOT}/states/${encodeURIComponent(id)}/active`, {
+    method: "PUT",
+    body: JSON.stringify({ isActive }),
+  });
+}
+
+export function deleteState(id: string): Promise<void> {
+  return apiFetch<void>(`${ROOT}/states/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
+
 export function createCity(input: { stateId: string; name: string }): Promise<string> {
   return apiFetch<string>(`${ROOT}/cities`, {
     method: "POST",
     body: JSON.stringify(input),
+  });
+}
+
+export function updateCity(id: string, input: { name: string }): Promise<string> {
+  return apiFetch<string>(`${ROOT}/cities/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+export function setCityActive(id: string, isActive: boolean): Promise<string> {
+  return apiFetch<string>(`${ROOT}/cities/${encodeURIComponent(id)}/active`, {
+    method: "PUT",
+    body: JSON.stringify({ isActive }),
+  });
+}
+
+export function deleteCity(id: string): Promise<void> {
+  return apiFetch<void>(`${ROOT}/cities/${encodeURIComponent(id)}`, {
+    method: "DELETE",
   });
 }
 
@@ -181,10 +236,26 @@ export function createBank(input: {
   });
 }
 
+export function updateBank(
+  id: string,
+  input: { name: string; countryCode: string; swiftCode?: string },
+): Promise<string> {
+  return apiFetch<string>(`${ROOT}/banks/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
 export function setBankActive(id: string, isActive: boolean): Promise<string> {
   return apiFetch<string>(`${ROOT}/banks/${encodeURIComponent(id)}/active`, {
     method: "PUT",
     body: JSON.stringify({ isActive }),
+  });
+}
+
+export function deleteBank(id: string): Promise<void> {
+  return apiFetch<void>(`${ROOT}/banks/${encodeURIComponent(id)}`, {
+    method: "DELETE",
   });
 }
 
@@ -233,6 +304,20 @@ export function createCustomList(input: { key: string; name: string }): Promise<
   return apiFetch<string>(`${ROOT}/custom-lists`, {
     method: "POST",
     body: JSON.stringify(input),
+  });
+}
+
+export function updateCustomList(id: string, input: { name: string }): Promise<string> {
+  return apiFetch<string>(`${ROOT}/custom-lists/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+export function setCustomListActive(id: string, isActive: boolean): Promise<string> {
+  return apiFetch<string>(`${ROOT}/custom-lists/${encodeURIComponent(id)}/active`, {
+    method: "PUT",
+    body: JSON.stringify({ isActive }),
   });
 }
 

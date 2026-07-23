@@ -121,3 +121,18 @@ export async function getAudit(id: string): Promise<AuditDetailDto> {
   const dto = await apiFetch<AuditDetailDto>(`${ROOT}/${encodeURIComponent(id)}`);
   return normalizeSummary(dto);
 }
+
+/**
+ * On-demand EntityChange history for one record.
+ * Call only when the user opens History — never on list pages.
+ */
+export async function getEntityChangeHistory(
+  entityId: string,
+  take = 50,
+): Promise<AuditDetailDto[]> {
+  const rows =
+    (await apiFetch<AuditDetailDto[]>(
+      `${ROOT}/entity-changes/${encodeURIComponent(entityId)}${toQuery({ take })}`,
+    )) ?? [];
+  return rows.map(normalizeSummary);
+}

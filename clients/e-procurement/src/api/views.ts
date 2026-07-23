@@ -59,8 +59,8 @@ export type SavedViewDto = {
   isSystem: boolean;
   filters: SavedViewFilterDto[];
   columns: SavedViewColumnDto[];
-  createdUtc: string;
-  updatedUtc: string;
+  createdOnUtc: string;
+  lastModifiedOnUtc?: string | null;
 };
 
 export type ViewFieldDto = {

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { TopBar } from "@/components/TopBar";
 import { Sidebar } from "@/components/Sidebar";
@@ -13,6 +13,7 @@ export function AppShell() {
   const { isVendor, user, permissionsHydrated } = useAuth();
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const [navOpen, setNavOpen] = useState(false);
   const pageKey = pathname.split("/").filter(Boolean)[0] ?? "dashboard";
   const baseNav = isVendor ? VENDOR_NAV : BUYER_NAV;
   const granted = user?.permissions ?? EMPTY_PERMS;
@@ -22,11 +23,44 @@ export function AppShell() {
     return gateNav(baseNav, granted);
   }, [baseNav, granted, permKey, permissionsHydrated]);
 
+  useEffect(() => {
+    setNavOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!navOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setNavOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [navOpen]);
+
+  const go = (key: string) => {
+    setNavOpen(false);
+    void navigate(`/${key}`);
+  };
+
   return (
     <>
-      <TopBar />
+      <TopBar onOpenNav={() => setNavOpen(true)} />
       <div className="shell">
-        <Sidebar nav={nav} active={pageKey} onSelect={(key) => void navigate(`/${key}`)} />
+        <Sidebar nav={nav} active={pageKey} onSelect={go} />
+        <div className={`side-drawer-layer${navOpen ? " open" : ""}`} aria-hidden={!navOpen}>
+          <button
+            type="button"
+            className="side-backdrop"
+            aria-label="Close navigation"
+            tabIndex={navOpen ? 0 : -1}
+            onClick={() => setNavOpen(false)}
+          />
+          <Sidebar variant="drawer" nav={nav} active={pageKey} onSelect={go} onClose={() => setNavOpen(false)} />
+        </div>
         <main className="main">
           <Outlet />
         </main>

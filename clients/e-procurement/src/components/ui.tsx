@@ -63,6 +63,34 @@ export function Modal({
   );
 }
 
+export function AlertModal({
+  title = "Something went wrong",
+  icon = "x",
+  body,
+  okLabel = "OK",
+  onClose,
+}: {
+  title?: ReactNode;
+  icon?: string;
+  body: ReactNode;
+  okLabel?: string;
+  onClose: () => void;
+}) {
+  return (
+    <Modal
+      title={title}
+      icon={icon}
+      footer={
+        <button type="button" className="btn btn-pri" onClick={onClose} autoFocus>
+          {okLabel}
+        </button>
+      }
+    >
+      {typeof body === "string" ? <p className="hint" style={{ marginTop: 0, whiteSpace: "pre-wrap" }}>{body}</p> : body}
+    </Modal>
+  );
+}
+
 export function ConfirmModal({
   title,
   icon = "check",

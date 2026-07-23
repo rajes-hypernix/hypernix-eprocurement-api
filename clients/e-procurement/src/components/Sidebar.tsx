@@ -15,12 +15,20 @@ export function Sidebar({
   nav = BUYER_NAV,
   active,
   onSelect,
+  variant = "rail",
+  onClose,
 }: {
   nav?: NavGroup[];
   active: string;
   onSelect: (key: string) => void;
+  /** Desktop sticky rail (default) or mobile/tablet overlay drawer. */
+  variant?: "rail" | "drawer";
+  onClose?: () => void;
 }) {
   const [collapsed, setCollapsed] = useState(initialCollapsed);
+  const isDrawer = variant === "drawer";
+  const showLabels = isDrawer || !collapsed;
+
   const toggle = () => {
     setCollapsed((c) => {
       try {
@@ -33,20 +41,32 @@ export function Sidebar({
   };
 
   return (
-    <aside className={`side${collapsed ? " collapsed" : ""}`}>
-      <button
-        type="button"
-        className="side-toggle"
-        aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        aria-expanded={!collapsed}
-        title={collapsed ? "Expand" : "Collapse"}
-        onClick={toggle}
-      >
-        <Icon name={collapsed ? "chev" : "back"} size={15} />
-      </button>
+    <aside
+      className={`side${collapsed && !isDrawer ? " collapsed" : ""}${isDrawer ? " side-drawer" : " side-rail"}`}
+      aria-label={isDrawer ? "Mobile navigation" : "Main navigation"}
+    >
+      {isDrawer ? (
+        <div className="side-drawer-head">
+          <span className="side-drawer-title">Menu</span>
+          <button type="button" className="side-drawer-close" aria-label="Close menu" onClick={onClose}>
+            <Icon name="x" size={16} />
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          className="side-toggle"
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-expanded={!collapsed}
+          title={collapsed ? "Expand" : "Collapse"}
+          onClick={toggle}
+        >
+          <Icon name={collapsed ? "chev" : "back"} size={15} />
+        </button>
+      )}
       {nav.map((group) => (
         <div key={group.title}>
-          <div className="grp">{collapsed ? "\u00a0" : group.title}</div>
+          <div className="grp">{showLabels ? group.title : "\u00a0"}</div>
           {group.items.map((item) => (
             <div
               key={item.key}
@@ -54,8 +74,8 @@ export function Sidebar({
               role="button"
               tabIndex={0}
               aria-current={active === item.key ? "page" : undefined}
-              aria-label={collapsed ? item.label : undefined}
-              title={collapsed ? item.label : undefined}
+              aria-label={!showLabels ? item.label : undefined}
+              title={!showLabels ? item.label : undefined}
               onClick={() => onSelect(item.key)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") onSelect(item.key);
@@ -64,7 +84,7 @@ export function Sidebar({
               <span className="ic">
                 <Icon name={item.icon} />
               </span>
-              {!collapsed && item.label}
+              {showLabels ? item.label : null}
             </div>
           ))}
         </div>

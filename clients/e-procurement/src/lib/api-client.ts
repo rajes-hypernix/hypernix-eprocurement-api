@@ -135,7 +135,7 @@ export async function apiFetch<T = unknown>(
     const problem = await parseError(response);
     throw new ApiRequestError(
       response.status,
-      problem?.title ?? problem?.detail ?? response.statusText,
+      problem?.detail ?? problem?.title ?? response.statusText,
       problem,
     );
   }

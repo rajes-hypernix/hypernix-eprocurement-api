@@ -66,6 +66,9 @@
   --accent: #2c5c6e;
   --cream: #f3efe9;
   --card: #f6f4ef;
+  /* Layered surfaces: page/shell stays cream; content panels lift on white */
+  --surface: #ffffff;
+  --surface-muted: #f0eeea; /* table headers / inset strips */
   --ink: #2b2b2b;
   --muted: #7d8a93;
   --line: #e4ded2;
@@ -152,4 +155,12 @@
   --shadow: 0 2px 10px rgba(51, 99, 119, 0.08);
   --shadow-l: 0 8px 30px rgba(51, 99, 119, 0.16); /* was fallback-only in .modal */
   --focus-ring: 0 0 0 3px rgba(51, 99, 119, 0.13);
+
+  /* ---- Responsive breakpoints (use in @media; documented here for consistency)
+     sm  ≤ 640px  phone
+     md  ≤ 900px  tablet / narrow laptop (shell drawer threshold)
+     lg  ≤ 1080px dashboard splits (existing .da-grid) ---- */
+  --bp-sm: 640px;
+  --bp-md: 900px;
+  --bp-lg: 1080px;
 }

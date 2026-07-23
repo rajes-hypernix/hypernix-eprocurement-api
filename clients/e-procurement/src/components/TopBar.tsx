@@ -1,15 +1,21 @@
 import { useAuth } from "@/auth/use-auth";
+import { Icon } from "@/components/Icon";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { TopBarNav } from "@/components/TopBarNav";
 import { initials } from "@/lib/format";
 
-export function TopBar() {
+export function TopBar({ onOpenNav }: { onOpenNav?: () => void }) {
   const { user, isVendor, logout } = useAuth();
   const name = user?.name ?? user?.email ?? "User";
   const sub = isVendor ? "Vendor" : user?.tenant ? `Tenant · ${user.tenant}` : "Buyer";
 
   return (
     <div className="topbar">
+      {onOpenNav ? (
+        <button type="button" className="tb-menu-btn" aria-label="Open navigation" onClick={onOpenNav}>
+          <Icon name="menu" size={18} />
+        </button>
+      ) : null}
       <div className="brand">
         <span className="logo">
           <svg
@@ -30,7 +36,7 @@ export function TopBar() {
         </span>
         <span>
           <span className="brand-title">Hypernix eProcure</span>
-          <small>Sourcing &amp; Vendor Portal</small>
+          <small className="brand-sub">Sourcing &amp; Vendor Portal</small>
         </span>
       </div>
       <div className="tb-center">
@@ -48,7 +54,7 @@ export function TopBar() {
         </div>
         <button
           type="button"
-          className="btn ghost"
+          className="btn ghost tb-signout"
           style={{
             marginLeft: 10,
             color: "#fff",
