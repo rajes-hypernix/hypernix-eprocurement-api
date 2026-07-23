@@ -1,3 +1,5 @@
+using FSH.Framework.Shared.Identity.Authorization;
+using FSH.Modules.Sourcing.Contracts.Authorization;
 using FSH.Modules.Sourcing.Contracts.v1.Bids;
 using Mediator;
 using Microsoft.AspNetCore.Builder;
@@ -13,6 +15,7 @@ public static class ListMyInvitationsEndpoint
         return endpoints.MapGet("/my/rfqs",
                 (IMediator mediator, CancellationToken ct) => mediator.Send(new ListMyInvitationsQuery(), ct))
             .WithName("ListMyInvitations")
-            .WithSummary("List the RFQs the calling vendor has been invited to — vendor-portal only, scoped by the caller's vendorId claim.");
+            .WithSummary("List the RFQs the calling vendor has been invited to — vendor-portal only, scoped by the caller's vendorId claim.")
+            .RequirePermission(SourcingPermissions.Bids.ViewMine);
     }
 }

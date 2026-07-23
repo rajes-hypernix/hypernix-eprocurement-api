@@ -17,7 +17,7 @@ export const COMING_SOON_PAGES: Record<
   views: {
     title: "Saved Views",
     description: "Personal and shared list views across sourcing records.",
-    note: "Saved views are deferred — this screen will land in a later wave.",
+    note: "Saved views are available at /views — this placeholder is unused.",
   },
   forms: {
     title: "Forms",

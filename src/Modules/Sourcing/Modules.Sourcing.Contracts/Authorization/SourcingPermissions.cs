@@ -48,6 +48,14 @@ public static class SourcingPermissions
         public const string Send = $"Permissions.{Resource}.Send";
     }
 
+    /// <summary>Vendor-portal bidding — claim-scoped handlers still RequirePermission so nav/API stay permission-based.</summary>
+    public static class Bids
+    {
+        public const string Resource = "Sourcing.Bids";
+        public const string ViewMine = $"Permissions.{Resource}.ViewMine";
+        public const string Respond = $"Permissions.{Resource}.Respond";
+    }
+
     public static IReadOnlyList<FshPermission> All { get; } =
     [
         new("View Requisitions", ActionConstants.View, Requisitions.Resource, IsBasic: true),
@@ -77,5 +85,8 @@ public static class SourcingPermissions
 
         new("View Clarifications", ActionConstants.View, Clarifications.Resource),
         new("Send Clarification", "Send", Clarifications.Resource),
+
+        new("View My RFQ Invitations", "ViewMine", Bids.Resource),
+        new("Respond to RFQ (bid)", "Respond", Bids.Resource),
     ];
 }

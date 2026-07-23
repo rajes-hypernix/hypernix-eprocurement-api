@@ -7,6 +7,7 @@ export const ApiPaths = {
   notifications: "/api/v1/notifications",
   identity: "/api/v1/identity",
   search: "/api/v1/search",
+  audits: "/api/v1/audits",
 } as const;
 
 export type PagedResponse<T> = {

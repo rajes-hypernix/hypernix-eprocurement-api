@@ -20,6 +20,12 @@ public static class FileTypeMetadata
         {
             FileType.Image => new() { AllowedExtensions = [".jpg", ".jpeg", ".png", ".ico"], MaxSizeInMB = 5 },
             FileType.Pdf => new() { AllowedExtensions = [".pdf"], MaxSizeInMB = 10 },
-            _ => throw new NotSupportedException($"Unsupported file type: {type}")
+            // Vendor onboarding / general attachments — PDF + common office/image scans.
+            FileType.Document => new()
+            {
+                AllowedExtensions = [".pdf", ".doc", ".docx", ".xls", ".xlsx", ".jpg", ".jpeg", ".png"],
+                MaxSizeInMB = 20,
+            },
+            _ => throw new NotSupportedException($"Unsupported file type: {type}"),
         };
 }

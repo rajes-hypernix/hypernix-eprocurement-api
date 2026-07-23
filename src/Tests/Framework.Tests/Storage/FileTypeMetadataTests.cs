@@ -37,10 +37,20 @@ public sealed class FileTypeMetadataTests
     #region Edge Cases
 
     [Fact]
+    public void GetRules_Should_ReturnDocumentRules_When_DocumentRequested()
+    {
+        var rules = FileTypeMetadata.GetRules(FileType.Document);
+
+        rules.MaxSizeInMB.ShouldBe(20);
+        rules.AllowedExtensions.ShouldContain(".pdf");
+        rules.AllowedExtensions.ShouldContain(".docx");
+        rules.AllowedExtensions.ShouldContain(".png");
+    }
+
+    [Fact]
     public void GetRules_Should_Throw_When_TypeUnsupported()
     {
-        // FileType.Document has no mapping and falls into the default arm.
-        Should.Throw<NotSupportedException>(() => FileTypeMetadata.GetRules(FileType.Document));
+        Should.Throw<NotSupportedException>(() => FileTypeMetadata.GetRules((FileType)999));
     }
 
     [Fact]

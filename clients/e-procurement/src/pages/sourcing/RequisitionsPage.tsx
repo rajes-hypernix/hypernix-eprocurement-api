@@ -17,5 +17,12 @@ export function RequisitionsPage() {
     return <RequisitionFormPage id={route} onSaved={() => go(route)} onBack={() => go("")} />;
   }
 
-  return <RequisitionListPage onOpen={(id) => go(id)} onNew={() => go("new")} onNavigate={(key) => void navigate(`/${key}`)} />;
+  return (
+    <RequisitionListPage
+      onOpen={(id) => go(id)}
+      onNew={() => go("new")}
+      onNavigate={(key) => void navigate(`/${key}`)}
+      onOpenRfq={(id) => void navigate(`/rfqs/${id}`)}
+    />
+  );
 }

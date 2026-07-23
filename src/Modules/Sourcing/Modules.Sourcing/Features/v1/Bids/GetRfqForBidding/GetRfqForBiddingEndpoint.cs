@@ -1,3 +1,5 @@
+using FSH.Framework.Shared.Identity.Authorization;
+using FSH.Modules.Sourcing.Contracts.Authorization;
 using FSH.Modules.Sourcing.Contracts.v1.Bids;
 using Mediator;
 using Microsoft.AspNetCore.Builder;
@@ -14,6 +16,7 @@ public static class GetRfqForBiddingEndpoint
                 (Guid rfqId, IMediator mediator, CancellationToken ct) =>
                     mediator.Send(new GetRfqForBiddingQuery(rfqId), ct))
             .WithName("GetRfqForBidding")
-            .WithSummary("Get an RFQ's lines/questions for the vendor bid form — vendor-portal only.");
+            .WithSummary("Get an RFQ's lines/questions for the vendor bid form — vendor-portal only.")
+            .RequirePermission(SourcingPermissions.Bids.ViewMine);
     }
 }

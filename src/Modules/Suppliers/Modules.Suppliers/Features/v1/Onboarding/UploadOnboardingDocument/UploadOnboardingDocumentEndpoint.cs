@@ -28,6 +28,9 @@ public static class UploadOnboardingDocumentEndpoint
             .WithSummary("Upload an onboarding document")
             .Accepts<IFormFile>("multipart/form-data")
             .WithMetadata(new RequestSizeLimitAttribute(MaxUploadBytes))
+            // Magic-link token auth (AllowAnonymous) — not cookie session. .NET 8+ auto-adds
+            // antiforgery metadata for IFormFile; the SPA has no antiforgery cookie/token.
+            .DisableAntiforgery()
             .AllowAnonymous();
     }
 }

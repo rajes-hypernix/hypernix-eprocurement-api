@@ -1,3 +1,5 @@
+using FSH.Framework.Shared.Identity.Authorization;
+using FSH.Modules.Sourcing.Contracts.Authorization;
 using FSH.Modules.Sourcing.Contracts.v1.Bids;
 using Mediator;
 using Microsoft.AspNetCore.Builder;
@@ -17,6 +19,7 @@ public static class GetMyBidEndpoint
                     return bid is null ? Results.NoContent() : Results.Ok(bid);
                 })
             .WithName("GetMyBid")
-            .WithSummary("Get the calling vendor's own bid on an RFQ — vendor-portal only.");
+            .WithSummary("Get the calling vendor's own bid on an RFQ — vendor-portal only.")
+            .RequirePermission(SourcingPermissions.Bids.ViewMine);
     }
 }

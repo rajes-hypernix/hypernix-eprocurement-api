@@ -30,6 +30,10 @@ export const FshPermissions = {
     rescind: "Permissions.Sourcing.Rfqs.Rescind",
     extend: "Permissions.Sourcing.Rfqs.Extend",
   },
+  bids: {
+    viewMine: "Permissions.Sourcing.Bids.ViewMine",
+    respond: "Permissions.Sourcing.Bids.Respond",
+  },
   evaluation: {
     viewOpening: "Permissions.Sourcing.Evaluation.ViewOpening",
     viewTechnical: "Permissions.Sourcing.Evaluation.ViewTechnical",
@@ -93,5 +97,19 @@ export const FshPermissions = {
     create: "Permissions.Users.Create",
     update: "Permissions.Users.Update",
     manageRoles: "Permissions.Users.ManageRoles",
+  },
+  roles: {
+    view: "Permissions.Roles.View",
+    create: "Permissions.Roles.Create",
+    update: "Permissions.Roles.Update",
+    delete: "Permissions.Roles.Delete",
+  },
+  auditTrails: {
+    view: "Permissions.AuditTrails.View",
+  },
+  views: {
+    view: "Permissions.Platform.Views.View",
+    manageOwn: "Permissions.Platform.Views.ManageOwn",
+    manageShared: "Permissions.Platform.Views.ManageShared",
   },
 } as const;

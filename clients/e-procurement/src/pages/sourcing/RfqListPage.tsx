@@ -1,9 +1,12 @@
 import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { listRfqs } from "@/api/sourcing";
+import { listRfqs, type RfqListItemDto } from "@/api/sourcing";
+import { getViewFields, listViews, runView, type SavedViewDto } from "@/api/views";
 import { Icon } from "@/components/Icon";
 import { EmptyState, Spinner } from "@/components/ui";
 import { SourcingStatusBadge, EnvelopeTag } from "@/components/sourcing/badges";
+import { ViewBuilder, ViewPicker } from "@/components/views/SavedViewControls";
 import { dateTimeMY } from "@/lib/format";
 
 const BOARD_COLS: { status: string; label: string }[] = [
@@ -15,15 +18,61 @@ const BOARD_COLS: { status: string; label: string }[] = [
   { status: "Cancelled", label: "Cancelled" },
 ];
 
+/** Maps one `ViewRunResult` row (server casing may be PascalCase or camelCase) to the list DTO shape. */
+function rowToRfqListItem(r: Record<string, unknown>): RfqListItemDto {
+  return {
+    id: String(r.Id ?? r.id ?? ""),
+    code: String(r.Code ?? r.code ?? ""),
+    title: String(r.Title ?? r.title ?? ""),
+    envelope: String(r.Envelope ?? r.envelope ?? ""),
+    status: String(r.Status ?? r.status ?? ""),
+    currency: String(r.Currency ?? r.currency ?? ""),
+    closesUtc: (r.ClosesUtc ?? r.closesUtc ?? null) as string | null,
+    invitedCount: Number(r.InvitedCount ?? r.invitedCount ?? 0),
+    lineCount: Number(r.LineCount ?? r.lineCount ?? 0),
+  };
+}
+
 export function RfqListPage({ onOpen, onNew }: { onOpen: (id: string) => void; onNew: () => void }) {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [status, setStatus] = useState("all");
   const [view, setView] = useState<"table" | "board">("table");
-  const { data, isPending } = useQuery({ queryKey: ["rfqs"], queryFn: listRfqs });
+  const [selectedViewId, setSelectedViewId] = useState<string | null>(searchParams.get("view"));
+  const [viewBuilder, setViewBuilder] = useState<{ existing: SavedViewDto | null } | null>(null);
+
+  const { data, isPending: listIsPending } = useQuery({ queryKey: ["rfqs"], queryFn: listRfqs });
+
+  const { data: savedViews = [] } = useQuery({ queryKey: ["views", "Rfq"], queryFn: () => listViews("Rfq") });
+  const { data: rfqFields = [] } = useQuery({
+    queryKey: ["view-fields", "Rfq"],
+    queryFn: () => getViewFields("Rfq"),
+    staleTime: Infinity,
+  });
+  const { data: viewRun, isPending: viewIsPending } = useQuery({
+    queryKey: ["view-run", selectedViewId],
+    queryFn: () => runView(selectedViewId!, 1, 200),
+    enabled: !!selectedViewId,
+  });
+
+  const selectView = (id: string) => {
+    setSelectedViewId(id);
+    const next = new URLSearchParams(searchParams);
+    next.set("view", id);
+    setSearchParams(next, { replace: true });
+  };
+  const clearView = () => {
+    setSelectedViewId(null);
+    const next = new URLSearchParams(searchParams);
+    next.delete("view");
+    setSearchParams(next, { replace: true });
+  };
+
+  const isPending = selectedViewId ? viewIsPending : listIsPending;
 
   const rows = useMemo(() => {
-    const items = data ?? [];
+    const items = selectedViewId && viewRun ? viewRun.rows.map(rowToRfqListItem) : data ?? [];
     return status === "all" ? items : items.filter((r) => r.status === status);
-  }, [data, status]);
+  }, [data, selectedViewId, viewRun, status]);
 
   return (
     <>
@@ -44,6 +93,20 @@ export function RfqListPage({ onOpen, onNew }: { onOpen: (id: string) => void; o
         <button type="button" className="btn btn-pri btn-sm" onClick={onNew}>
           <Icon name="plus" size={15} /> New RFQ
         </button>
+      </div>
+
+      <div className="card" style={{ marginBottom: 14 }}>
+        <div className="cbody">
+          <ViewPicker
+            views={savedViews}
+            selectedId={selectedViewId}
+            onSelect={selectView}
+            onClear={clearView}
+            clearLabel="All RFQs"
+            onNew={() => setViewBuilder({ existing: null })}
+            onEdit={(v) => setViewBuilder({ existing: v })}
+          />
+        </div>
       </div>
 
       <div className="card" style={{ marginBottom: 14 }}>
@@ -151,6 +214,19 @@ export function RfqListPage({ onOpen, onNew }: { onOpen: (id: string) => void; o
           )}
         </div>
       )}
+
+      {viewBuilder ? (
+        <ViewBuilder
+          recordType="Rfq"
+          existing={viewBuilder.existing}
+          defaultColumns={rfqFields.slice(0, 5).map((f) => f.fieldKey)}
+          onClose={() => setViewBuilder(null)}
+          onSaved={(savedView) => {
+            setViewBuilder(null);
+            selectView(savedView.id);
+          }}
+        />
+      ) : null}
     </>
   );
 }

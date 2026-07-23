@@ -10,9 +10,10 @@ import type { NavGroup } from "@/nav";
 export const OLD_ACTION_TO_FSH: Record<string, string | null> = {
   // Sourcing / dashboards
   UseDashboards: null, // authenticated-only — see AUTH_ONLY_ACTIONS
-  UseSavedViews: null, // deferred POC
+  UseSavedViews: FshPermissions.views.view,
   ViewRequisitions: FshPermissions.requisitions.view,
   ViewRfqs: FshPermissions.rfqs.view,
+  ViewMyRfqs: FshPermissions.bids.viewMine,
   ViewAwards: FshPermissions.award.view,
   ViewBidOpenings: FshPermissions.evaluation.viewOpening,
   ViewClarifications: FshPermissions.clarifications.view,
@@ -31,6 +32,8 @@ export const OLD_ACTION_TO_FSH: Record<string, string | null> = {
   // Administration
   ManageUsers: FshPermissions.users.view,
   ManageCustomLists: FshPermissions.customLists.manage,
+  ManageLookups: FshPermissions.lookups.manage,
+  ViewAudits: FshPermissions.auditTrails.view,
   ManageCustomFields: null,
   ManageSegments: null,
   ManageItems: null,
@@ -42,7 +45,6 @@ export const OLD_ACTION_TO_FSH: Record<string, string | null> = {
 /** Old actions with no FSH perm that stay visible for any signed-in user. */
 const AUTH_ONLY_ACTIONS = new Set([
   "UseDashboards",
-  "UseSavedViews",
   "ManageCustomFields",
   "ManageSegments",
   "ManageItems",
@@ -71,6 +73,14 @@ export function hasOldAction(
   if (mapped === null) return AUTH_ONLY_ACTIONS.has(action);
   if (action === "ViewStatements") {
     return granted.includes(mapped) || granted.includes(FshPermissions.statements.viewMine);
+  }
+  // Lookups hub covers geo, lists, and org — any of those manage grants unlocks the nav item.
+  if (action === "ManageLookups") {
+    return (
+      granted.includes(mapped) ||
+      granted.includes(FshPermissions.customLists.manage) ||
+      granted.includes(FshPermissions.org.manage)
+    );
   }
   return granted.includes(mapped);
 }

@@ -1,3 +1,5 @@
+using FSH.Framework.Shared.Identity.Authorization;
+using FSH.Modules.Sourcing.Contracts.Authorization;
 using FSH.Modules.Sourcing.Contracts.Dtos;
 using FSH.Modules.Sourcing.Contracts.v1.Bids;
 using Mediator;
@@ -19,7 +21,8 @@ public static class SaveBidDraftEndpoint
                         new SaveBidDraftCommand(rfqId, body.Lead, body.Warranty, body.Lines, body.Answers, body.Files), ct));
                 })
             .WithName("SaveBidDraft")
-            .WithSummary("Save a draft bid on an RFQ — vendor-portal only.");
+            .WithSummary("Save a draft bid on an RFQ — vendor-portal only.")
+            .RequirePermission(SourcingPermissions.Bids.Respond);
     }
 }
 

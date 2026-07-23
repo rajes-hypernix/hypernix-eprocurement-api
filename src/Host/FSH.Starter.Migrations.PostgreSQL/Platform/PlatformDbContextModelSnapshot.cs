@@ -23,6 +23,8 @@ namespace FSH.Starter.Migrations.PostgreSQL.Platform
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.HasSequence("ViewCodeSeq", "platform");
+
             modelBuilder.Entity("FSH.Modules.Platform.Domain.Bank", b =>
                 {
                     b.Property<Guid>("Id")
@@ -226,6 +228,51 @@ namespace FSH.Starter.Migrations.PostgreSQL.Platform
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
 
+            modelBuilder.Entity("FSH.Modules.Platform.Domain.FieldRegistryEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DataType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("FieldKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("RecordType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RecordType", "FieldKey", "TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_FieldRegistryEntries_RecordType_FieldKey");
+
+                    b.ToTable("FieldRegistryEntries", "platform");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
             modelBuilder.Entity("FSH.Modules.Platform.Domain.FormTemplate", b =>
                 {
                     b.Property<Guid>("Id")
@@ -361,6 +408,142 @@ namespace FSH.Starter.Migrations.PostgreSQL.Platform
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
 
+            modelBuilder.Entity("FSH.Modules.Platform.Domain.SavedView", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsShared")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsSystem")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("OwnerUserId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("RecordType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code", "TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_SavedViews_Code");
+
+                    b.HasIndex("RecordType", "OwnerUserId");
+
+                    b.ToTable("SavedViews", "platform");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
+            modelBuilder.Entity("FSH.Modules.Platform.Domain.SavedViewColumn", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("FieldKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Label")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("SavedViewId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Sort")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SortDirection")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SavedViewId", "Sort");
+
+                    b.ToTable("SavedViewColumns", "platform");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
+            modelBuilder.Entity("FSH.Modules.Platform.Domain.SavedViewFilter", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("FieldKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("GroupIndex")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Operator")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid>("SavedViewId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Sort")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("Value2")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SavedViewId", "Sort");
+
+                    b.ToTable("SavedViewFilters", "platform");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
             modelBuilder.Entity("FSH.Modules.Platform.Domain.State", b =>
                 {
                     b.Property<Guid>("Id")
@@ -438,6 +621,24 @@ namespace FSH.Starter.Migrations.PostgreSQL.Platform
                         .OnDelete(DeleteBehavior.Restrict);
                 });
 
+            modelBuilder.Entity("FSH.Modules.Platform.Domain.SavedViewColumn", b =>
+                {
+                    b.HasOne("FSH.Modules.Platform.Domain.SavedView", null)
+                        .WithMany("Columns")
+                        .HasForeignKey("SavedViewId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FSH.Modules.Platform.Domain.SavedViewFilter", b =>
+                {
+                    b.HasOne("FSH.Modules.Platform.Domain.SavedView", null)
+                        .WithMany("Filters")
+                        .HasForeignKey("SavedViewId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("FSH.Modules.Platform.Domain.State", b =>
                 {
                     b.HasOne("FSH.Modules.Platform.Domain.Country", null)
@@ -455,6 +656,13 @@ namespace FSH.Starter.Migrations.PostgreSQL.Platform
             modelBuilder.Entity("FSH.Modules.Platform.Domain.FormTemplate", b =>
                 {
                     b.Navigation("Questions");
+                });
+
+            modelBuilder.Entity("FSH.Modules.Platform.Domain.SavedView", b =>
+                {
+                    b.Navigation("Columns");
+
+                    b.Navigation("Filters");
                 });
 #pragma warning restore 612, 618
         }

@@ -28,6 +28,13 @@ using FSH.Modules.Platform.Features.v1.OrgUnits.ListOrgUnits;
 using FSH.Modules.Platform.Features.v1.OrgUnits.SetOrgUnitActive;
 using FSH.Modules.Platform.Features.v1.States.CreateState;
 using FSH.Modules.Platform.Features.v1.States.ListStates;
+using FSH.Modules.Platform.Features.v1.Views.CreateSavedView;
+using FSH.Modules.Platform.Features.v1.Views.DeleteSavedView;
+using FSH.Modules.Platform.Features.v1.Views.GetViewFields;
+using FSH.Modules.Platform.Features.v1.Views.ListSavedViews;
+using FSH.Modules.Platform.Features.v1.Views.RunSavedView;
+using FSH.Modules.Platform.Features.v1.Views.ShareSavedView;
+using FSH.Modules.Platform.Features.v1.Views.UpdateSavedView;
 using FSH.Modules.Platform.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
@@ -98,5 +105,13 @@ public sealed class PlatformModule : IModule
         group.MapGetFormTemplateEndpoint();
         group.MapCreateFormTemplateEndpoint();
         group.MapSetFormTemplateActiveEndpoint();
+
+        group.MapListSavedViewsEndpoint();
+        group.MapGetViewFieldsEndpoint();
+        group.MapCreateSavedViewEndpoint();
+        group.MapUpdateSavedViewEndpoint();
+        group.MapDeleteSavedViewEndpoint();
+        group.MapShareSavedViewEndpoint();
+        group.MapRunSavedViewEndpoint();
     }
 }

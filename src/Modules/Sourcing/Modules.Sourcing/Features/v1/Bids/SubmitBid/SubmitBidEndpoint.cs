@@ -1,3 +1,5 @@
+using FSH.Framework.Shared.Identity.Authorization;
+using FSH.Modules.Sourcing.Contracts.Authorization;
 using FSH.Modules.Sourcing.Contracts.v1.Bids;
 using Mediator;
 using Microsoft.AspNetCore.Builder;
@@ -14,6 +16,7 @@ public static class SubmitBidEndpoint
                 (Guid rfqId, IMediator mediator, CancellationToken ct) =>
                     mediator.Send(new SubmitBidCommand(rfqId), ct))
             .WithName("SubmitBid")
-            .WithSummary("Submit the calling vendor's bid on an RFQ — vendor-portal only.");
+            .WithSummary("Submit the calling vendor's bid on an RFQ — vendor-portal only.")
+            .RequirePermission(SourcingPermissions.Bids.Respond);
     }
 }

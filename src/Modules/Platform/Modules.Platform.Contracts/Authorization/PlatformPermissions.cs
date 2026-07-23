@@ -32,6 +32,14 @@ public static class PlatformPermissions
         public const string Manage = $"Permissions.{Resource}.Manage";
     }
 
+    public static class Views
+    {
+        public const string Resource = "Platform.Views";
+        public const string View = $"Permissions.{Resource}.View";
+        public const string ManageOwn = $"Permissions.{Resource}.ManageOwn";
+        public const string ManageShared = $"Permissions.{Resource}.ManageShared";
+    }
+
     public static IReadOnlyList<FshPermission> All { get; } =
     [
         new("View Lookups", ActionConstants.View, Lookups.Resource, IsBasic: true),
@@ -42,5 +50,11 @@ public static class PlatformPermissions
         new("Manage Org Units", "Manage", Org.Resource),
         new("View Form Templates", ActionConstants.View, FormTemplates.Resource, IsBasic: true),
         new("Manage Form Templates", "Manage", FormTemplates.Resource),
+
+        // Using saved views is all-principal (View/ManageOwn are Basic); publishing/editing a
+        // shared or system view is a step up, granted explicitly (Buyer today, Admin by root).
+        new("View Saved Views", ActionConstants.View, Views.Resource, IsBasic: true),
+        new("Manage Own Saved Views", "ManageOwn", Views.Resource, IsBasic: true),
+        new("Manage Shared Saved Views", "ManageShared", Views.Resource),
     ];
 }

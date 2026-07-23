@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from "react-router-dom";
+import { createBrowserRouter, Navigate, useNavigate } from "react-router-dom";
 import { ProtectedRoute } from "@/auth/protected-route";
 import { AppShell } from "@/components/AppShell";
 import { LoginPage } from "@/pages/LoginPage";
@@ -8,6 +8,7 @@ import { VendorsPage } from "@/pages/vendors/VendorsPage";
 import { OnboardingPage } from "@/pages/onboarding/OnboardingPage";
 import { OnboardingPortalPage } from "@/pages/onboarding/portal/OnboardingPortalPage";
 import { RequisitionsPage } from "@/pages/sourcing/RequisitionsPage";
+import { ConsolidatePage } from "@/pages/sourcing/ConsolidatePage";
 import { RfqsPage } from "@/pages/sourcing/RfqsPage";
 import { EvaluationPage } from "@/pages/sourcing/EvaluationPage";
 import { AwardsPage } from "@/pages/sourcing/AwardsPage";
@@ -19,6 +20,19 @@ import { InvoicesPage } from "@/pages/procurement/InvoicesPage";
 import { NotificationsInboxPage } from "@/pages/notifications/NotificationsInboxPage";
 import { ComingSoonRoute } from "@/pages/ComingSoonPage";
 import { StatementsPage } from "@/pages/statements/StatementsPage";
+import { AdminPage } from "@/pages/admin/AdminPage";
+import { LookupsPage } from "@/pages/setup/LookupsPage";
+import { FormsPage } from "@/pages/setup/FormsPage";
+import { AuditsPage } from "@/pages/setup/AuditsPage";
+import { SavedViewsHome } from "@/pages/views/SavedViewsHome";
+
+/** Multi-PR RFQ consolidation workspace — reachable via the "Build RFQ" button, not the nav rail. */
+function ConsolidateRoute() {
+  const navigate = useNavigate();
+  return (
+    <ConsolidatePage onBack={() => void navigate("/reqs")} onOpenRfq={(id) => void navigate(`/rfqs/${id}`)} />
+  );
+}
 
 export const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
@@ -34,6 +48,7 @@ export const router = createBrowserRouter([
           { path: "vendors/*", element: <VendorsPage /> },
           { path: "onboarding/*", element: <OnboardingPage /> },
           { path: "reqs/*", element: <RequisitionsPage /> },
+          { path: "consolidate", element: <ConsolidateRoute /> },
           { path: "rfqs/*", element: <RfqsPage /> },
           { path: "openings/*", element: <EvaluationPage /> },
           { path: "awards/*", element: <AwardsPage /> },
@@ -44,10 +59,11 @@ export const router = createBrowserRouter([
           { path: "invoices/*", element: <InvoicesPage /> },
           { path: "notifications", element: <NotificationsInboxPage /> },
           { path: "payments", element: <ComingSoonRoute pageKey="payments" /> },
-          { path: "views", element: <ComingSoonRoute pageKey="views" /> },
-          { path: "forms", element: <ComingSoonRoute pageKey="forms" /> },
-          { path: "admin", element: <ComingSoonRoute pageKey="admin" /> },
-          { path: "lists", element: <ComingSoonRoute pageKey="lists" /> },
+          { path: "views", element: <SavedViewsHome /> },
+          { path: "forms", element: <FormsPage /> },
+          { path: "admin/*", element: <AdminPage /> },
+          { path: "lists", element: <LookupsPage /> },
+          { path: "audits", element: <AuditsPage /> },
           { path: "customfields", element: <ComingSoonRoute pageKey="customfields" /> },
           { path: "segments", element: <ComingSoonRoute pageKey="segments" /> },
           { path: "items", element: <ComingSoonRoute pageKey="items" /> },

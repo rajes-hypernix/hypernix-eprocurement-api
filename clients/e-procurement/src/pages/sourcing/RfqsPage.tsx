@@ -1,6 +1,5 @@
-import { useNavigate, useParams } from "react-router-dom";
+import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { RfqListPage } from "@/pages/sourcing/RfqListPage";
-import { RfqBuilderPage } from "@/pages/sourcing/RfqBuilderPage";
 import { RfqDetailPage } from "@/pages/sourcing/RfqDetailPage";
 
 /** Route switch for /rfqs and /rfqs/* — mirrors VendorsPage splat routing. */
@@ -11,12 +10,14 @@ export function RfqsPage() {
 
   const go = (path: string) => void navigate(`/rfqs${path ? `/${path}` : ""}`);
 
+  // RFQ drafts are now built from the Requisitions/Consolidate flow — old deep links to
+  // the single-page builder redirect to the multi-PR consolidation workspace.
   if (route === "new") {
-    return <RfqBuilderPage onSaved={(id) => go(id)} onBack={() => go("")} />;
+    return <Navigate to="/consolidate" replace />;
   }
   if (route) {
     return <RfqDetailPage id={route} onBack={() => go("")} onNavigate={(key) => void navigate(`/${key}`)} />;
   }
 
-  return <RfqListPage onOpen={(id) => go(id)} onNew={() => go("new")} />;
+  return <RfqListPage onOpen={(id) => go(id)} onNew={() => void navigate("/consolidate")} />;
 }

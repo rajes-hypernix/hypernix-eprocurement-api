@@ -28,11 +28,16 @@ public sealed class PlatformDbContext : BaseDbContext
     public DbSet<OrgUnit> OrgUnits => Set<OrgUnit>();
     public DbSet<FormTemplate> FormTemplates => Set<FormTemplate>();
     public DbSet<FormTemplateQuestion> FormTemplateQuestions => Set<FormTemplateQuestion>();
+    public DbSet<FieldRegistryEntry> FieldRegistryEntries => Set<FieldRegistryEntry>();
+    public DbSet<SavedView> SavedViews => Set<SavedView>();
+    public DbSet<SavedViewFilter> SavedViewFilters => Set<SavedViewFilter>();
+    public DbSet<SavedViewColumn> SavedViewColumns => Set<SavedViewColumn>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
         modelBuilder.HasDefaultSchema(Schema);
+        modelBuilder.HasSequence<long>("ViewCodeSeq", Schema).StartsAt(1);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(PlatformDbContext).Assembly);
         base.OnModelCreating(modelBuilder);
     }

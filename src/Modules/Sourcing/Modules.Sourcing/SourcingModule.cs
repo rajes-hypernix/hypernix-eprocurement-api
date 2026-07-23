@@ -2,6 +2,7 @@ using Asp.Versioning;
 using FSH.Framework.Persistence;
 using FSH.Framework.Shared.Constants;
 using FSH.Framework.Web.Modules;
+using FSH.Modules.Platform.Contracts.Services;
 using FSH.Modules.Sourcing.Contracts.Authorization;
 using FSH.Modules.Sourcing.Data;
 using FSH.Modules.Sourcing.Features.v1.Bids.GetMyBid;
@@ -67,6 +68,7 @@ public sealed class SourcingModule : IModule
         builder.Services.AddHeroDbContext<SourcingDbContext>();
         builder.Services.AddScoped<IDbInitializer, SourcingDbInitializer>();
         builder.Services.AddScoped<ISourcingCodeGenerator, SourcingCodeGenerator>();
+        builder.Services.AddScoped<ISavedViewRowSource, SourcingSavedViewRowSource>();
         builder.Services.Configure<RfqGovernanceOptions>(builder.Configuration.GetSection("RfqGovernance"));
         builder.Services.AddHealthChecks()
             .AddDbContextCheck<SourcingDbContext>(

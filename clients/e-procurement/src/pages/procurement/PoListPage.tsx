@@ -55,7 +55,11 @@ export function PoListPage({ onOpen }: { onOpen: (id: string) => void }) {
       <div className="pagehead">
         <div>
           <h1>Purchase Orders</h1>
-          <p>Issue POs to vendors, track acknowledgement, receipts, and invoice matching.</p>
+          <p>
+            {isVendor
+              ? "Acknowledge issued POs and track deliveries and invoices for your company."
+              : "Issue POs to vendors, track acknowledgement, receipts, and invoice matching."}
+          </p>
         </div>
       </div>
 

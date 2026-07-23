@@ -8,6 +8,21 @@ export type CountryDto = {
   isActive: boolean;
 };
 
+export type StateDto = {
+  id: string;
+  countryId: string;
+  code: string;
+  name: string;
+  isActive: boolean;
+};
+
+export type CityDto = {
+  id: string;
+  stateId: string;
+  name: string;
+  isActive: boolean;
+};
+
 export type BankDto = {
   id: string;
   name: string;
@@ -78,14 +93,99 @@ export type FormTemplateListItemDto = {
   questionCount: number;
 };
 
+export type FormTemplateQuestionDto = {
+  id: string;
+  order: number;
+  label: string;
+  type: string;
+  required: boolean;
+  configJson?: string | null;
+  help?: string | null;
+};
+
+export type FormTemplateDto = {
+  id: string;
+  key: string;
+  name: string;
+  isActive: boolean;
+  questions: FormTemplateQuestionDto[];
+};
+
+export type CreateFormTemplateQuestionDto = {
+  order: number;
+  label: string;
+  type: string;
+  required: boolean;
+  configJson?: string | null;
+  help?: string | null;
+};
+
 const ROOT = ApiPaths.platform;
 
-export function listCountries(): Promise<CountryDto[]> {
-  return apiFetch<CountryDto[]>(`${ROOT}/countries`);
+export function listCountries(activeOnly = true): Promise<CountryDto[]> {
+  return apiFetch<CountryDto[]>(`${ROOT}/countries${toQuery({ activeOnly })}`);
 }
 
-export function listBanks(countryCode?: string): Promise<BankDto[]> {
-  return apiFetch<BankDto[]>(`${ROOT}/banks${toQuery({ countryCode })}`);
+export function listStates(countryId: string, activeOnly = true): Promise<StateDto[]> {
+  return apiFetch<StateDto[]>(
+    `${ROOT}/countries/${encodeURIComponent(countryId)}/states${toQuery({ activeOnly })}`,
+  );
+}
+
+export function listCities(stateId: string, activeOnly = true): Promise<CityDto[]> {
+  return apiFetch<CityDto[]>(
+    `${ROOT}/states/${encodeURIComponent(stateId)}/cities${toQuery({ activeOnly })}`,
+  );
+}
+
+export function createCountry(input: { code: string; name: string }): Promise<string> {
+  return apiFetch<string>(`${ROOT}/countries`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function setCountryActive(id: string, isActive: boolean): Promise<string> {
+  return apiFetch<string>(`${ROOT}/countries/${encodeURIComponent(id)}/active`, {
+    method: "PUT",
+    body: JSON.stringify({ isActive }),
+  });
+}
+
+export function createState(input: { countryId: string; code: string; name: string }): Promise<string> {
+  return apiFetch<string>(`${ROOT}/states`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function createCity(input: { stateId: string; name: string }): Promise<string> {
+  return apiFetch<string>(`${ROOT}/cities`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function listBanks(countryCode?: string, activeOnly = true): Promise<BankDto[]> {
+  return apiFetch<BankDto[]>(`${ROOT}/banks${toQuery({ countryCode, activeOnly })}`);
+}
+
+export function createBank(input: {
+  name: string;
+  countryCode: string;
+  swiftCode?: string;
+}): Promise<string> {
+  return apiFetch<string>(`${ROOT}/banks`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function setBankActive(id: string, isActive: boolean): Promise<string> {
+  return apiFetch<string>(`${ROOT}/banks/${encodeURIComponent(id)}/active`, {
+    method: "PUT",
+    body: JSON.stringify({ isActive }),
+  });
 }
 
 export function getGeoCatalog(): Promise<GeoCatalogDto> {
@@ -96,18 +196,83 @@ export function getOrgCatalog(): Promise<OrgCatalogDto> {
   return apiFetch<OrgCatalogDto>(`${ROOT}/org-catalog`);
 }
 
-export function listOrgUnits(): Promise<OrgUnitDto[]> {
-  return apiFetch<OrgUnitDto[]>(`${ROOT}/org-units`);
+export function listOrgUnits(type?: string, activeOnly = true): Promise<OrgUnitDto[]> {
+  return apiFetch<OrgUnitDto[]>(`${ROOT}/org-units${toQuery({ type, activeOnly })}`);
 }
 
-export function listCustomLists(): Promise<CustomListDto[]> {
-  return apiFetch<CustomListDto[]>(`${ROOT}/custom-lists`);
+export function createOrgUnit(input: {
+  code: string;
+  name: string;
+  type: string;
+  parentId?: string | null;
+}): Promise<string> {
+  return apiFetch<string>(`${ROOT}/org-units`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function setOrgUnitActive(id: string, isActive: boolean): Promise<string> {
+  return apiFetch<string>(`${ROOT}/org-units/${encodeURIComponent(id)}/active`, {
+    method: "PUT",
+    body: JSON.stringify({ isActive }),
+  });
+}
+
+export function listCustomLists(activeOnly = true): Promise<CustomListDto[]> {
+  return apiFetch<CustomListDto[]>(`${ROOT}/custom-lists${toQuery({ activeOnly })}`);
 }
 
 export function listCustomListItems(listKey: string, activeOnly = true): Promise<CustomListItemDto[]> {
-  return apiFetch<CustomListItemDto[]>(`${ROOT}/custom-lists/${listKey}/items${toQuery({ activeOnly })}`);
+  return apiFetch<CustomListItemDto[]>(
+    `${ROOT}/custom-lists/${encodeURIComponent(listKey)}/items${toQuery({ activeOnly })}`,
+  );
 }
 
-export function listFormTemplates(): Promise<FormTemplateListItemDto[]> {
-  return apiFetch<FormTemplateListItemDto[]>(`${ROOT}/form-templates`);
+export function createCustomList(input: { key: string; name: string }): Promise<string> {
+  return apiFetch<string>(`${ROOT}/custom-lists`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function upsertCustomListItem(
+  listKey: string,
+  input: { code: string; label: string; sortOrder?: number; isActive?: boolean },
+): Promise<string> {
+  return apiFetch<string>(`${ROOT}/custom-lists/${encodeURIComponent(listKey)}/items`, {
+    method: "PUT",
+    body: JSON.stringify({
+      code: input.code,
+      label: input.label,
+      sortOrder: input.sortOrder ?? 0,
+      isActive: input.isActive ?? true,
+    }),
+  });
+}
+
+export function listFormTemplates(activeOnly = true): Promise<FormTemplateListItemDto[]> {
+  return apiFetch<FormTemplateListItemDto[]>(`${ROOT}/form-templates${toQuery({ activeOnly })}`);
+}
+
+export function getFormTemplate(id: string): Promise<FormTemplateDto | null> {
+  return apiFetch<FormTemplateDto | null>(`${ROOT}/form-templates/${encodeURIComponent(id)}`);
+}
+
+export function createFormTemplate(input: {
+  key: string;
+  name: string;
+  questions: CreateFormTemplateQuestionDto[];
+}): Promise<string> {
+  return apiFetch<string>(`${ROOT}/form-templates`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function setFormTemplateActive(id: string, isActive: boolean): Promise<string> {
+  return apiFetch<string>(`${ROOT}/form-templates/${encodeURIComponent(id)}/active`, {
+    method: "PUT",
+    body: JSON.stringify({ isActive }),
+  });
 }

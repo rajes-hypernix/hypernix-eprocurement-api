@@ -23,7 +23,7 @@ type VendorType = "Swec" | "NonSwec";
 export function OnboardingInvitePage({ onBack }: { onBack: () => void }) {
   const { data: templates = [], isPending } = useQuery({
     queryKey: ["form-templates"],
-    queryFn: listFormTemplates,
+    queryFn: () => listFormTemplates(),
   });
 
   const [type, setType] = useState<VendorType>("NonSwec");

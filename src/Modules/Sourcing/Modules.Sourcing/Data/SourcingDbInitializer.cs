@@ -75,6 +75,18 @@ public sealed class SourcingDbInitializer(
                 SourcingPermissions.Evaluation.OpenCommercial,
             ],
             cancellationToken).ConfigureAwait(false);
+
+        // Vendor portal: bid handlers are VendorId-claim scoped AND permission-gated.
+        await MergeRolePermissionsAsync(
+            "Vendor",
+            "Vendor — onboarding, bidding, clarifications, PO acknowledge, ASN, invoice submit.",
+            [
+                SourcingPermissions.Bids.ViewMine,
+                SourcingPermissions.Bids.Respond,
+                SourcingPermissions.Clarifications.View,
+                SourcingPermissions.Clarifications.Send,
+            ],
+            cancellationToken).ConfigureAwait(false);
     }
 
     private async Task MergeRolePermissionsAsync(

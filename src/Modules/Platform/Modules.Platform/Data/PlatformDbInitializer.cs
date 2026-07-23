@@ -29,6 +29,13 @@ public sealed class PlatformDbInitializer(
             logger.LogInformation("[Platform] seeded lookup reference data");
         }
 
+        ViewsSeedData.Seed(dbContext);
+        if (dbContext.ChangeTracker.HasChanges())
+        {
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            logger.LogInformation("[Platform] seeded field registry and system saved views");
+        }
+
         await MergeRolePermissionsAsync(
             "Buyer",
             "Buyer — creates requisitions/RFQs and purchase orders, receives goods, approves invoices.",
@@ -41,6 +48,9 @@ public sealed class PlatformDbInitializer(
                 PlatformPermissions.Org.Manage,
                 PlatformPermissions.FormTemplates.View,
                 PlatformPermissions.FormTemplates.Manage,
+                PlatformPermissions.Views.View,
+                PlatformPermissions.Views.ManageOwn,
+                PlatformPermissions.Views.ManageShared,
             ],
             cancellationToken).ConfigureAwait(false);
 
