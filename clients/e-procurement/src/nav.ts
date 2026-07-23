@@ -4,6 +4,10 @@ export interface NavItem {
   label: string;
   /** Old AUTHORIZATION-MATRIX action — mapped to FSH permissions via gateNav/`Gated`. */
   action?: string;
+  /** Optional navigate target (default `/${key}`). Use for query deep-links. */
+  href?: string;
+  /** Nested sidebar links (expandable dropdown). */
+  children?: NavItem[];
 }
 
 export interface NavGroup {
@@ -74,12 +78,89 @@ export const BUYER_CENTER_TABS: CenterTab[] = [
     items: [
       { key: "admin", icon: "users", label: "User Management", action: "ManageUsers" },
       { key: "audits", icon: "eye", label: "Audit log", action: "ViewAudits" },
-      { key: "lists", icon: "list", label: "Lookups & lists", action: "ManageLookups" },
-      { key: "customfields", icon: "field", label: "Custom Fields", action: "ManageCustomFields" },
-      { key: "segments", icon: "chart", label: "Segments", action: "ManageSegments" },
-      { key: "items", icon: "box", label: "Item Master", action: "ManageItems" },
-      { key: "entryforms", icon: "form", label: "Entry Forms", action: "ManageEntryForms" },
-      { key: "numbering", icon: "hash", label: "Numbering", action: "ManageNumbering" },
+      {
+        key: "masters",
+        icon: "list",
+        label: "Masters",
+        action: "ManageMasters",
+        href: "/masters",
+        children: [
+          { key: "masters-banks", icon: "clip", label: "Banks", href: "/masters?tab=banks", action: "ManageLookups" },
+          { key: "masters-lists", icon: "list", label: "Lists", href: "/masters?tab=lists", action: "ManageLookups" },
+          {
+            key: "masters-countries",
+            icon: "field",
+            label: "Countries",
+            href: "/masters?tab=countries",
+            action: "ManageLookups",
+          },
+          { key: "masters-org", icon: "users", label: "Org", href: "/masters?tab=org", action: "ManageLookups" },
+          {
+            key: "masters-settings",
+            icon: "menu",
+            label: "Settings",
+            href: "/masters?tab=settings",
+            action: "ManageConfiguration",
+          },
+          {
+            key: "masters-currencies",
+            icon: "clip",
+            label: "Currencies",
+            href: "/masters?tab=currencies",
+            action: "ManageConfiguration",
+          },
+          {
+            key: "masters-rates",
+            icon: "chart",
+            label: "Exchange rates",
+            href: "/masters?tab=rates",
+            action: "ManageConfiguration",
+          },
+          {
+            key: "masters-tax",
+            icon: "hash",
+            label: "Tax codes",
+            href: "/masters?tab=tax",
+            action: "ManageConfiguration",
+          },
+          {
+            key: "masters-payment",
+            icon: "send",
+            label: "Payment terms",
+            href: "/masters?tab=payment",
+            action: "ManageConfiguration",
+          },
+          {
+            key: "masters-incoterms",
+            icon: "flag",
+            label: "Incoterms",
+            href: "/masters?tab=incoterms",
+            action: "ManageConfiguration",
+          },
+          {
+            key: "masters-locations",
+            icon: "field",
+            label: "Locations",
+            href: "/masters?tab=locations",
+            action: "ManageConfiguration",
+          },
+          {
+            key: "masters-items",
+            icon: "box",
+            label: "Items",
+            href: "/masters?tab=items",
+            action: "ManageConfiguration",
+          },
+          {
+            key: "masters-numbering",
+            icon: "list",
+            label: "Numbering",
+            href: "/masters?tab=numbering",
+            action: "ManageConfiguration",
+          },
+        ],
+      },
+      // Custom Fields / Segments / Entry Forms — deferred (blank Coming Soon); hide until built.
     ],
   },
 ];

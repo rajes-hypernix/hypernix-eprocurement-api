@@ -29,6 +29,13 @@ public sealed class PlatformDbInitializer(
             logger.LogInformation("[Platform] seeded lookup reference data");
         }
 
+        ConfigurationSeedData.Seed(dbContext);
+        if (dbContext.ChangeTracker.HasChanges())
+        {
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            logger.LogInformation("[Platform] seeded configuration masters");
+        }
+
         ViewsSeedData.Seed(dbContext);
         if (dbContext.ChangeTracker.HasChanges())
         {
@@ -48,6 +55,8 @@ public sealed class PlatformDbInitializer(
                 PlatformPermissions.Org.Manage,
                 PlatformPermissions.FormTemplates.View,
                 PlatformPermissions.FormTemplates.Manage,
+                PlatformPermissions.Configuration.View,
+                PlatformPermissions.Configuration.Manage,
                 PlatformPermissions.Views.View,
                 PlatformPermissions.Views.ManageOwn,
                 PlatformPermissions.Views.ManageShared,
@@ -61,6 +70,7 @@ public sealed class PlatformDbInitializer(
                 PlatformPermissions.Lookups.View,
                 PlatformPermissions.CustomLists.View,
                 PlatformPermissions.FormTemplates.View,
+                PlatformPermissions.Configuration.View,
             ],
             cancellationToken).ConfigureAwait(false);
     }

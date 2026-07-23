@@ -88,6 +88,10 @@ export const FshPermissions = {
     view: "Permissions.Platform.FormTemplates.View",
     manage: "Permissions.Platform.FormTemplates.Manage",
   },
+  configuration: {
+    view: "Permissions.Platform.Configuration.View",
+    manage: "Permissions.Platform.Configuration.Manage",
+  },
   notifications: {
     view: "Permissions.Notifications.Inbox.View",
     markRead: "Permissions.Notifications.Inbox.MarkRead",

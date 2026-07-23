@@ -33,12 +33,14 @@ export const OLD_ACTION_TO_FSH: Record<string, string | null> = {
   ManageUsers: FshPermissions.users.view,
   ManageCustomLists: FshPermissions.customLists.manage,
   ManageLookups: FshPermissions.lookups.manage,
+  ManageMasters: FshPermissions.lookups.manage,
   ViewAudits: FshPermissions.auditTrails.view,
+  ManageConfiguration: FshPermissions.configuration.manage,
   ManageCustomFields: null,
   ManageSegments: null,
-  ManageItems: null,
+  ManageItems: FshPermissions.configuration.manage,
   ManageEntryForms: null,
-  ManageNumbering: null,
+  ManageNumbering: FshPermissions.configuration.manage,
   ViewNotifications: FshPermissions.notifications.view,
 };
 
@@ -47,9 +49,7 @@ const AUTH_ONLY_ACTIONS = new Set([
   "UseDashboards",
   "ManageCustomFields",
   "ManageSegments",
-  "ManageItems",
   "ManageEntryForms",
-  "ManageNumbering",
 ]);
 
 /** Resolve FSH permission for an old matrix action (or null if unmapped/deferred). */
@@ -74,12 +74,35 @@ export function hasOldAction(
   if (action === "ViewStatements") {
     return granted.includes(mapped) || granted.includes(FshPermissions.statements.viewMine);
   }
-  // Lookups hub covers geo, lists, and org — any of those manage grants unlocks the nav item.
+  // Lookups hub covers geo, lists, and org — view or manage unlocks the nav item.
   if (action === "ManageLookups") {
     return (
       granted.includes(mapped) ||
+      granted.includes(FshPermissions.lookups.view) ||
       granted.includes(FshPermissions.customLists.manage) ||
-      granted.includes(FshPermissions.org.manage)
+      granted.includes(FshPermissions.customLists.view) ||
+      granted.includes(FshPermissions.org.manage) ||
+      granted.includes(FshPermissions.org.view)
+    );
+  }
+  // Merged Masters parent (Lookups + Configuration).
+  if (action === "ManageMasters") {
+    return (
+      granted.includes(FshPermissions.lookups.manage) ||
+      granted.includes(FshPermissions.lookups.view) ||
+      granted.includes(FshPermissions.customLists.manage) ||
+      granted.includes(FshPermissions.customLists.view) ||
+      granted.includes(FshPermissions.org.manage) ||
+      granted.includes(FshPermissions.org.view) ||
+      granted.includes(FshPermissions.configuration.manage) ||
+      granted.includes(FshPermissions.configuration.view)
+    );
+  }
+  // Configuration hub (incl. Items / Numbering nav shortcuts).
+  if (action === "ManageConfiguration" || action === "ManageItems" || action === "ManageNumbering") {
+    return (
+      granted.includes(FshPermissions.configuration.manage) ||
+      granted.includes(FshPermissions.configuration.view)
     );
   }
   return granted.includes(mapped);
@@ -90,7 +113,18 @@ export function gateNav(groups: NavGroup[], granted: readonly string[]): NavGrou
   return groups
     .map((g) => ({
       ...g,
-      items: g.items.filter((item) => hasOldAction(granted, item.action)),
+      items: g.items
+        .map((item) => {
+          if (!item.children?.length) return item;
+          const children = item.children.filter((c) =>
+            hasOldAction(granted, c.action ?? item.action),
+          );
+          return children.length ? { ...item, children } : { ...item, children: undefined };
+        })
+        .filter((item) => {
+          if (item.children?.length) return true;
+          return hasOldAction(granted, item.action);
+        }),
     }))
     .filter((g) => g.items.length > 0);
 }

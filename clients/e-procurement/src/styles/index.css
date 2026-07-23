@@ -422,8 +422,43 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--teal); }
   background: var(--teal-nav);
   color: #fff;
 }
+.nav.nav-parent-on {
+  background: var(--soft);
+  color: var(--ink);
+}
 .nav .ic {
   display: flex;
+}
+.nav-label {
+  flex: 1;
+  min-width: 0;
+}
+.nav-caret {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  padding: 2px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+.nav-caret:hover {
+  color: var(--ink);
+}
+.nav-caret.open {
+  transform: rotate(90deg);
+}
+.nav-child {
+  padding-left: 28px;
+  font-size: 12.5px;
+  font-weight: 550;
+  gap: 9px;
+}
+.nav-branch {
+  margin-bottom: 0;
 }
 
 /* ---- Main + cards ---- */

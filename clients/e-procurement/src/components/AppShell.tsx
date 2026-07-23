@@ -12,9 +12,9 @@ const EMPTY_PERMS: readonly string[] = [];
 export function AppShell() {
   const { isVendor, user, permissionsHydrated } = useAuth();
   const navigate = useNavigate();
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const [navOpen, setNavOpen] = useState(false);
-  const pageKey = pathname.split("/").filter(Boolean)[0] ?? "dashboard";
+  const activeHref = `${pathname}${search}`;
   const baseNav = isVendor ? VENDOR_NAV : BUYER_NAV;
   const granted = user?.permissions ?? EMPTY_PERMS;
   const permKey = granted.join("\0");
@@ -25,7 +25,7 @@ export function AppShell() {
 
   useEffect(() => {
     setNavOpen(false);
-  }, [pathname]);
+  }, [pathname, search]);
 
   useEffect(() => {
     if (!navOpen) return;
@@ -41,16 +41,16 @@ export function AppShell() {
     };
   }, [navOpen]);
 
-  const go = (key: string) => {
+  const go = (href: string) => {
     setNavOpen(false);
-    void navigate(`/${key}`);
+    void navigate(href.startsWith("/") ? href : `/${href}`);
   };
 
   return (
     <>
       <TopBar onOpenNav={() => setNavOpen(true)} />
       <div className="shell">
-        <Sidebar nav={nav} active={pageKey} onSelect={go} />
+        <Sidebar nav={nav} activeHref={activeHref} onSelect={go} />
         <div className={`side-drawer-layer${navOpen ? " open" : ""}`} aria-hidden={!navOpen}>
           <button
             type="button"
@@ -59,7 +59,13 @@ export function AppShell() {
             tabIndex={navOpen ? 0 : -1}
             onClick={() => setNavOpen(false)}
           />
-          <Sidebar variant="drawer" nav={nav} active={pageKey} onSelect={go} onClose={() => setNavOpen(false)} />
+          <Sidebar
+            variant="drawer"
+            nav={nav}
+            activeHref={activeHref}
+            onSelect={go}
+            onClose={() => setNavOpen(false)}
+          />
         </div>
         <main className="main">
           <Outlet />

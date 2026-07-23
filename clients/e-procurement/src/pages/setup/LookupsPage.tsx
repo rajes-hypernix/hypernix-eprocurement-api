@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import {
   createBank,
   createCity,
@@ -55,6 +56,19 @@ import { FshPermissions } from "@/lib/fsh-permissions";
 
 type Tab = "lists" | "countries" | "banks" | "org";
 
+export const LOOKUP_TAB_KEYS = ["lists", "countries", "banks", "org"] as const;
+
+const LOOKUP_TABS: { key: Tab; icon: string; label: string }[] = [
+  { key: "lists", icon: "list", label: "Lists" },
+  { key: "countries", icon: "field", label: "Countries" },
+  { key: "banks", icon: "clip", label: "Banks" },
+  { key: "org", icon: "users", label: "Org" },
+];
+
+function resolveLookupTab(candidate: string | null | undefined): Tab {
+  const hit = LOOKUP_TABS.find((t) => t.key === candidate);
+  return hit ? hit.key : "banks";
+}
 
 function StatusBadge({ active }: { active: boolean }) {
   return <span className={`badge ${active ? "b-green" : "b-red"}`}>{active ? "Active" : "Inactive"}</span>;
@@ -187,38 +201,46 @@ async function runExcelRows(
   return result;
 }
 
-export function LookupsPage() {
-  const [tab, setTab] = useState<Tab>("banks");
+export function LookupsPage({
+  initialTab,
+  embedded = false,
+}: { initialTab?: string; embedded?: boolean } = {}) {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [tab, setTab] = useState<Tab>(() => resolveLookupTab(initialTab ?? searchParams.get("tab")));
   const [history, setHistory] = useState<{ title: string; entityId: string } | null>(null);
+
+  useEffect(() => {
+    setTab(resolveLookupTab(initialTab ?? searchParams.get("tab")));
+  }, [initialTab, searchParams]);
+
+  const selectTab = (key: Tab) => {
+    setTab(key);
+    setSearchParams({ tab: key }, { replace: true });
+  };
 
   return (
     <>
-      <div className="pagehead">
-        <div>
-          <h1>Lookups &amp; lists</h1>
-          <p>Custom lists, geography, banks, and organisation units.</p>
+      {!embedded ? (
+        <div className="pagehead">
+          <div>
+            <h1>Masters</h1>
+            <p>Lookups, lists, and organisation reference data.</p>
+          </div>
+          <div className="spacer" />
+          <div className="viewtoggle">
+            {LOOKUP_TABS.map(({ key, icon, label }) => (
+              <button
+                key={key}
+                type="button"
+                className={tab === key ? "on" : ""}
+                onClick={() => selectTab(key)}
+              >
+                <Icon name={icon} size={14} /> {label}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="spacer" />
-        <div className="viewtoggle">
-          {(
-            [
-              ["lists", "list", "Lists"],
-              ["countries", "field", "Countries"],
-              ["banks", "clip", "Banks"],
-              ["org", "users", "Org"],
-            ] as const
-          ).map(([key, icon, label]) => (
-            <button
-              key={key}
-              type="button"
-              className={tab === key ? "on" : ""}
-              onClick={() => setTab(key)}
-            >
-              <Icon name={icon} size={14} /> {label}
-            </button>
-          ))}
-        </div>
-      </div>
+      ) : null}
 
       {tab === "lists" ? <ListsTab onHistory={setHistory} /> : null}
       {tab === "countries" ? <CountriesTab onHistory={setHistory} /> : null}

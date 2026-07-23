@@ -33,6 +33,17 @@ public sealed class PlatformDbContext : BaseDbContext
     public DbSet<SavedViewFilter> SavedViewFilters => Set<SavedViewFilter>();
     public DbSet<SavedViewColumn> SavedViewColumns => Set<SavedViewColumn>();
 
+    public DbSet<Setting> Settings => Set<Setting>();
+    public DbSet<Currency> Currencies => Set<Currency>();
+    public DbSet<ExchangeRate> ExchangeRates => Set<ExchangeRate>();
+    public DbSet<TaxCode> TaxCodes => Set<TaxCode>();
+    public DbSet<PaymentTerm> PaymentTerms => Set<PaymentTerm>();
+    public DbSet<Incoterm> Incoterms => Set<Incoterm>();
+    public DbSet<Location> Locations => Set<Location>();
+    public DbSet<Item> Items => Set<Item>();
+    public DbSet<NumberingScheme> NumberingSchemes => Set<NumberingScheme>();
+    public DbSet<NumberSequence> NumberSequences => Set<NumberSequence>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);

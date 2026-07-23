@@ -21,9 +21,9 @@ import { NotificationsInboxPage } from "@/pages/notifications/NotificationsInbox
 import { ComingSoonRoute } from "@/pages/ComingSoonPage";
 import { StatementsPage } from "@/pages/statements/StatementsPage";
 import { AdminPage } from "@/pages/admin/AdminPage";
-import { LookupsPage } from "@/pages/setup/LookupsPage";
 import { FormsPage } from "@/pages/setup/FormsPage";
 import { AuditsPage } from "@/pages/setup/AuditsPage";
+import { PlatformMastersPage } from "@/pages/setup/PlatformMastersPage";
 import { SavedViewsHome } from "@/pages/views/SavedViewsHome";
 
 /** Multi-PR RFQ consolidation workspace — reachable via the "Build RFQ" button, not the nav rail. */
@@ -62,13 +62,15 @@ export const router = createBrowserRouter([
           { path: "views", element: <SavedViewsHome /> },
           { path: "forms", element: <FormsPage /> },
           { path: "admin/*", element: <AdminPage /> },
-          { path: "lists", element: <LookupsPage /> },
+          { path: "lists", element: <Navigate to="/masters?tab=banks" replace /> },
           { path: "audits", element: <AuditsPage /> },
+          { path: "masters", element: <PlatformMastersPage /> },
+          { path: "configuration", element: <Navigate to="/masters?tab=settings" replace /> },
           { path: "customfields", element: <ComingSoonRoute pageKey="customfields" /> },
           { path: "segments", element: <ComingSoonRoute pageKey="segments" /> },
-          { path: "items", element: <ComingSoonRoute pageKey="items" /> },
+          { path: "items", element: <Navigate to="/masters?tab=items" replace /> },
           { path: "entryforms", element: <ComingSoonRoute pageKey="entryforms" /> },
-          { path: "numbering", element: <ComingSoonRoute pageKey="numbering" /> },
+          { path: "numbering", element: <Navigate to="/masters?tab=numbering" replace /> },
           { path: "statements/*", element: <StatementsPage /> },
           { path: "statement/*", element: <StatementsPage /> },
           { path: ":pageKey", element: <PlaceholderPage /> },

@@ -21,25 +21,62 @@ using FSH.Modules.Platform.Features.v1.Countries.DeleteCountry;
 using FSH.Modules.Platform.Features.v1.Countries.ListCountries;
 using FSH.Modules.Platform.Features.v1.Countries.SetCountryActive;
 using FSH.Modules.Platform.Features.v1.Countries.UpdateCountry;
+using FSH.Modules.Platform.Features.v1.Currencies.CreateCurrency;
+using FSH.Modules.Platform.Features.v1.Currencies.ListCurrencies;
+using FSH.Modules.Platform.Features.v1.Currencies.SetCurrencyActive;
+using FSH.Modules.Platform.Features.v1.Currencies.UpdateCurrency;
 using FSH.Modules.Platform.Features.v1.CustomLists.CreateCustomList;
 using FSH.Modules.Platform.Features.v1.CustomLists.ListCustomListItems;
 using FSH.Modules.Platform.Features.v1.CustomLists.ListCustomLists;
 using FSH.Modules.Platform.Features.v1.CustomLists.SetCustomListActive;
 using FSH.Modules.Platform.Features.v1.CustomLists.UpdateCustomList;
 using FSH.Modules.Platform.Features.v1.CustomLists.UpsertCustomListItem;
+using FSH.Modules.Platform.Features.v1.ExchangeRates.AppendExchangeRate;
+using FSH.Modules.Platform.Features.v1.ExchangeRates.ListCurrentExchangeRates;
+using FSH.Modules.Platform.Features.v1.ExchangeRates.ListExchangeRateHistory;
 using FSH.Modules.Platform.Features.v1.FormTemplates.CreateFormTemplate;
 using FSH.Modules.Platform.Features.v1.FormTemplates.GetFormTemplate;
 using FSH.Modules.Platform.Features.v1.FormTemplates.ListFormTemplates;
 using FSH.Modules.Platform.Features.v1.FormTemplates.SetFormTemplateActive;
+using FSH.Modules.Platform.Features.v1.Incoterms.CreateIncoterm;
+using FSH.Modules.Platform.Features.v1.Incoterms.ListIncoterms;
+using FSH.Modules.Platform.Features.v1.Incoterms.SetIncotermActive;
+using FSH.Modules.Platform.Features.v1.Incoterms.UpdateIncoterm;
+using FSH.Modules.Platform.Features.v1.Items.CreateItem;
+using FSH.Modules.Platform.Features.v1.Items.DeleteItem;
+using FSH.Modules.Platform.Features.v1.Items.ListItems;
+using FSH.Modules.Platform.Features.v1.Items.SetItemActive;
+using FSH.Modules.Platform.Features.v1.Items.UpdateItem;
+using FSH.Modules.Platform.Features.v1.Locations.CreateLocation;
+using FSH.Modules.Platform.Features.v1.Locations.GetLocation;
+using FSH.Modules.Platform.Features.v1.Locations.ListLocations;
+using FSH.Modules.Platform.Features.v1.Locations.SetLocationActive;
+using FSH.Modules.Platform.Features.v1.Locations.UpdateLocation;
+using FSH.Modules.Platform.Features.v1.Numbering.ListNumberingSchemes;
+using FSH.Modules.Platform.Features.v1.Numbering.MintDocumentNumber;
+using FSH.Modules.Platform.Features.v1.Numbering.PeekDocumentNumber;
+using FSH.Modules.Platform.Features.v1.Numbering.UpdateNumberingScheme;
 using FSH.Modules.Platform.Features.v1.OrgUnits.CreateOrgUnit;
 using FSH.Modules.Platform.Features.v1.OrgUnits.GetOrgCatalog;
 using FSH.Modules.Platform.Features.v1.OrgUnits.ListOrgUnits;
 using FSH.Modules.Platform.Features.v1.OrgUnits.SetOrgUnitActive;
+using FSH.Modules.Platform.Features.v1.PaymentTerms.ComputePaymentSchedule;
+using FSH.Modules.Platform.Features.v1.PaymentTerms.CreatePaymentTerm;
+using FSH.Modules.Platform.Features.v1.PaymentTerms.GetPaymentTerm;
+using FSH.Modules.Platform.Features.v1.PaymentTerms.ListPaymentTerms;
+using FSH.Modules.Platform.Features.v1.PaymentTerms.SetPaymentTermActive;
+using FSH.Modules.Platform.Features.v1.PaymentTerms.UpdatePaymentTerm;
+using FSH.Modules.Platform.Features.v1.Settings.ListSettings;
+using FSH.Modules.Platform.Features.v1.Settings.UpdateSetting;
 using FSH.Modules.Platform.Features.v1.States.CreateState;
 using FSH.Modules.Platform.Features.v1.States.DeleteState;
 using FSH.Modules.Platform.Features.v1.States.ListStates;
 using FSH.Modules.Platform.Features.v1.States.SetStateActive;
 using FSH.Modules.Platform.Features.v1.States.UpdateState;
+using FSH.Modules.Platform.Features.v1.TaxCodes.CreateTaxCode;
+using FSH.Modules.Platform.Features.v1.TaxCodes.ListTaxCodes;
+using FSH.Modules.Platform.Features.v1.TaxCodes.SetTaxCodeActive;
+using FSH.Modules.Platform.Features.v1.TaxCodes.UpdateTaxCode;
 using FSH.Modules.Platform.Features.v1.Views.CreateSavedView;
 using FSH.Modules.Platform.Features.v1.Views.DeleteSavedView;
 using FSH.Modules.Platform.Features.v1.Views.GetViewFields;
@@ -69,6 +106,7 @@ public sealed class PlatformModule : IModule
         builder.Services.AddScoped<IDbInitializer, PlatformDbInitializer>();
         builder.Services.AddScoped<IReasonCodeValidator, ReasonCodeValidator>();
         builder.Services.AddScoped<IFormTemplateCatalog, FormTemplateCatalog>();
+        builder.Services.AddScoped<IDocumentNumberGenerator, DocumentNumberGenerator>();
         builder.Services.AddHealthChecks()
             .AddDbContextCheck<PlatformDbContext>(
                 name: "db:platform",
@@ -137,5 +175,51 @@ public sealed class PlatformModule : IModule
         group.MapDeleteSavedViewEndpoint();
         group.MapShareSavedViewEndpoint();
         group.MapRunSavedViewEndpoint();
+
+        group.MapListSettingsEndpoint();
+        group.MapUpdateSettingEndpoint();
+
+        group.MapListCurrenciesEndpoint();
+        group.MapCreateCurrencyEndpoint();
+        group.MapUpdateCurrencyEndpoint();
+        group.MapSetCurrencyActiveEndpoint();
+
+        group.MapListCurrentExchangeRatesEndpoint();
+        group.MapListExchangeRateHistoryEndpoint();
+        group.MapAppendExchangeRateEndpoint();
+
+        group.MapListTaxCodesEndpoint();
+        group.MapCreateTaxCodeEndpoint();
+        group.MapUpdateTaxCodeEndpoint();
+        group.MapSetTaxCodeActiveEndpoint();
+
+        group.MapListPaymentTermsEndpoint();
+        group.MapGetPaymentTermEndpoint();
+        group.MapCreatePaymentTermEndpoint();
+        group.MapUpdatePaymentTermEndpoint();
+        group.MapSetPaymentTermActiveEndpoint();
+        group.MapComputePaymentScheduleEndpoint();
+
+        group.MapListIncotermsEndpoint();
+        group.MapCreateIncotermEndpoint();
+        group.MapUpdateIncotermEndpoint();
+        group.MapSetIncotermActiveEndpoint();
+
+        group.MapListLocationsEndpoint();
+        group.MapGetLocationEndpoint();
+        group.MapCreateLocationEndpoint();
+        group.MapUpdateLocationEndpoint();
+        group.MapSetLocationActiveEndpoint();
+
+        group.MapListItemsEndpoint();
+        group.MapCreateItemEndpoint();
+        group.MapUpdateItemEndpoint();
+        group.MapSetItemActiveEndpoint();
+        group.MapDeleteItemEndpoint();
+
+        group.MapListNumberingSchemesEndpoint();
+        group.MapUpdateNumberingSchemeEndpoint();
+        group.MapPeekDocumentNumberEndpoint();
+        group.MapMintDocumentNumberEndpoint();
     }
 }
