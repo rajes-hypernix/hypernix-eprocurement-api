@@ -2,7 +2,7 @@ using FSH.Framework.Core.Domain;
 
 namespace FSH.Modules.Platform.Domain;
 
-public sealed class FormTemplateQuestion : AggregateRoot<Guid>
+public sealed class FormTemplateQuestion : AggregateRoot<Guid>, IAuditableEntity
 {
     public Guid TemplateId { get; private set; }
     public int Order { get; private set; }
@@ -11,6 +11,11 @@ public sealed class FormTemplateQuestion : AggregateRoot<Guid>
     public bool Required { get; private set; }
     public string? ConfigJson { get; private set; }
     public string? Help { get; private set; }
+
+    public DateTimeOffset CreatedOnUtc { get; private set; }
+    public string? CreatedBy { get; private set; }
+    public DateTimeOffset? LastModifiedOnUtc { get; private set; }
+    public string? LastModifiedBy { get; private set; }
 
     private FormTemplateQuestion() { }
 
@@ -21,7 +26,8 @@ public sealed class FormTemplateQuestion : AggregateRoot<Guid>
         string type,
         bool required,
         string? configJson,
-        string? help)
+        string? help,
+        string? createdBy = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(label);
         ArgumentException.ThrowIfNullOrWhiteSpace(type);
@@ -38,6 +44,10 @@ public sealed class FormTemplateQuestion : AggregateRoot<Guid>
             Required = required,
             ConfigJson = string.IsNullOrWhiteSpace(configJson) ? null : configJson,
             Help = string.IsNullOrWhiteSpace(help) ? null : help.Trim(),
+            CreatedOnUtc = TimeProvider.System.GetUtcNow(),
+            CreatedBy = createdBy,
+            LastModifiedOnUtc = null,
+            LastModifiedBy = null,
         };
     }
 }

@@ -36,8 +36,8 @@ internal static class PlatformDtoMapper
             view.IsSystem,
             [.. view.Filters.OrderBy(f => f.Sort).Select(ToDto)],
             [.. view.Columns.OrderBy(c => c.Sort).Select(ToDto)],
-            view.CreatedUtc,
-            view.UpdatedUtc);
+            view.CreatedOnUtc,
+            view.LastModifiedOnUtc);
 
     internal static ViewFieldDto ToDto(FieldRegistryEntry entry) =>
         new(entry.FieldKey, entry.Kind.ToString(), entry.Label, entry.DataType.ToString());

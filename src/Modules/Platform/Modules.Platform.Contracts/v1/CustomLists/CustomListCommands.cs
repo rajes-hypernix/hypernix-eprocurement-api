@@ -10,6 +10,10 @@ public sealed record ListCustomListItemsQuery(string ListKey, bool ActiveOnly = 
 
 public sealed record CreateCustomListCommand(string Key, string Name) : ICommand<Guid>;
 
+public sealed record UpdateCustomListCommand(Guid Id, string Name) : ICommand<Guid>;
+
+public sealed record SetCustomListActiveCommand(Guid Id, bool IsActive) : ICommand<Guid>;
+
 public sealed record UpsertCustomListItemCommand(
     string ListKey,
     string Code,

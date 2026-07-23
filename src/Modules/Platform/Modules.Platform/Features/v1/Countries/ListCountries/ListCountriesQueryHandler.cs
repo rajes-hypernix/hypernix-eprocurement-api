@@ -12,7 +12,7 @@ public sealed class ListCountriesQueryHandler(PlatformDbContext dbContext)
     public async ValueTask<IReadOnlyList<CountryDto>> Handle(ListCountriesQuery query, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(query);
-        var q = dbContext.Countries.AsNoTracking().AsQueryable();
+        var q = dbContext.Countries.AsNoTracking().Where(c => !c.IsDeleted);
         if (query.ActiveOnly)
             q = q.Where(c => c.IsActive);
 

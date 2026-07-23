@@ -2,39 +2,41 @@ using FSH.Framework.Core.Domain;
 
 namespace FSH.Modules.Platform.Domain;
 
-public sealed class FormTemplate : AggregateRoot<Guid>
+public sealed class FormTemplate : AggregateRoot<Guid>, IAuditableEntity
 {
     private readonly List<FormTemplateQuestion> _questions = [];
 
     public string Key { get; private set; } = default!;
     public string Name { get; private set; } = default!;
     public bool IsActive { get; private set; } = true;
-    public DateTime CreatedUtc { get; private set; }
-    public DateTime UpdatedUtc { get; private set; }
+
+    public DateTimeOffset CreatedOnUtc { get; private set; }
+    public string? CreatedBy { get; private set; }
+    public DateTimeOffset? LastModifiedOnUtc { get; private set; }
+    public string? LastModifiedBy { get; private set; }
 
     public IReadOnlyList<FormTemplateQuestion> Questions => _questions;
 
     private FormTemplate() { }
 
-    public static FormTemplate Create(string key, string name)
+    public static FormTemplate Create(string key, string name, string? createdBy = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        var now = DateTime.UtcNow;
         return new FormTemplate
         {
             Id = Guid.CreateVersion7(),
             Key = key.Trim(),
             Name = name.Trim(),
-            CreatedUtc = now,
-            UpdatedUtc = now,
+            CreatedOnUtc = TimeProvider.System.GetUtcNow(),
+            CreatedBy = createdBy,
         };
     }
 
-    public void SetActive(bool isActive)
+    public void SetActive(bool isActive, string? modifiedBy = null)
     {
         IsActive = isActive;
-        UpdatedUtc = DateTime.UtcNow;
+        Touch(modifiedBy);
     }
 
     public FormTemplateQuestion AddQuestion(
@@ -43,21 +45,30 @@ public sealed class FormTemplate : AggregateRoot<Guid>
         string type,
         bool required,
         string? configJson = null,
-        string? help = null)
+        string? help = null,
+        string? modifiedBy = null)
     {
         if (_questions.Any(q => q.Order == order))
             throw new PlatformRuleException($"Question order {order} already exists on this template.");
 
-        var question = FormTemplateQuestion.Create(Id, order, label, type, required, configJson, help);
+        var question = FormTemplateQuestion.Create(Id, order, label, type, required, configJson, help, modifiedBy);
         _questions.Add(question);
-        UpdatedUtc = DateTime.UtcNow;
+        Touch(modifiedBy);
         return question;
     }
 
-    public void ReplaceQuestions(IEnumerable<(int Order, string Label, string Type, bool Required, string? ConfigJson, string? Help)> questions)
+    public void ReplaceQuestions(
+        IEnumerable<(int Order, string Label, string Type, bool Required, string? ConfigJson, string? Help)> questions,
+        string? modifiedBy = null)
     {
         _questions.Clear();
         foreach (var q in questions.OrderBy(x => x.Order))
-            AddQuestion(q.Order, q.Label, q.Type, q.Required, q.ConfigJson, q.Help);
+            AddQuestion(q.Order, q.Label, q.Type, q.Required, q.ConfigJson, q.Help, modifiedBy);
+    }
+
+    private void Touch(string? modifiedBy)
+    {
+        LastModifiedOnUtc = TimeProvider.System.GetUtcNow();
+        LastModifiedBy = modifiedBy;
     }
 }

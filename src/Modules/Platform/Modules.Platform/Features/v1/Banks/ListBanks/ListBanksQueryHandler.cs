@@ -12,7 +12,7 @@ public sealed class ListBanksQueryHandler(PlatformDbContext dbContext)
     public async ValueTask<IReadOnlyList<BankDto>> Handle(ListBanksQuery query, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(query);
-        var q = dbContext.Banks.AsNoTracking().AsQueryable();
+        var q = dbContext.Banks.AsNoTracking().Where(b => !b.IsDeleted);
         if (query.ActiveOnly)
             q = q.Where(b => b.IsActive);
         if (!string.IsNullOrWhiteSpace(query.CountryCode))
@@ -22,7 +22,13 @@ public sealed class ListBanksQueryHandler(PlatformDbContext dbContext)
         }
 
         return await q.OrderBy(b => b.Name)
-            .Select(b => new BankDto(b.Id, b.Name, b.SwiftCode, b.CountryCode, b.IsActive))
+            .Select(b => new BankDto(
+                b.Id,
+                b.Name,
+                b.SwiftCode,
+                b.CountryCode,
+                b.IsActive,
+                b.CreatedOnUtc))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
     }

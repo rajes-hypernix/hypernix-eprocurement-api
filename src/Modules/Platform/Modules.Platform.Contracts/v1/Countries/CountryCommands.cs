@@ -8,3 +8,7 @@ public sealed record ListCountriesQuery(bool ActiveOnly = true) : IQuery<IReadOn
 public sealed record CreateCountryCommand(string Code, string Name) : ICommand<Guid>;
 
 public sealed record SetCountryActiveCommand(Guid Id, bool IsActive) : ICommand<Guid>;
+
+public sealed record UpdateCountryCommand(Guid Id, string Code, string Name) : ICommand<Guid>;
+
+public sealed record DeleteCountryCommand(Guid Id) : ICommand<Guid>;

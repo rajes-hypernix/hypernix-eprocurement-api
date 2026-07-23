@@ -15,6 +15,8 @@ public sealed class CountryConfiguration : IEntityTypeConfiguration<Country>
         builder.HasIndex(x => x.Code).IsUnique();
         builder.Property(x => x.Code).IsRequired().HasMaxLength(2);
         builder.Property(x => x.Name).IsRequired().HasMaxLength(100);
+        builder.ConfigureAudit();
+        builder.ConfigureSoftDelete();
         builder.Ignore(x => x.DomainEvents);
     }
 }
@@ -30,6 +32,8 @@ public sealed class StateConfiguration : IEntityTypeConfiguration<State>
         builder.HasIndex(x => new { x.CountryId, x.Code }).IsUnique();
         builder.Property(x => x.Code).IsRequired().HasMaxLength(10);
         builder.Property(x => x.Name).IsRequired().HasMaxLength(100);
+        builder.ConfigureAudit();
+        builder.ConfigureSoftDelete();
         builder.Ignore(x => x.DomainEvents);
         builder.HasOne<Country>().WithMany().HasForeignKey(x => x.CountryId).OnDelete(DeleteBehavior.Restrict);
     }
@@ -45,6 +49,8 @@ public sealed class CityConfiguration : IEntityTypeConfiguration<City>
         builder.Property(x => x.Id).ValueGeneratedNever();
         builder.HasIndex(x => new { x.StateId, x.Name }).IsUnique();
         builder.Property(x => x.Name).IsRequired().HasMaxLength(100);
+        builder.ConfigureAudit();
+        builder.ConfigureSoftDelete();
         builder.Ignore(x => x.DomainEvents);
         builder.HasOne<State>().WithMany().HasForeignKey(x => x.StateId).OnDelete(DeleteBehavior.Restrict);
     }
@@ -62,6 +68,8 @@ public sealed class BankConfiguration : IEntityTypeConfiguration<Bank>
         builder.Property(x => x.Name).IsRequired().HasMaxLength(200);
         builder.Property(x => x.SwiftCode).HasMaxLength(20);
         builder.Property(x => x.CountryCode).IsRequired().HasMaxLength(2);
+        builder.ConfigureAudit();
+        builder.ConfigureSoftDelete();
         builder.Ignore(x => x.DomainEvents);
     }
 }
@@ -77,6 +85,7 @@ public sealed class CustomListConfiguration : IEntityTypeConfiguration<CustomLis
         builder.HasIndex(x => x.Key).IsUnique();
         builder.Property(x => x.Key).IsRequired().HasMaxLength(50);
         builder.Property(x => x.Name).IsRequired().HasMaxLength(100);
+        builder.ConfigureAudit();
         builder.Ignore(x => x.DomainEvents);
 
         builder.HasMany(x => x.Items)
@@ -99,6 +108,7 @@ public sealed class CustomListItemConfiguration : IEntityTypeConfiguration<Custo
         builder.HasIndex(x => new { x.ListId, x.Code }).IsUnique();
         builder.Property(x => x.Code).IsRequired().HasMaxLength(50);
         builder.Property(x => x.Label).IsRequired().HasMaxLength(200);
+        builder.ConfigureAudit();
         builder.Ignore(x => x.DomainEvents);
     }
 }

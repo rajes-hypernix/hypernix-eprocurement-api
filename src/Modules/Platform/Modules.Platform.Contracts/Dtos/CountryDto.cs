@@ -6,7 +6,16 @@ public sealed record StateDto(Guid Id, Guid CountryId, string Code, string Name,
 
 public sealed record CityDto(Guid Id, Guid StateId, string Name, bool IsActive);
 
-public sealed record BankDto(Guid Id, string Name, string? SwiftCode, string CountryCode, bool IsActive);
+/// <summary>
+/// Bank list/catalog row. Audit actor stamps are not included — open History (Auditing) on demand.
+/// </summary>
+public sealed record BankDto(
+    Guid Id,
+    string Name,
+    string? SwiftCode,
+    string CountryCode,
+    bool IsActive,
+    DateTimeOffset CreatedOnUtc);
 
 public sealed record CustomListDto(Guid Id, string Key, string Name, bool IsActive);
 

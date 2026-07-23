@@ -18,6 +18,7 @@ public sealed class FieldRegistryEntryConfiguration : IEntityTypeConfiguration<F
         builder.Property(x => x.Kind).IsRequired().HasConversion<string>().HasMaxLength(20);
         builder.Property(x => x.Label).IsRequired().HasMaxLength(200);
         builder.Property(x => x.DataType).IsRequired().HasConversion<string>().HasMaxLength(20);
+        builder.ConfigureAudit();
         builder.Ignore(x => x.DomainEvents);
     }
 }
@@ -36,6 +37,7 @@ public sealed class SavedViewConfiguration : IEntityTypeConfiguration<SavedView>
         builder.Property(x => x.Name).IsRequired().HasMaxLength(200);
         builder.Property(x => x.RecordType).IsRequired().HasConversion<string>().HasMaxLength(30);
         builder.Property(x => x.OwnerUserId).HasMaxLength(64);
+        builder.ConfigureAudit();
         builder.Ignore(x => x.DomainEvents);
 
         builder.HasMany(x => x.Filters)

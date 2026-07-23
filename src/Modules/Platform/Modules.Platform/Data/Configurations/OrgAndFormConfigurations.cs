@@ -16,6 +16,7 @@ public sealed class OrgUnitConfiguration : IEntityTypeConfiguration<OrgUnit>
         builder.Property(x => x.Code).IsRequired().HasMaxLength(50);
         builder.Property(x => x.Name).IsRequired().HasMaxLength(200);
         builder.Property(x => x.Type).IsRequired().HasConversion<string>().HasMaxLength(30);
+        builder.ConfigureAudit();
         builder.Ignore(x => x.DomainEvents);
         builder.HasOne<OrgUnit>().WithMany().HasForeignKey(x => x.ParentId).OnDelete(DeleteBehavior.Restrict);
     }
@@ -32,6 +33,7 @@ public sealed class FormTemplateConfiguration : IEntityTypeConfiguration<FormTem
         builder.HasIndex(x => x.Key).IsUnique();
         builder.Property(x => x.Key).IsRequired().HasMaxLength(50);
         builder.Property(x => x.Name).IsRequired().HasMaxLength(200);
+        builder.ConfigureAudit();
         builder.Ignore(x => x.DomainEvents);
 
         builder.HasMany(x => x.Questions)
@@ -56,6 +58,7 @@ public sealed class FormTemplateQuestionConfiguration : IEntityTypeConfiguration
         builder.Property(x => x.Type).IsRequired().HasMaxLength(40);
         builder.Property(x => x.ConfigJson).HasMaxLength(4000);
         builder.Property(x => x.Help).HasMaxLength(500);
+        builder.ConfigureAudit();
         builder.Ignore(x => x.DomainEvents);
     }
 }

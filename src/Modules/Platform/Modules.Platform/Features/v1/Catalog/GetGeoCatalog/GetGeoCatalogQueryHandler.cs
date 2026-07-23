@@ -15,7 +15,7 @@ public sealed class GetGeoCatalogQueryHandler(PlatformDbContext dbContext)
 
         var countries = await dbContext.Countries
             .AsNoTracking()
-            .Where(c => c.IsActive)
+            .Where(c => c.IsActive && !c.IsDeleted)
             .OrderBy(c => c.Name)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -23,7 +23,7 @@ public sealed class GetGeoCatalogQueryHandler(PlatformDbContext dbContext)
         var countryIds = countries.Select(c => c.Id).ToList();
         var states = await dbContext.States
             .AsNoTracking()
-            .Where(s => s.IsActive && countryIds.Contains(s.CountryId))
+            .Where(s => s.IsActive && !s.IsDeleted && countryIds.Contains(s.CountryId))
             .OrderBy(s => s.Name)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -31,12 +31,12 @@ public sealed class GetGeoCatalogQueryHandler(PlatformDbContext dbContext)
         var stateIds = states.Select(s => s.Id).ToList();
         var cities = await dbContext.Cities
             .AsNoTracking()
-            .Where(c => c.IsActive && stateIds.Contains(c.StateId))
+            .Where(c => c.IsActive && !c.IsDeleted && stateIds.Contains(c.StateId))
             .OrderBy(c => c.Name)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        var banksQuery = dbContext.Banks.AsNoTracking().Where(b => b.IsActive);
+        var banksQuery = dbContext.Banks.AsNoTracking().Where(b => b.IsActive && !b.IsDeleted);
         if (!string.IsNullOrWhiteSpace(query.BankCountryCode))
         {
             var code = query.BankCountryCode.Trim().ToUpperInvariant();
@@ -45,7 +45,13 @@ public sealed class GetGeoCatalogQueryHandler(PlatformDbContext dbContext)
 
         var banks = await banksQuery
             .OrderBy(b => b.Name)
-            .Select(b => new BankDto(b.Id, b.Name, b.SwiftCode, b.CountryCode, b.IsActive))
+            .Select(b => new BankDto(
+                b.Id,
+                b.Name,
+                b.SwiftCode,
+                b.CountryCode,
+                b.IsActive,
+                b.CreatedOnUtc))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 

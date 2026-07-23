@@ -12,7 +12,7 @@ public sealed class ListStatesQueryHandler(PlatformDbContext dbContext)
     public async ValueTask<IReadOnlyList<StateDto>> Handle(ListStatesQuery query, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(query);
-        var q = dbContext.States.AsNoTracking().Where(s => s.CountryId == query.CountryId);
+        var q = dbContext.States.AsNoTracking().Where(s => s.CountryId == query.CountryId && !s.IsDeleted);
         if (query.ActiveOnly)
             q = q.Where(s => s.IsActive);
 

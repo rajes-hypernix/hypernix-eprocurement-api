@@ -2,42 +2,51 @@ using FSH.Framework.Core.Domain;
 
 namespace FSH.Modules.Platform.Domain;
 
-public sealed class CustomList : AggregateRoot<Guid>
+public sealed class CustomList : AggregateRoot<Guid>, IAuditableEntity
 {
     private readonly List<CustomListItem> _items = [];
 
     public string Key { get; private set; } = default!;
     public string Name { get; private set; } = default!;
     public bool IsActive { get; private set; } = true;
-    public DateTime CreatedUtc { get; private set; }
-    public DateTime UpdatedUtc { get; private set; }
+
+    public DateTimeOffset CreatedOnUtc { get; private set; }
+    public string? CreatedBy { get; private set; }
+    public DateTimeOffset? LastModifiedOnUtc { get; private set; }
+    public string? LastModifiedBy { get; private set; }
 
     public IReadOnlyList<CustomListItem> Items => _items;
 
     private CustomList() { }
 
-    public static CustomList Create(string key, string name)
+    public static CustomList Create(string key, string name, string? createdBy = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        var now = DateTime.UtcNow;
         return new CustomList
         {
             Id = Guid.CreateVersion7(),
             Key = key.Trim(),
             Name = name.Trim(),
-            CreatedUtc = now,
-            UpdatedUtc = now,
+            CreatedOnUtc = TimeProvider.System.GetUtcNow(),
+            CreatedBy = createdBy,
         };
     }
 
-    public void SetActive(bool isActive)
+    public void SetActive(bool isActive, string? modifiedBy = null)
     {
         IsActive = isActive;
-        UpdatedUtc = DateTime.UtcNow;
+        Touch(modifiedBy);
     }
 
-    public CustomListItem UpsertItem(string code, string label, int sortOrder, bool isActive)
+    public void Update(string name, string? modifiedBy = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        Name = name.Trim();
+        Touch(modifiedBy);
+    }
+
+    public CustomListItem UpsertItem(string code, string label, int sortOrder, bool isActive, string? modifiedBy = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(code);
         ArgumentException.ThrowIfNullOrWhiteSpace(label);
@@ -48,14 +57,20 @@ public sealed class CustomList : AggregateRoot<Guid>
 
         if (existing is not null)
         {
-            existing.Update(label, sortOrder, isActive);
-            UpdatedUtc = DateTime.UtcNow;
+            existing.Update(label, sortOrder, isActive, modifiedBy);
+            Touch(modifiedBy);
             return existing;
         }
 
-        var item = CustomListItem.Create(Id, normalized, label, sortOrder, isActive);
+        var item = CustomListItem.Create(Id, normalized, label, sortOrder, isActive, modifiedBy);
         _items.Add(item);
-        UpdatedUtc = DateTime.UtcNow;
+        Touch(modifiedBy);
         return item;
+    }
+
+    private void Touch(string? modifiedBy)
+    {
+        LastModifiedOnUtc = TimeProvider.System.GetUtcNow();
+        LastModifiedBy = modifiedBy;
     }
 }

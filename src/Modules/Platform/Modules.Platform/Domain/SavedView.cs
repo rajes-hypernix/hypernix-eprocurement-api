@@ -12,7 +12,7 @@ public sealed record SavedViewColumnInput(string FieldKey, string? Label, int So
 /// A saved query definition: filters + columns over one record type. No filter blobs —
 /// every criterion is a typed row. Grain: one row per view.
 /// </summary>
-public sealed class SavedView : AggregateRoot<Guid>
+public sealed class SavedView : AggregateRoot<Guid>, IAuditableEntity
 {
     private readonly List<SavedViewFilter> _filters = [];
     private readonly List<SavedViewColumn> _columns = [];
@@ -26,8 +26,11 @@ public sealed class SavedView : AggregateRoot<Guid>
 
     public bool IsShared { get; private set; }
     public bool IsSystem { get; private set; }
-    public DateTime CreatedUtc { get; private set; }
-    public DateTime UpdatedUtc { get; private set; }
+
+    public DateTimeOffset CreatedOnUtc { get; private set; }
+    public string? CreatedBy { get; private set; }
+    public DateTimeOffset? LastModifiedOnUtc { get; private set; }
+    public string? LastModifiedBy { get; private set; }
 
     public IReadOnlyList<SavedViewFilter> Filters => _filters;
     public IReadOnlyList<SavedViewColumn> Columns => _columns;
@@ -42,11 +45,11 @@ public sealed class SavedView : AggregateRoot<Guid>
         bool isShared,
         bool isSystem,
         IReadOnlyList<SavedViewFilterInput> filters,
-        IReadOnlyList<SavedViewColumnInput> columns)
+        IReadOnlyList<SavedViewColumnInput> columns,
+        string? createdBy = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(code);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        var now = DateTime.UtcNow;
         var view = new SavedView
         {
             Id = Guid.CreateVersion7(),
@@ -56,27 +59,37 @@ public sealed class SavedView : AggregateRoot<Guid>
             OwnerUserId = ownerUserId,
             IsShared = isShared,
             IsSystem = isSystem,
-            CreatedUtc = now,
-            UpdatedUtc = now,
+            CreatedOnUtc = TimeProvider.System.GetUtcNow(),
+            CreatedBy = createdBy,
         };
         view.ReplaceFilters(filters);
         view.ReplaceColumns(columns);
         return view;
     }
 
-    public void UpdateDefinition(string name, IReadOnlyList<SavedViewFilterInput> filters, IReadOnlyList<SavedViewColumnInput> columns)
+    public void UpdateDefinition(
+        string name,
+        IReadOnlyList<SavedViewFilterInput> filters,
+        IReadOnlyList<SavedViewColumnInput> columns,
+        string? modifiedBy = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         Name = name.Trim();
         ReplaceFilters(filters);
         ReplaceColumns(columns);
-        UpdatedUtc = DateTime.UtcNow;
+        Touch(modifiedBy);
     }
 
-    public void SetShared(bool isShared)
+    public void SetShared(bool isShared, string? modifiedBy = null)
     {
         IsShared = isShared;
-        UpdatedUtc = DateTime.UtcNow;
+        Touch(modifiedBy);
+    }
+
+    private void Touch(string? modifiedBy)
+    {
+        LastModifiedOnUtc = TimeProvider.System.GetUtcNow();
+        LastModifiedBy = modifiedBy;
     }
 
     private void ReplaceFilters(IReadOnlyList<SavedViewFilterInput> filters)

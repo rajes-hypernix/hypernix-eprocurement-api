@@ -7,4 +7,8 @@ public sealed record ListBanksQuery(string? CountryCode = null, bool ActiveOnly 
 
 public sealed record CreateBankCommand(string Name, string CountryCode, string? SwiftCode = null) : ICommand<Guid>;
 
+public sealed record UpdateBankCommand(Guid Id, string Name, string CountryCode, string? SwiftCode = null) : ICommand<Guid>;
+
 public sealed record SetBankActiveCommand(Guid Id, bool IsActive) : ICommand<Guid>;
+
+public sealed record DeleteBankCommand(Guid Id) : ICommand<Guid>;

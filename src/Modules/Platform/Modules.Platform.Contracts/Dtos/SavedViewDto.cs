@@ -24,8 +24,8 @@ public sealed record SavedViewDto(
     bool IsSystem,
     IReadOnlyList<SavedViewFilterDto> Filters,
     IReadOnlyList<SavedViewColumnDto> Columns,
-    DateTime CreatedUtc,
-    DateTime UpdatedUtc);
+    DateTimeOffset CreatedOnUtc,
+    DateTimeOffset? LastModifiedOnUtc);
 
 /// <summary>One row in a record type's field palette — registry entry shaped for the ViewBuilder.</summary>
 public sealed record ViewFieldDto(string FieldKey, string Kind, string Label, string DataType);
