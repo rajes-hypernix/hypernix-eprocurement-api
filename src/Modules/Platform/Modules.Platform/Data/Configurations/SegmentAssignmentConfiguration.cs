@@ -14,6 +14,7 @@ public sealed class SegmentAssignmentConfiguration : IEntityTypeConfiguration<Se
         builder.Property(x => x.Id).ValueGeneratedNever();
         builder.Property(x => x.RecordType).IsRequired().HasConversion<string>().HasMaxLength(30);
         builder.Property(x => x.Dimension).IsRequired().HasConversion<string>().HasMaxLength(20);
+        builder.ConfigureAudit();
         builder.Ignore(x => x.DomainEvents);
 
         // One assignment per dimension per record header; a separate index covers line-level tags

@@ -92,15 +92,20 @@ public sealed class NumberingScheme : AggregateRoot<Guid>, IAuditableEntity
 }
 
 /// <summary>Atomic counter bucket for a prefix (+ optional year). Never reset.</summary>
-public sealed class NumberSequence
+public sealed class NumberSequence : IAuditableEntity
 {
     public string Prefix { get; private set; } = default!;
     public int Year { get; private set; }
     public int LastValue { get; private set; }
 
+    public DateTimeOffset CreatedOnUtc { get; private set; }
+    public string? CreatedBy { get; private set; }
+    public DateTimeOffset? LastModifiedOnUtc { get; private set; }
+    public string? LastModifiedBy { get; private set; }
+
     private NumberSequence() { }
 
-    public static NumberSequence Create(string prefix, int year)
+    public static NumberSequence Create(string prefix, int year, string? createdBy = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(prefix);
         return new NumberSequence
@@ -108,15 +113,25 @@ public sealed class NumberSequence
             Prefix = prefix.Trim().ToUpperInvariant(),
             Year = year,
             LastValue = 0,
+            CreatedOnUtc = TimeProvider.System.GetUtcNow(),
+            CreatedBy = createdBy,
         };
     }
 
-    public int Next() => ++LastValue;
+    public int Next(string? modifiedBy = null)
+    {
+        LastValue++;
+        LastModifiedOnUtc = TimeProvider.System.GetUtcNow();
+        LastModifiedBy = modifiedBy;
+        return LastValue;
+    }
 
-    public void AdvanceTo(int value)
+    public void AdvanceTo(int value, string? modifiedBy = null)
     {
         if (value < LastValue)
             throw new PlatformRuleException("Cannot rewind a number sequence.");
         LastValue = value;
+        LastModifiedOnUtc = TimeProvider.System.GetUtcNow();
+        LastModifiedBy = modifiedBy;
     }
 }

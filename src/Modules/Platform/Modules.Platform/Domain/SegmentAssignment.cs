@@ -11,18 +11,28 @@ namespace FSH.Modules.Platform.Domain;
 /// The controlled hierarchical value list itself is <see cref="OrgUnit"/>/<see cref="OrgUnitType"/>
 /// — this entity is only the per-record assignment layer on top of it.
 /// </summary>
-public sealed class SegmentAssignment : AggregateRoot<Guid>
+public sealed class SegmentAssignment : AggregateRoot<Guid>, IAuditableEntity
 {
     public PlatformRecordType RecordType { get; private set; }
     public Guid RecordId { get; private set; }
     public Guid? LineId { get; private set; }
     public OrgUnitType Dimension { get; private set; }
     public Guid OrgUnitId { get; private set; }
-    public DateTime UpdatedUtc { get; private set; }
+
+    public DateTimeOffset CreatedOnUtc { get; private set; }
+    public string? CreatedBy { get; private set; }
+    public DateTimeOffset? LastModifiedOnUtc { get; private set; }
+    public string? LastModifiedBy { get; private set; }
 
     private SegmentAssignment() { }
 
-    public static SegmentAssignment Create(PlatformRecordType recordType, Guid recordId, Guid? lineId, OrgUnitType dimension, Guid orgUnitId)
+    public static SegmentAssignment Create(
+        PlatformRecordType recordType,
+        Guid recordId,
+        Guid? lineId,
+        OrgUnitType dimension,
+        Guid orgUnitId,
+        string? createdBy = null)
     {
         if (recordId == Guid.Empty || orgUnitId == Guid.Empty)
         {
@@ -37,11 +47,12 @@ public sealed class SegmentAssignment : AggregateRoot<Guid>
             LineId = lineId,
             Dimension = dimension,
             OrgUnitId = orgUnitId,
-            UpdatedUtc = DateTime.UtcNow,
+            CreatedOnUtc = TimeProvider.System.GetUtcNow(),
+            CreatedBy = createdBy,
         };
     }
 
-    public void Reassign(Guid orgUnitId)
+    public void Reassign(Guid orgUnitId, string? modifiedBy = null)
     {
         if (orgUnitId == Guid.Empty)
         {
@@ -49,6 +60,7 @@ public sealed class SegmentAssignment : AggregateRoot<Guid>
         }
 
         OrgUnitId = orgUnitId;
-        UpdatedUtc = DateTime.UtcNow;
+        LastModifiedOnUtc = TimeProvider.System.GetUtcNow();
+        LastModifiedBy = modifiedBy;
     }
 }

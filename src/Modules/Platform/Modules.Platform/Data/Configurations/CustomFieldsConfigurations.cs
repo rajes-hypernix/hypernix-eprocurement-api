@@ -51,6 +51,7 @@ public sealed class CustomFieldValueConfiguration : IEntityTypeConfiguration<Cus
         builder.Property(x => x.ValueNumber).HasPrecision(18, 4);
         builder.Property(x => x.ValueListCode).HasMaxLength(50);
         builder.Property(x => x.ValueLabel).HasMaxLength(200);
+        builder.ConfigureAudit();
         builder.Ignore(x => x.DomainEvents);
 
         // Two partial unique indexes rather than one nullable-aware constraint (Postgres treats

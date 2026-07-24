@@ -191,5 +191,6 @@ public sealed class NumberSequenceConfiguration : IEntityTypeConfiguration<Numbe
         builder.ToTable("NumberSequences");
         builder.HasKey(x => new { x.Prefix, x.Year });
         builder.Property(x => x.Prefix).IsRequired().HasMaxLength(12);
+        builder.ConfigureAudit();
     }
 }

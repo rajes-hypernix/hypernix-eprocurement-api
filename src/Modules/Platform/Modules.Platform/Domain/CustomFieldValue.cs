@@ -14,7 +14,7 @@ namespace FSH.Modules.Platform.Domain;
 /// ever populated. This mirrors the old source's charter rule verbatim: "no JSON values, ever — the
 /// typed core holds."
 /// </summary>
-public sealed class CustomFieldValue : AggregateRoot<Guid>
+public sealed class CustomFieldValue : AggregateRoot<Guid>, IAuditableEntity
 {
     public Guid CustomFieldDefId { get; private set; }
     public PlatformRecordType RecordType { get; private set; }
@@ -33,11 +33,20 @@ public sealed class CustomFieldValue : AggregateRoot<Guid>
     /// <summary>Denormalized display text for a RecordRef value — survives the target's own deletion/cancellation; a reference is provenance, not a constraint.</summary>
     public string? ValueLabel { get; private set; }
 
-    public DateTime UpdatedUtc { get; private set; }
+    public DateTimeOffset CreatedOnUtc { get; private set; }
+    public string? CreatedBy { get; private set; }
+    public DateTimeOffset? LastModifiedOnUtc { get; private set; }
+    public string? LastModifiedBy { get; private set; }
 
     private CustomFieldValue() { }
 
-    public static CustomFieldValue Create(Guid customFieldDefId, CustomFieldDataType dataType, PlatformRecordType recordType, Guid recordId, Guid? lineId)
+    public static CustomFieldValue Create(
+        Guid customFieldDefId,
+        CustomFieldDataType dataType,
+        PlatformRecordType recordType,
+        Guid recordId,
+        Guid? lineId,
+        string? createdBy = null)
     {
         if (recordId == Guid.Empty)
         {
@@ -52,14 +61,22 @@ public sealed class CustomFieldValue : AggregateRoot<Guid>
             RecordType = recordType,
             RecordId = recordId,
             LineId = lineId,
-            UpdatedUtc = DateTime.UtcNow,
+            CreatedOnUtc = TimeProvider.System.GetUtcNow(),
+            CreatedBy = createdBy,
         };
     }
 
     /// <summary>Clears every Value* column, then sets only the one matching <see cref="DataType"/>.</summary>
     public void SetValue(
-        string? text = null, decimal? number = null, DateOnly? date = null, DateTime? dateTime = null,
-        bool? boolean = null, string? listCode = null, Guid? refId = null, string? refLabel = null)
+        string? text = null,
+        decimal? number = null,
+        DateOnly? date = null,
+        DateTime? dateTime = null,
+        bool? boolean = null,
+        string? listCode = null,
+        Guid? refId = null,
+        string? refLabel = null,
+        string? modifiedBy = null)
     {
         ValueText = null;
         ValueNumber = null;
@@ -97,6 +114,7 @@ public sealed class CustomFieldValue : AggregateRoot<Guid>
                 break;
         }
 
-        UpdatedUtc = DateTime.UtcNow;
+        LastModifiedOnUtc = TimeProvider.System.GetUtcNow();
+        LastModifiedBy = modifiedBy;
     }
 }
