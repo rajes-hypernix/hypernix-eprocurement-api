@@ -15,6 +15,7 @@ import {
 import { Icon } from "@/components/Icon";
 import { ConfirmModal, Notice, Spinner } from "@/components/ui";
 import { SourcingStatusBadge } from "@/components/sourcing/badges";
+import { CustomFieldsSection } from "@/components/customfields/CustomFieldsSection";
 import { ApiRequestError } from "@/lib/api-client";
 
 type DraftLine = PrLineInput & { key: number };
@@ -379,6 +380,8 @@ export function RequisitionFormPage({
           </table>
         </div>
       </div>
+
+      <CustomFieldsSection recordType="Requisition" recordId={id ?? null} readOnly={!editable} />
 
       <div className="actionbar" style={{ marginTop: 14 }}>
         {isNew ? (

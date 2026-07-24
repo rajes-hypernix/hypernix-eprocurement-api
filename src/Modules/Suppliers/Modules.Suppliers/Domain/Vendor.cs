@@ -29,6 +29,9 @@ public sealed class Vendor : AggregateRoot<Guid>
     public DateTime CreatedUtc { get; private set; }
     public DateTime UpdatedUtc { get; private set; }
 
+    /// <summary>Opaque entry-form layout choice (Phase 5/6) — mirrors the same stub on <c>PurchaseRequisition</c>.</summary>
+    public Guid? EntryFormId { get; private set; }
+
     public IReadOnlyList<VendorContact> Contacts => _contacts;
     public IReadOnlyList<VendorAddress> Addresses => _addresses;
     public IReadOnlyList<VendorBankAccount> BankAccounts => _bankAccounts;
@@ -126,6 +129,12 @@ public sealed class Vendor : AggregateRoot<Guid>
         PaymentTerms = paymentTerms;
         CreditLimit = creditLimit;
         Rating = rating;
+        UpdatedUtc = DateTime.UtcNow;
+    }
+
+    public void SetEntryForm(Guid? entryFormId)
+    {
+        EntryFormId = entryFormId;
         UpdatedUtc = DateTime.UtcNow;
     }
 

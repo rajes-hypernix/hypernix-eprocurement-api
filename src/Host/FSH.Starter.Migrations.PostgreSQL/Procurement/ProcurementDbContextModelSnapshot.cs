@@ -302,6 +302,9 @@ namespace FSH.Starter.Migrations.PostgreSQL.Procurement
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
+                    b.Property<bool>("PriceConfirmed")
+                        .HasColumnType("boolean");
+
                     b.Property<Guid>("PurchaseOrderId")
                         .HasColumnType("uuid");
 
@@ -314,9 +317,14 @@ namespace FSH.Starter.Migrations.PostgreSQL.Procurement
                         .HasColumnType("numeric(18,4)");
 
                     b.Property<string>("RfqLineCode")
-                        .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
+
+                    b.Property<Guid?>("SourcePrLineId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("TaxCodeId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("TenantId")
                         .IsRequired()
@@ -345,7 +353,7 @@ namespace FSH.Starter.Migrations.PostgreSQL.Procurement
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("AwardId")
+                    b.Property<Guid?>("AwardId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("Code")
@@ -361,7 +369,49 @@ namespace FSH.Starter.Migrations.PostgreSQL.Procurement
                         .HasMaxLength(10)
                         .HasColumnType("character varying(10)");
 
-                    b.Property<Guid>("RfqId")
+                    b.Property<DateOnly?>("DeliveryDate")
+                        .HasColumnType("date");
+
+                    b.Property<Guid?>("EntryFormId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("IncotermCode")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<string>("IncotermSuffix")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime?>("IssuedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Memo")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateOnly?>("RequiredDate")
+                        .HasColumnType("date");
+
+                    b.Property<Guid?>("RfqId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ShipToAddressId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ShipToAdhoc")
+                        .HasMaxLength(400)
+                        .HasColumnType("character varying(400)");
+
+                    b.Property<Guid?>("ShipToLocationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SourceKind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid?>("SourcePrId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("Status")
@@ -378,6 +428,13 @@ namespace FSH.Starter.Migrations.PostgreSQL.Procurement
 
                     b.Property<Guid>("VendorId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("VendorRef")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime?>("VerifiedUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 

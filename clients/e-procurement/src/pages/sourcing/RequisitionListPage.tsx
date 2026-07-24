@@ -166,6 +166,9 @@ export function RequisitionListPage({
         <button type="button" className="btn btn-out btn-sm" onClick={() => onNavigate("consolidate")}>
           <Icon name="box" size={15} /> Build RFQ
         </button>
+        <button type="button" className="btn btn-out btn-sm" onClick={() => onNavigate("order-builder")}>
+          <Icon name="box" size={15} /> Build order
+        </button>
         <button type="button" className="btn btn-pri btn-sm" onClick={onNew}>
           <Icon name="plus" size={15} /> New requisition
         </button>

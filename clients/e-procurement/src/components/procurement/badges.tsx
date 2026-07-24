@@ -1,11 +1,13 @@
 const PO_TONE: Record<string, string> = {
   Draft: "b-grey",
+  Verified: "b-amber",
   Issued: "b-blue",
   Acknowledged: "b-blue",
   PartiallyReceived: "b-amber",
   Received: "b-blue",
   Matched: "b-green",
   Discrepancy: "b-red",
+  Cancelled: "b-red",
   Closed: "b-grey",
 };
 

@@ -2,6 +2,7 @@ using Asp.Versioning;
 using FSH.Framework.Persistence;
 using FSH.Framework.Shared.Constants;
 using FSH.Framework.Web.Modules;
+using FSH.Modules.Platform.Contracts.Services;
 using FSH.Modules.Procurement.Contracts.Authorization;
 using FSH.Modules.Procurement.Data;
 using FSH.Modules.Procurement.Features.v1.Asns.CreateAsn;
@@ -15,13 +16,22 @@ using FSH.Modules.Procurement.Features.v1.Invoices.ListInvoices;
 using FSH.Modules.Procurement.Features.v1.Invoices.ResolveInvoiceException;
 using FSH.Modules.Procurement.Features.v1.Invoices.SubmitInvoice;
 using FSH.Modules.Procurement.Features.v1.PurchaseOrders.AcknowledgePurchaseOrder;
+using FSH.Modules.Procurement.Features.v1.PurchaseOrders.CancelPurchaseOrder;
+using FSH.Modules.Procurement.Features.v1.PurchaseOrders.ClosePurchaseOrder;
 using FSH.Modules.Procurement.Features.v1.PurchaseOrders.CreateFromAward;
+using FSH.Modules.Procurement.Features.v1.PurchaseOrders.CreateFromRequisition;
+using FSH.Modules.Procurement.Features.v1.PurchaseOrders.CreateStandalone;
 using FSH.Modules.Procurement.Features.v1.PurchaseOrders.GetPurchaseOrder;
 using FSH.Modules.Procurement.Features.v1.PurchaseOrders.IssuePurchaseOrder;
 using FSH.Modules.Procurement.Features.v1.PurchaseOrders.ListPurchaseOrders;
+using FSH.Modules.Procurement.Features.v1.PurchaseOrders.ReopenPurchaseOrderDraft;
+using FSH.Modules.Procurement.Features.v1.PurchaseOrders.SetPurchaseOrderShipTo;
+using FSH.Modules.Procurement.Features.v1.PurchaseOrders.UpdatePurchaseOrderLine;
+using FSH.Modules.Procurement.Features.v1.PurchaseOrders.VerifyPurchaseOrder;
 using FSH.Modules.Procurement.Features.v1.Statements.GetMyStatement;
 using FSH.Modules.Procurement.Features.v1.Statements.GetStatement;
 using FSH.Modules.Procurement.Features.v1.Statements.ListStatements;
+using FSH.Modules.Procurement.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
@@ -42,6 +52,7 @@ public sealed class ProcurementModule : IModule
         builder.Services.AddHeroDbContext<ProcurementDbContext>();
         builder.Services.AddScoped<IDbInitializer, ProcurementDbInitializer>();
         builder.Services.AddScoped<IProcurementCodeGenerator, ProcurementCodeGenerator>();
+        builder.Services.AddScoped<ISavedViewRowSource, ProcurementSavedViewRowSource>();
         builder.Services.AddHealthChecks()
             .AddDbContextCheck<ProcurementDbContext>(
                 name: "db:procurement",
@@ -65,10 +76,18 @@ public sealed class ProcurementModule : IModule
             .RequireAuthorization();
 
         group.MapCreatePurchaseOrdersFromAwardEndpoint();
+        group.MapCreatePurchaseOrderFromRequisitionEndpoint();
+        group.MapCreateStandalonePurchaseOrderEndpoint();
         group.MapGetPurchaseOrderEndpoint();
         group.MapListPurchaseOrdersEndpoint();
+        group.MapVerifyPurchaseOrderEndpoint();
+        group.MapReopenPurchaseOrderDraftEndpoint();
         group.MapIssuePurchaseOrderEndpoint();
         group.MapAcknowledgePurchaseOrderEndpoint();
+        group.MapCancelPurchaseOrderEndpoint();
+        group.MapClosePurchaseOrderEndpoint();
+        group.MapSetPurchaseOrderShipToEndpoint();
+        group.MapUpdatePurchaseOrderLineEndpoint();
 
         group.MapCreateAsnEndpoint();
         group.MapListAsnsEndpoint();

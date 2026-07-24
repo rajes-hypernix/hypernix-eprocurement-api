@@ -47,6 +47,20 @@ public static class PlatformPermissions
         public const string Manage = $"Permissions.{Resource}.Manage";
     }
 
+    public static class CustomFields
+    {
+        public const string Resource = "Platform.CustomFields";
+        public const string View = $"Permissions.{Resource}.View";
+        public const string Manage = $"Permissions.{Resource}.Manage";
+    }
+
+    public static class EntryForms
+    {
+        public const string Resource = "Platform.EntryForms";
+        public const string View = $"Permissions.{Resource}.View";
+        public const string Manage = $"Permissions.{Resource}.Manage";
+    }
+
     public static IReadOnlyList<FshPermission> All { get; } =
     [
         new("View Lookups", ActionConstants.View, Lookups.Resource, IsBasic: true),
@@ -59,6 +73,10 @@ public static class PlatformPermissions
         new("Manage Form Templates", "Manage", FormTemplates.Resource),
         new("View Configuration", ActionConstants.View, Configuration.Resource, IsBasic: true),
         new("Manage Configuration", "Manage", Configuration.Resource),
+        new("View Custom Fields", ActionConstants.View, CustomFields.Resource, IsBasic: true),
+        new("Manage Custom Fields", "Manage", CustomFields.Resource),
+        new("View Entry Forms", ActionConstants.View, EntryForms.Resource, IsBasic: true),
+        new("Manage Entry Forms", "Manage", EntryForms.Resource),
 
         // Using saved views is all-principal (View/ManageOwn are Basic); publishing/editing a
         // shared or system view is a step up, granted explicitly (Buyer today, Admin by root).

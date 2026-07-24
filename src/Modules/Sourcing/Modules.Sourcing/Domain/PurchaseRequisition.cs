@@ -4,7 +4,7 @@ namespace FSH.Modules.Sourcing.Domain;
 
 /// <summary>
 /// A purchase requisition — the aggregate root for demand. <see cref="HeaderStatus"/> is always
-/// derived from its lines via <see cref="RecomputeHeaderStatus"/>, never set directly.
+/// derived from its lines via <c>RecomputeHeaderStatus</c>, never set directly.
 /// </summary>
 public sealed class PurchaseRequisition : AggregateRoot<Guid>
 {
@@ -242,6 +242,13 @@ public sealed class PurchaseRequisition : AggregateRoot<Guid>
     /// sourced with remaining open demand -&gt; PartiallySourced; sourced with none left -&gt; Sourced;
     /// otherwise -&gt; Submitted.
     /// </summary>
+    /// <remarks>
+    /// This overload does not know about direct-order commitments (Phase 3's <see cref="PrLineOrder"/>
+    /// ledger, which lives outside this aggregate). Call sites that touch a PR with active order
+    /// reservations on any of its lines should use the <see cref="RecomputeHeaderStatus(IReadOnlyDictionary{Guid, decimal})"/>
+    /// overload instead, or the ordered dimension can regress silently. Known, bounded gap — see
+    /// MIGRATION-PLAN-2.md Phase 3 notes.
+    /// </remarks>
     public void RecomputeHeaderStatus()
     {
         if (_lines.Count > 0 && _lines.All(l => l.LifecycleStatus == PrLineStatus.Cancelled))
@@ -260,6 +267,36 @@ public sealed class PurchaseRequisition : AggregateRoot<Guid>
                 : hasSourced && !hasOpenDemand
                     ? PrHeaderStatus.Sourced
                     : PrHeaderStatus.Submitted;
+    }
+
+    /// <summary>
+    /// Same recompute, but checks the direct-ordering dimension first — "ordering outranks
+    /// sourcing" (Phase 3 / IC14). <paramref name="orderedByLine"/> is the current active
+    /// <see cref="PrLineOrder"/> quantity per line id, supplied by the caller (the ledger lives
+    /// outside this aggregate). Falls through to the sourcing-only recompute above when no line
+    /// has an active order.
+    /// </summary>
+    public void RecomputeHeaderStatus(IReadOnlyDictionary<Guid, decimal> orderedByLine)
+    {
+        ArgumentNullException.ThrowIfNull(orderedByLine);
+
+        if (_lines.Count > 0 && _lines.All(l => l.LifecycleStatus == PrLineStatus.Cancelled))
+        {
+            HeaderStatus = PrHeaderStatus.Cancelled;
+            return;
+        }
+
+        var active = _lines.Where(l => l.LifecycleStatus != PrLineStatus.Cancelled).ToList();
+        decimal Ordered(PrLine l) => orderedByLine.GetValueOrDefault(l.Id);
+
+        if (active.Any(l => Ordered(l) > 0))
+        {
+            bool Done(PrLine l) => l.LifecycleStatus is PrLineStatus.Awarded or PrLineStatus.Closed || Ordered(l) >= l.Qty;
+            HeaderStatus = active.All(Done) ? PrHeaderStatus.Ordered : PrHeaderStatus.PartiallyOrdered;
+            return;
+        }
+
+        RecomputeHeaderStatus();
     }
 
     private void RequireDraftable()

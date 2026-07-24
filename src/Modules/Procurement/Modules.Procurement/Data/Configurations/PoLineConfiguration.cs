@@ -19,7 +19,8 @@ public sealed class PoLineConfiguration : IEntityTypeConfiguration<PoLine>
         builder.Property(x => x.UnitPrice).HasPrecision(18, 4);
         builder.Property(x => x.ReceivedQty).HasPrecision(18, 4);
         builder.Property(x => x.InvoicedQty).HasPrecision(18, 4);
-        builder.Property(x => x.RfqLineCode).IsRequired().HasMaxLength(50);
+        builder.Property(x => x.RfqLineCode).HasMaxLength(50);
+        builder.Ignore(x => x.LineTotal);
         builder.Ignore(x => x.DomainEvents);
     }
 }

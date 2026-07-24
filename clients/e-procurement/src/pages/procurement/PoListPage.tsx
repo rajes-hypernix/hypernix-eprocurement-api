@@ -1,10 +1,15 @@
 import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { listPurchaseOrders } from "@/api/procurement";
+import { getViewFields, listViews, rowId, runView, type SavedViewDto } from "@/api/views";
 import { useAuth } from "@/auth/use-auth";
+import { Gated } from "@/components/Gated";
 import { Icon } from "@/components/Icon";
 import { EmptyState, Spinner } from "@/components/ui";
 import { PoStatusBadge } from "@/components/procurement/badges";
+import { ViewBuilder, ViewPicker } from "@/components/views/SavedViewControls";
+import { FshPermissions } from "@/lib/fsh-permissions";
 import { fmt, dateMY } from "@/lib/format";
 
 const OPEN_STATUSES = new Set(["Issued", "Acknowledged", "PartiallyReceived"]);
@@ -16,7 +21,15 @@ function shortId(id: string): string {
 
 type Tab = "all" | "open" | "exceptions" | "draft" | "closed";
 
-export function PoListPage({ onOpen }: { onOpen: (id: string) => void }) {
+export function PoListPage({
+  onOpen,
+  onNavigate,
+  onNewStandalone,
+}: {
+  onOpen: (id: string) => void;
+  onNavigate: (key: string) => void;
+  onNewStandalone: () => void;
+}) {
   const { isVendor } = useAuth();
   const [tab, setTab] = useState<Tab>("all");
   const [q, setQ] = useState("");
@@ -43,7 +56,7 @@ export function PoListPage({ onOpen }: { onOpen: (id: string) => void }) {
       if (tab === "draft" && p.status !== "Draft") return false;
       if (tab === "closed" && !CLOSED_STATUSES.has(p.status)) return false;
       if (q.trim()) {
-        const hay = `${p.code} ${p.vendorId} ${p.rfqId}`.toLowerCase();
+        const hay = `${p.code} ${p.vendorId} ${p.rfqId ?? ""}`.toLowerCase();
         if (!hay.includes(q.trim().toLowerCase())) return false;
       }
       return true;
@@ -61,6 +74,20 @@ export function PoListPage({ onOpen }: { onOpen: (id: string) => void }) {
               : "Issue POs to vendors, track acknowledgement, receipts, and invoice matching."}
           </p>
         </div>
+        {!isVendor ? (
+          <div style={{ display: "flex", gap: 8 }}>
+            <Gated permission={FshPermissions.purchaseOrders.createFromRequisition}>
+              <button type="button" className="btn btn-out btn-sm" onClick={() => onNavigate("order-builder")}>
+                <Icon name="box" size={15} /> Order builder
+              </button>
+            </Gated>
+            <Gated permission={FshPermissions.purchaseOrders.createStandalone}>
+              <button type="button" className="btn btn-pri btn-sm" onClick={onNewStandalone}>
+                <Icon name="plus" size={15} /> New standalone PO
+              </button>
+            </Gated>
+          </div>
+        ) : null}
       </div>
 
       {!isVendor ? (

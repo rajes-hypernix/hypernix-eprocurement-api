@@ -9,8 +9,12 @@ public static class ProcurementPermissions
         public const string Resource = "Procurement.PurchaseOrders";
         public const string View = $"Permissions.{Resource}.View";
         public const string CreateFromAward = $"Permissions.{Resource}.CreateFromAward";
+        public const string CreateFromRequisition = $"Permissions.{Resource}.CreateFromRequisition";
+        public const string CreateStandalone = $"Permissions.{Resource}.CreateStandalone";
         public const string Issue = $"Permissions.{Resource}.Issue";
         public const string Acknowledge = $"Permissions.{Resource}.Acknowledge";
+        public const string Cancel = $"Permissions.{Resource}.Cancel";
+        public const string Close = $"Permissions.{Resource}.Close";
     }
 
     public static class Deliveries
@@ -41,6 +45,10 @@ public static class ProcurementPermissions
     [
         new("View Purchase Orders", ActionConstants.View, PurchaseOrders.Resource, IsBasic: true),
         new("Create POs from Award", "CreateFromAward", PurchaseOrders.Resource),
+        new("Create PO from Requisition", "CreateFromRequisition", PurchaseOrders.Resource),
+        new("Create Standalone PO", "CreateStandalone", PurchaseOrders.Resource),
+        new("Cancel Purchase Order", "Cancel", PurchaseOrders.Resource),
+        new("Close Purchase Order", "Close", PurchaseOrders.Resource),
         new("Issue Purchase Order", "Issue", PurchaseOrders.Resource),
         new("Acknowledge Purchase Order", "Acknowledge", PurchaseOrders.Resource),
 

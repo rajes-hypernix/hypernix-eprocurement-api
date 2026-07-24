@@ -6,14 +6,17 @@ namespace FSH.Modules.Procurement.Features.v1;
 internal static class ProcurementDtoMapper
 {
     internal static PurchaseOrderDto ToDto(PurchaseOrder po) => new(
-        po.Id, po.Code, po.AwardId, po.RfqId, po.VendorId,
-        po.Status.ToString(), po.Currency, po.TotalValue,
+        po.Id, po.Code, po.AwardId, po.RfqId, po.SourcePrId, po.SourceKind.ToString(), po.VendorId,
+        po.Status.ToString(), po.Currency,
+        po.ShipToLocationId, po.ShipToAddressId, po.ShipToAdhoc,
+        po.IncotermCode, po.IncotermSuffix, po.Memo, po.VendorRef, po.RequiredDate, po.DeliveryDate,
+        po.VerifiedUtc, po.IssuedUtc, po.EntryFormId, po.TotalValue,
         [.. po.Lines.Select(ToDto)],
         po.CreatedUtc, po.UpdatedUtc);
 
     internal static PoLineDto ToDto(PoLine l) => new(
         l.Id, l.ItemCode, l.Description, l.Uom, l.Qty, l.UnitPrice,
-        l.ReceivedQty, l.InvoicedQty, l.RfqLineCode);
+        l.ReceivedQty, l.InvoicedQty, l.RfqLineCode, l.SourcePrLineId, l.TaxCodeId, l.PriceConfirmed, l.LineTotal);
 
     internal static AsnDto ToDto(Asn asn) => new(
         asn.Id, asn.Code, asn.PoId, asn.Status.ToString(),
@@ -41,6 +44,6 @@ internal static class ProcurementDtoMapper
     internal static InvoiceLineDto ToDto(InvoiceLine l) => new(l.Id, l.ItemCode, l.Qty, l.UnitPrice, l.LineTotal);
 
     internal static PurchaseOrderListItemDto ToListItem(PurchaseOrder po) => new(
-        po.Id, po.Code, po.RfqId, po.VendorId,
+        po.Id, po.Code, po.RfqId, po.SourcePrId, po.SourceKind.ToString(), po.VendorId,
         po.Status.ToString(), po.Currency, po.TotalValue, po.CreatedUtc);
 }

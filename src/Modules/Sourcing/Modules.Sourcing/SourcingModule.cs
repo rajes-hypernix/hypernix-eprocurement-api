@@ -30,6 +30,7 @@ using FSH.Modules.Sourcing.Features.v1.Requisitions.CancelRequisitionLine;
 using FSH.Modules.Sourcing.Features.v1.Requisitions.CreateRequisition;
 using FSH.Modules.Sourcing.Features.v1.Requisitions.GetRequisitionById;
 using FSH.Modules.Sourcing.Features.v1.Requisitions.ListRequisitions;
+using FSH.Modules.Sourcing.Features.v1.Requisitions.Ordering;
 using FSH.Modules.Sourcing.Features.v1.Requisitions.ReleaseRequisitionLine;
 using FSH.Modules.Sourcing.Features.v1.Requisitions.ReopenRequisitionLine;
 using FSH.Modules.Sourcing.Features.v1.Requisitions.ReserveRequisitionLine;
@@ -103,6 +104,7 @@ public sealed class SourcingModule : IModule
         group.MapReopenRequisitionLineEndpoint();
         group.MapListRequisitionsEndpoint();
         group.MapGetRequisitionByIdEndpoint();
+        group.MapGetEligibleLinesForOrderingEndpoint();
 
         group.MapCreateRfqDraftEndpoint();
         group.MapUpdateRfqDraftEndpoint();

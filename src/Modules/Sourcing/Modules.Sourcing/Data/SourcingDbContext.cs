@@ -22,6 +22,7 @@ public sealed class SourcingDbContext : BaseDbContext
     public DbSet<PurchaseRequisition> PurchaseRequisitions => Set<PurchaseRequisition>();
     public DbSet<PrLine> PrLines => Set<PrLine>();
     public DbSet<PrLineSourcing> PrLineSourcings => Set<PrLineSourcing>();
+    public DbSet<PrLineOrder> PrLineOrders => Set<PrLineOrder>();
     public DbSet<Rfq> Rfqs => Set<Rfq>();
     public DbSet<RfqInvitation> RfqInvitations => Set<RfqInvitation>();
     public DbSet<RfqEvent> RfqEvents => Set<RfqEvent>();

@@ -47,7 +47,7 @@ public sealed class RunSavedViewQueryHandler(PlatformDbContext dbContext, ICurre
         }
 
         rows ??= [];
-        var filtered = SavedViewFilterExecutor.Apply(rows, view.Filters);
+        var filtered = SavedViewFilterExecutor.Apply(rows, view.Filters, userId);
 
         int size = Math.Clamp(query.Size <= 0 ? 50 : query.Size, 1, MaxSize);
         int page = Math.Max(query.Page, 1);

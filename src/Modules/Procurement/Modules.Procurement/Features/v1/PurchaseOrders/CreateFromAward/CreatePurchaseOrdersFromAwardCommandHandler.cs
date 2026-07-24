@@ -36,7 +36,7 @@ public sealed class CreatePurchaseOrdersFromAwardCommandHandler(
         foreach (var group in vendorGroups)
         {
             string code = await codeGen.NextPoCodeAsync(cancellationToken).ConfigureAwait(false);
-            var po = PurchaseOrder.Create(code, award.Id, award.RfqId, group.Key, "MYR");
+            var po = PurchaseOrder.Create(code, group.Key, "MYR", PoSourceKind.FromAward, awardId: award.Id, rfqId: award.RfqId);
 
             foreach (var alloc in group)
             {

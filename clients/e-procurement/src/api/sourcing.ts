@@ -150,6 +150,25 @@ export function reopenRequisitionLine(reqId: string, lineId: string): Promise<st
   return apiFetch(`${ROOT}/requisitions/${reqId}/lines/${lineId}/reopen`, { method: "POST" });
 }
 
+export type EligibleOrderLineDto = {
+  prId: string;
+  prCode: string;
+  prLineId: string;
+  itemCode: string;
+  description: string;
+  qty: number;
+  uom: string;
+  estUnitPrice: number;
+  qtyOrdered: number;
+  qtyRemaining: number;
+  sourceable: boolean;
+  ineligibleReason?: string | null;
+};
+
+export function getEligibleRequisitionLinesForOrdering(): Promise<EligibleOrderLineDto[]> {
+  return apiFetch(`${ROOT}/requisitions/order-builder/eligible-lines`);
+}
+
 // ---------------------------------------------------------------------------
 // RFQs
 // ---------------------------------------------------------------------------

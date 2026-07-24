@@ -10,9 +10,18 @@ namespace FSH.Modules.Platform.Features.v1.Views;
 /// </summary>
 internal static class SavedViewFilterExecutor
 {
+    /// <summary>Phase 7 tokens: <c>@me</c> resolves server-side to the caller's own user id (e.g.
+    /// <c>OwnerUserId Eq @me</c> for "my RFQs"); <c>@empty</c> resolves to an empty string, letting a
+    /// value-carrying operator (Eq/Neq) express "blank" without needing IsEmpty/IsNotEmpty. Resolved
+    /// once per filter, before <see cref="Matches"/> ever sees the value, so every operator gets it
+    /// for free with no per-operator token awareness.</summary>
+    private const string CurrentUserToken = "@me";
+    private const string EmptyValueToken = "@empty";
+
     public static List<IDictionary<string, object?>> Apply(
         IReadOnlyList<IDictionary<string, object?>> rows,
-        IReadOnlyList<SavedViewFilter> filters)
+        IReadOnlyList<SavedViewFilter> filters,
+        string currentUserId)
     {
         ArgumentNullException.ThrowIfNull(rows);
         ArgumentNullException.ThrowIfNull(filters);
@@ -21,26 +30,35 @@ internal static class SavedViewFilterExecutor
 
         var groups = filters.GroupBy(f => f.GroupIndex).ToList();
         return [.. rows.Where(row => groups.All(g => g.Key >= 1
-            ? g.Any(f => Matches(row, f))
-            : g.All(f => Matches(row, f))))];
+            ? g.Any(f => Matches(row, f, currentUserId))
+            : g.All(f => Matches(row, f, currentUserId))))];
     }
 
-    private static bool Matches(IDictionary<string, object?> row, SavedViewFilter filter)
+    private static string? ResolveToken(string? value, string currentUserId) => value switch
+    {
+        CurrentUserToken => currentUserId,
+        EmptyValueToken => string.Empty,
+        _ => value,
+    };
+
+    private static bool Matches(IDictionary<string, object?> row, SavedViewFilter filter, string currentUserId)
     {
         row.TryGetValue(filter.FieldKey, out var raw);
+        string value = ResolveToken(filter.Value, currentUserId) ?? string.Empty;
+        string? value2 = ResolveToken(filter.Value2, currentUserId);
         return filter.Operator switch
         {
-            ViewOperator.Eq => AreEqual(raw, filter.Value),
-            ViewOperator.Neq => raw is not null && !AreEqual(raw, filter.Value),
-            ViewOperator.In => SplitValues(filter.Value).Any(v => AreEqual(raw, v)),
-            ViewOperator.Contains => ToText(raw).Contains(filter.Value, StringComparison.OrdinalIgnoreCase),
-            ViewOperator.StartsWith => ToText(raw).StartsWith(filter.Value, StringComparison.OrdinalIgnoreCase),
+            ViewOperator.Eq => AreEqual(raw, value),
+            ViewOperator.Neq => raw is not null && !AreEqual(raw, value),
+            ViewOperator.In => SplitValues(value).Any(v => AreEqual(raw, v)),
+            ViewOperator.Contains => ToText(raw).Contains(value, StringComparison.OrdinalIgnoreCase),
+            ViewOperator.StartsWith => ToText(raw).StartsWith(value, StringComparison.OrdinalIgnoreCase),
             ViewOperator.IsEmpty => IsEmpty(raw),
             ViewOperator.IsNotEmpty => !IsEmpty(raw),
-            ViewOperator.Gte => Compare(raw, filter.Value) is { } c1 && c1 >= 0,
-            ViewOperator.Lte => Compare(raw, filter.Value) is { } c2 && c2 <= 0,
-            ViewOperator.Between => Compare(raw, filter.Value) is { } lo && lo >= 0
-                && Compare(raw, filter.Value2 ?? filter.Value) is { } hi && hi <= 0,
+            ViewOperator.Gte => Compare(raw, value) is { } c1 && c1 >= 0,
+            ViewOperator.Lte => Compare(raw, value) is { } c2 && c2 <= 0,
+            ViewOperator.Between => Compare(raw, value) is { } lo && lo >= 0
+                && Compare(raw, value2 ?? value) is { } hi && hi <= 0,
             _ => false,
         };
     }

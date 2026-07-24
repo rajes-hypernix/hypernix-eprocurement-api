@@ -8,7 +8,8 @@ namespace FSH.Modules.Sourcing.Services;
 /// Wave-1 saved-view row source for Sourcing's two list surfaces — Requisition and Rfq. Keys
 /// are PascalCase and must match <c>ViewsSeedData</c>'s native field registry rows exactly.
 /// </summary>
-public sealed class SourcingSavedViewRowSource(SourcingDbContext dbContext) : ISavedViewRowSource
+public sealed class SourcingSavedViewRowSource(SourcingDbContext dbContext, ISavedViewSupplementalDataService supplementalData)
+    : ISavedViewRowSource
 {
     public Task<IReadOnlyList<IDictionary<string, object?>>> GetRowsAsync(string recordType, CancellationToken ct) =>
         recordType switch
@@ -26,24 +27,42 @@ public sealed class SourcingSavedViewRowSource(SourcingDbContext dbContext) : IS
             .ToListAsync(ct)
             .ConfigureAwait(false);
 
-        return [.. requisitions.Select(pr => (IDictionary<string, object?>)new Dictionary<string, object?>
+        var supplemental = await supplementalData
+            .GetSupplementalFieldsAsync("Requisition", [.. requisitions.Select(p => p.Id)], ct)
+            .ConfigureAwait(false);
+
+        var rows = new List<IDictionary<string, object?>>(requisitions.Count);
+        foreach (var pr in requisitions)
         {
-            ["Id"] = pr.Id,
-            ["Code"] = pr.Code,
-            ["Requestor"] = pr.Requestor,
-            ["Department"] = pr.Department,
-            ["Location"] = pr.Location,
-            ["Memo"] = pr.Memo,
-            ["Job"] = pr.Job,
-            ["Category"] = pr.Category,
-            ["CostCentre"] = pr.CostCentre,
-            ["Project"] = pr.Project,
-            ["RaisedDate"] = pr.RaisedOn,
-            ["RequiredDate"] = pr.RequiredOn,
-            ["HeaderStatus"] = pr.HeaderStatus.ToString(),
-            ["Value"] = pr.Lines.Sum(l => l.Qty * l.EstUnitPrice),
-            ["Submitted"] = pr.Submitted,
-        })];
+            Dictionary<string, object?> row = new()
+            {
+                ["Id"] = pr.Id,
+                ["Code"] = pr.Code,
+                ["Requestor"] = pr.Requestor,
+                ["Department"] = pr.Department,
+                ["Location"] = pr.Location,
+                ["Memo"] = pr.Memo,
+                ["Job"] = pr.Job,
+                ["Category"] = pr.Category,
+                ["CostCentre"] = pr.CostCentre,
+                ["Project"] = pr.Project,
+                ["RaisedDate"] = pr.RaisedOn,
+                ["RequiredDate"] = pr.RequiredOn,
+                ["HeaderStatus"] = pr.HeaderStatus.ToString(),
+                ["Value"] = pr.Lines.Sum(l => l.Qty * l.EstUnitPrice),
+                ["Submitted"] = pr.Submitted,
+            };
+
+            if (supplemental.TryGetValue(pr.Id, out var extra))
+            {
+                foreach (var (key, value) in extra)
+                    row[key] = value;
+            }
+
+            rows.Add(row);
+        }
+
+        return rows;
     }
 
     private async Task<IReadOnlyList<IDictionary<string, object?>>> GetRfqRowsAsync(CancellationToken ct)
@@ -65,6 +84,7 @@ public sealed class SourcingSavedViewRowSource(SourcingDbContext dbContext) : IS
             .ToDictionaryAsync(x => x.RfqId, x => x.Count, ct)
             .ConfigureAwait(false);
 
+        // Rfq is not a PlatformRecordType (no custom fields/segments for it) — no supplemental merge.
         return [.. rfqs.Select(r => (IDictionary<string, object?>)new Dictionary<string, object?>
         {
             ["Id"] = r.Id,
@@ -78,6 +98,7 @@ public sealed class SourcingSavedViewRowSource(SourcingDbContext dbContext) : IS
             ["LineCount"] = r.Lines.Count,
             ["QuestionCount"] = r.FormItems.Count,
             ["BidCount"] = bidCountsByRfq.TryGetValue(r.Id, out var count) ? count : 0,
+            ["OwnerUserId"] = r.OwnerUserId,
         })];
     }
 }

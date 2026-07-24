@@ -44,6 +44,14 @@ public sealed class PlatformDbContext : BaseDbContext
     public DbSet<NumberingScheme> NumberingSchemes => Set<NumberingScheme>();
     public DbSet<NumberSequence> NumberSequences => Set<NumberSequence>();
 
+    public DbSet<CustomFieldDef> CustomFieldDefs => Set<CustomFieldDef>();
+    public DbSet<CustomFieldValue> CustomFieldValues => Set<CustomFieldValue>();
+    public DbSet<SegmentAssignment> SegmentAssignments => Set<SegmentAssignment>();
+    public DbSet<EntryFormDef> EntryFormDefs => Set<EntryFormDef>();
+    public DbSet<EntryFormGroup> EntryFormGroups => Set<EntryFormGroup>();
+    public DbSet<EntryFormField> EntryFormFields => Set<EntryFormField>();
+    public DbSet<EntryFormRoleMap> EntryFormRoleMaps => Set<EntryFormRoleMap>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);

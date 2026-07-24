@@ -34,7 +34,6 @@ namespace FSH.Starter.Migrations.PostgreSQL.Sourcing
             modelBuilder.Entity("FSH.Modules.Sourcing.Domain.Award", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<DateTime?>("ApprovedUtc")
@@ -90,7 +89,6 @@ namespace FSH.Starter.Migrations.PostgreSQL.Sourcing
             modelBuilder.Entity("FSH.Modules.Sourcing.Domain.Bid", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<string>("Code")
@@ -152,7 +150,6 @@ namespace FSH.Starter.Migrations.PostgreSQL.Sourcing
             modelBuilder.Entity("FSH.Modules.Sourcing.Domain.Clarification", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<string>("Body")
@@ -210,7 +207,6 @@ namespace FSH.Starter.Migrations.PostgreSQL.Sourcing
             modelBuilder.Entity("FSH.Modules.Sourcing.Domain.PrLine", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<string>("Description")
@@ -266,10 +262,60 @@ namespace FSH.Starter.Migrations.PostgreSQL.Sourcing
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
 
+            modelBuilder.Entity("FSH.Modules.Sourcing.Domain.PrLineOrder", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ClosedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LinkStatus")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid>("PoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PoLineRef")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid>("PrLineId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("QtyOrdered")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LinkStatus");
+
+                    b.HasIndex("PoId");
+
+                    b.HasIndex("PrLineId");
+
+                    b.ToTable("PrLineOrders", "sourcing");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
             modelBuilder.Entity("FSH.Modules.Sourcing.Domain.PrLineSourcing", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<DateTime?>("ClosedUtc")
@@ -322,7 +368,6 @@ namespace FSH.Starter.Migrations.PostgreSQL.Sourcing
             modelBuilder.Entity("FSH.Modules.Sourcing.Domain.PurchaseRequisition", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<string>("Category")
@@ -436,7 +481,6 @@ namespace FSH.Starter.Migrations.PostgreSQL.Sourcing
             modelBuilder.Entity("FSH.Modules.Sourcing.Domain.Rfq", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<DateTime?>("ClosedUtc")
@@ -544,7 +588,6 @@ namespace FSH.Starter.Migrations.PostgreSQL.Sourcing
             modelBuilder.Entity("FSH.Modules.Sourcing.Domain.RfqEvent", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<string>("ActorUserId")
@@ -599,7 +642,6 @@ namespace FSH.Starter.Migrations.PostgreSQL.Sourcing
             modelBuilder.Entity("FSH.Modules.Sourcing.Domain.RfqInvitation", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<string>("DeclineNote")
@@ -666,7 +708,6 @@ namespace FSH.Starter.Migrations.PostgreSQL.Sourcing
             modelBuilder.Entity("FSH.Modules.Sourcing.Domain.TechnicalScore", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedUtc")

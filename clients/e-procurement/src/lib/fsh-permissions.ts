@@ -54,8 +54,12 @@ export const FshPermissions = {
   purchaseOrders: {
     view: "Permissions.Procurement.PurchaseOrders.View",
     createFromAward: "Permissions.Procurement.PurchaseOrders.CreateFromAward",
+    createFromRequisition: "Permissions.Procurement.PurchaseOrders.CreateFromRequisition",
+    createStandalone: "Permissions.Procurement.PurchaseOrders.CreateStandalone",
     issue: "Permissions.Procurement.PurchaseOrders.Issue",
     acknowledge: "Permissions.Procurement.PurchaseOrders.Acknowledge",
+    cancel: "Permissions.Procurement.PurchaseOrders.Cancel",
+    close: "Permissions.Procurement.PurchaseOrders.Close",
   },
   deliveries: {
     view: "Permissions.Procurement.Deliveries.View",
@@ -91,6 +95,14 @@ export const FshPermissions = {
   configuration: {
     view: "Permissions.Platform.Configuration.View",
     manage: "Permissions.Platform.Configuration.Manage",
+  },
+  customFields: {
+    view: "Permissions.Platform.CustomFields.View",
+    manage: "Permissions.Platform.CustomFields.Manage",
+  },
+  entryForms: {
+    view: "Permissions.Platform.EntryForms.View",
+    manage: "Permissions.Platform.EntryForms.Manage",
   },
   notifications: {
     view: "Permissions.Notifications.Inbox.View",

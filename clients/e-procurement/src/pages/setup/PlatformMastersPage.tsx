@@ -21,6 +21,7 @@ const CONFIG_TABS = [
   { key: "locations", icon: "field", label: "Locations" },
   { key: "items", icon: "box", label: "Items" },
   { key: "numbering", icon: "list", label: "Numbering" },
+  { key: "customFields", icon: "field", label: "Custom Fields" },
 ] as const;
 
 const ALL_TABS = [...LOOKUP_TABS, ...CONFIG_TABS];

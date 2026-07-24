@@ -25,12 +25,29 @@ using FSH.Modules.Platform.Features.v1.Currencies.CreateCurrency;
 using FSH.Modules.Platform.Features.v1.Currencies.ListCurrencies;
 using FSH.Modules.Platform.Features.v1.Currencies.SetCurrencyActive;
 using FSH.Modules.Platform.Features.v1.Currencies.UpdateCurrency;
+using FSH.Modules.Platform.Features.v1.CustomFields.ApplyCustomFieldToRecordType;
+using FSH.Modules.Platform.Features.v1.CustomFields.CreateCustomFieldDef;
+using FSH.Modules.Platform.Features.v1.CustomFields.GetCustomFieldValues;
+using FSH.Modules.Platform.Features.v1.CustomFields.ListCustomFieldDefs;
+using FSH.Modules.Platform.Features.v1.CustomFields.RemoveCustomFieldApplication;
+using FSH.Modules.Platform.Features.v1.CustomFields.SetCustomFieldDefActive;
+using FSH.Modules.Platform.Features.v1.CustomFields.SetCustomFieldValues;
+using FSH.Modules.Platform.Features.v1.CustomFields.UpdateCustomFieldDef;
 using FSH.Modules.Platform.Features.v1.CustomLists.CreateCustomList;
 using FSH.Modules.Platform.Features.v1.CustomLists.ListCustomListItems;
 using FSH.Modules.Platform.Features.v1.CustomLists.ListCustomLists;
 using FSH.Modules.Platform.Features.v1.CustomLists.SetCustomListActive;
 using FSH.Modules.Platform.Features.v1.CustomLists.UpdateCustomList;
 using FSH.Modules.Platform.Features.v1.CustomLists.UpsertCustomListItem;
+using FSH.Modules.Platform.Features.v1.EntryForms.CreateEntryForm;
+using FSH.Modules.Platform.Features.v1.EntryForms.GetEntryForm;
+using FSH.Modules.Platform.Features.v1.EntryForms.GetEntryFormForRole;
+using FSH.Modules.Platform.Features.v1.EntryForms.ListEntryFormRoleMaps;
+using FSH.Modules.Platform.Features.v1.EntryForms.ListEntryForms;
+using FSH.Modules.Platform.Features.v1.EntryForms.ReplaceEntryFormLayout;
+using FSH.Modules.Platform.Features.v1.EntryForms.SetEntryFormActive;
+using FSH.Modules.Platform.Features.v1.EntryForms.UpdateEntryFormDetails;
+using FSH.Modules.Platform.Features.v1.EntryForms.UpsertEntryFormRoleMap;
 using FSH.Modules.Platform.Features.v1.ExchangeRates.AppendExchangeRate;
 using FSH.Modules.Platform.Features.v1.ExchangeRates.ListCurrentExchangeRates;
 using FSH.Modules.Platform.Features.v1.ExchangeRates.ListExchangeRateHistory;
@@ -66,6 +83,9 @@ using FSH.Modules.Platform.Features.v1.PaymentTerms.GetPaymentTerm;
 using FSH.Modules.Platform.Features.v1.PaymentTerms.ListPaymentTerms;
 using FSH.Modules.Platform.Features.v1.PaymentTerms.SetPaymentTermActive;
 using FSH.Modules.Platform.Features.v1.PaymentTerms.UpdatePaymentTerm;
+using FSH.Modules.Platform.Features.v1.Segments.ListSegmentAssignments;
+using FSH.Modules.Platform.Features.v1.Segments.RemoveSegmentAssignment;
+using FSH.Modules.Platform.Features.v1.Segments.SetSegmentAssignment;
 using FSH.Modules.Platform.Features.v1.Settings.ListSettings;
 using FSH.Modules.Platform.Features.v1.Settings.UpdateSetting;
 using FSH.Modules.Platform.Features.v1.States.CreateState;
@@ -77,6 +97,7 @@ using FSH.Modules.Platform.Features.v1.TaxCodes.CreateTaxCode;
 using FSH.Modules.Platform.Features.v1.TaxCodes.ListTaxCodes;
 using FSH.Modules.Platform.Features.v1.TaxCodes.SetTaxCodeActive;
 using FSH.Modules.Platform.Features.v1.TaxCodes.UpdateTaxCode;
+using FSH.Modules.Platform.Features.v1.Views;
 using FSH.Modules.Platform.Features.v1.Views.CreateSavedView;
 using FSH.Modules.Platform.Features.v1.Views.DeleteSavedView;
 using FSH.Modules.Platform.Features.v1.Views.GetViewFields;
@@ -107,6 +128,7 @@ public sealed class PlatformModule : IModule
         builder.Services.AddScoped<IReasonCodeValidator, ReasonCodeValidator>();
         builder.Services.AddScoped<IFormTemplateCatalog, FormTemplateCatalog>();
         builder.Services.AddScoped<IDocumentNumberGenerator, DocumentNumberGenerator>();
+        builder.Services.AddScoped<ISavedViewSupplementalDataService, SavedViewSupplementalDataService>();
         builder.Services.AddHealthChecks()
             .AddDbContextCheck<PlatformDbContext>(
                 name: "db:platform",
@@ -221,5 +243,28 @@ public sealed class PlatformModule : IModule
         group.MapUpdateNumberingSchemeEndpoint();
         group.MapPeekDocumentNumberEndpoint();
         group.MapMintDocumentNumberEndpoint();
+
+        group.MapListCustomFieldDefsEndpoint();
+        group.MapCreateCustomFieldDefEndpoint();
+        group.MapUpdateCustomFieldDefEndpoint();
+        group.MapSetCustomFieldDefActiveEndpoint();
+        group.MapApplyCustomFieldToRecordTypeEndpoint();
+        group.MapRemoveCustomFieldApplicationEndpoint();
+        group.MapGetCustomFieldValuesEndpoint();
+        group.MapSetCustomFieldValuesEndpoint();
+
+        group.MapListSegmentAssignmentsEndpoint();
+        group.MapSetSegmentAssignmentEndpoint();
+        group.MapRemoveSegmentAssignmentEndpoint();
+
+        group.MapListEntryFormsEndpoint();
+        group.MapGetEntryFormEndpoint();
+        group.MapCreateEntryFormEndpoint();
+        group.MapUpdateEntryFormDetailsEndpoint();
+        group.MapSetEntryFormActiveEndpoint();
+        group.MapReplaceEntryFormLayoutEndpoint();
+        group.MapUpsertEntryFormRoleMapEndpoint();
+        group.MapListEntryFormRoleMapsEndpoint();
+        group.MapGetEntryFormForRoleEndpoint();
     }
 }

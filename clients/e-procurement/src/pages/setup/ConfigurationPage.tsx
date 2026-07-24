@@ -53,6 +53,14 @@ import {
   type SettingDto,
   type TaxCodeDto,
 } from "@/api/configuration";
+import {
+  applyCustomFieldToRecordType,
+  createCustomFieldDef,
+  listCustomFieldDefs,
+  removeCustomFieldApplication,
+  setCustomFieldDefActive,
+  type CustomFieldDefDto,
+} from "@/api/platform";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EntityChangeHistoryModal } from "@/components/EntityChangeHistoryModal";
 import {
@@ -77,7 +85,8 @@ type Tab =
   | "incoterms"
   | "locations"
   | "items"
-  | "numbering";
+  | "numbering"
+  | "customFields";
 
 const TABS: { key: Tab; icon: string; label: string }[] = [
   { key: "settings", icon: "menu", label: "Settings" },
@@ -89,6 +98,7 @@ const TABS: { key: Tab; icon: string; label: string }[] = [
   { key: "locations", icon: "field", label: "Locations" },
   { key: "items", icon: "box", label: "Items" },
   { key: "numbering", icon: "list", label: "Numbering" },
+  { key: "customFields", icon: "field", label: "Custom Fields" },
 ];
 
 export const CONFIG_TAB_KEYS = TABS.map((t) => t.key);
@@ -302,6 +312,7 @@ export function ConfigurationPage({
       {tab === "locations" ? <LocationsTab onHistory={setHistory} /> : null}
       {tab === "items" ? <ItemsTab onHistory={setHistory} /> : null}
       {tab === "numbering" ? <NumberingTab onHistory={setHistory} /> : null}
+      {tab === "customFields" ? <CustomFieldsTab /> : null}
 
       {history ? (
         <EntityChangeHistoryModal
@@ -3176,6 +3187,196 @@ function NumberingTab({ onHistory }: { onHistory: HistoryOpen }) {
       {peeked ? (
         <AlertModal title="Next document number" icon="eye" body={`${peeked.recordType}: ${peeked.value}`} onClose={() => setPeeked(null)} />
       ) : null}
+    </>
+  );
+}
+
+// ---- Custom Fields (Phase 5/6) ----
+
+const CUSTOM_FIELD_DATA_TYPES = [
+  "Text", "LongText", "Int", "Decimal", "Money", "Date", "DateTime", "Bool",
+  "ListValue", "Percent", "Email", "Telephone", "Hyperlink", "RecordRef",
+];
+const CUSTOM_FIELD_RECORD_TYPES = ["Requisition", "PurchaseOrder", "Vendor"];
+
+function CustomFieldsTab() {
+  const qc = useQueryClient();
+  const { showErrorFrom } = useErrorDialog();
+  const [code, setCode] = useState("");
+  const [label, setLabel] = useState("");
+  const [dataType, setDataType] = useState("Text");
+  const [scope, setScope] = useState("Header");
+  const [listKey, setListKey] = useState("");
+  const [refEntity, setRefEntity] = useState("Vendor");
+  const [isRequired, setIsRequired] = useState(false);
+
+  const query = useQuery({ queryKey: ["custom-field-defs"], queryFn: () => listCustomFieldDefs() });
+  const rows = query.data ?? [];
+
+  const invalidate = () => void qc.invalidateQueries({ queryKey: ["custom-field-defs"] });
+
+  const add = useMutation({
+    mutationFn: () =>
+      createCustomFieldDef({
+        code: code.trim().toUpperCase(),
+        label: label.trim(),
+        dataType,
+        scope,
+        listKey: dataType === "ListValue" ? listKey.trim() : null,
+        refEntity: dataType === "RecordRef" ? refEntity : null,
+        isRequired,
+      }),
+    onSuccess: () => {
+      setCode("");
+      setLabel("");
+      setListKey("");
+      setIsRequired(false);
+      invalidate();
+    },
+    onError: (e) => showErrorFrom(e, "Could not create custom field"),
+  });
+
+  const toggle = useMutation({
+    mutationFn: ({ id, active }: { id: string; active: boolean }) => setCustomFieldDefActive(id, active),
+    onSuccess: invalidate,
+    onError: (e) => showErrorFrom(e, "Could not update custom field"),
+  });
+
+  const applyTo = useMutation({
+    mutationFn: ({ id, recordType }: { id: string; recordType: string }) => applyCustomFieldToRecordType(id, recordType),
+    onSuccess: invalidate,
+    onError: (e) => showErrorFrom(e, "Could not apply custom field"),
+  });
+
+  const removeFrom = useMutation({
+    mutationFn: ({ id, recordType }: { id: string; recordType: string }) => removeCustomFieldApplication(id, recordType),
+    onSuccess: invalidate,
+    onError: (e) => showErrorFrom(e, "Could not remove custom field application"),
+  });
+
+  const columns: DataTableColumn<CustomFieldDefDto>[] = useMemo(
+    () => [
+      { id: "label", header: "Label", sortable: true, sortValue: (d) => d.label, render: (d) => <span style={{ fontWeight: 600 }}>{d.label}</span> },
+      { id: "code", header: "Code", sortable: true, sortValue: (d) => d.code, render: (d) => d.code },
+      { id: "dataType", header: "Type", sortable: true, sortValue: (d) => d.dataType, render: (d) => d.dataType },
+      { id: "scope", header: "Scope", render: (d) => d.scope },
+      {
+        id: "appliesTo",
+        header: "Applies to",
+        render: (d) => (
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {CUSTOM_FIELD_RECORD_TYPES.map((rt) => {
+              const applied = d.appliesTo.includes(rt);
+              return (
+                <button
+                  key={rt}
+                  type="button"
+                  className={`badge ${applied ? "b-green" : "b-grey"}`}
+                  style={{ cursor: "pointer", border: "none" }}
+                  onClick={() => (applied ? removeFrom.mutate({ id: d.id, recordType: rt }) : applyTo.mutate({ id: d.id, recordType: rt }))}
+                >
+                  {rt}
+                </button>
+              );
+            })}
+          </div>
+        ),
+      },
+      { id: "status", header: "Status", render: (d) => <StatusBadge active={d.isActive} /> },
+      {
+        id: "actions",
+        header: "",
+        align: "right",
+        render: (d) => (
+          <button type="button" className="btn btn-out btn-sm" onClick={() => toggle.mutate({ id: d.id, active: !d.isActive })}>
+            {d.isActive ? "Deactivate" : "Activate"}
+          </button>
+        ),
+      },
+    ],
+    [applyTo, removeFrom, toggle],
+  );
+
+  return (
+    <>
+      <div className="card" style={{ marginBottom: 14 }}>
+        <div className="chead">
+          <h3>New custom field</h3>
+        </div>
+        <div className="cbody">
+          <div className="filterbar">
+            <div className="field" style={{ margin: 0 }}>
+              <label>Code</label>
+              <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="PROJECT_CODE" />
+            </div>
+            <div className="field" style={{ margin: 0 }}>
+              <label>Label</label>
+              <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Project Code" />
+            </div>
+            <div className="field" style={{ margin: 0 }}>
+              <label>Data type</label>
+              <select value={dataType} onChange={(e) => setDataType(e.target.value)}>
+                {CUSTOM_FIELD_DATA_TYPES.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="field" style={{ margin: 0 }}>
+              <label>Scope</label>
+              <select value={scope} onChange={(e) => setScope(e.target.value)}>
+                <option value="Header">Header</option>
+                <option value="Line">Line</option>
+              </select>
+            </div>
+            {dataType === "ListValue" ? (
+              <div className="field" style={{ margin: 0 }}>
+                <label>Custom list key</label>
+                <input value={listKey} onChange={(e) => setListKey(e.target.value)} placeholder="RFQRescind" />
+              </div>
+            ) : null}
+            {dataType === "RecordRef" ? (
+              <div className="field" style={{ margin: 0 }}>
+                <label>Reference entity</label>
+                <select value={refEntity} onChange={(e) => setRefEntity(e.target.value)}>
+                  <option value="Vendor">Vendor</option>
+                  <option value="User">User</option>
+                  <option value="Item">Item</option>
+                  <option value="Transaction">Transaction</option>
+                </select>
+              </div>
+            ) : null}
+            <div className="field" style={{ margin: 0 }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <input type="checkbox" checked={isRequired} onChange={(e) => setIsRequired(e.target.checked)} style={{ width: "auto" }} />
+                Required
+              </label>
+            </div>
+            <button
+              type="button"
+              className="btn btn-pri btn-sm"
+              disabled={!code.trim() || !label.trim() || add.isPending}
+              onClick={() => add.mutate()}
+            >
+              <Icon name="plus" size={14} /> Add
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="cbody">
+          {query.isPending ? (
+            <Spinner label="Loading custom fields…" />
+          ) : rows.length === 0 ? (
+            <EmptyState icon="field">No custom fields yet.</EmptyState>
+          ) : (
+            <DataTable rows={rows} columns={columns} rowKey={(d) => d.id} />
+          )}
+          <TableFooter total={rows.length} active={rows.filter((d) => d.isActive).length} />
+        </div>
+      </div>
     </>
   );
 }

@@ -259,6 +259,164 @@ namespace FSH.Starter.Migrations.PostgreSQL.Platform
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
 
+            modelBuilder.Entity("FSH.Modules.Platform.Domain.CustomFieldDef", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DataType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("DisplayType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("HelpText")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsRequired")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("LastModifiedBy")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset?>("LastModifiedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ListKey")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("RefEntity")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Scope")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<bool>("ShowInList")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code", "TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_CustomFieldDefs_Code");
+
+                    b.ToTable("CustomFieldDefs", "platform");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
+            modelBuilder.Entity("FSH.Modules.Platform.Domain.CustomFieldValue", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CustomFieldDefId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DataType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid?>("LineId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("RecordId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("RecordType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool?>("ValueBool")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateOnly?>("ValueDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime?>("ValueDateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ValueLabel")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("ValueListCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<decimal?>("ValueNumber")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<Guid?>("ValueRefId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ValueText")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RecordType", "RecordId");
+
+                    b.HasIndex("CustomFieldDefId", "RecordType", "RecordId", "TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_CustomFieldValues_CustomFieldDefId_RecordType_RecordId")
+                        .HasFilter("\"LineId\" IS NULL");
+
+                    b.HasIndex("CustomFieldDefId", "RecordType", "RecordId", "LineId", "TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_CustomFieldValues_CustomFieldDefId_RecordType_RecordId_Line~")
+                        .HasFilter("\"LineId\" IS NOT NULL");
+
+                    b.ToTable("CustomFieldValues", "platform");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
             modelBuilder.Entity("FSH.Modules.Platform.Domain.CustomList", b =>
                 {
                     b.Property<Guid>("Id")
@@ -355,6 +513,163 @@ namespace FSH.Starter.Migrations.PostgreSQL.Platform
                         .HasDatabaseName("IX_CustomListItems_ListId_Code");
 
                     b.ToTable("CustomListItems", "platform");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
+            modelBuilder.Entity("FSH.Modules.Platform.Domain.EntryFormDef", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsSystem")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("LastModifiedBy")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset?>("LastModifiedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("RecordType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code", "TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_EntryFormDefs_Code");
+
+                    b.ToTable("EntryFormDefs", "platform");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
+            modelBuilder.Entity("FSH.Modules.Platform.Domain.EntryFormField", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("EntryFormDefId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("FieldKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<bool>("FullWidth")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("RequiredOnForm")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("Sort")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EntryFormDefId");
+
+                    b.HasIndex("GroupId");
+
+                    b.ToTable("EntryFormFields", "platform");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
+            modelBuilder.Entity("FSH.Modules.Platform.Domain.EntryFormGroup", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("EntryFormDefId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Sort")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EntryFormDefId");
+
+                    b.ToTable("EntryFormGroups", "platform");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
+            modelBuilder.Entity("FSH.Modules.Platform.Domain.EntryFormRoleMap", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("EntryFormDefId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("RecordType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RecordType", "Role", "TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_EntryFormRoleMaps_RecordType_Role");
+
+                    b.ToTable("EntryFormRoleMaps", "platform");
 
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
@@ -1063,6 +1378,54 @@ namespace FSH.Starter.Migrations.PostgreSQL.Platform
                     b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
 
+            modelBuilder.Entity("FSH.Modules.Platform.Domain.SegmentAssignment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Dimension")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid?>("LineId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("OrgUnitId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("RecordId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("RecordType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RecordType", "RecordId", "Dimension", "TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_SegmentAssignments_RecordType_RecordId_Dimension")
+                        .HasFilter("\"LineId\" IS NULL");
+
+                    b.HasIndex("RecordType", "RecordId", "LineId", "Dimension", "TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_SegmentAssignments_RecordType_RecordId_LineId_Dimension")
+                        .HasFilter("\"LineId\" IS NOT NULL");
+
+                    b.ToTable("SegmentAssignments", "platform");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
             modelBuilder.Entity("FSH.Modules.Platform.Domain.Setting", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1243,11 +1606,58 @@ namespace FSH.Starter.Migrations.PostgreSQL.Platform
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("FSH.Modules.Platform.Domain.CustomFieldDef", b =>
+                {
+                    b.OwnsMany("FSH.Modules.Platform.Domain.CustomFieldDefApplication", "Applications", b1 =>
+                        {
+                            b1.Property<Guid>("Id")
+                                .HasColumnType("uuid");
+
+                            b1.Property<Guid>("CustomFieldDefId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("RecordType")
+                                .IsRequired()
+                                .HasMaxLength(30)
+                                .HasColumnType("character varying(30)");
+
+                            b1.HasKey("Id");
+
+                            b1.HasIndex("CustomFieldDefId", "RecordType")
+                                .IsUnique();
+
+                            b1.ToTable("CustomFieldDefApplications", "platform");
+
+                            b1.WithOwner()
+                                .HasForeignKey("CustomFieldDefId");
+                        });
+
+                    b.Navigation("Applications");
+                });
+
             modelBuilder.Entity("FSH.Modules.Platform.Domain.CustomListItem", b =>
                 {
                     b.HasOne("FSH.Modules.Platform.Domain.CustomList", null)
                         .WithMany("Items")
                         .HasForeignKey("ListId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FSH.Modules.Platform.Domain.EntryFormField", b =>
+                {
+                    b.HasOne("FSH.Modules.Platform.Domain.EntryFormDef", null)
+                        .WithMany("Fields")
+                        .HasForeignKey("EntryFormDefId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FSH.Modules.Platform.Domain.EntryFormGroup", b =>
+                {
+                    b.HasOne("FSH.Modules.Platform.Domain.EntryFormDef", null)
+                        .WithMany("Groups")
+                        .HasForeignKey("EntryFormDefId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -1404,6 +1814,13 @@ namespace FSH.Starter.Migrations.PostgreSQL.Platform
             modelBuilder.Entity("FSH.Modules.Platform.Domain.CustomList", b =>
                 {
                     b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("FSH.Modules.Platform.Domain.EntryFormDef", b =>
+                {
+                    b.Navigation("Fields");
+
+                    b.Navigation("Groups");
                 });
 
             modelBuilder.Entity("FSH.Modules.Platform.Domain.FormTemplate", b =>

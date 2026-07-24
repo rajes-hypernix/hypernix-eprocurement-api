@@ -15,6 +15,7 @@ import { AwardsPage } from "@/pages/sourcing/AwardsPage";
 import { ClarificationsPage } from "@/pages/sourcing/ClarificationsPage";
 import { MyBidsPage } from "@/pages/vendor/MyBidsPage";
 import { PosPage } from "@/pages/procurement/PosPage";
+import { OrderBuilderPage } from "@/pages/procurement/OrderBuilderPage";
 import { DeliveriesPage } from "@/pages/procurement/DeliveriesPage";
 import { InvoicesPage } from "@/pages/procurement/InvoicesPage";
 import { NotificationsInboxPage } from "@/pages/notifications/NotificationsInboxPage";
@@ -32,6 +33,12 @@ function ConsolidateRoute() {
   return (
     <ConsolidatePage onBack={() => void navigate("/reqs")} onOpenRfq={(id) => void navigate(`/rfqs/${id}`)} />
   );
+}
+
+/** Vendor-keyed direct-order workspace — reachable via the "Order builder" button, not the nav rail. */
+function OrderBuilderRoute() {
+  const navigate = useNavigate();
+  return <OrderBuilderPage onBack={() => void navigate("/pos")} onBuilt={() => void navigate("/pos")} />;
 }
 
 export const router = createBrowserRouter([
@@ -55,6 +62,7 @@ export const router = createBrowserRouter([
           { path: "chats", element: <ClarificationsPage /> },
           { path: "bids/*", element: <MyBidsPage /> },
           { path: "pos/*", element: <PosPage /> },
+          { path: "order-builder", element: <OrderBuilderRoute /> },
           { path: "deliveries/*", element: <DeliveriesPage /> },
           { path: "invoices/*", element: <InvoicesPage /> },
           { path: "notifications", element: <NotificationsInboxPage /> },

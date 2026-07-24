@@ -5,8 +5,12 @@ public enum PrLineStatus { Open, InDraftRfq, InRfq, Awarded, Cancelled, Closed }
 
 public enum LinkStatus { Active, Returned, Cancelled }
 
-/// <summary>Derived only via PurchaseRequisition.RecomputeHeaderStatus() — never set directly.</summary>
-public enum PrHeaderStatus { Draft, Submitted, PartiallySourced, Sourced, Cancelled }
+/// <summary>
+/// Derived only via PurchaseRequisition.RecomputeHeaderStatus() — never set directly.
+/// PartiallyOrdered/Ordered are the direct-from-requisition ordering dimension (Phase 3) and take
+/// precedence over the sourcing dimension below them — "ordering outranks sourcing."
+/// </summary>
+public enum PrHeaderStatus { Draft, Submitted, PartiallySourced, Sourced, PartiallyOrdered, Ordered, Cancelled }
 
 public enum RfqEnvelope { Single, Dual }
 

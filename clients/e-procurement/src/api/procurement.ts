@@ -16,17 +16,34 @@ export type PoLineDto = {
   unitPrice: number;
   receivedQty: number;
   invoicedQty: number;
-  rfqLineCode: string;
+  rfqLineCode?: string | null;
+  sourcePrLineId?: string | null;
+  taxCodeId?: string | null;
+  priceConfirmed: boolean;
+  lineTotal: number;
 };
 
 export type PurchaseOrderDto = {
   id: string;
   code: string;
-  awardId: string;
-  rfqId: string;
+  awardId?: string | null;
+  rfqId?: string | null;
+  sourcePrId?: string | null;
+  sourceKind: string;
   vendorId: string;
   status: string;
   currency: string;
+  shipToLocationId?: string | null;
+  shipToAddressId?: string | null;
+  shipToAdhoc?: string | null;
+  incotermCode?: string | null;
+  incotermSuffix?: string | null;
+  memo?: string | null;
+  vendorRef?: string | null;
+  requiredDate?: string | null;
+  deliveryDate?: string | null;
+  verifiedUtc?: string | null;
+  issuedUtc?: string | null;
   totalValue: number;
   lines: PoLineDto[];
   createdUtc: string;
@@ -36,7 +53,9 @@ export type PurchaseOrderDto = {
 export type PurchaseOrderListItemDto = {
   id: string;
   code: string;
-  rfqId: string;
+  rfqId?: string | null;
+  sourcePrId?: string | null;
+  sourceKind: string;
   vendorId: string;
   status: string;
   currency: string;
@@ -44,11 +63,43 @@ export type PurchaseOrderListItemDto = {
   createdUtc: string;
 };
 
+export type CreatePoFromRequisitionLineInput = {
+  prLineId: string;
+  qty: number;
+  unitPrice: number;
+  priceConfirmed?: boolean;
+};
+
+export type CreateStandalonePoLineInput = {
+  itemCode: string;
+  description: string;
+  uom: string;
+  qty: number;
+  unitPrice: number;
+};
+
 export function createPurchaseOrdersFromAward(rfqId: string): Promise<string[]> {
   return apiFetch(`${ROOT}/purchase-orders/from-award`, {
     method: "POST",
     body: JSON.stringify({ rfqId }),
   });
+}
+
+export function createPurchaseOrderFromRequisition(body: {
+  prId: string;
+  vendorId: string;
+  currency: string;
+  lines: CreatePoFromRequisitionLineInput[];
+}): Promise<string> {
+  return apiFetch(`${ROOT}/purchase-orders/from-requisition`, { method: "POST", body: JSON.stringify(body) });
+}
+
+export function createStandalonePurchaseOrder(body: {
+  vendorId: string;
+  currency: string;
+  lines: CreateStandalonePoLineInput[];
+}): Promise<string> {
+  return apiFetch(`${ROOT}/purchase-orders/standalone`, { method: "POST", body: JSON.stringify(body) });
 }
 
 export function getPurchaseOrder(id: string): Promise<PurchaseOrderDto | undefined> {
@@ -59,12 +110,43 @@ export function listPurchaseOrders(): Promise<PurchaseOrderListItemDto[]> {
   return apiFetch(`${ROOT}/purchase-orders`);
 }
 
+export function verifyPurchaseOrder(id: string): Promise<PurchaseOrderDto> {
+  return apiFetch(`${ROOT}/purchase-orders/${id}/verify`, { method: "POST", body: JSON.stringify({}) });
+}
+
+export function reopenPurchaseOrderDraft(id: string): Promise<PurchaseOrderDto> {
+  return apiFetch(`${ROOT}/purchase-orders/${id}/reopen-draft`, { method: "POST", body: JSON.stringify({}) });
+}
+
 export function issuePurchaseOrder(id: string): Promise<PurchaseOrderDto> {
   return apiFetch(`${ROOT}/purchase-orders/${id}/issue`, { method: "POST", body: JSON.stringify({}) });
 }
 
 export function acknowledgePurchaseOrder(id: string): Promise<PurchaseOrderDto> {
   return apiFetch(`${ROOT}/purchase-orders/${id}/acknowledge`, { method: "POST", body: JSON.stringify({}) });
+}
+
+export function cancelPurchaseOrder(id: string, reason?: string | null): Promise<PurchaseOrderDto> {
+  return apiFetch(`${ROOT}/purchase-orders/${id}/cancel`, { method: "POST", body: JSON.stringify({ reason }) });
+}
+
+export function closePurchaseOrder(id: string): Promise<PurchaseOrderDto> {
+  return apiFetch(`${ROOT}/purchase-orders/${id}/close`, { method: "POST", body: JSON.stringify({}) });
+}
+
+export function setPurchaseOrderShipTo(
+  id: string,
+  body: { locationId?: string | null; addressId?: string | null; adhoc?: string | null },
+): Promise<PurchaseOrderDto> {
+  return apiFetch(`${ROOT}/purchase-orders/${id}/ship-to`, { method: "PUT", body: JSON.stringify(body) });
+}
+
+export function updatePurchaseOrderLine(
+  poId: string,
+  lineId: string,
+  body: { unitPrice?: number | null; priceConfirmed: boolean },
+): Promise<PurchaseOrderDto> {
+  return apiFetch(`${ROOT}/purchase-orders/${poId}/lines/${lineId}`, { method: "PUT", body: JSON.stringify(body) });
 }
 
 // ---------------------------------------------------------------------------

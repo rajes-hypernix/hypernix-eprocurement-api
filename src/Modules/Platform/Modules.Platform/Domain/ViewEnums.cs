@@ -6,6 +6,8 @@ public enum ViewRecordType
 {
     Requisition,
     Rfq,
+    PurchaseOrder,
+    Vendor,
 }
 
 /// <summary>Native = seeded from the list DTOs/registry; Custom and Segment are reserved

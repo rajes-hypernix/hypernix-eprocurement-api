@@ -3,8 +3,8 @@ import { ApiPaths, toQuery } from "@/api/types";
 
 const ROOT = ApiPaths.platform;
 
-/** Record types the saved-view field registry currently understands (wave 1). */
-export const VIEW_RECORD_TYPES = ["Requisition", "Rfq"] as const;
+/** Record types the saved-view field registry currently understands. */
+export const VIEW_RECORD_TYPES = ["Requisition", "Rfq", "PurchaseOrder", "Vendor"] as const;
 export type ViewRecordType = (typeof VIEW_RECORD_TYPES)[number];
 
 /** Filter operators the in-memory executor understands — matches `SavedViewFilterExecutor`. */

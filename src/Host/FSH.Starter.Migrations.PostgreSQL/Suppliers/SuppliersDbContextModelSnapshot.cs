@@ -33,7 +33,6 @@ namespace FSH.Starter.Migrations.PostgreSQL.Suppliers
             modelBuilder.Entity("FSH.Modules.Suppliers.Domain.Onboarding.OnboardingClarificationRound", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("ApplicationId")
@@ -419,6 +418,9 @@ namespace FSH.Starter.Migrations.PostgreSQL.Suppliers
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<Guid?>("EntryFormId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("LlrcTier")
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
@@ -559,7 +561,6 @@ namespace FSH.Starter.Migrations.PostgreSQL.Suppliers
                     b.OwnsMany("FSH.Modules.Suppliers.Domain.Onboarding.OnboardingClarificationItem", "Items", b1 =>
                         {
                             b1.Property<Guid>("Id")
-                                .ValueGeneratedOnAdd()
                                 .HasColumnType("uuid");
 
                             b1.Property<string>("Request")
