@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useAuth } from "@/auth/use-auth";
 import { Icon } from "@/components/Icon";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
@@ -45,13 +46,13 @@ export function TopBar({ onOpenNav }: { onOpenNav?: () => void }) {
       <div className="spacer" />
       <NotificationBell />
       <div className="whoami">
-        <div className="prof-chip" style={{ marginLeft: 4 }}>
+        <Link to="/profile" className="prof-chip prof-chip-link" title="Edit profile" style={{ marginLeft: 4 }}>
           <span className="av">{initials(name)}</span>
           <div className="ptext">
             <div className="pname">{name}</div>
             <div className="prole">{sub}</div>
           </div>
-        </div>
+        </Link>
         <button
           type="button"
           className="btn ghost tb-signout"

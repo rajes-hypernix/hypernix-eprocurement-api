@@ -1,4 +1,5 @@
 ﻿using FSH.Framework.Mailing.Services;
+using FSH.Framework.Mailing.Templates;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using SendGrid;
@@ -12,6 +13,8 @@ public static class Extensions
         services.AddOptions<MailOptions>()
             .BindConfiguration(nameof(MailOptions))
             .ValidateOnStart();
+
+        services.AddSingleton<IEmailTemplateRenderer, EmailTemplateRenderer>();
 
         // One SendGrid client (and its HttpClient) shared process-wide — per-send construction leaks
         // sockets under load. The factory is lazy, so it's only built when SendGrid is actually used.

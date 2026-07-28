@@ -3,6 +3,7 @@ using Finbuckle.MultiTenant.Abstractions;
 using FSH.Framework.Jobs.Services;
 using FSH.Framework.Mailing;
 using FSH.Framework.Mailing.Services;
+using FSH.Framework.Mailing.Templates;
 using FSH.Framework.Shared.Multitenancy;
 using FSH.Modules.Identity.Domain;
 using FSH.Modules.Identity.Services;
@@ -48,7 +49,7 @@ public sealed class UserPasswordServiceTests
     }
 
     private UserPasswordService CreateSut() =>
-        new(_userManager, null!, _jobService, _mailService, _tenantAccessor, null!, null!);
+        new(_userManager, null!, _jobService, _mailService, new EmailTemplateRenderer(), _tenantAccessor, null!, null!);
 
     private MailRequest CaptureSentMail()
     {
@@ -71,16 +72,21 @@ public sealed class UserPasswordServiceTests
         // Act
         await sut.ForgotPasswordAsync(email, "https://appbase.codefi.com.br/", CancellationToken.None);
 
-        // Assert
-        var body = CaptureSentMail().Body!;
+        // Assert — link must appear in the HTML body (button href + plaintext fallback).
+        var mail = CaptureSentMail();
+        mail.Subject.ShouldBe("Reset your Hypernix eProcure password");
+        var body = mail.Body!;
         body.ShouldContain("https://appbase.codefi.com.br/reset-password?");
         body.ShouldNotContain("//reset-password");                       // defect 3: no double slash
-        body.ShouldContain($"&tenant={TenantId}");                       // defect 4: tenant present
+        // HTML-encodes '&' as '&amp;' in the body; tenant must still be present.
+        body.ShouldContain($"tenant={TenantId}");
         // defect 5: reserved chars are encoded — '+' must become %2B (an unencoded '+' would decode to a
         // space). '@' is left as-is, which is valid in a query component per RFC 3986 (QueryHelpers encodes
         // only what is required, matching GetEmailVerificationUriAsync).
         body.ShouldContain("email=marcelo%2Breset");
         body.ShouldNotContain("email=marcelo+reset");                    // raw '+' must not leak
+        body.ShouldContain("Set new password");
+        body.ShouldContain("Hypernix eProcure");
     }
 
     [Fact]

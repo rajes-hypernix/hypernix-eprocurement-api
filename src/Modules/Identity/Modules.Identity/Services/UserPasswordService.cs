@@ -3,6 +3,7 @@ using FSH.Framework.Core.Exceptions;
 using FSH.Framework.Jobs.Services;
 using FSH.Framework.Mailing;
 using FSH.Framework.Mailing.Services;
+using FSH.Framework.Mailing.Templates;
 using FSH.Framework.Shared.Multitenancy;
 using FSH.Modules.Identity.Contracts.Services;
 using FSH.Modules.Identity.Data;
@@ -19,6 +20,7 @@ internal sealed class UserPasswordService(
     IdentityDbContext db,
     IJobService jobService,
     IMailService mailService,
+    IEmailTemplateRenderer emailTemplates,
     IMultiTenantContextAccessor<AppTenantInfo> multiTenantContextAccessor,
     IPasswordHistoryService passwordHistoryService,
     IPasswordExpiryService passwordExpiryService) : IUserPasswordService
@@ -51,10 +53,23 @@ internal sealed class UserPasswordService(
                 ["email"] = email,
                 ["tenant"] = multiTenantContextAccessor?.MultiTenantContext?.TenantInfo?.Id,
             });
+
+        string displayName = user.FirstName
+            ?? user.UserName
+            ?? email.Split('@')[0];
+
+        string emailBody = emailTemplates.Render(
+            EmailTemplateNames.ResetPassword,
+            new Dictionary<string, string?>
+            {
+                ["UserName"] = displayName,
+                ["ActionUrl"] = resetPasswordUri,
+            });
+
         var mailRequest = new MailRequest(
             new Collection<string> { user.Email },
-            "Reset Password",
-            $"Please reset your password using the following link: {resetPasswordUri}");
+            "Reset your Hypernix eProcure password",
+            emailBody);
 
         jobService.Enqueue(() => mailService.SendAsync(mailRequest, CancellationToken.None));
     }

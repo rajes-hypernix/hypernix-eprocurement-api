@@ -39,6 +39,7 @@ using FSH.Modules.Identity.Features.v1.Sessions.GetTenantSessions;
 using FSH.Modules.Identity.Features.v1.Sessions.GetUserSessions;
 using FSH.Modules.Identity.Features.v1.Sessions.RevokeAllSessions;
 using FSH.Modules.Identity.Features.v1.Sessions.RevokeSession;
+using FSH.Modules.Identity.Features.v1.ResolveTenant;
 using FSH.Modules.Identity.Features.v1.Tokens.RefreshToken;
 using FSH.Modules.Identity.Features.v1.Tokens.TokenGeneration;
 using FSH.Modules.Identity.Features.v1.TwoFactor.Disable;
@@ -185,6 +186,7 @@ public class IdentityModule : IModule
         // tokens
         group.MapGenerateTokenEndpoint().AllowAnonymous().RequireRateLimiting("auth");
         group.MapRefreshTokenEndpoint().AllowAnonymous().RequireRateLimiting("auth");
+        group.MapResolveTenantByEmailEndpoint().RequireRateLimiting("auth");
 
         // The outbox is dispatched by the framework's OutboxDispatcherHostedService (on by default). A second dispatcher
         // here would race the same rows (no row-level claim) → duplicate handlers + PK_InboxMessages collisions, so this module registers none.

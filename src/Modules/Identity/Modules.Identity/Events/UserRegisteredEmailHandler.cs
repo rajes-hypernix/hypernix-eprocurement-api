@@ -1,6 +1,7 @@
 using FSH.Framework.Eventing.Abstractions;
 using FSH.Framework.Mailing;
 using FSH.Framework.Mailing.Services;
+using FSH.Framework.Mailing.Templates;
 using FSH.Modules.Identity.Contracts.Events;
 using Microsoft.Extensions.Logging;
 
@@ -13,13 +14,16 @@ public sealed class UserRegisteredEmailHandler
     : IIntegrationEventHandler<UserRegisteredIntegrationEvent>
 {
     private readonly IMailService _mailService;
+    private readonly IEmailTemplateRenderer _emailTemplates;
     private readonly ILogger<UserRegisteredEmailHandler> _logger;
 
     public UserRegisteredEmailHandler(
         IMailService mailService,
+        IEmailTemplateRenderer emailTemplates,
         ILogger<UserRegisteredEmailHandler> logger)
     {
         _mailService = mailService;
+        _emailTemplates = emailTemplates;
         _logger = logger;
     }
 
@@ -34,10 +38,18 @@ public sealed class UserRegisteredEmailHandler
 
         try
         {
+            string displayName = string.IsNullOrWhiteSpace(@event.FirstName) ? "there" : @event.FirstName;
+            string body = _emailTemplates.Render(
+                EmailTemplateNames.Welcome,
+                new Dictionary<string, string?>
+                {
+                    ["UserName"] = displayName,
+                });
+
             var mail = new MailRequest(
                 to: new System.Collections.ObjectModel.Collection<string> { @event.Email },
-                subject: "Welcome!",
-                body: $"Hi {@event.FirstName}, thanks for registering.");
+                subject: "Welcome to Hypernix eProcure",
+                body: body);
 
             await _mailService.SendAsync(mail, ct).ConfigureAwait(false);
         }

@@ -2,6 +2,8 @@ import { createBrowserRouter, Navigate, useNavigate } from "react-router-dom";
 import { ProtectedRoute } from "@/auth/protected-route";
 import { AppShell } from "@/components/AppShell";
 import { LoginPage } from "@/pages/LoginPage";
+import { ForgotPasswordPage } from "@/pages/ForgotPasswordPage";
+import { ResetPasswordPage } from "@/pages/ResetPasswordPage";
 import { PlaceholderPage } from "@/pages/PlaceholderPage";
 import { DashboardRouter } from "@/pages/DashboardRouter";
 import { VendorsPage } from "@/pages/vendors/VendorsPage";
@@ -19,6 +21,7 @@ import { OrderBuilderPage } from "@/pages/procurement/OrderBuilderPage";
 import { DeliveriesPage } from "@/pages/procurement/DeliveriesPage";
 import { InvoicesPage } from "@/pages/procurement/InvoicesPage";
 import { NotificationsInboxPage } from "@/pages/notifications/NotificationsInboxPage";
+import { ProfilePage } from "@/pages/ProfilePage";
 import { ComingSoonRoute } from "@/pages/ComingSoonPage";
 import { StatementsPage } from "@/pages/statements/StatementsPage";
 import { AdminPage } from "@/pages/admin/AdminPage";
@@ -43,6 +46,8 @@ function OrderBuilderRoute() {
 
 export const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
+  { path: "/forgot-password", element: <ForgotPasswordPage /> },
+  { path: "/reset-password", element: <ResetPasswordPage /> },
   { path: "/onboard", element: <OnboardingPortalPage /> },
   {
     element: <ProtectedRoute />,
@@ -66,6 +71,7 @@ export const router = createBrowserRouter([
           { path: "deliveries/*", element: <DeliveriesPage /> },
           { path: "invoices/*", element: <InvoicesPage /> },
           { path: "notifications", element: <NotificationsInboxPage /> },
+          { path: "profile", element: <ProfilePage /> },
           { path: "payments", element: <ComingSoonRoute pageKey="payments" /> },
           { path: "views", element: <SavedViewsHome /> },
           { path: "forms", element: <FormsPage /> },

@@ -10,7 +10,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { tokenStore } from "@/auth/token-store";
 import { decodeJwt, isTokenExpired, type JwtClaims } from "@/auth/jwt";
-import { issueToken } from "@/auth/api";
+import { AmbiguousTenantError, issueToken, resolveTenantByEmail } from "@/auth/api";
 import { refreshAccessToken } from "@/lib/api-client";
 import { getMyPermissions } from "@/api/identity";
 
@@ -29,9 +29,18 @@ export type AuthContextValue = {
   isInitializing: boolean;
   permissionsHydrated: boolean;
   isVendor: boolean;
-  login: (input: { email: string; password: string; tenant: string }) => Promise<void>;
+  login: (input: {
+    email: string;
+    password: string;
+    /** When set (e.g. after an ambiguous resolve picker), skips resolve-tenant. */
+    tenant?: string;
+    /** Persist refresh session across browser restarts (never stores the password). */
+    rememberMe?: boolean;
+  }) => Promise<void>;
   logout: () => void;
   refreshPermissions: () => Promise<void>;
+  /** Update display fields in-session after profile save (JWT claims stay until next login). */
+  applyLocalProfile: (patch: { name?: string }) => void;
 };
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
@@ -123,7 +132,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     return tokenStore.subscribe(() => {
-      const next = claimsToUser(decodeJwt(tokenStore.getAccessToken()), tokenStore.getPermissions());
+      const claims = decodeJwt(tokenStore.getAccessToken());
+      const next =
+        claims && !isTokenExpired(claims)
+          ? claimsToUser(claims, tokenStore.getPermissions())
+          : null;
       setUser(next);
     });
   }, []);
@@ -137,18 +150,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ) {
         return;
       }
-      setUser(claimsToUser(decodeJwt(tokenStore.getAccessToken()), tokenStore.getPermissions()));
+      const claims = decodeJwt(tokenStore.getAccessToken());
+      setUser(
+        claims && !isTokenExpired(claims)
+          ? claimsToUser(claims, tokenStore.getPermissions())
+          : null,
+      );
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
   }, []);
 
-  const login = useCallback(async (input: { email: string; password: string; tenant: string }) => {
-    tokenStore.setTenant(input.tenant);
-    tokenStore.setPermissions([]);
-    setPermissionsHydrated(false);
-    const tokens = await issueToken(input);
-    tokenStore.setTokens(tokens.accessToken, tokens.refreshToken);
+  const login = useCallback(async (input: {
+    email: string;
+    password: string;
+    tenant?: string;
+    rememberMe?: boolean;
+  }) => {
+    const remember = Boolean(input.rememberMe);
+    // Wipe any prior session first so hydration/refresh cannot race-clear the new login.
+    tokenStore.setRememberMe(remember);
+    if (remember) {
+      tokenStore.setRememberedEmail(input.email);
+    } else {
+      tokenStore.setRememberedEmail(null);
+    }
+
+    let tenant = input.tenant?.trim();
+    if (!tenant) {
+      const resolved = await resolveTenantByEmail(input.email);
+      tenant = resolved.tenantId?.trim() ?? "";
+      if (!tenant) {
+        throw new Error("No active organization could be resolved for that email.");
+      }
+    }
+
+    tokenStore.setTenant(tenant);
+
+    try {
+      const tokens = await issueToken({
+        email: input.email,
+        password: input.password,
+        tenant,
+      });
+      if (!tokens.accessToken || !tokens.refreshToken) {
+        throw new Error("Login succeeded but tokens were missing from the response.");
+      }
+      tokenStore.setPermissions([]);
+      setPermissionsHydrated(false);
+      tokenStore.setTokens(tokens.accessToken, tokens.refreshToken);
+    } catch (err) {
+      if (err instanceof AmbiguousTenantError) throw err;
+      throw err;
+    }
   }, []);
 
   const logout = useCallback(() => {
@@ -165,6 +219,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const applyLocalProfile = useCallback((patch: { name?: string }) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        name: patch.name?.trim() || prev.name,
+      };
+    });
+  }, []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
@@ -175,8 +239,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       logout,
       refreshPermissions,
+      applyLocalProfile,
     }),
-    [user, isInitializing, permissionsHydrated, login, logout, refreshPermissions],
+    [user, isInitializing, permissionsHydrated, login, logout, refreshPermissions, applyLocalProfile],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

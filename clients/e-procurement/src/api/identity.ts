@@ -72,6 +72,44 @@ export async function getMyPermissions(): Promise<string[]> {
   return (await apiFetch<string[] | null>(`${ApiPaths.identity}/permissions`)) ?? [];
 }
 
+export async function getMyProfile(): Promise<UserDto> {
+  return apiFetch<UserDto>(`${ApiPaths.identity}/profile`);
+}
+
+export type UpdateProfileInput = {
+  firstName?: string | null;
+  lastName?: string | null;
+  phoneNumber?: string | null;
+};
+
+/** Self-service profile update (name / phone). Email changes require an admin. */
+export async function updateMyProfile(input: UpdateProfileInput): Promise<void> {
+  const profile = await getMyProfile();
+  await apiFetch<unknown>(`${ApiPaths.identity}/profile`, {
+    method: "PUT",
+    body: JSON.stringify({
+      id: profile.id,
+      firstName: input.firstName ?? profile.firstName ?? null,
+      lastName: input.lastName ?? profile.lastName ?? null,
+      phoneNumber: input.phoneNumber ?? profile.phoneNumber ?? null,
+      email: profile.email,
+      deleteCurrentImage: false,
+    }),
+  });
+}
+
+/** Authenticated password change (current + new + confirm). */
+export async function changePassword(input: {
+  password: string;
+  newPassword: string;
+  confirmNewPassword: string;
+}): Promise<void> {
+  await apiFetch<string>(`${ApiPaths.identity}/change-password`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
 export async function searchUsers(params: SearchUsersParams = {}): Promise<PagedResponse<UserDto>> {
   return apiFetch<PagedResponse<UserDto>>(
     `${ApiPaths.identity}/users/search${toQuery({
