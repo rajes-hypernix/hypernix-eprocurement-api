@@ -1,0 +1,5 @@
+{
+  "apiBase": "http://103.40.207.134:6001/API-REAL",
+  "defaultTenant": "root",
+  "basePath": "/UI-REAL"
+}

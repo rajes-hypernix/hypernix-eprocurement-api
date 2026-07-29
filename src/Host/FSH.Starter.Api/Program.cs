@@ -38,8 +38,9 @@ if (builder.Environment.IsProduction())
 
     var config = builder.Configuration;
     Require(config, "DatabaseOptions:ConnectionString");
-    Require(config, "CachingOptions:Redis");
     Require(config, "JwtOptions:SigningKey");
+    // CachingOptions:Redis is optional. Empty → in-memory cache / no SignalR backplane
+    // (fine for a single IIS node). Set Redis when you scale out or need shared DP keys.
 }
 
 builder.Services.AddMediator(o =>

@@ -1,14 +1,11 @@
 import { useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { listPurchaseOrders } from "@/api/procurement";
-import { getViewFields, listViews, rowId, runView, type SavedViewDto } from "@/api/views";
 import { useAuth } from "@/auth/use-auth";
 import { Gated } from "@/components/Gated";
 import { Icon } from "@/components/Icon";
 import { EmptyState, Spinner } from "@/components/ui";
 import { PoStatusBadge } from "@/components/procurement/badges";
-import { ViewBuilder, ViewPicker } from "@/components/views/SavedViewControls";
 import { FshPermissions } from "@/lib/fsh-permissions";
 import { fmt, dateMY } from "@/lib/format";
 

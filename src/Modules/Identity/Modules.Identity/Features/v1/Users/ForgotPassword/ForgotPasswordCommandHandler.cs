@@ -31,9 +31,7 @@ public sealed class ForgotPasswordCommandHandler : ICommandHandler<ForgotPasswor
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        var origin = ResolveClientOrigin()
-            ?? _originOptions.Value?.OriginUrl?.ToString();
-
+        var origin = ResolveClientOrigin();
         if (string.IsNullOrWhiteSpace(origin))
         {
             throw new InvalidOperationException("Origin URL is not configured.");
@@ -45,16 +43,20 @@ public sealed class ForgotPasswordCommandHandler : ICommandHandler<ForgotPasswor
     }
 
     /// <summary>
-    /// Prefer the calling SPA's Origin (e.g. e-procurement :5175) so the reset link
-    /// lands on the same app. Only accept origins allowed by CorsOptions to avoid
-    /// open-redirect phishing via forged Origin headers.
+    /// Build the SPA base URL for the reset link.
+    /// Browser <c>Origin</c> is scheme+host+port only (no path), so IIS apps under a virtual
+    /// directory (e.g. <c>/UI-REAL</c>) must prefer <see cref="OriginOptions.OriginUrl"/> when it
+    /// shares that host and includes a path. Otherwise prefer a CORS-allowed request Origin
+    /// (local multi-port SPAs), then fall back to configured OriginUrl.
     /// </summary>
     private string? ResolveClientOrigin()
     {
+        var configured = _originOptions.Value?.OriginUrl?.ToString()?.TrimEnd('/');
+
         var request = _httpContextAccessor.HttpContext?.Request;
         if (request is null)
         {
-            return null;
+            return configured;
         }
 
         var candidate = request.Headers.Origin.FirstOrDefault();
@@ -66,21 +68,35 @@ public sealed class ForgotPasswordCommandHandler : ICommandHandler<ForgotPasswor
 
         if (string.IsNullOrWhiteSpace(candidate))
         {
-            return null;
+            return configured;
+        }
+
+        candidate = candidate.TrimEnd('/');
+
+        if (!string.IsNullOrWhiteSpace(configured)
+            && Uri.TryCreate(configured, UriKind.Absolute, out var configuredUri)
+            && Uri.TryCreate(candidate, UriKind.Absolute, out var candidateUri)
+            && string.Equals(
+                configuredUri.GetLeftPart(UriPartial.Authority),
+                candidateUri.GetLeftPart(UriPartial.Authority),
+                StringComparison.OrdinalIgnoreCase)
+            && configuredUri.AbsolutePath is { Length: > 1 })
+        {
+            return configured;
         }
 
         var cors = _corsOptions.Value;
         if (cors.AllowAll)
         {
-            return candidate.TrimEnd('/');
+            return candidate;
         }
 
         var allowed = cors.AllowedOrigins ?? [];
-        if (allowed.Any(o => string.Equals(o.TrimEnd('/'), candidate.TrimEnd('/'), StringComparison.OrdinalIgnoreCase)))
+        if (allowed.Any(o => string.Equals(o.TrimEnd('/'), candidate, StringComparison.OrdinalIgnoreCase)))
         {
-            return candidate.TrimEnd('/');
+            return candidate;
         }
 
-        return null;
+        return configured;
     }
 }

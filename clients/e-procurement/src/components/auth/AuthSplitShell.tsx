@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { env } from "@/env";
 import "@/pages/login.css";
 
 /** Shared split-card chrome for login / forgot / reset password. */
@@ -12,7 +13,7 @@ export function AuthSplitShell({ children }: { children: ReactNode }) {
           <div className="login-orb login-orb-3" aria-hidden="true" />
 
           <div className="login-brand-lockup">
-            <img src="/logos/hypernix-brand.png" alt="Hypernix" />
+            <img src={env.asset("logos/hypernix-brand.png")} alt="Hypernix" />
             <span className="login-brand-product">eProcure</span>
           </div>
 
@@ -33,13 +34,13 @@ export function AuthSplitShell({ children }: { children: ReactNode }) {
             <div className="login-partners">
               <div className="login-partner">
                 <div className="login-partner-pill">
-                  <img src="/logos/netsuite-pill.png" alt="Oracle NetSuite" />
+                  <img src={env.asset("logos/netsuite-pill.png")} alt="Oracle NetSuite" />
                 </div>
               </div>
               <div className="login-partner-div" aria-hidden="true" />
               <div className="login-partner">
                 <div className="login-partner-circle">
-                  <img src="/logos/hypernix-mark.svg" alt="" />
+                  <img src={env.asset("logos/hypernix-mark.svg")} alt="" />
                 </div>
                 <div className="login-partner-copy">
                   <h4>HX eProcure</h4>

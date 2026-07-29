@@ -66,6 +66,33 @@ public sealed class ForgotPasswordCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_Should_PreferConfiguredOriginPath_When_RequestOriginMatchesHost()
+    {
+        var command = _fixture.Create<ForgotPasswordCommand>();
+        // Origin header is scheme+host+port only; OriginUrl may include an IIS app path.
+        _originOptions.Value.Returns(new OriginOptions
+        {
+            OriginUrl = new Uri("https://app.example.com/portal"),
+        });
+        _corsOptions.Value.Returns(new CorsOptions
+        {
+            AllowAll = false,
+            AllowedOrigins = ["https://app.example.com"],
+        });
+
+        var httpContext = new DefaultHttpContext();
+        httpContext.Request.Headers.Origin = "https://app.example.com";
+        _httpContextAccessor.HttpContext.Returns(httpContext);
+
+        await _sut.Handle(command, CancellationToken.None);
+
+        await _userService.Received(1).ForgotPasswordAsync(
+            command.Email,
+            "https://app.example.com/portal",
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task Handle_Should_IgnoreDisallowedRequestOrigin()
     {
         var command = _fixture.Create<ForgotPasswordCommand>();

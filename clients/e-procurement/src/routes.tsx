@@ -44,55 +44,63 @@ function OrderBuilderRoute() {
   return <OrderBuilderPage onBack={() => void navigate("/pos")} onBuilt={() => void navigate("/pos")} />;
 }
 
-export const router = createBrowserRouter([
-  { path: "/login", element: <LoginPage /> },
-  { path: "/forgot-password", element: <ForgotPasswordPage /> },
-  { path: "/reset-password", element: <ResetPasswordPage /> },
-  { path: "/onboard", element: <OnboardingPortalPage /> },
-  {
-    element: <ProtectedRoute />,
-    children: [
+export function createAppRouter(basename = "") {
+  return createBrowserRouter(
+    [
+      { path: "/login", element: <LoginPage /> },
+      { path: "/forgot-password", element: <ForgotPasswordPage /> },
+      { path: "/reset-password", element: <ResetPasswordPage /> },
+      { path: "/onboard", element: <OnboardingPortalPage /> },
       {
-        element: <AppShell />,
+        element: <ProtectedRoute />,
         children: [
-          { index: true, element: <Navigate to="/dashboard" replace /> },
-          { path: "dashboard/*", element: <DashboardRouter /> },
-          { path: "vendors/*", element: <VendorsPage /> },
-          { path: "onboarding/*", element: <OnboardingPage /> },
-          { path: "reqs/*", element: <RequisitionsPage /> },
-          { path: "consolidate", element: <ConsolidateRoute /> },
-          { path: "rfqs/*", element: <RfqsPage /> },
-          { path: "openings/*", element: <EvaluationPage /> },
-          { path: "awards/*", element: <AwardsPage /> },
-          { path: "chats", element: <ClarificationsPage /> },
-          { path: "bids/*", element: <MyBidsPage /> },
-          { path: "pos/*", element: <PosPage /> },
-          { path: "order-builder", element: <OrderBuilderRoute /> },
-          { path: "deliveries/*", element: <DeliveriesPage /> },
-          { path: "invoices/*", element: <InvoicesPage /> },
-          { path: "notifications", element: <NotificationsInboxPage /> },
-          { path: "profile", element: <ProfilePage /> },
-          { path: "payments", element: <ComingSoonRoute pageKey="payments" /> },
-          { path: "views", element: <SavedViewsHome /> },
-          { path: "forms", element: <FormsPage /> },
-          { path: "admin/*", element: <AdminPage /> },
-          { path: "lists", element: <Navigate to="/masters?tab=banks" replace /> },
-          { path: "audits", element: <AuditsPage /> },
-          { path: "masters", element: <PlatformMastersPage /> },
-          { path: "configuration", element: <Navigate to="/masters?tab=settings" replace /> },
-          { path: "customfields", element: <ComingSoonRoute pageKey="customfields" /> },
-          { path: "segments", element: <ComingSoonRoute pageKey="segments" /> },
-          { path: "items", element: <Navigate to="/masters?tab=items" replace /> },
-          { path: "entryforms", element: <ComingSoonRoute pageKey="entryforms" /> },
-          { path: "numbering", element: <Navigate to="/masters?tab=numbering" replace /> },
-          { path: "statements/*", element: <StatementsPage /> },
-          { path: "statement/*", element: <StatementsPage /> },
-          { path: ":pageKey", element: <PlaceholderPage /> },
-          { path: ":pageKey/*", element: <PlaceholderPage /> },
+          {
+            element: <AppShell />,
+            children: [
+              { index: true, element: <Navigate to="/dashboard" replace /> },
+              { path: "dashboard/*", element: <DashboardRouter /> },
+              { path: "vendors/*", element: <VendorsPage /> },
+              { path: "onboarding/*", element: <OnboardingPage /> },
+              { path: "reqs/*", element: <RequisitionsPage /> },
+              { path: "consolidate", element: <ConsolidateRoute /> },
+              { path: "rfqs/*", element: <RfqsPage /> },
+              { path: "openings/*", element: <EvaluationPage /> },
+              { path: "awards/*", element: <AwardsPage /> },
+              { path: "chats", element: <ClarificationsPage /> },
+              { path: "bids/*", element: <MyBidsPage /> },
+              { path: "pos/*", element: <PosPage /> },
+              { path: "order-builder", element: <OrderBuilderRoute /> },
+              { path: "deliveries/*", element: <DeliveriesPage /> },
+              { path: "invoices/*", element: <InvoicesPage /> },
+              { path: "notifications", element: <NotificationsInboxPage /> },
+              { path: "profile", element: <ProfilePage /> },
+              { path: "payments", element: <ComingSoonRoute pageKey="payments" /> },
+              { path: "views", element: <SavedViewsHome /> },
+              { path: "forms", element: <FormsPage /> },
+              { path: "admin/*", element: <AdminPage /> },
+              { path: "lists", element: <Navigate to="/masters?tab=banks" replace /> },
+              { path: "audits", element: <AuditsPage /> },
+              { path: "masters", element: <PlatformMastersPage /> },
+              { path: "configuration", element: <Navigate to="/masters?tab=settings" replace /> },
+              { path: "customfields", element: <ComingSoonRoute pageKey="customfields" /> },
+              { path: "segments", element: <ComingSoonRoute pageKey="segments" /> },
+              { path: "items", element: <Navigate to="/masters?tab=items" replace /> },
+              { path: "entryforms", element: <ComingSoonRoute pageKey="entryforms" /> },
+              { path: "numbering", element: <Navigate to="/masters?tab=numbering" replace /> },
+              { path: "statements/*", element: <StatementsPage /> },
+              { path: "statement/*", element: <StatementsPage /> },
+              { path: ":pageKey", element: <PlaceholderPage /> },
+              { path: ":pageKey/*", element: <PlaceholderPage /> },
+            ],
+          },
         ],
       },
+      // Catch-all for unknown paths inside the SPA — don't steal /onboard (declared above).
+      { path: "*", element: <Navigate to="/login" replace /> },
     ],
-  },
-  // Catch-all for unknown paths inside the SPA — don't steal /onboard (declared above).
-  { path: "*", element: <Navigate to="/login" replace /> },
-]);
+    basename ? { basename } : undefined,
+  );
+}
+
+/** @deprecated Prefer createAppRouter(env.basePath) after config load. */
+export const router = createAppRouter();
