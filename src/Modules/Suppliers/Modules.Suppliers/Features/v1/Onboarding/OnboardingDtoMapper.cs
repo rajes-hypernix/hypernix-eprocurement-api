@@ -12,10 +12,10 @@ internal static class OnboardingDtoMapper
         return new OnboardingInvitationDto(
             invitation.Id,
             invitation.Email,
-            invitation.Type,
+            VendorTypeParser.ToApi(invitation.Type),
             invitation.Status.ToString(),
             invitation.InvitedByName,
-            invitation.CreatedUtc,
+            invitation.CreatedOnUtc,
             invitation.ExpiresUtc,
             invitation.ApplicationId,
             applicationCode,
@@ -30,10 +30,10 @@ internal static class OnboardingDtoMapper
             application.Id,
             application.Code,
             application.Status.ToString(),
-            application.Type,
+            VendorTypeParser.ToApi(application.Type),
             application.Name,
             application.Email,
-            application.CreatedUtc,
+            application.CreatedOnUtc,
             application.SubmittedUtc,
             application.SelectedTemplateIds,
             [.. application.Rounds.OrderBy(r => r.RoundNo).Select(ToRoundDto)]);
@@ -47,10 +47,10 @@ internal static class OnboardingDtoMapper
             application.Id,
             application.Code,
             application.Name,
-            application.Type,
+            VendorTypeParser.ToApi(application.Type),
             application.Status.ToString(),
             application.Source.ToString(),
-            application.CreatedUtc,
+            application.CreatedOnUtc,
             application.SubmittedUtc,
             openRound?.RoundNo,
             application.Rounds.Count,
@@ -64,7 +64,7 @@ internal static class OnboardingDtoMapper
             application.Id,
             application.Code,
             application.Status.ToString(),
-            application.Type,
+            VendorTypeParser.ToApi(application.Type),
             application.Name,
             application.RegisteredName,
             application.RegistrationNo,
@@ -75,7 +75,9 @@ internal static class OnboardingDtoMapper
             application.Region,
             application.State,
             application.City,
-            application.Country,
+            application.CountryCode,
+            application.StateId,
+            application.CityId,
             application.Categories,
             ToContactDtos(application.Contacts),
             ToAddressDtos(application.Addresses),
@@ -94,7 +96,7 @@ internal static class OnboardingDtoMapper
             application.Id,
             application.Code,
             application.Status.ToString(),
-            application.Type,
+            VendorTypeParser.ToApi(application.Type),
             application.Source.ToString(),
             application.Name,
             application.RegisteredName,
@@ -106,7 +108,9 @@ internal static class OnboardingDtoMapper
             application.Region,
             application.State,
             application.City,
-            application.Country,
+            application.CountryCode,
+            application.StateId,
+            application.CityId,
             application.Categories,
             ToContactDtos(application.Contacts),
             ToAddressDtos(application.Addresses),
@@ -117,7 +121,7 @@ internal static class OnboardingDtoMapper
             [.. application.Rounds.OrderBy(r => r.RoundNo).Select(ToRoundDto)],
             [.. application.Answers.Select(a => new OnboardingAnswerDto(a.FormTemplateId, a.QuestionOrder, a.Value))],
             duplicateWarning,
-            application.CreatedUtc,
+            application.CreatedOnUtc,
             application.SubmittedUtc,
             application.DecisionUtc);
     }
@@ -186,11 +190,11 @@ internal static class OnboardingDtoMapper
         [.. contacts.Select(c => new VendorContactDto(c.Name, c.Role, c.Email, c.Phone, c.IsPrimary))];
 
     internal static IReadOnlyList<VendorAddressDto> ToAddressDtos(IReadOnlyList<VendorAddress> addresses) =>
-        [.. addresses.Select(a => new VendorAddressDto(a.Type, a.Line, a.City, a.State, a.Country, a.Postcode, a.IsPrimary))];
+        [.. addresses.Select(a => new VendorAddressDto(a.Type.ToString(), a.Line, a.City, a.State, a.CountryCode, a.StateId, a.CityId, a.Postcode, a.IsPrimary))];
 
     internal static IReadOnlyList<VendorBankAccountDto> ToBankAccountDtos(IReadOnlyList<VendorBankAccount> bankAccounts) =>
-        [.. bankAccounts.Select(b => new VendorBankAccountDto(b.Bank, b.AccountNo, b.Swift, b.Currency, b.IsPrimary))];
+        [.. bankAccounts.Select(b => new VendorBankAccountDto(b.BankId, b.BankName, b.AccountNo, b.Swift, b.CurrencyCode, b.IsPrimary))];
 
     internal static IReadOnlyList<VendorCertificationDto> ToCertificationDtos(IReadOnlyList<VendorCertification> certifications) =>
-        [.. certifications.Select(c => new VendorCertificationDto(c.Name, c.Number, c.ValidTo, c.Status))];
+        [.. certifications.Select(c => new VendorCertificationDto(c.Name, c.Number, c.ValidTo, c.Status.ToString()))];
 }

@@ -20,10 +20,11 @@ public sealed class SaveOnboardingDraftCommandHandler(
         var (_, application) = await OnboardingTokenGate.ResolveAsync(dbContext, command.Token, cancellationToken).ConfigureAwait(false);
 
         var now = DateTime.UtcNow;
+        bool updateGeoIds = command.StateId.HasValue || command.CityId.HasValue || command.CountryCode is not null;
         application.SaveDraft(
             command.Name, command.RegisteredName, command.RegistrationNo, command.TaxId, command.Email,
-            command.ContactName, command.ContactPhone, command.Region, command.State, command.City, command.Country,
-            command.Categories, now);
+            command.ContactName, command.ContactPhone, command.Region, command.State, command.City, command.CountryCode,
+            command.StateId, command.CityId, updateGeoIds, command.Categories, now);
 
         if (command.Contacts is not null)
         {
@@ -32,20 +33,21 @@ public sealed class SaveOnboardingDraftCommandHandler(
 
         if (command.Addresses is not null)
         {
-            application.ReplaceAddresses(command.Addresses.Select(a => new VendorAddress(a.Type, a.Line, a.City, a.State, a.Country, a.Postcode, a.IsPrimary)));
+            application.ReplaceAddresses(command.Addresses.Select(a => new VendorAddress(
+                VendorAddressTypeParser.Parse(a.Type), a.Line, a.City, a.State, a.CountryCode, a.StateId, a.CityId, a.Postcode, a.IsPrimary)));
         }
 
         if (command.BankAccounts is not null)
         {
-            application.ReplaceBankAccounts(command.BankAccounts.Select(b => new VendorBankAccount(b.Bank, b.AccountNo, b.Swift, b.Currency, b.IsPrimary)));
+            application.ReplaceBankAccounts(command.BankAccounts.Select(b => new VendorBankAccount(b.BankId, b.BankName, b.AccountNo, b.Swift, b.CurrencyCode, b.IsPrimary)));
         }
 
         if (command.Certifications is not null)
         {
-            application.ReplaceCertifications(command.Certifications.Select(c => new VendorCertification(c.Name, c.Number, c.ValidTo, c.Status)));
+            application.ReplaceCertifications(command.Certifications.Select(c => new VendorCertification(c.Name, c.Number, c.ValidTo, CertificationStatusParser.Parse(c.Status))));
         }
 
-        if (command.FinancialYears is not null && application.Type == "NonSwec")
+        if (command.FinancialYears is not null && application.Type == VendorType.NonSwec)
         {
             OnboardingFinancialValidation.Validate(command.FinancialYears);
             var years = OnboardingFinancialValidation.ToDomain(command.FinancialYears);

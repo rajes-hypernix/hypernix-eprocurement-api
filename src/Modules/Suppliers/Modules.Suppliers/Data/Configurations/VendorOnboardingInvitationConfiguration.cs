@@ -24,7 +24,7 @@ public sealed class VendorOnboardingInvitationConfiguration : IEntityTypeConfigu
         builder.ToTable("VendorOnboardingInvitations");
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Email).IsRequired().HasMaxLength(200);
-        builder.Property(x => x.Type).IsRequired().HasMaxLength(20);
+        builder.Property(x => x.Type).IsRequired().HasConversion<string>().HasMaxLength(20);
         builder.Property(x => x.Status).IsRequired().HasConversion<string>().HasMaxLength(20);
         builder.Property(x => x.TokenHash).IsRequired().HasMaxLength(64);
         builder.Property(x => x.InvitedByUserId).IsRequired().HasMaxLength(100);
@@ -36,7 +36,8 @@ public sealed class VendorOnboardingInvitationConfiguration : IEntityTypeConfigu
 
         builder.HasIndex(x => x.TokenHash).IsUnique();
         builder.HasIndex(x => x.Status);
-        builder.HasIndex(x => x.CreatedUtc);
+        builder.HasIndex(x => x.CreatedOnUtc);
+        builder.ConfigureAudit();
         builder.HasIndex(x => x.ApplicationId);
         builder.HasIndex(x => x.InvitedByUserId);
 

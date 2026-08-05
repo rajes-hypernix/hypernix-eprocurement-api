@@ -1,6 +1,7 @@
 using FSH.Framework.Core.Exceptions;
 using FSH.Modules.Suppliers.Contracts.v1.Vendors;
 using FSH.Modules.Suppliers.Data;
+using FSH.Modules.Suppliers.Domain;
 using Mediator;
 using Microsoft.EntityFrameworkCore;
 
@@ -23,11 +24,14 @@ public sealed class UpdateVendorCommandHandler(SuppliersDbContext dbContext)
             command.RegisteredName,
             command.RegistrationNo,
             command.TaxId,
-            command.Type,
+            VendorTypeParser.Parse(command.Type),
             command.LlrcTier,
             command.Region,
             command.State,
             command.City,
+            command.CountryCode,
+            command.StateId,
+            command.CityId,
             command.PaymentTerms,
             command.CreditLimit,
             command.Rating);

@@ -111,11 +111,18 @@ export function OnboardingForm({
     contactName: "",
     contactPhone: "",
     region: "Peninsular",
-    country: "MY",
+    countryCode: "MY",
+    stateId: null as string | null,
+    cityId: null as string | null,
     state: "",
     city: "",
   });
-  const [bank, setBank] = useState({ bank: "", accountNo: "", swift: "" });
+  const [bank, setBank] = useState({
+    bankId: null as string | null,
+    bankName: "",
+    accountNo: "",
+    swift: "",
+  });
   const [cats, setCats] = useState<string[]>([]);
   const [picking, setPicking] = useState(false);
   const [fin, setFin] = useState<FinData>(blankFin());
@@ -139,12 +146,15 @@ export function OnboardingForm({
       contactName: draft.contactName,
       contactPhone: draft.contactPhone,
       region: draft.region || "Peninsular",
-      country: draft.country || "MY",
+      countryCode: draft.countryCode || "MY",
+      stateId: draft.stateId ?? null,
+      cityId: draft.cityId ?? null,
       state: draft.state,
       city: draft.city,
     });
     setBank({
-      bank: primary?.bank ?? "",
+      bankId: primary?.bankId ?? null,
+      bankName: primary?.bankName ?? "",
       accountNo: primary?.accountNo ?? "",
       swift: primary?.swift ?? "",
     });
@@ -189,17 +199,23 @@ export function OnboardingForm({
     region: company.region,
     state: company.state,
     city: company.city,
-    country: company.country,
+    countryCode: company.countryCode,
+    stateId: company.stateId,
+    cityId: company.cityId,
     categories: cats,
-    bankAccounts: [
-      {
-        bank: bank.bank,
-        accountNo: bank.accountNo,
-        swift: bank.swift,
-        currency: "MYR",
-        isPrimary: true,
-      },
-    ],
+    bankAccounts:
+      bank.bankId && bank.bankName
+        ? [
+            {
+              bankId: bank.bankId,
+              bankName: bank.bankName,
+              accountNo: bank.accountNo,
+              swift: bank.swift,
+              currencyCode: "MYR",
+              isPrimary: true,
+            },
+          ]
+        : null,
     financialYears: isSwec ? null : finToDraft(fin),
     answers: templates.flatMap((t) =>
       t.questions.map((q) => ({
@@ -293,11 +309,11 @@ export function OnboardingForm({
   const swecIndex = buildSwecIndex(lookups.swec);
   const cur = steps[step];
   const fc = computeFin(fin);
-  const country = lookups.countries.find((c) => c.code === company.country);
+  const country = lookups.countries.find((c) => c.code === company.countryCode);
   const states = country?.states ?? [];
-  const cities = states.find((s) => s.name === company.state || s.code === company.state)?.cities ?? [];
+  const cities = states.find((s) => s.id === company.stateId)?.cities ?? [];
   const banks = lookups.banks.filter(
-    (b) => b.countryCode === company.country || b.countryCode === "MY",
+    (b) => b.countryCode === company.countryCode || b.countryCode === "MY",
   );
 
   return (
@@ -371,9 +387,16 @@ export function OnboardingForm({
               <div className="grid g3">
                 <Field label="Country">
                   <select
-                    value={company.country}
+                    value={company.countryCode}
                     onChange={(e) =>
-                      setCompany({ ...company, country: e.target.value, state: "", city: "" })
+                      setCompany({
+                        ...company,
+                        countryCode: e.target.value,
+                        stateId: null,
+                        state: "",
+                        cityId: null,
+                        city: "",
+                      })
                     }
                   >
                     {lookups.countries.map((c) => (
@@ -385,12 +408,21 @@ export function OnboardingForm({
                 </Field>
                 <Field label="State / Region">
                   <select
-                    value={company.state}
-                    onChange={(e) => setCompany({ ...company, state: e.target.value, city: "" })}
+                    value={company.stateId ?? ""}
+                    onChange={(e) => {
+                      const s = states.find((x) => x.id === e.target.value);
+                      setCompany({
+                        ...company,
+                        stateId: s?.id ?? null,
+                        state: s?.name ?? "",
+                        cityId: null,
+                        city: "",
+                      });
+                    }}
                   >
                     <option value="">Select state</option>
                     {states.map((s) => (
-                      <option key={s.id} value={s.name}>
+                      <option key={s.id} value={s.id}>
                         {s.name}
                       </option>
                     ))}
@@ -398,12 +430,15 @@ export function OnboardingForm({
                 </Field>
                 <Field label="City">
                   <select
-                    value={company.city}
-                    onChange={(e) => setCompany({ ...company, city: e.target.value })}
+                    value={company.cityId ?? ""}
+                    onChange={(e) => {
+                      const c = cities.find((x) => x.id === e.target.value);
+                      setCompany({ ...company, cityId: c?.id ?? null, city: c?.name ?? "" });
+                    }}
                   >
                     <option value="">Select city</option>
                     {cities.map((c) => (
-                      <option key={c.id} value={c.name}>
+                      <option key={c.id} value={c.id}>
                         {c.name}
                       </option>
                     ))}
@@ -452,12 +487,15 @@ export function OnboardingForm({
               <div className="grid g3">
                 <Field label="Bank">
                   <select
-                    value={bank.bank}
-                    onChange={(e) => setBank({ ...bank, bank: e.target.value })}
+                    value={bank.bankId ?? ""}
+                    onChange={(e) => {
+                      const b = banks.find((x) => x.id === e.target.value);
+                      setBank({ ...bank, bankId: b?.id ?? null, bankName: b?.name ?? "" });
+                    }}
                   >
                     <option value="">Select bank</option>
                     {banks.map((b) => (
-                      <option key={b.id} value={b.name}>
+                      <option key={b.id} value={b.id}>
                         {b.name}
                       </option>
                     ))}

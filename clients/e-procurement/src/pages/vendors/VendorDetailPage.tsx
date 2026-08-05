@@ -76,7 +76,7 @@ export function VendorDetailPage({ id, onBack }: { id: string; onBack: () => voi
               <Kv k="Vendor code" v={v.code} />
               <Kv k="SSM / reg. no." v={v.registrationNo || "—"} />
               <Kv k="Tax ID (SST)" v={v.taxId || "—"} />
-              <Kv k="Country" v={v.country || "—"} />
+              <Kv k="Country" v={v.countryCode || "—"} />
               <Kv k="Region / state" v={`${v.region || "—"} · ${v.state || "—"}`} />
               <Kv k="City" v={v.city || "—"} />
             </div>
@@ -91,8 +91,8 @@ export function VendorDetailPage({ id, onBack }: { id: string; onBack: () => voi
               <Kv k="Status" v={<StatusBadge status={v.status} />} />
               <Kv k="Payment terms" v={v.paymentTerms || "—"} />
               <Kv k="Credit limit" v={`RM ${fmt(v.creditLimit)}`} />
-              <Kv k="Created" v={dateMY(v.createdUtc)} />
-              <Kv k="Last updated" v={dateMY(v.updatedUtc)} />
+              <Kv k="Created" v={dateMY(v.createdOnUtc)} />
+              <Kv k="Last updated" v={dateMY(v.lastModifiedOnUtc ?? v.createdOnUtc)} />
             </div>
           </div>
         </div>
@@ -166,7 +166,7 @@ export function VendorDetailPage({ id, onBack }: { id: string; onBack: () => voi
                 {a.city}
                 {a.postcode ? `, ${a.postcode}` : ""}
                 <br />
-                {a.state}, {a.country}
+                {a.state}, {a.countryCode}
               </div>
             </div>
           ))}
@@ -215,10 +215,10 @@ export function VendorDetailPage({ id, onBack }: { id: string; onBack: () => voi
               ) : null}
               {bankAccounts.map((b, i) => (
                 <tr key={i}>
-                  <td style={{ fontWeight: 600 }}>{b.bank}</td>
+                  <td style={{ fontWeight: 600 }}>{b.bankName}</td>
                   <td>{b.accountNo}</td>
                   <td>{b.swift}</td>
-                  <td>{b.currency}</td>
+                  <td>{b.currencyCode}</td>
                   <td>{b.isPrimary ? <span className="badge b-teal">Primary</span> : null}</td>
                 </tr>
               ))}

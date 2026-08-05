@@ -11,7 +11,7 @@ public sealed record OnboardingApplicationDto(
     string Type,
     string Name,
     string Email,
-    DateTime CreatedUtc,
+    DateTimeOffset CreatedOnUtc,
     DateTime? SubmittedUtc,
     IReadOnlyList<Guid> SelectedTemplateIds,
     IReadOnlyList<OnboardingRoundDto> Rounds);

@@ -22,7 +22,7 @@ const VENDOR_DETAIL = {
   taxId: "SST-001",
   llrcTier: null,
   city: "Petaling Jaya",
-  country: "MY",
+  countryCode: "MY",
   paymentTerms: "NET30",
   creditLimit: 50000,
   contacts: [
@@ -40,7 +40,7 @@ const VENDOR_DETAIL = {
       line: "1 Jalan Vendor",
       city: "Petaling Jaya",
       state: "Selangor",
-      country: "MY",
+      countryCode: "MY",
       postcode: "46000",
       isPrimary: true,
     },
@@ -48,8 +48,8 @@ const VENDOR_DETAIL = {
   bankAccounts: [],
   certifications: [],
   currencies: [{ code: "MYR", isPrimary: true }],
-  createdUtc: "2026-01-01T00:00:00Z",
-  updatedUtc: "2026-01-02T00:00:00Z",
+  createdOnUtc: "2026-01-01T00:00:00Z",
+  lastModifiedOnUtc: "2026-01-02T00:00:00Z",
 };
 
 const SWEC = [

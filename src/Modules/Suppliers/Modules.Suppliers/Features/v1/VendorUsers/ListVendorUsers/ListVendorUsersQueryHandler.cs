@@ -17,7 +17,7 @@ public sealed class ListVendorUsersQueryHandler(SuppliersDbContext dbContext)
             .AsNoTracking()
             .Where(u => u.VendorId == query.VendorId)
             .OrderBy(u => u.Name)
-            .Select(u => new VendorUserDto(u.Id, u.Code, u.VendorId, u.Name, u.Email, u.IsActive, u.CreatedUtc, u.UpdatedUtc))
+            .Select(u => new VendorUserDto(u.Id, u.Code, u.VendorId, u.Name, u.Email, u.IsActive, u.CreatedOnUtc, u.LastModifiedOnUtc))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
     }

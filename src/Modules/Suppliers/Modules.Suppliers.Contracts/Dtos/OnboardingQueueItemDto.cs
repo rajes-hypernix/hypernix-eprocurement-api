@@ -7,7 +7,7 @@ public sealed record OnboardingQueueItemDto(
     string Type,
     string Status,
     string Source,
-    DateTime CreatedUtc,
+    DateTimeOffset CreatedOnUtc,
     DateTime? SubmittedUtc,
     int? OpenRoundNo,
     int RoundCount,

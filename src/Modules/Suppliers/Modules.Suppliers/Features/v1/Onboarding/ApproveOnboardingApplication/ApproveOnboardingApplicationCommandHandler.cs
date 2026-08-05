@@ -66,6 +66,9 @@ public sealed class ApproveOnboardingApplicationCommandHandler(
             application.Region,
             application.State,
             application.City,
+            application.CountryCode,
+            application.StateId,
+            application.CityId,
             "NET30",
             0m,
             0m);
@@ -74,7 +77,7 @@ public sealed class ApproveOnboardingApplicationCommandHandler(
         PromoteContactsAndAddresses(application, vendor);
         foreach (var bank in application.BankAccounts)
         {
-            vendor.AddBankAccount(new VendorBankAccount(bank.Bank, bank.AccountNo, bank.Swift, bank.Currency, bank.IsPrimary));
+            vendor.AddBankAccount(new VendorBankAccount(bank.BankId, bank.BankName, bank.AccountNo, bank.Swift, bank.CurrencyCode, bank.IsPrimary));
         }
 
         foreach (var certification in application.Certifications)
@@ -82,7 +85,7 @@ public sealed class ApproveOnboardingApplicationCommandHandler(
             vendor.AddCertification(new VendorCertification(certification.Name, certification.Number, certification.ValidTo, certification.Status));
         }
 
-        if (application.Type == "Swec")
+        if (application.Type == VendorType.Swec)
         {
             vendor.Register();
         }
@@ -210,12 +213,12 @@ public sealed class ApproveOnboardingApplicationCommandHandler(
         {
             foreach (var address in application.Addresses)
             {
-                vendor.AddAddress(new VendorAddress(address.Type, address.Line, address.City, address.State, address.Country, address.Postcode, address.IsPrimary));
+                vendor.AddAddress(new VendorAddress(address.Type, address.Line, address.City, address.State, address.CountryCode, address.StateId, address.CityId, address.Postcode, address.IsPrimary));
             }
         }
         else if (!string.IsNullOrWhiteSpace(application.City) || !string.IsNullOrWhiteSpace(application.State))
         {
-            vendor.AddAddress(new VendorAddress("Registered", null, application.City, application.State, "MY", null, true));
+            vendor.AddAddress(new VendorAddress(VendorAddressType.Registered, null, application.City, application.State, application.CountryCode, application.StateId, application.CityId, null, true));
         }
     }
 

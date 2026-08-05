@@ -1,10 +1,12 @@
+using FSH.Framework.Core.Domain;
+
 namespace FSH.Modules.Suppliers.Domain;
 
 /// <summary>
 /// PETRONAS-style SWEC taxonomy (Discipline -&gt; Group -&gt; Item), flattened with parent-code links.
 /// Reference data, not a Guid-keyed aggregate — <see cref="Code"/> is the natural key.
 /// </summary>
-public sealed class SwecCategory
+public sealed class SwecCategory : IAuditableEntity
 {
     public string Code { get; private set; } = default!;
     public string Name { get; private set; } = default!;
@@ -12,6 +14,11 @@ public sealed class SwecCategory
     public int Level { get; private set; }
     public bool IsLeaf { get; private set; }
     public string PathText { get; private set; } = default!;
+
+    public DateTimeOffset CreatedOnUtc { get; private set; }
+    public string? CreatedBy { get; private set; }
+    public DateTimeOffset? LastModifiedOnUtc { get; }
+    public string? LastModifiedBy { get; }
 
     private SwecCategory() { }
 
@@ -29,6 +36,8 @@ public sealed class SwecCategory
             Level = level,
             IsLeaf = isLeaf,
             PathText = pathText,
+            CreatedOnUtc = AuditTime.UtcNow,
+            CreatedBy = null,
         };
     }
 }

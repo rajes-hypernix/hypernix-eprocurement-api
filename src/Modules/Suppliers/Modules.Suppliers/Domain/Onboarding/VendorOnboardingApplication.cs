@@ -1,4 +1,5 @@
 using FSH.Framework.Core.Domain;
+using FSH.Modules.Suppliers.Domain;
 
 namespace FSH.Modules.Suppliers.Domain.Onboarding;
 
@@ -12,7 +13,7 @@ namespace FSH.Modules.Suppliers.Domain.Onboarding;
 /// illegal transition, stamps time via the supplied UTC, and returns an
 /// <see cref="OnboardingTransition"/> the calling handler records for auditing.
 /// </summary>
-public sealed class VendorOnboardingApplication : AggregateRoot<Guid>
+public sealed class VendorOnboardingApplication : AggregateRoot<Guid>, IAuditableEntity
 {
     private static readonly OnboardingStatus[] Terminal =
     [
@@ -35,8 +36,8 @@ public sealed class VendorOnboardingApplication : AggregateRoot<Guid>
     public OnboardingStatus Status { get; private set; } = OnboardingStatus.Invited;
     public ApplicationSource Source { get; private set; } = ApplicationSource.SelfService;
 
-    /// <summary>"Swec" or "NonSwec" — set at creation; drives the financial waiver + promoted status.</summary>
-    public string Type { get; private set; } = "NonSwec";
+    /// <summary>Set at creation; drives the financial waiver + promoted status.</summary>
+    public VendorType Type { get; private set; } = VendorType.NonSwec;
 
     /// <summary>The invitation that opened this application (null for manual entry).</summary>
     public Guid? InvitationId { get; private set; }
@@ -51,7 +52,10 @@ public sealed class VendorOnboardingApplication : AggregateRoot<Guid>
     public string Region { get; private set; } = "Peninsular";
     public string State { get; private set; } = string.Empty;
     public string City { get; private set; } = string.Empty;
-    public string Country { get; private set; } = "Malaysia";
+    /// <summary>ISO country code — logical FK to Platform Countries.Code.</summary>
+    public string CountryCode { get; private set; } = "MY";
+    public Guid? StateId { get; private set; }
+    public Guid? CityId { get; private set; }
 
     /// <summary>SWEC category leaf/branch codes.</summary>
     public List<string> Categories { get; private set; } = [];
@@ -61,8 +65,10 @@ public sealed class VendorOnboardingApplication : AggregateRoot<Guid>
 
     public VendorFinancialAssessment? Financial { get; private set; }
 
-    public DateTime CreatedUtc { get; private set; }
-    public DateTime UpdatedUtc { get; private set; }
+    public DateTimeOffset CreatedOnUtc { get; private set; }
+    public string? CreatedBy { get; private set; }
+    public DateTimeOffset? LastModifiedOnUtc { get; private set; }
+    public string? LastModifiedBy { get; private set; }
     public DateTime? SubmittedUtc { get; private set; }
     public DateTime? DecisionUtc { get; private set; }
 
@@ -98,11 +104,11 @@ public sealed class VendorOnboardingApplication : AggregateRoot<Guid>
             Type = invitation.Type,
             Email = invitation.Email,
             InvitationId = invitation.Id,
-            CreatedUtc = nowUtc,
-            UpdatedUtc = nowUtc,
+            CreatedOnUtc = AuditTime.FromUtc(nowUtc),
+            CreatedBy = null,
         };
         app.SelectedTemplateIds.AddRange(invitation.SelectedTemplateIds);
-        app._steps.Add(new OnboardingReviewStep(0, "Procurement review", requiresFinance: invitation.Type == "NonSwec"));
+        app._steps.Add(new OnboardingReviewStep(0, "Procurement review", requiresFinance: invitation.Type == VendorType.NonSwec));
         return app;
     }
 
@@ -128,7 +134,10 @@ public sealed class VendorOnboardingApplication : AggregateRoot<Guid>
         string? region,
         string? state,
         string? city,
-        string? country,
+        string? countryCode,
+        Guid? stateId,
+        Guid? cityId,
+        bool updateGeoIds,
         IReadOnlyList<string>? categories,
         DateTime nowUtc)
     {
@@ -136,57 +145,63 @@ public sealed class VendorOnboardingApplication : AggregateRoot<Guid>
 
         if (name is not null)
         {
-            Name = name;
+            Name = name.Trim();
         }
 
         if (registeredName is not null)
         {
-            RegisteredName = registeredName;
+            RegisteredName = registeredName.Trim();
         }
 
         if (registrationNo is not null)
         {
-            RegistrationNo = registrationNo;
+            RegistrationNo = registrationNo.Trim();
         }
 
         if (taxId is not null)
         {
-            TaxId = taxId;
+            TaxId = taxId.Trim();
         }
 
         if (email is not null)
         {
-            Email = email;
+            Email = email.Trim();
         }
 
         if (contactName is not null)
         {
-            ContactName = contactName;
+            ContactName = contactName.Trim();
         }
 
         if (contactPhone is not null)
         {
-            ContactPhone = contactPhone;
+            ContactPhone = contactPhone.Trim();
         }
 
         if (region is not null)
         {
-            Region = region;
+            Region = region.Trim();
         }
 
         if (state is not null)
         {
-            State = state;
+            State = state.Trim();
         }
 
         if (city is not null)
         {
-            City = city;
+            City = city.Trim();
         }
 
-        if (country is not null)
+        if (countryCode is not null)
         {
-            Country = country;
+            CountryCode = NormalizeCountryCode(countryCode);
+        }
+
+        if (updateGeoIds)
+        {
+            StateId = stateId;
+            CityId = cityId;
         }
 
         if (categories is not null)
@@ -194,7 +209,8 @@ public sealed class VendorOnboardingApplication : AggregateRoot<Guid>
             Categories = [.. categories.Distinct()];
         }
 
-        UpdatedUtc = nowUtc;
+        LastModifiedOnUtc = AuditTime.FromUtc(nowUtc);
+        LastModifiedBy = null;
     }
 
     public void ReplaceContacts(IEnumerable<VendorContact> contacts)
@@ -202,7 +218,8 @@ public sealed class VendorOnboardingApplication : AggregateRoot<Guid>
         RequireDraftable();
         _contacts.Clear();
         _contacts.AddRange(contacts);
-        UpdatedUtc = DateTime.UtcNow;
+        LastModifiedOnUtc = AuditTime.UtcNow;
+        LastModifiedBy = null;
     }
 
     public void ReplaceAddresses(IEnumerable<VendorAddress> addresses)
@@ -210,7 +227,8 @@ public sealed class VendorOnboardingApplication : AggregateRoot<Guid>
         RequireDraftable();
         _addresses.Clear();
         _addresses.AddRange(addresses);
-        UpdatedUtc = DateTime.UtcNow;
+        LastModifiedOnUtc = AuditTime.UtcNow;
+        LastModifiedBy = null;
     }
 
     public void ReplaceBankAccounts(IEnumerable<VendorBankAccount> bankAccounts)
@@ -218,7 +236,8 @@ public sealed class VendorOnboardingApplication : AggregateRoot<Guid>
         RequireDraftable();
         _bankAccounts.Clear();
         _bankAccounts.AddRange(bankAccounts);
-        UpdatedUtc = DateTime.UtcNow;
+        LastModifiedOnUtc = AuditTime.UtcNow;
+        LastModifiedBy = null;
     }
 
     public void ReplaceCertifications(IEnumerable<VendorCertification> certifications)
@@ -226,7 +245,8 @@ public sealed class VendorOnboardingApplication : AggregateRoot<Guid>
         RequireDraftable();
         _certifications.Clear();
         _certifications.AddRange(certifications);
-        UpdatedUtc = DateTime.UtcNow;
+        LastModifiedOnUtc = AuditTime.UtcNow;
+        LastModifiedBy = null;
     }
 
     public void ReplaceAnswers(IEnumerable<OnboardingAnswer> answers)
@@ -234,7 +254,8 @@ public sealed class VendorOnboardingApplication : AggregateRoot<Guid>
         RequireDraftable();
         _answers.Clear();
         _answers.AddRange(answers);
-        UpdatedUtc = DateTime.UtcNow;
+        LastModifiedOnUtc = AuditTime.UtcNow;
+        LastModifiedBy = null;
     }
 
     /// <summary>Non-SWEC only — attaches or replaces the financial assessment while still draftable.</summary>
@@ -243,7 +264,8 @@ public sealed class VendorOnboardingApplication : AggregateRoot<Guid>
         ArgumentNullException.ThrowIfNull(financial);
         RequireDraftable();
         Financial = financial;
-        UpdatedUtc = DateTime.UtcNow;
+        LastModifiedOnUtc = AuditTime.UtcNow;
+        LastModifiedBy = null;
     }
 
     public void AddOrReplaceDocument(OnboardingDocument document)
@@ -252,14 +274,16 @@ public sealed class VendorOnboardingApplication : AggregateRoot<Guid>
         RequireDraftable();
         _documents.RemoveAll(d => d.Key == document.Key);
         _documents.Add(document);
-        UpdatedUtc = DateTime.UtcNow;
+        LastModifiedOnUtc = AuditTime.UtcNow;
+        LastModifiedBy = null;
     }
 
     public void RemoveDocument(string key)
     {
         RequireDraftable();
         _documents.RemoveAll(d => d.Key == key);
-        UpdatedUtc = DateTime.UtcNow;
+        LastModifiedOnUtc = AuditTime.UtcNow;
+        LastModifiedBy = null;
     }
 
     /// <summary>Only Invited/InProgress applications are editable.</summary>
@@ -284,7 +308,7 @@ public sealed class VendorOnboardingApplication : AggregateRoot<Guid>
             throw new OnboardingRuleException("Complete the required company fields (registered name and SSM number) before submitting.");
         }
 
-        if (Type == "NonSwec")
+        if (Type == VendorType.NonSwec)
         {
             if (Financial is null || Financial.Years.Count == 0)
             {
@@ -298,7 +322,7 @@ public sealed class VendorOnboardingApplication : AggregateRoot<Guid>
         }
 
         SubmittedUtc = nowUtc;
-        if (Type == "NonSwec")
+        if (Type == VendorType.NonSwec)
         {
             Financial?.CaptureSnapshot(FinancialSnapshotStage.AtSubmit, nowUtc);
         }
@@ -337,7 +361,8 @@ public sealed class VendorOnboardingApplication : AggregateRoot<Guid>
         RequireNonTerminal("raise a clarification on");
         var round = new OnboardingClarificationRound(Id, _rounds.Count + 1, ClarificationDirection.VendorToBuyer, message, "vendor", byName, items, nowUtc);
         _rounds.Add(round);
-        UpdatedUtc = nowUtc;
+        LastModifiedOnUtc = AuditTime.FromUtc(nowUtc);
+        LastModifiedBy = null;
         return round;
     }
 
@@ -363,14 +388,14 @@ public sealed class VendorOnboardingApplication : AggregateRoot<Guid>
     {
         Require("approve", OnboardingStatus.UnderReview);
 
-        if (Type == "NonSwec" && (Financial is null || Financial.Years.Count == 0))
+        if (Type == VendorType.NonSwec && (Financial is null || Financial.Years.Count == 0))
         {
             throw new OnboardingRuleException("A Non-SWEC application cannot be approved without a completed financial assessment.");
         }
 
         PromotedVendorId = promotedVendorId;
         DecisionUtc = nowUtc;
-        if (Type == "NonSwec")
+        if (Type == VendorType.NonSwec)
         {
             Financial?.CaptureSnapshot(FinancialSnapshotStage.AtDecision, nowUtc);
         }
@@ -422,6 +447,14 @@ public sealed class VendorOnboardingApplication : AggregateRoot<Guid>
         }
     }
 
+    private static string NormalizeCountryCode(string countryCode)
+    {
+        var code = countryCode.Trim().ToUpperInvariant();
+        if (code.Length == 2 && code.All(char.IsAsciiLetter)) return code;
+        if (code.Equals("MALAYSIA", StringComparison.OrdinalIgnoreCase)) return "MY";
+        throw new OnboardingRuleException("Country code must be ISO 3166-1 alpha-2 (e.g. MY).");
+    }
+
     private void RequireNonTerminal(string action)
     {
         if (Terminal.Contains(Status))
@@ -434,7 +467,8 @@ public sealed class VendorOnboardingApplication : AggregateRoot<Guid>
     {
         var from = Status;
         Status = to;
-        UpdatedUtc = nowUtc;
+        LastModifiedOnUtc = AuditTime.FromUtc(nowUtc);
+        LastModifiedBy = null;
         return new OnboardingTransition(from, to, action, reason);
     }
 }

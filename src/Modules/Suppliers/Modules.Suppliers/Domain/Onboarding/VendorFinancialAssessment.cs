@@ -8,7 +8,7 @@ namespace FSH.Modules.Suppliers.Domain.Onboarding;
 /// of the computed Z/score/band/risk/statement captured at submit and at decision. Live values are
 /// derived via <see cref="AltmanZModel"/>; the snapshot is the record of decision.
 /// </summary>
-public sealed class VendorFinancialAssessment : AggregateRoot<Guid>
+public sealed class VendorFinancialAssessment : AggregateRoot<Guid>, IAuditableEntity
 {
     private readonly List<FinancialYearFigures> _years = [];
     private readonly List<FinancialSnapshot> _snapshots = [];
@@ -19,8 +19,10 @@ public sealed class VendorFinancialAssessment : AggregateRoot<Guid>
     public Guid? VendorId { get; private set; }
 
     public string Remarks { get; private set; } = string.Empty;
-    public DateTime CreatedUtc { get; private set; }
-    public DateTime UpdatedUtc { get; private set; }
+    public DateTimeOffset CreatedOnUtc { get; private set; }
+    public string? CreatedBy { get; private set; }
+    public DateTimeOffset? LastModifiedOnUtc { get; private set; }
+    public string? LastModifiedBy { get; private set; }
 
     public IReadOnlyList<FinancialYearFigures> Years => _years;
     public IReadOnlyList<FinancialSnapshot> Snapshots => _snapshots;
@@ -33,8 +35,8 @@ public sealed class VendorFinancialAssessment : AggregateRoot<Guid>
         {
             Id = Guid.CreateVersion7(),
             ApplicationId = applicationId,
-            CreatedUtc = nowUtc,
-            UpdatedUtc = nowUtc,
+            CreatedOnUtc = AuditTime.FromUtc(nowUtc),
+            CreatedBy = null,
         };
         assessment._years.AddRange(years);
         return assessment;
@@ -50,13 +52,15 @@ public sealed class VendorFinancialAssessment : AggregateRoot<Guid>
         ArgumentNullException.ThrowIfNull(years);
         _years.Clear();
         _years.AddRange(years);
-        UpdatedUtc = DateTime.UtcNow;
+        LastModifiedOnUtc = AuditTime.UtcNow;
+        LastModifiedBy = null;
     }
 
     public void SetRemarks(string remarks)
     {
         Remarks = remarks ?? string.Empty;
-        UpdatedUtc = DateTime.UtcNow;
+        LastModifiedOnUtc = AuditTime.UtcNow;
+        LastModifiedBy = null;
     }
 
     /// <summary>Captures an as-of snapshot of the computed model output at a decision point. Append-only.</summary>
@@ -73,7 +77,8 @@ public sealed class VendorFinancialAssessment : AggregateRoot<Guid>
             AltmanZModel.StatementFor(band),
             nowUtc);
         _snapshots.Add(snapshot);
-        UpdatedUtc = nowUtc;
+        LastModifiedOnUtc = AuditTime.FromUtc(nowUtc);
+        LastModifiedBy = null;
         return snapshot;
     }
 }

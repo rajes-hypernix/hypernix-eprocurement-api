@@ -39,12 +39,12 @@ public sealed class SearchVendorsQueryHandler(SuppliersDbContext dbContext)
                     v.Id,
                     v.Code,
                     v.Name,
-                    v.Type,
+                    VendorTypeParser.ToApi(v.Type),
                     v.Categories,
                     v.Region,
                     v.State,
                     v.Rating,
-                    v.Status))
+                    v.Status.ToString()))
                 .ToList(),
             PageNumber = query.PageNumber,
             PageSize = query.PageSize,
@@ -60,7 +60,7 @@ public sealed class SearchVendorsQueryHandler(SuppliersDbContext dbContext)
         {
             "CODE" => desc ? q.OrderByDescending(v => v.Code) : q.OrderBy(v => v.Code),
             "STATUS" => desc ? q.OrderByDescending(v => v.Status) : q.OrderBy(v => v.Status),
-            "CREATEDUTC" => desc ? q.OrderByDescending(v => v.CreatedUtc) : q.OrderBy(v => v.CreatedUtc),
+            "CREATEDUTC" or "CREATEDONUTC" => desc ? q.OrderByDescending(v => v.CreatedOnUtc) : q.OrderBy(v => v.CreatedOnUtc),
             _ => desc ? q.OrderByDescending(v => v.Name) : q.OrderBy(v => v.Name),
         };
     }

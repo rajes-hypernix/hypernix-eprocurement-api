@@ -7,7 +7,7 @@ public sealed record OnboardingInvitationDto(
     string Type,
     string Status,
     string InvitedByName,
-    DateTime CreatedUtc,
+    DateTimeOffset CreatedOnUtc,
     DateTime ExpiresUtc,
     Guid? ApplicationId,
     string? ApplicationCode,

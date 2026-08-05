@@ -29,16 +29,19 @@ public sealed class VendorConfiguration : IEntityTypeConfiguration<Vendor>
         builder.Property(x => x.RegisteredName).IsRequired().HasMaxLength(200);
         builder.Property(x => x.RegistrationNo).IsRequired().HasMaxLength(60);
         builder.Property(x => x.TaxId).IsRequired().HasMaxLength(60);
-        builder.Property(x => x.Type).IsRequired().HasMaxLength(20);
+        builder.Property(x => x.Type).IsRequired().HasConversion<string>().HasMaxLength(20);
         builder.Property(x => x.LlrcTier).HasMaxLength(20);
-        builder.Property(x => x.Status).IsRequired().HasMaxLength(20);
+        builder.Property(x => x.Status).IsRequired().HasConversion<string>().HasMaxLength(20);
         builder.Property(x => x.Region).IsRequired().HasMaxLength(50);
         builder.Property(x => x.State).IsRequired().HasMaxLength(100);
         builder.Property(x => x.City).IsRequired().HasMaxLength(100);
-        builder.Property(x => x.Country).IsRequired().HasMaxLength(2);
+        builder.Property(x => x.CountryCode).IsRequired().HasMaxLength(2);
         builder.Property(x => x.Rating).HasPrecision(18, 2);
         builder.Property(x => x.PaymentTerms).IsRequired().HasMaxLength(50);
         builder.Property(x => x.CreditLimit).HasPrecision(18, 2);
+        builder.HasIndex(x => x.CountryCode);
+        builder.HasIndex(x => x.CityId);
+        builder.ConfigureAudit();
 
         builder.Property(x => x.Categories)
             .HasConversion(CategoriesConverter)
@@ -62,12 +65,13 @@ public sealed class VendorConfiguration : IEntityTypeConfiguration<Vendor>
             o.WithOwner().HasForeignKey("VendorId");
             o.Property<Guid>("Id");
             o.HasKey("Id");
-            o.Property(a => a.Type).IsRequired().HasMaxLength(50);
+            o.Property(a => a.Type).IsRequired().HasConversion<string>().HasMaxLength(50);
             o.Property(a => a.Line).HasMaxLength(300);
             o.Property(a => a.City).HasMaxLength(100);
             o.Property(a => a.State).HasMaxLength(100);
-            o.Property(a => a.Country).IsRequired().HasMaxLength(2);
+            o.Property(a => a.CountryCode).IsRequired().HasMaxLength(2);
             o.Property(a => a.Postcode).HasMaxLength(20);
+            o.HasIndex(a => a.CityId);
         });
 
         builder.OwnsMany(x => x.BankAccounts, o =>
@@ -76,10 +80,11 @@ public sealed class VendorConfiguration : IEntityTypeConfiguration<Vendor>
             o.WithOwner().HasForeignKey("VendorId");
             o.Property<Guid>("Id");
             o.HasKey("Id");
-            o.Property(b => b.Bank).IsRequired().HasMaxLength(200);
+            o.Property(b => b.BankName).IsRequired().HasMaxLength(200);
             o.Property(b => b.AccountNo).HasMaxLength(50);
             o.Property(b => b.Swift).HasMaxLength(20);
-            o.Property(b => b.Currency).IsRequired().HasMaxLength(3);
+            o.Property(b => b.CurrencyCode).IsRequired().HasMaxLength(3);
+            o.HasIndex(b => b.BankId);
         });
 
         builder.OwnsMany(x => x.Certifications, o =>
@@ -91,7 +96,7 @@ public sealed class VendorConfiguration : IEntityTypeConfiguration<Vendor>
             o.Property(c => c.Name).IsRequired().HasMaxLength(200);
             o.Property(c => c.Number).HasMaxLength(100);
             o.Property(c => c.ValidTo).HasMaxLength(50);
-            o.Property(c => c.Status).IsRequired().HasMaxLength(20);
+            o.Property(c => c.Status).IsRequired().HasConversion<string>().HasMaxLength(20);
         });
 
         builder.OwnsMany(x => x.Currencies, o =>

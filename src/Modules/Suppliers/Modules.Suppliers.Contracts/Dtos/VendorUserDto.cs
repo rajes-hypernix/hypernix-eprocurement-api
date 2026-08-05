@@ -7,5 +7,5 @@ public sealed record VendorUserDto(
     string Name,
     string Email,
     bool IsActive,
-    DateTime CreatedUtc,
-    DateTime UpdatedUtc);
+    DateTimeOffset CreatedOnUtc,
+    DateTimeOffset? LastModifiedOnUtc);

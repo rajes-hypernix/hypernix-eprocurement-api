@@ -23,19 +23,21 @@ public sealed class CreateManualVendorCommandHandler(SuppliersDbContext dbContex
             command.RegisteredName,
             command.RegistrationNo,
             command.TaxId,
-            command.Type,
+            VendorTypeParser.Parse(command.Type),
             command.Region,
             command.State,
             command.City,
-            command.Country,
+            command.CountryCode,
+            command.StateId,
+            command.CityId,
             command.PaymentTerms,
             command.Categories);
 
-        vendor.AddCurrency(new VendorCurrency(command.Currency, true));
+        vendor.AddCurrency(new VendorCurrency(command.CurrencyCode, true));
 
-        if (!string.IsNullOrWhiteSpace(command.Bank))
+        if (command.BankId is { } bankId && bankId != Guid.Empty && !string.IsNullOrWhiteSpace(command.BankName))
         {
-            vendor.AddBankAccount(new VendorBankAccount(command.Bank, command.AccountNo, command.Swift, command.Currency, true));
+            vendor.AddBankAccount(new VendorBankAccount(bankId, command.BankName, command.AccountNo, command.Swift, command.CurrencyCode, true));
         }
 
         if (!string.IsNullOrWhiteSpace(command.ContactName) || !string.IsNullOrWhiteSpace(command.ContactEmail))
@@ -45,7 +47,7 @@ public sealed class CreateManualVendorCommandHandler(SuppliersDbContext dbContex
 
         if (!string.IsNullOrWhiteSpace(command.AddressLine) || !string.IsNullOrWhiteSpace(command.City))
         {
-            vendor.AddAddress(new VendorAddress("Registered", command.AddressLine, command.City, command.State, command.Country, null, true));
+            vendor.AddAddress(new VendorAddress(VendorAddressType.Registered, command.AddressLine, command.City, command.State, command.CountryCode, command.StateId, command.CityId, null, true));
         }
 
         dbContext.Vendors.Add(vendor);

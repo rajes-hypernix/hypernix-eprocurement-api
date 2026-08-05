@@ -26,16 +26,19 @@ export type VendorAddressDto = {
   line: string;
   city: string;
   state: string;
-  country: string;
+  countryCode: string;
+  stateId?: string | null;
+  cityId?: string | null;
   postcode: string;
   isPrimary: boolean;
 };
 
 export type VendorBankAccountDto = {
-  bank: string;
+  bankId: string;
+  bankName: string;
   accountNo: string;
   swift: string;
-  currency: string;
+  currencyCode: string;
   isPrimary: boolean;
 };
 
@@ -64,7 +67,9 @@ export type VendorDto = {
   region: string;
   state: string;
   city: string;
-  country: string;
+  countryCode: string;
+  stateId?: string | null;
+  cityId?: string | null;
   rating: number;
   paymentTerms: string;
   creditLimit: number;
@@ -74,8 +79,8 @@ export type VendorDto = {
   bankAccounts: VendorBankAccountDto[];
   certifications: VendorCertificationDto[];
   currencies: VendorCurrencyDto[];
-  createdUtc: string;
-  updatedUtc: string;
+  createdOnUtc: string;
+  lastModifiedOnUtc?: string | null;
 };
 
 export type CreateManualVendorRequest = {
@@ -85,10 +90,13 @@ export type CreateManualVendorRequest = {
   region?: string | null;
   state?: string | null;
   city?: string | null;
-  country?: string | null;
-  currency?: string | null;
+  countryCode?: string | null;
+  stateId?: string | null;
+  cityId?: string | null;
+  currencyCode?: string | null;
   paymentTerms?: string | null;
-  bank?: string | null;
+  bankId?: string | null;
+  bankName?: string | null;
   accountNo?: string | null;
   swift?: string | null;
   contactName?: string | null;

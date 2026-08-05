@@ -17,7 +17,7 @@ export type OnboardingInvitationDto = {
   type: string;
   status: string;
   invitedByName: string;
-  createdUtc: string;
+  createdOnUtc: string;
   expiresUtc: string;
   applicationId?: string | null;
   applicationCode?: string | null;
@@ -32,7 +32,7 @@ export type OnboardingQueueItemDto = {
   type: string;
   status: string;
   source: string;
-  createdUtc: string;
+  createdOnUtc: string;
   submittedUtc?: string | null;
   openRoundNo?: number | null;
   roundCount: number;
@@ -58,7 +58,7 @@ export type OnboardingApplicationDto = {
   type: string;
   name: string;
   email: string;
-  createdUtc: string;
+  createdOnUtc: string;
   submittedUtc?: string | null;
   selectedTemplateIds: string[];
   rounds: OnboardingRoundDto[];
@@ -117,7 +117,9 @@ export type OnboardingDraftDto = {
   region: string;
   state: string;
   city: string;
-  country: string;
+  countryCode: string;
+  stateId?: string | null;
+  cityId?: string | null;
   categories: string[];
   contacts: VendorContactDto[];
   addresses: VendorAddressDto[];
@@ -145,7 +147,9 @@ export type OnboardingReviewDto = {
   region: string;
   state: string;
   city: string;
-  country: string;
+  countryCode: string;
+  stateId?: string | null;
+  cityId?: string | null;
   categories: string[];
   contacts: VendorContactDto[];
   addresses: VendorAddressDto[];
@@ -156,7 +160,7 @@ export type OnboardingReviewDto = {
   rounds: OnboardingRoundDto[];
   answers: OnboardingAnswerDto[];
   duplicateWarning?: string | null;
-  createdUtc: string;
+  createdOnUtc: string;
   submittedUtc?: string | null;
   decisionUtc?: string | null;
 };
@@ -204,7 +208,9 @@ export type SaveOnboardingDraftRequest = {
   region?: string | null;
   state?: string | null;
   city?: string | null;
-  country?: string | null;
+  countryCode?: string | null;
+  stateId?: string | null;
+  cityId?: string | null;
   categories?: string[] | null;
   contacts?: VendorContactDto[] | null;
   addresses?: VendorAddressDto[] | null;

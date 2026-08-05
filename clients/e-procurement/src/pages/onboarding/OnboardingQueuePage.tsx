@@ -100,7 +100,7 @@ export function OnboardingQueuePage({ onNavigate }: { onNavigate: (key: string) 
                   <td>
                     <TypeBadge type={a.type} />
                   </td>
-                  <td className="hint">{dateMY(a.submittedUtc ?? a.createdUtc)}</td>
+                  <td className="hint">{dateMY(a.submittedUtc ?? a.createdOnUtc)}</td>
                   <td>
                     <span className={`badge ${STATUS_CLS[a.status] ?? "b-grey"}`}>
                       {statusLabel(a.status)}

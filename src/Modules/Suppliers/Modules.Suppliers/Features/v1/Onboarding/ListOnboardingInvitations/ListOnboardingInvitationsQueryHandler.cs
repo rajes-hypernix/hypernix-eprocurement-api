@@ -15,7 +15,7 @@ public sealed class ListOnboardingInvitationsQueryHandler(SuppliersDbContext dbC
 
         var invitations = await dbContext.VendorOnboardingInvitations
             .AsNoTracking()
-            .OrderByDescending(i => i.CreatedUtc)
+            .OrderByDescending(i => i.CreatedOnUtc)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 

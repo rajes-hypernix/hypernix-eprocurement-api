@@ -16,6 +16,7 @@ public sealed class UpdateVendorCommandValidator : AbstractValidator<UpdateVendo
         RuleFor(x => x.Region).NotEmpty().MaximumLength(50);
         RuleFor(x => x.State).NotEmpty().MaximumLength(100);
         RuleFor(x => x.City).NotEmpty().MaximumLength(100);
+        RuleFor(x => x.CountryCode).NotEmpty().Length(2);
         RuleFor(x => x.PaymentTerms).NotEmpty().MaximumLength(50);
         RuleFor(x => x.CreditLimit).GreaterThanOrEqualTo(0);
         RuleFor(x => x.Rating).InclusiveBetween(0, 5);

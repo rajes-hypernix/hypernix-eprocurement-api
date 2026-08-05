@@ -229,7 +229,7 @@ export function OnboardingReviewPage({ id, onBack }: { id: string; onBack: () =>
           <Kv k="Contact" v={app.contactName ? `${app.contactName} · ${app.contactPhone || ""}` : "—"} />
         </Card>
         <Card title="Banking">
-          <Kv k="Bank" v={bank?.bank || "—"} />
+          <Kv k="Bank" v={bank?.bankName || "—"} />
           <Kv k="Account no." v={bank?.accountNo || "—"} />
           <Kv k="SWIFT" v={bank?.swift || "—"} />
           <Kv

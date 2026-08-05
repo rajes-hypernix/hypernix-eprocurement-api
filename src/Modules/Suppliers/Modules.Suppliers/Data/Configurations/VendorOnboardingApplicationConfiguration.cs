@@ -36,7 +36,7 @@ public sealed class VendorOnboardingApplicationConfiguration : IEntityTypeConfig
         builder.Property(x => x.Code).IsRequired().HasMaxLength(50);
         builder.Property(x => x.Status).IsRequired().HasConversion<string>().HasMaxLength(30);
         builder.Property(x => x.Source).IsRequired().HasConversion<string>().HasMaxLength(20);
-        builder.Property(x => x.Type).IsRequired().HasMaxLength(20);
+        builder.Property(x => x.Type).IsRequired().HasConversion<string>().HasMaxLength(20);
         builder.Property(x => x.Name).HasMaxLength(200);
         builder.Property(x => x.RegisteredName).HasMaxLength(200);
         builder.Property(x => x.RegistrationNo).HasMaxLength(60);
@@ -47,8 +47,10 @@ public sealed class VendorOnboardingApplicationConfiguration : IEntityTypeConfig
         builder.Property(x => x.Region).HasMaxLength(50);
         builder.Property(x => x.State).HasMaxLength(100);
         builder.Property(x => x.City).HasMaxLength(100);
-        builder.Property(x => x.Country).HasMaxLength(100);
+        builder.Property(x => x.CountryCode).IsRequired().HasMaxLength(2);
         builder.Property(x => x.RejectReason).HasMaxLength(1000);
+        builder.HasIndex(x => x.CountryCode);
+        builder.HasIndex(x => x.CityId);
 
         builder.Property(x => x.Categories)
             .HasConversion(StringListConverter)
@@ -62,7 +64,8 @@ public sealed class VendorOnboardingApplicationConfiguration : IEntityTypeConfig
         builder.HasIndex(x => x.Type);
         builder.HasIndex(x => x.Source);
         builder.HasIndex(x => x.InvitationId);
-        builder.HasIndex(x => x.CreatedUtc);
+        builder.HasIndex(x => x.CreatedOnUtc);
+        builder.ConfigureAudit();
         builder.HasIndex(x => x.SubmittedUtc);
         builder.HasIndex(x => x.DecisionUtc);
 
@@ -80,6 +83,12 @@ public sealed class VendorOnboardingApplicationConfiguration : IEntityTypeConfig
             o.WithOwner().HasForeignKey("ApplicationId");
             o.Property<Guid>("Id");
             o.HasKey("Id");
+            o.Property(a => a.Type).IsRequired().HasConversion<string>().HasMaxLength(50);
+            o.Property(a => a.Line).HasMaxLength(300);
+            o.Property(a => a.City).HasMaxLength(100);
+            o.Property(a => a.State).HasMaxLength(100);
+            o.Property(a => a.CountryCode).IsRequired().HasMaxLength(2);
+            o.Property(a => a.Postcode).HasMaxLength(20);
         });
 
         builder.OwnsMany(x => x.BankAccounts, o =>
@@ -88,6 +97,10 @@ public sealed class VendorOnboardingApplicationConfiguration : IEntityTypeConfig
             o.WithOwner().HasForeignKey("ApplicationId");
             o.Property<Guid>("Id");
             o.HasKey("Id");
+            o.Property(b => b.BankName).IsRequired().HasMaxLength(200);
+            o.Property(b => b.AccountNo).HasMaxLength(50);
+            o.Property(b => b.Swift).HasMaxLength(20);
+            o.Property(b => b.CurrencyCode).IsRequired().HasMaxLength(3);
         });
 
         builder.OwnsMany(x => x.Certifications, o =>
@@ -96,6 +109,10 @@ public sealed class VendorOnboardingApplicationConfiguration : IEntityTypeConfig
             o.WithOwner().HasForeignKey("ApplicationId");
             o.Property<Guid>("Id");
             o.HasKey("Id");
+            o.Property(c => c.Name).IsRequired().HasMaxLength(200);
+            o.Property(c => c.Number).HasMaxLength(100);
+            o.Property(c => c.ValidTo).HasMaxLength(50);
+            o.Property(c => c.Status).IsRequired().HasConversion<string>().HasMaxLength(20);
         });
 
         builder.OwnsMany(x => x.Answers, o =>

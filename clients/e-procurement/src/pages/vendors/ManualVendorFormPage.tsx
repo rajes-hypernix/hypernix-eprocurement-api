@@ -15,14 +15,17 @@ const PAYMENT_TERMS = ["NET30", "NET45", "NET60", "COD"];
 const empty: CreateManualVendorRequest = {
   name: "",
   registrationNo: "",
-  type: "Non-SWEC",
+  type: "NonSwec",
   region: "Peninsular",
-  country: "MY",
+  countryCode: "MY",
+  stateId: null,
+  cityId: null,
   state: "",
   city: "",
-  currency: "MYR",
+  currencyCode: "MYR",
   paymentTerms: "NET30",
-  bank: "",
+  bankId: null,
+  bankName: "",
   accountNo: "",
   swift: "",
   contactName: "",
@@ -53,13 +56,13 @@ export function ManualVendorFormPage({
   const [err, setErr] = useState<string | null>(null);
 
   const country = useMemo(
-    () => geoQ.data?.countries.find((c) => c.code === (f.country || "MY")),
-    [geoQ.data, f.country],
+    () => geoQ.data?.countries.find((c) => c.code === (f.countryCode || "MY")),
+    [geoQ.data, f.countryCode],
   );
   const states = country?.states ?? [];
-  const cities = states.find((s) => s.name === f.state || s.code === f.state)?.cities ?? [];
+  const cities = states.find((s) => s.id === f.stateId)?.cities ?? [];
   const banks = (geoQ.data?.banks ?? []).filter(
-    (b) => !f.country || b.countryCode === f.country || b.countryCode === "MY",
+    (b) => !f.countryCode || b.countryCode === f.countryCode || b.countryCode === "MY",
   );
 
   const save = useMutation({
@@ -169,8 +172,8 @@ export function ManualVendorFormPage({
             <div className="field">
               <label>Registration type</label>
               <select value={f.type} onChange={(e) => set("type", e.target.value)}>
-                <option value="Non-SWEC">Non-SWEC</option>
-                <option value="SWEC">PETRONAS SWEC</option>
+                <option value="NonSwec">Non-SWEC</option>
+                <option value="Swec">PETRONAS SWEC</option>
               </select>
             </div>
           </div>
@@ -186,10 +189,12 @@ export function ManualVendorFormPage({
             <div className="field">
               <label>Country</label>
               <select
-                value={f.country ?? "MY"}
+                value={f.countryCode ?? "MY"}
                 onChange={(e) => {
-                  set("country", e.target.value);
+                  set("countryCode", e.target.value);
+                  set("stateId", null);
                   set("state", "");
+                  set("cityId", null);
                   set("city", "");
                 }}
               >
@@ -203,15 +208,18 @@ export function ManualVendorFormPage({
             <div className="field">
               <label>State</label>
               <select
-                value={f.state ?? ""}
+                value={f.stateId ?? ""}
                 onChange={(e) => {
-                  set("state", e.target.value);
+                  const s = states.find((x) => x.id === e.target.value);
+                  set("stateId", s?.id ?? null);
+                  set("state", s?.name ?? "");
+                  set("cityId", null);
                   set("city", "");
                 }}
               >
                 <option value="">Select state</option>
                 {states.map((s) => (
-                  <option key={s.id} value={s.name}>
+                  <option key={s.id} value={s.id}>
                     {s.name}
                   </option>
                 ))}
@@ -219,10 +227,17 @@ export function ManualVendorFormPage({
             </div>
             <div className="field">
               <label>City</label>
-              <select value={f.city ?? ""} onChange={(e) => set("city", e.target.value)}>
+              <select
+                value={f.cityId ?? ""}
+                onChange={(e) => {
+                  const c = cities.find((x) => x.id === e.target.value);
+                  set("cityId", c?.id ?? null);
+                  set("city", c?.name ?? "");
+                }}
+              >
                 <option value="">Select city</option>
                 {cities.map((c) => (
-                  <option key={c.id} value={c.name}>
+                  <option key={c.id} value={c.id}>
                     {c.name}
                   </option>
                 ))}
@@ -256,7 +271,10 @@ export function ManualVendorFormPage({
           <div className="grid g2">
             <div className="field">
               <label>Currency</label>
-              <select value={f.currency ?? "MYR"} onChange={(e) => set("currency", e.target.value)}>
+              <select
+                value={f.currencyCode ?? "MYR"}
+                onChange={(e) => set("currencyCode", e.target.value)}
+              >
                 {CURRENCIES.map((c) => (
                   <option key={c} value={c}>
                     {c}
@@ -281,10 +299,17 @@ export function ManualVendorFormPage({
           <div className="grid g3">
             <div className="field">
               <label>Bank</label>
-              <select value={f.bank ?? ""} onChange={(e) => set("bank", e.target.value)}>
+              <select
+                value={f.bankId ?? ""}
+                onChange={(e) => {
+                  const b = banks.find((x) => x.id === e.target.value);
+                  set("bankId", b?.id ?? null);
+                  set("bankName", b?.name ?? "");
+                }}
+              >
                 <option value="">Select bank</option>
                 {banks.map((b) => (
-                  <option key={b.id} value={b.name}>
+                  <option key={b.id} value={b.id}>
                     {b.name}
                   </option>
                 ))}

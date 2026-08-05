@@ -13,6 +13,7 @@ public sealed class VendorFinancialAssessmentConfiguration : IEntityTypeConfigur
         builder.HasKey(x => x.Id);
         builder.HasIndex(x => x.ApplicationId).IsUnique();
         builder.Property(x => x.Remarks).HasMaxLength(4000);
+        builder.ConfigureAudit();
         builder.Ignore(x => x.LiveWeightedZ);
 
         builder.OwnsMany(x => x.Years, o =>

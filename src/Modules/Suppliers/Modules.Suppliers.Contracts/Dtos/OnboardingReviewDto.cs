@@ -17,7 +17,9 @@ public sealed record OnboardingReviewDto(
     string Region,
     string State,
     string City,
-    string Country,
+    string CountryCode,
+    Guid? StateId,
+    Guid? CityId,
     IReadOnlyList<string> Categories,
     IReadOnlyList<VendorContactDto> Contacts,
     IReadOnlyList<VendorAddressDto> Addresses,
@@ -28,6 +30,6 @@ public sealed record OnboardingReviewDto(
     IReadOnlyList<OnboardingRoundDto> Rounds,
     IReadOnlyList<OnboardingAnswerDto> Answers,
     string? DuplicateWarning,
-    DateTime CreatedUtc,
+    DateTimeOffset CreatedOnUtc,
     DateTime? SubmittedUtc,
     DateTime? DecisionUtc);

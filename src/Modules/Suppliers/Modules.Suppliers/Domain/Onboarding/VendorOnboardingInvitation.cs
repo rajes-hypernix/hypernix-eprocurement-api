@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using FSH.Framework.Core.Domain;
+using FSH.Modules.Suppliers.Domain;
 
 namespace FSH.Modules.Suppliers.Domain.Onboarding;
 
@@ -9,12 +10,12 @@ namespace FSH.Modules.Suppliers.Domain.Onboarding;
 /// token as a SHA-256 hash only (the raw token is never persisted), with a 14-day expiry,
 /// single-application scope, and its own status.
 /// </summary>
-public sealed class VendorOnboardingInvitation : AggregateRoot<Guid>
+public sealed class VendorOnboardingInvitation : AggregateRoot<Guid>, IAuditableEntity
 {
     public const int DefaultValidityDays = 14;
 
     public string Email { get; private set; } = default!;
-    public string Type { get; private set; } = default!;
+    public VendorType Type { get; private set; } = VendorType.NonSwec;
 
     public List<Guid> SelectedTemplateIds { get; private set; } = [];
 
@@ -28,7 +29,10 @@ public sealed class VendorOnboardingInvitation : AggregateRoot<Guid>
     /// <summary>The application this link opens/created (set when the vendor first opens it).</summary>
     public Guid? ApplicationId { get; private set; }
 
-    public DateTime CreatedUtc { get; private set; }
+    public DateTimeOffset CreatedOnUtc { get; private set; }
+    public string? CreatedBy { get; private set; }
+    public DateTimeOffset? LastModifiedOnUtc { get; private set; }
+    public string? LastModifiedBy { get; private set; }
     public DateTime ExpiresUtc { get; private set; }
     public DateTime? OpenedUtc { get; private set; }
     public DateTime? RevokedUtc { get; private set; }
@@ -37,7 +41,7 @@ public sealed class VendorOnboardingInvitation : AggregateRoot<Guid>
 
     public static VendorOnboardingInvitation Create(
         string email,
-        string type,
+        VendorType type,
         IEnumerable<Guid> selectedTemplateIds,
         string rawToken,
         string invitedByUserId,
@@ -45,16 +49,19 @@ public sealed class VendorOnboardingInvitation : AggregateRoot<Guid>
         DateTime nowUtc,
         int validityDays = DefaultValidityDays)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(email);
+
         var invitation = new VendorOnboardingInvitation
         {
             Id = Guid.CreateVersion7(),
-            Email = email,
+            Email = email.Trim(),
             Type = type,
             TokenHash = HashToken(rawToken),
             Status = OnboardingInvitationStatus.Sent,
             InvitedByUserId = invitedByUserId,
             InvitedByName = invitedByName,
-            CreatedUtc = nowUtc,
+            CreatedOnUtc = AuditTime.FromUtc(nowUtc),
+            CreatedBy = null,
             ExpiresUtc = nowUtc.AddDays(validityDays),
         };
         invitation.SelectedTemplateIds.AddRange(selectedTemplateIds);
@@ -70,6 +77,13 @@ public sealed class VendorOnboardingInvitation : AggregateRoot<Guid>
         }
 
         ApplicationId = applicationId;
+        Touch();
+    }
+
+    private void Touch(DateTime? nowUtc = null)
+    {
+        LastModifiedOnUtc = nowUtc is { } stamp ? AuditTime.FromUtc(stamp) : AuditTime.UtcNow;
+        LastModifiedBy = null;
     }
 
     /// <summary>
@@ -89,6 +103,7 @@ public sealed class VendorOnboardingInvitation : AggregateRoot<Guid>
         Status = OnboardingInvitationStatus.Sent;
         OpenedUtc = null;
         RevokedUtc = null;
+        Touch(nowUtc);
         return new InvitationTransition(from, Status, "Onboarding invitation resent", null);
     }
 
@@ -136,6 +151,7 @@ public sealed class VendorOnboardingInvitation : AggregateRoot<Guid>
             OpenedUtc = nowUtc;
         }
 
+        Touch(nowUtc);
         return new InvitationTransition(from, Status, "Onboarding link opened", null);
     }
 
@@ -146,6 +162,7 @@ public sealed class VendorOnboardingInvitation : AggregateRoot<Guid>
         var from = Status;
         Status = OnboardingInvitationStatus.Revoked;
         RevokedUtc = nowUtc;
+        Touch(nowUtc);
         return new InvitationTransition(from, Status, "Onboarding invitation revoked", null);
     }
 
@@ -155,6 +172,7 @@ public sealed class VendorOnboardingInvitation : AggregateRoot<Guid>
         RequireLive("expire");
         var from = Status;
         Status = OnboardingInvitationStatus.Expired;
+        Touch(nowUtc);
         return new InvitationTransition(from, Status, "Onboarding link expired", null);
     }
 
@@ -168,6 +186,7 @@ public sealed class VendorOnboardingInvitation : AggregateRoot<Guid>
 
         var from = Status;
         Status = OnboardingInvitationStatus.Completed;
+        Touch();
         return new InvitationTransition(from, Status, "Onboarding invitation completed", null);
     }
 

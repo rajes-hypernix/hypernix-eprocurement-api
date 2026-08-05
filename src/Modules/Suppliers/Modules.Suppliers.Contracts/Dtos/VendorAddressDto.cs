@@ -5,6 +5,8 @@ public sealed record VendorAddressDto(
     string Line,
     string City,
     string State,
-    string Country,
+    string CountryCode,
+    Guid? StateId,
+    Guid? CityId,
     string Postcode,
     bool IsPrimary);

@@ -13,6 +13,9 @@ public sealed record UpdateVendorCommand(
     string Region,
     string State,
     string City,
+    string CountryCode,
+    Guid? StateId,
+    Guid? CityId,
     string PaymentTerms,
     decimal CreditLimit,
     decimal Rating) : ICommand<Guid>;

@@ -16,5 +16,6 @@ public sealed class SwecCategoryConfiguration : IEntityTypeConfiguration<SwecCat
         builder.Property(x => x.ParentCode).HasMaxLength(20);
         builder.Property(x => x.PathText).IsRequired().HasMaxLength(400);
         builder.HasIndex(x => x.ParentCode);
+        builder.ConfigureAudit();
     }
 }

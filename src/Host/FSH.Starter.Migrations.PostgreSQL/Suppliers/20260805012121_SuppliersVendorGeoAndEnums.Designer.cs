@@ -3,6 +3,7 @@ using System;
 using FSH.Modules.Suppliers.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FSH.Starter.Migrations.PostgreSQL.Suppliers
 {
     [DbContext(typeof(SuppliersDbContext))]
-    partial class SuppliersDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260805012121_SuppliersVendorGeoAndEnums")]
+    partial class SuppliersVendorGeoAndEnums
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -38,24 +41,10 @@ namespace FSH.Starter.Migrations.PostgreSQL.Suppliers
                     b.Property<Guid>("ApplicationId")
                         .HasColumnType("uuid");
 
-                    b.Property<string>("CreatedBy")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<DateTimeOffset>("CreatedOnUtc")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<string>("Direction")
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
-
-                    b.Property<string>("LastModifiedBy")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<DateTimeOffset?>("LastModifiedOnUtc")
-                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Message")
                         .IsRequired()
@@ -110,18 +99,7 @@ namespace FSH.Starter.Migrations.PostgreSQL.Suppliers
                     b.Property<Guid>("ApplicationId")
                         .HasColumnType("uuid");
 
-                    b.Property<string>("CreatedBy")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<DateTimeOffset>("CreatedOnUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("LastModifiedBy")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<DateTimeOffset?>("LastModifiedOnUtc")
+                    b.Property<DateTime>("CreatedUtc")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Remarks")
@@ -132,6 +110,9 @@ namespace FSH.Starter.Migrations.PostgreSQL.Suppliers
                     b.Property<string>("TenantId")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid?>("VendorId")
                         .HasColumnType("uuid");
@@ -189,11 +170,7 @@ namespace FSH.Starter.Migrations.PostgreSQL.Suppliers
                         .HasMaxLength(2)
                         .HasColumnType("character varying(2)");
 
-                    b.Property<string>("CreatedBy")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<DateTimeOffset>("CreatedOnUtc")
+                    b.Property<DateTime>("CreatedUtc")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime?>("DecisionUtc")
@@ -273,11 +250,7 @@ namespace FSH.Starter.Migrations.PostgreSQL.Suppliers
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
-                    b.Property<string>("LastModifiedBy")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<DateTimeOffset?>("LastModifiedOnUtc")
+                    b.Property<DateTime>("UpdatedUtc")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
@@ -286,7 +259,7 @@ namespace FSH.Starter.Migrations.PostgreSQL.Suppliers
 
                     b.HasIndex("CountryCode");
 
-                    b.HasIndex("CreatedOnUtc");
+                    b.HasIndex("CreatedUtc");
 
                     b.HasIndex("DecisionUtc");
 
@@ -318,11 +291,7 @@ namespace FSH.Starter.Migrations.PostgreSQL.Suppliers
                     b.Property<Guid?>("ApplicationId")
                         .HasColumnType("uuid");
 
-                    b.Property<string>("CreatedBy")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<DateTimeOffset>("CreatedOnUtc")
+                    b.Property<DateTime>("CreatedUtc")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Email")
@@ -342,13 +311,6 @@ namespace FSH.Starter.Migrations.PostgreSQL.Suppliers
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
-
-                    b.Property<string>("LastModifiedBy")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<DateTimeOffset?>("LastModifiedOnUtc")
-                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime?>("OpenedUtc")
                         .HasColumnType("timestamp with time zone");
@@ -383,7 +345,7 @@ namespace FSH.Starter.Migrations.PostgreSQL.Suppliers
 
                     b.HasIndex("ApplicationId");
 
-                    b.HasIndex("CreatedOnUtc");
+                    b.HasIndex("CreatedUtc");
 
                     b.HasIndex("InvitedByUserId");
 
@@ -404,22 +366,8 @@ namespace FSH.Starter.Migrations.PostgreSQL.Suppliers
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
-                    b.Property<string>("CreatedBy")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<DateTimeOffset>("CreatedOnUtc")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<bool>("IsLeaf")
                         .HasColumnType("boolean");
-
-                    b.Property<string>("LastModifiedBy")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<DateTimeOffset?>("LastModifiedOnUtc")
-                        .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("Level")
                         .HasColumnType("integer");
@@ -479,11 +427,7 @@ namespace FSH.Starter.Migrations.PostgreSQL.Suppliers
                         .HasMaxLength(2)
                         .HasColumnType("character varying(2)");
 
-                    b.Property<string>("CreatedBy")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<DateTimeOffset>("CreatedOnUtc")
+                    b.Property<DateTime>("CreatedUtc")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<decimal>("CreditLimit")
@@ -553,11 +497,7 @@ namespace FSH.Starter.Migrations.PostgreSQL.Suppliers
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
-                    b.Property<string>("LastModifiedBy")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<DateTimeOffset?>("LastModifiedOnUtc")
+                    b.Property<DateTime>("UpdatedUtc")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
@@ -586,11 +526,7 @@ namespace FSH.Starter.Migrations.PostgreSQL.Suppliers
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
-                    b.Property<string>("CreatedBy")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<DateTimeOffset>("CreatedOnUtc")
+                    b.Property<DateTime>("CreatedUtc")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Email")
@@ -610,16 +546,12 @@ namespace FSH.Starter.Migrations.PostgreSQL.Suppliers
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
-                    b.Property<string>("LastModifiedBy")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<DateTimeOffset?>("LastModifiedOnUtc")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<string>("TenantId")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid>("VendorId")
                         .HasColumnType("uuid");

@@ -13,7 +13,9 @@ public sealed record VendorDto(
     string Region,
     string State,
     string City,
-    string Country,
+    string CountryCode,
+    Guid? StateId,
+    Guid? CityId,
     decimal Rating,
     string PaymentTerms,
     decimal CreditLimit,
@@ -23,5 +25,5 @@ public sealed record VendorDto(
     IReadOnlyList<VendorBankAccountDto> BankAccounts,
     IReadOnlyList<VendorCertificationDto> Certifications,
     IReadOnlyList<VendorCurrencyDto> Currencies,
-    DateTime CreatedUtc,
-    DateTime UpdatedUtc);
+    DateTimeOffset CreatedOnUtc,
+    DateTimeOffset? LastModifiedOnUtc);

@@ -1,3 +1,4 @@
+using FSH.Modules.Suppliers.Domain;
 using FSH.Modules.Suppliers.Domain.Onboarding;
 
 namespace Suppliers.Tests.Domain;
@@ -70,7 +71,10 @@ public sealed class VendorOnboardingApplicationTests
             region: null,
             state: null,
             city: null,
-            country: null,
+            countryCode: null,
+            stateId: null,
+            cityId: null,
+            updateGeoIds: false,
             categories: null,
             nowUtc: DateTime.UtcNow);
 
@@ -79,7 +83,7 @@ public sealed class VendorOnboardingApplicationTests
         var now = DateTime.UtcNow;
         var invitation = VendorOnboardingInvitation.Create(
             "v@example.com",
-            "Swec",
+            VendorType.Swec,
             [],
             rawToken: Convert.ToHexString(Guid.NewGuid().ToByteArray()),
             invitedByUserId: "buyer-1",

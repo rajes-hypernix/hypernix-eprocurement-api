@@ -1,3 +1,6 @@
+using FSH.Framework.Core.Domain;
+using FSH.Modules.Suppliers.Domain;
+
 namespace FSH.Modules.Suppliers.Domain.Onboarding;
 
 /// <summary>
@@ -6,7 +9,7 @@ namespace FSH.Modules.Suppliers.Domain.Onboarding;
 /// side is filled once (Open -&gt; Responded). Directional so either party can batch several
 /// points into a single round.
 /// </summary>
-public sealed class OnboardingClarificationRound
+public sealed class OnboardingClarificationRound : IAuditableEntity
 {
     private readonly List<OnboardingClarificationItem> _items = [];
 
@@ -23,6 +26,11 @@ public sealed class OnboardingClarificationRound
     public string RaisedByName { get; private set; } = default!;
     public DateTime RaisedUtc { get; private set; }
     public DateTime? RespondedUtc { get; private set; }
+
+    public DateTimeOffset CreatedOnUtc { get; private set; }
+    public string? CreatedBy { get; private set; }
+    public DateTimeOffset? LastModifiedOnUtc { get; private set; }
+    public string? LastModifiedBy { get; private set; }
 
     public IReadOnlyList<OnboardingClarificationItem> Items => _items;
 
@@ -58,6 +66,8 @@ public sealed class OnboardingClarificationRound
         RaisedByName = raisedByName;
         _items.AddRange(list);
         RaisedUtc = nowUtc;
+        CreatedOnUtc = AuditTime.FromUtc(nowUtc);
+        CreatedBy = null;
     }
 
     /// <summary>
@@ -85,5 +95,7 @@ public sealed class OnboardingClarificationRound
 
         Status = ClarificationRoundStatus.Responded;
         RespondedUtc = nowUtc;
+        LastModifiedOnUtc = AuditTime.FromUtc(nowUtc);
+        LastModifiedBy = null;
     }
 }

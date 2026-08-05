@@ -1,5 +1,6 @@
 using FSH.Modules.Platform.Contracts.Services;
 using FSH.Modules.Suppliers.Data;
+using FSH.Modules.Suppliers.Domain;
 using Microsoft.EntityFrameworkCore;
 
 namespace FSH.Modules.Suppliers.Services;
@@ -31,8 +32,8 @@ public sealed class SuppliersSavedViewRowSource(SuppliersDbContext dbContext, IS
                 ["Id"] = v.Id,
                 ["Code"] = v.Code,
                 ["Name"] = v.Name,
-                ["Status"] = v.Status,
-                ["Type"] = v.Type,
+                ["Status"] = v.Status.ToString(),
+                ["Type"] = VendorTypeParser.ToApi(v.Type),
                 ["Region"] = v.Region,
                 ["State"] = v.State,
                 ["City"] = v.City,

@@ -10,10 +10,11 @@ public sealed class VendorContact
 
     public VendorContact(string name, string? role, string? email, string? phone, bool isPrimary)
     {
-        Name = name;
-        Role = role ?? string.Empty;
-        Email = email ?? string.Empty;
-        Phone = phone ?? string.Empty;
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        Name = name.Trim();
+        Role = (role ?? string.Empty).Trim();
+        Email = (email ?? string.Empty).Trim();
+        Phone = (phone ?? string.Empty).Trim();
         IsPrimary = isPrimary;
     }
 }

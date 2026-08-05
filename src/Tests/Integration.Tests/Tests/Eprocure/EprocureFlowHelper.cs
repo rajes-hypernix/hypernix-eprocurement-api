@@ -138,7 +138,7 @@ internal static class EprocureFlowHelper
                 region = "Central",
                 state = "Selangor",
                 city = "Shah Alam",
-                country = "MY"
+                countryCode = "MY"
             });
         await EnsureSuccessAsync(draftResponse, "Save draft");
 

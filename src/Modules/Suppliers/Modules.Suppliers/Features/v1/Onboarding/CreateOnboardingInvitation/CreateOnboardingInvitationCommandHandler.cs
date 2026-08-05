@@ -4,6 +4,7 @@ using FSH.Modules.Platform.Contracts.Services;
 using FSH.Modules.Suppliers.Contracts.Dtos;
 using FSH.Modules.Suppliers.Contracts.v1.Onboarding;
 using FSH.Modules.Suppliers.Data;
+using FSH.Modules.Suppliers.Domain;
 using FSH.Modules.Suppliers.Domain.Onboarding;
 using FSH.Modules.Suppliers.Services.Onboarding;
 using Mediator;
@@ -33,7 +34,7 @@ public sealed class CreateOnboardingInvitationCommandHandler(
 
         var invitation = VendorOnboardingInvitation.Create(
             email,
-            command.Type,
+            VendorTypeParser.Parse(command.Type),
             templateIds,
             rawToken,
             currentUser.GetUserId().ToString(),

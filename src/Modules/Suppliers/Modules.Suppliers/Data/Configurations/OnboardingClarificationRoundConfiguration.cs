@@ -19,6 +19,7 @@ public sealed class OnboardingClarificationRoundConfiguration : IEntityTypeConfi
         builder.Property(x => x.RaisedByName).HasMaxLength(200);
         builder.HasIndex(x => x.ApplicationId);
         builder.HasIndex(x => new { x.ApplicationId, x.RoundNo });
+        builder.ConfigureAudit();
 
         builder.OwnsMany(x => x.Items, o =>
         {

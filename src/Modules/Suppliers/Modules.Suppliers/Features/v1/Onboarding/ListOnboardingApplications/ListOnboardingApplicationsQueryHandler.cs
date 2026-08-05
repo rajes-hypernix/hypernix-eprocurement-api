@@ -18,7 +18,7 @@ public sealed class ListOnboardingApplicationsQueryHandler(SuppliersDbContext db
             .AsNoTracking()
             .Include(a => a.Rounds)
             .Where(a => a.Status != OnboardingStatus.Draft)
-            .OrderByDescending(a => a.CreatedUtc)
+            .OrderByDescending(a => a.CreatedOnUtc)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
