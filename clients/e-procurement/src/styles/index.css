@@ -855,6 +855,64 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--t
 .cl-foot { display: flex; align-items: center; gap: 8px; padding: 11px 13px; border-top: 1px solid var(--line); }
 .cl-summ { display: flex; gap: 14px; font-size: 12px; color: var(--muted); }
 
+/* ---- RFQ Workspace: By PR / By item toggle, greyed external lines, move affordance ---- */
+.gb-tog { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius-control); overflow: hidden; flex-shrink: 0; }
+.gb-tog button { background: #fff; border: none; border-right: 1px solid var(--line); padding: 6px 11px; font-size: 12px; font-weight: 600; color: var(--muted); cursor: pointer; }
+.gb-tog button:last-child { border-right: none; }
+.gb-tog button.on { background: var(--teal); color: #fff; }
+.prg-h.ig { cursor: default; }
+.prg-line.ext { opacity: 0.55; }
+.cl-add.mv {
+  width: 28px; height: 28px; flex-shrink: 0; border: 1px solid var(--amber-line); background: var(--amber-bg);
+  border-radius: 0; cursor: pointer; font-size: 14px; font-weight: 700; color: var(--amber-ink);
+}
+.cl-add.mv:hover { background: var(--amber); color: #fff; }
+
+/* ---- RFQ Workspace: multi-basket tabs (rename / delete / new) ---- */
+.bk-tabs { display: flex; align-items: flex-end; gap: 4px; flex-wrap: wrap; padding: 8px 10px 0; border-bottom: 1px solid var(--line); }
+.bk-tab { display: inline-flex; align-items: stretch; border: 1px solid var(--line); border-bottom: none; background: var(--soft); }
+.bk-tab.on { background: #fff; border-color: var(--teal); box-shadow: inset 0 2px 0 var(--teal); }
+.bk-tab-btn { display: flex; align-items: center; gap: 6px; background: none; border: none; padding: 7px 10px; font-size: 12.5px; font-weight: 600; color: var(--ink); cursor: pointer; }
+.bk-tab-btn .ct { font-size: 10.5px; color: var(--muted); font-weight: 700; background: var(--line); padding: 1px 6px; border-radius: 999px; margin-left: 0; }
+.bk-tab.on .bk-tab-btn { color: var(--teal-d); }
+.bk-tab-x { background: none; border: none; border-left: 1px solid var(--line); width: 24px; font-size: 14px; line-height: 1; color: var(--muted); cursor: pointer; padding: 0; }
+.bk-tab-x:hover { background: var(--red); color: #fff; }
+.bk-tab-edit { display: inline-flex; align-items: center; border: 1px solid var(--teal); background: #fff; padding: 2px; }
+.bk-tab-edit input { border: none; outline: none; font-size: 12.5px; font-weight: 600; padding: 5px 7px; width: 130px; font-family: inherit; }
+.bk-tab-new { background: none; border: 1px dashed var(--line); border-bottom: none; padding: 7px 10px; font-size: 12.5px; font-weight: 600; color: var(--teal); cursor: pointer; }
+.bk-tab-new:hover { background: var(--soft); }
+
+/* ---- RFQ Workspace: richer basket row — numeric column, rate variance, move-to-basket ---- */
+.bk-num { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex-shrink: 0; }
+.bk-amt { font-size: 11px; color: var(--muted); font-weight: 600; white-space: nowrap; }
+.bk-vary {
+  display: inline-block; margin-left: 5px; font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.3px; color: var(--amber-ink); background: var(--amber-bg); border: 1px solid var(--amber-line);
+  padding: 1px 5px; border-radius: 999px;
+}
+.bk-move { position: relative; flex-shrink: 0; }
+.bk-movebtn { width: 26px; height: 26px; border: 1px solid var(--line); background: #fff; border-radius: 0; cursor: pointer; font-size: 13px; color: var(--teal); }
+.bk-movebtn:hover { background: var(--teal); color: #fff; }
+.bk-movepop {
+  position: absolute; top: 100%; right: 0; margin-top: 4px; background: #fff; border: 1px solid var(--line);
+  box-shadow: var(--shadow-l); z-index: 60; min-width: 160px; padding: 4px; display: flex; flex-direction: column;
+}
+.bk-movepop button { background: none; border: none; text-align: left; padding: 7px 9px; font-size: 12.5px; color: var(--ink); cursor: pointer; }
+.bk-movepop button:hover { background: var(--soft); color: var(--teal-d); }
+
+/* ---- RFQ Workspace: footer ledger — date pressure, category subtotals, mixed-category nudge ---- */
+.cl-footx { display: flex; flex-direction: column; gap: 7px; padding: 10px 13px; border-top: 1px solid var(--line); background: var(--soft); font-size: 12px; }
+.bk-early { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+.bk-early.tight { color: var(--amber-ink); }
+.bk-tight {
+  margin-left: 6px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px;
+  color: var(--amber-ink); background: var(--amber-bg); border: 1px solid var(--amber-line); padding: 2px 6px; border-radius: 999px;
+}
+.bk-cats { display: flex; flex-wrap: wrap; gap: 10px 16px; }
+.bk-cat { color: var(--muted); }
+.bk-cat b { color: var(--ink); }
+.bk-mix { color: var(--amber-ink); font-weight: 600; }
+
 /* ---- Uniform right-aligned row actions (list/table action cells) ---- */
 .rowactions { display: flex; justify-content: flex-end; align-items: center; gap: 8px; white-space: nowrap; }
 
@@ -864,6 +922,41 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--t
    action bar and collapse its internal spacer so the actions cluster at the top-right. */
 .pr-actions { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; justify-content: flex-end; }
 .pr-actions .spacer { display: none; }
+.pr-form-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.pr-form-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 14px;
+  align-items: start;
+}
+.pr-form-summary .pr-summ-total { margin-bottom: 14px; }
+.pr-form-summary .pr-summ-num {
+  font-family: var(--serif);
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-top: 4px;
+}
+.pr-summ-rows { display: grid; gap: 8px; }
+.pr-summ-rows > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.pr-summ-rows strong { color: var(--ink); font-weight: 600; }
+.pr-summ-rows select { font-size: 12.5px; padding: 2px 6px; }
+.pr-class-grid { grid-template-columns: repeat(4, 1fr) !important; }
+.pr-lines-scroll { overflow-x: auto; }
+.pr-lines-scroll table { min-width: 980px; }
+@media (max-width: 960px) {
+  .pr-form-top { grid-template-columns: 1fr; }
+  .pr-class-grid { grid-template-columns: 1fr 1fr !important; }
+}
+@media (max-width: 640px) {
+  .pr-class-grid { grid-template-columns: 1fr !important; }
+}
 /* CFF-T5: non-card headers (the form-builder + segment detail) right-align their actions —
    the `.spacer` was inert here (flex only came from `.card .chead`), so "Save form" and the
    segment verbs sat left. Give every chead a flex row with a growing spacer → Save top-right. */

@@ -24,7 +24,11 @@ public sealed record RequisitionDto(
     string Currency,
     IReadOnlyList<PrLineDto> Lines,
     DateTime CreatedUtc,
-    DateTime UpdatedUtc);
+    DateTime UpdatedUtc,
+    Guid? ShipToLocationId = null,
+    Guid? ShipToAddressId = null,
+    string? ShipToAdhoc = null,
+    string? ShipTo = null);
 
 public sealed record RequisitionListItemDto(
     Guid Id,

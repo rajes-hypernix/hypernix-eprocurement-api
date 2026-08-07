@@ -14,6 +14,19 @@ public sealed class PrLine
     public decimal Qty { get; private set; }
     public string Uom { get; private set; } = string.Empty;
     public decimal EstUnitPrice { get; private set; }
+
+    /// <summary>
+    /// Optional estimate-grade tax code (null = no tax). SST is derived on read via
+    /// <c>TaxMath.LineSst(Qty * EstUnitPrice, rate)</c> — never stored.
+    /// </summary>
+    public Guid? TaxCodeId { get; private set; }
+
+    /// <summary>
+    /// Stable entry-order position within the owning PR — unique gap-free 1..n.
+    /// Written only by <see cref="PurchaseRequisition.ResequenceLines"/>.
+    /// </summary>
+    public int LineSequence { get; private set; }
+
     public PrLineStatus LifecycleStatus { get; private set; } = PrLineStatus.Open;
 
     /// <summary>Most recent RFQ code this line was released to.</summary>
@@ -23,7 +36,14 @@ public sealed class PrLine
 
     private PrLine() { }
 
-    internal static PrLine Create(Guid purchaseRequisitionId, string itemCode, string description, decimal qty, string uom, decimal estUnitPrice)
+    internal static PrLine Create(
+        Guid purchaseRequisitionId,
+        string itemCode,
+        string description,
+        decimal qty,
+        string uom,
+        decimal estUnitPrice,
+        Guid? taxCodeId = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(itemCode);
 
@@ -36,7 +56,23 @@ public sealed class PrLine
             Qty = qty,
             Uom = uom,
             EstUnitPrice = estUnitPrice,
+            TaxCodeId = taxCodeId,
         };
+    }
+
+    internal void SetSequence(int sequence) => LineSequence = sequence;
+
+    /// <summary>Open-line draft edit — locked lines ignore caller updates at the aggregate layer.</summary>
+    internal void UpdateDraft(string itemCode, string description, decimal qty, string uom, decimal estUnitPrice, Guid? taxCodeId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(itemCode);
+        ItemCode = itemCode.Trim();
+        Description = description;
+        Qty = qty;
+        Uom = uom;
+        EstUnitPrice = estUnitPrice;
+        TaxCodeId = taxCodeId;
+        UpdatedUtc = DateTime.UtcNow;
     }
 
     public PrLineTransition Cancel(string? reason, DateTime nowUtc)

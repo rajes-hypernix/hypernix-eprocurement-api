@@ -28,7 +28,9 @@ public sealed class PurchaseRequisitionConfiguration : IEntityTypeConfiguration<
         builder.Property(x => x.Project).HasMaxLength(200);
         builder.Property(x => x.Currency).IsRequired().HasMaxLength(3);
         builder.Property(x => x.HeaderStatus).IsRequired().HasConversion<string>().HasMaxLength(20);
+        builder.Property(x => x.ShipToAdhoc).HasMaxLength(400);
         builder.HasIndex(x => x.HeaderStatus);
+        builder.Ignore(x => x.HasShipTo);
 
         builder.HasMany(x => x.Lines).WithOne()
             .HasForeignKey(l => l.PurchaseRequisitionId)

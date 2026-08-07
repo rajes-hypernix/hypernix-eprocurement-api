@@ -5,12 +5,20 @@ using Mediator;
 
 namespace FSH.Modules.Sourcing.Features.v1.Requisitions.CreateRequisition;
 
-public sealed class CreateRequisitionCommandHandler(SourcingDbContext dbContext, ISourcingCodeGenerator codeGenerator)
+public sealed class CreateRequisitionCommandHandler(SourcingDbContext dbContext, ISourcingCodeGenerator codeGenerator, IMediator mediator)
     : ICommandHandler<CreateRequisitionCommand, Guid>
 {
     public async ValueTask<Guid> Handle(CreateRequisitionCommand command, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(command);
+
+        await RequisitionWriteSupport.EnsureActiveTaxCodesAsync(mediator, command.Lines, cancellationToken).ConfigureAwait(false);
+        await RequisitionWriteSupport.EnsureShipToLocationAsync(
+            mediator,
+            command.ShipToLocationId,
+            command.ShipToAddressId,
+            command.ShipToAdhoc,
+            cancellationToken).ConfigureAwait(false);
 
         string code = await codeGenerator.NextPurchaseRequisitionCodeAsync(cancellationToken).ConfigureAwait(false);
         var pr = PurchaseRequisition.Create(
@@ -32,9 +40,11 @@ public sealed class CreateRequisitionCommandHandler(SourcingDbContext dbContext,
             command.RequiredOn,
             command.Currency);
 
+        pr.ApplyShipTo(command.ShipToLocationId, command.ShipToAddressId, command.ShipToAdhoc);
+
         foreach (var line in command.Lines)
         {
-            pr.AddLine(line.ItemCode, line.Description, line.Qty, line.Uom, line.EstUnitPrice);
+            pr.AddLine(line.ItemCode, line.Description, line.Qty, line.Uom, line.EstUnitPrice, line.TaxCodeId);
         }
 
         if (command.Submit)

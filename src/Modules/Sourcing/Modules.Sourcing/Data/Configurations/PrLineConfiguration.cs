@@ -19,7 +19,11 @@ public sealed class PrLineConfiguration : IEntityTypeConfiguration<PrLine>
         builder.Property(x => x.EstUnitPrice).HasPrecision(18, 2);
         builder.Property(x => x.LifecycleStatus).IsRequired().HasConversion<string>().HasMaxLength(20);
         builder.Property(x => x.Ref).HasMaxLength(50);
+        builder.Property(x => x.LineSequence).IsRequired();
         builder.HasIndex(x => x.PurchaseRequisitionId);
         builder.HasIndex(x => x.LifecycleStatus);
+        builder.HasIndex(x => new { x.PurchaseRequisitionId, x.LineSequence })
+            .IsUnique()
+            .HasDatabaseName("IX_PrLines_Pr_LineSequence");
     }
 }

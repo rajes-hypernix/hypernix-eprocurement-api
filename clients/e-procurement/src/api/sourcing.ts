@@ -16,14 +16,22 @@ export type PrLineDto = {
   estUnitPrice: number;
   lifecycleStatus: string;
   ref?: string | null;
+  lineSequence: number;
+  taxCodeId?: string | null;
+  taxCode?: string | null;
+  taxRatePct?: number | null;
+  sstAmount?: number;
+  estAmount?: number;
 };
 
 export type PrLineInput = {
+  id?: string | null;
   itemCode: string;
   description: string;
   qty: number;
   uom: string;
   estUnitPrice: number;
+  taxCodeId?: string | null;
 };
 
 export type RequisitionDto = {
@@ -51,6 +59,10 @@ export type RequisitionDto = {
   lines: PrLineDto[];
   createdUtc: string;
   updatedUtc: string;
+  shipToLocationId?: string | null;
+  shipToAddressId?: string | null;
+  shipToAdhoc?: string | null;
+  shipTo?: string | null;
 };
 
 export type RequisitionListItemDto = {
@@ -83,6 +95,9 @@ export type CreateRequisitionRequest = {
   currency: string;
   lines: PrLineInput[];
   submit?: boolean;
+  shipToLocationId?: string | null;
+  shipToAddressId?: string | null;
+  shipToAdhoc?: string | null;
 };
 
 export type UpdateRequisitionRequest = {
@@ -98,6 +113,11 @@ export type UpdateRequisitionRequest = {
   costCentre: string;
   project?: string | null;
   requiredOn?: string | null;
+  entryFormId?: string | null;
+  shipToLocationId?: string | null;
+  shipToAddressId?: string | null;
+  shipToAdhoc?: string | null;
+  lines?: PrLineInput[] | null;
 };
 
 export function listRequisitions(): Promise<RequisitionListItemDto[]> {

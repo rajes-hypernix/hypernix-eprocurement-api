@@ -21,4 +21,7 @@ public sealed record CreateRequisitionCommand(
     DateOnly? RequiredOn,
     string Currency,
     IReadOnlyList<PrLineInput> Lines,
-    bool Submit = false) : ICommand<Guid>;
+    bool Submit = false,
+    Guid? ShipToLocationId = null,
+    Guid? ShipToAddressId = null,
+    string? ShipToAdhoc = null) : ICommand<Guid>;

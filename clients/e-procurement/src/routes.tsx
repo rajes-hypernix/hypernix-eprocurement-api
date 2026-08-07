@@ -34,7 +34,11 @@ import { SavedViewsHome } from "@/pages/views/SavedViewsHome";
 function ConsolidateRoute() {
   const navigate = useNavigate();
   return (
-    <ConsolidatePage onBack={() => void navigate("/reqs")} onOpenRfq={(id) => void navigate(`/rfqs/${id}`)} />
+    <ConsolidatePage
+      onBack={() => void navigate("/reqs")}
+      onOpenRfq={(id) => void navigate(`/rfqs/${id}`)}
+      onOpenRfqList={() => void navigate("/rfqs")}
+    />
   );
 }
 

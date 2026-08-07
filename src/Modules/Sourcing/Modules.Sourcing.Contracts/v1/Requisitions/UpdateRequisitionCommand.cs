@@ -1,3 +1,4 @@
+using FSH.Modules.Sourcing.Contracts.Dtos;
 using Mediator;
 
 namespace FSH.Modules.Sourcing.Contracts.v1.Requisitions;
@@ -15,4 +16,9 @@ public sealed record UpdateRequisitionCommand(
     string Memo,
     string CostCentre,
     string? Project,
-    DateOnly? RequiredOn) : ICommand<Guid>;
+    DateOnly? RequiredOn,
+    Guid? EntryFormId = null,
+    Guid? ShipToLocationId = null,
+    Guid? ShipToAddressId = null,
+    string? ShipToAdhoc = null,
+    IReadOnlyList<PrLineInput>? Lines = null) : ICommand<Guid>;
