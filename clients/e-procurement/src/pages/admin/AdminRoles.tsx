@@ -11,15 +11,10 @@ import {
 } from "@/api/identity";
 import { Icon } from "@/components/Icon";
 import { Gated } from "@/components/Gated";
-import { EmptyState, Notice, Spinner } from "@/components/ui";
-import { ApiRequestError } from "@/lib/api-client";
+import { ConfirmModal, EmptyState, Notice, Spinner } from "@/components/ui";
+import { useErrorDialog } from "@/feedback/ErrorDialogContext";
+import { dateTimeMY } from "@/lib/format";
 import { FshPermissions } from "@/lib/fsh-permissions";
-
-function errMsg(e: unknown): string {
-  if (e instanceof ApiRequestError) return e.problem?.detail ?? e.message;
-  if (e instanceof Error) return e.message;
-  return "Something went wrong.";
-}
 
 const SYSTEM_ROLES = new Set(["Admin", "Basic"]);
 
@@ -34,7 +29,7 @@ export function RolesListPage({ onNavigate }: { onNavigate: (path: string) => vo
       <div className="pagehead">
         <div>
           <h1>Roles</h1>
-          <p>Role definitions and permission grants.</p>
+          <p>Define roles and assign which permissions each role has.</p>
         </div>
         <div className="spacer" />
         <button type="button" className="btn btn-out btn-sm" onClick={() => onNavigate("")}>
@@ -51,37 +46,44 @@ export function RolesListPage({ onNavigate }: { onNavigate: (path: string) => vo
         {isPending ? (
           <Spinner label="Loading roles…" />
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Role</th>
-                <th>Description</th>
-                <th>Grants</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {data.map((r) => (
-                <tr key={r.id} className="drillrow" onClick={() => onNavigate(`roles/${r.id}`)}>
-                  <td style={{ fontWeight: 700 }}>{r.name}</td>
-                  <td>{r.description ?? "—"}</td>
-                  <td>{r.permissions?.length ?? 0}</td>
-                  <td className="amt">
-                    <span className="btn btn-ghost btn-sm">
-                      Open <Icon name="chev" size={13} />
-                    </span>
-                  </td>
-                </tr>
-              ))}
-              {data.length === 0 ? (
+          <>
+            <table>
+              <thead>
                 <tr>
-                  <td colSpan={4}>
-                    <EmptyState>No roles defined.</EmptyState>
-                  </td>
+                  <th>Role</th>
+                  <th>Description</th>
+                  <th>Created</th>
+                  <th />
                 </tr>
-              ) : null}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {data.map((r) => (
+                  <tr key={r.id} className="drillrow" onClick={() => onNavigate(`roles/${r.id}`)}>
+                    <td style={{ fontWeight: 700 }}>{r.name}</td>
+                    <td>{r.description ?? "—"}</td>
+                    <td>
+                      <span className="hint">{r.createdOnUtc ? dateTimeMY(r.createdOnUtc) : "—"}</span>
+                    </td>
+                    <td className="amt">
+                      <span className="btn btn-ghost btn-sm">
+                        Open <Icon name="chev" size={13} />
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+                {data.length === 0 ? (
+                  <tr>
+                    <td colSpan={4}>
+                      <EmptyState icon="users">No roles defined.</EmptyState>
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+            <p className="hint" style={{ margin: "10px 16px 12px", textAlign: "right" }}>
+              {data.length} total
+            </p>
+          </>
         )}
       </div>
     </>
@@ -95,20 +97,20 @@ export function RoleCreatePage({
   onBack: () => void;
   onSaved: (roleId: string) => void;
 }) {
+  const { showError, showErrorFrom } = useErrorDialog();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [err, setErr] = useState<string | null>(null);
 
   const save = useMutation({
-    mutationFn: () => upsertRole({ id: "", name: name.trim(), description: description.trim() || undefined }),
+    mutationFn: () =>
+      upsertRole({ id: "", name: name.trim(), description: description.trim() || undefined }),
     onSuccess: (role) => onSaved(role.id),
-    onError: (e) => setErr(errMsg(e)),
+    onError: (e) => showErrorFrom(e, "Could not create role"),
   });
 
   const submit = () => {
-    setErr(null);
     if (!name.trim()) {
-      setErr("Role name is required.");
+      showError("Role name is required.");
       return;
     }
     save.mutate();
@@ -128,8 +130,6 @@ export function RoleCreatePage({
           <p>Create a custom role, then assign permissions on the detail screen.</p>
         </div>
       </div>
-
-      {err ? <Notice tone="error">{err}</Notice> : null}
 
       <div className="card">
         <div className="cbody">
@@ -167,8 +167,8 @@ function groupCatalog(entries: PermissionCatalogEntryDto[]): Map<string, Permiss
 
 export function RoleDetailPage({ roleId, onBack }: { roleId: string; onBack: () => void }) {
   const qc = useQueryClient();
-  const [err, setErr] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
+  const { showError, showErrorFrom } = useErrorDialog();
+  const [pendingDelete, setPendingDelete] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const roleQuery = useQuery({
@@ -188,37 +188,30 @@ export function RoleDetailPage({ roleId, onBack }: { roleId: string; onBack: () 
     if (role?.permissions) setSelected(new Set(role.permissions));
   }, [role?.permissions]);
 
-  const grouped = useMemo(
-    () => groupCatalog(catalogQuery.data ?? []),
-    [catalogQuery.data],
-  );
+  const grouped = useMemo(() => groupCatalog(catalogQuery.data ?? []), [catalogQuery.data]);
 
   const saveProfile = useMutation({
     mutationFn: (input: { name: string; description: string }) =>
       upsertRole({ id: roleId, name: input.name, description: input.description }),
     onSuccess: () => {
-      setErr(null);
       void qc.invalidateQueries({ queryKey: ["roles", roleId] });
       void qc.invalidateQueries({ queryKey: ["roles"] });
     },
-    onError: (e) => setErr(errMsg(e)),
+    onError: (e) => showErrorFrom(e, "Could not save role profile"),
   });
 
   const savePerms = useMutation({
     mutationFn: () => updateRolePermissions(roleId, [...selected]),
     onSuccess: () => {
-      setErr(null);
-      setSaved(true);
       void qc.invalidateQueries({ queryKey: ["roles", roleId] });
-      setTimeout(() => setSaved(false), 2000);
     },
-    onError: (e) => setErr(errMsg(e)),
+    onError: (e) => showErrorFrom(e, "Could not save permissions"),
   });
 
   const remove = useMutation({
     mutationFn: () => deleteRole(roleId),
     onSuccess: () => onBack(),
-    onError: (e) => setErr(errMsg(e)),
+    onError: (e) => showErrorFrom(e, "Could not delete role"),
   });
 
   const [name, setName] = useState("");
@@ -253,7 +246,7 @@ export function RoleDetailPage({ roleId, onBack }: { roleId: string; onBack: () 
       <div className="pagehead">
         <div>
           <h1>{role?.name}</h1>
-          <p>{role?.description ?? "Permission grants for this role."}</p>
+          <p>{role?.description ?? "Choose which permissions this role can use."}</p>
         </div>
         <div className="spacer" />
         <Gated permission={FshPermissions.roles.delete}>
@@ -262,7 +255,7 @@ export function RoleDetailPage({ roleId, onBack }: { roleId: string; onBack: () 
               type="button"
               className="btn btn-out btn-sm btn-danger"
               disabled={remove.isPending}
-              onClick={() => remove.mutate()}
+              onClick={() => setPendingDelete(true)}
             >
               Delete
             </button>
@@ -273,8 +266,6 @@ export function RoleDetailPage({ roleId, onBack }: { roleId: string; onBack: () 
       {isSystem ? (
         <Notice tone="warn">Built-in role — name and permissions are read-only.</Notice>
       ) : null}
-      {err ? <Notice tone="error">{err}</Notice> : null}
-      {saved ? <Notice tone="success">Permissions saved.</Notice> : null}
 
       {!isSystem ? (
         <div className="card" style={{ marginBottom: 14 }}>
@@ -288,16 +279,26 @@ export function RoleDetailPage({ roleId, onBack }: { roleId: string; onBack: () 
             </div>
             <div className="field">
               <label>Description</label>
-              <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={2}
+              />
             </div>
             <Gated permission={FshPermissions.roles.update}>
               <button
                 type="button"
                 className="btn btn-out btn-sm"
                 disabled={saveProfile.isPending}
-                onClick={() => saveProfile.mutate({ name, description })}
+                onClick={() => {
+                  if (!name.trim()) {
+                    showError("Role name is required.");
+                    return;
+                  }
+                  saveProfile.mutate({ name: name.trim(), description });
+                }}
               >
-                Save profile
+                {saveProfile.isPending ? "Saving…" : "Save profile"}
               </button>
             </Gated>
           </div>
@@ -348,6 +349,23 @@ export function RoleDetailPage({ roleId, onBack }: { roleId: string; onBack: () 
           )}
         </div>
       </div>
+
+      {pendingDelete ? (
+        <ConfirmModal
+          title="Delete role"
+          icon="x"
+          danger
+          busy={remove.isPending}
+          confirmLabel="Delete"
+          body={
+            <>
+              Delete role <strong>{role?.name}</strong>? Users with only this role may lose access.
+            </>
+          }
+          onCancel={() => setPendingDelete(false)}
+          onConfirm={() => remove.mutate()}
+        />
+      ) : null}
     </>
   );
 }

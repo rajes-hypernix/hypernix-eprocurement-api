@@ -17,7 +17,7 @@ public sealed class ListItemsQueryHandler(PlatformDbContext dbContext)
             q = q.Where(i => i.IsActive);
 
         return await q.OrderBy(i => i.ItemCode)
-            .Select(i => new ItemDto(i.Id, i.ItemCode, i.Description, i.Uom, i.IsActive))
+            .Select(i => new ItemDto(i.Id, i.ItemCode, i.Description, i.Uom, i.IsActive, i.CreatedOnUtc))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
     }

@@ -22,4 +22,7 @@ public class UserDto
 
     /// <summary>Whether the user has enrolled in TOTP-based two-factor authentication.</summary>
     public bool TwoFactorEnabled { get; set; }
+
+    /// <summary>When the account was created (UTC).</summary>
+    public DateTimeOffset CreatedOnUtc { get; set; }
 }

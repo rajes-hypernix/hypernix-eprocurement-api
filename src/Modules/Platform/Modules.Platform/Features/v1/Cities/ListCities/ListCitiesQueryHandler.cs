@@ -17,7 +17,7 @@ public sealed class ListCitiesQueryHandler(PlatformDbContext dbContext)
             q = q.Where(c => c.IsActive);
 
         return await q.OrderBy(c => c.Name)
-            .Select(c => new CityDto(c.Id, c.StateId, c.Name, c.IsActive))
+            .Select(c => new CityDto(c.Id, c.StateId, c.Name, c.IsActive, c.CreatedOnUtc))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
     }

@@ -17,7 +17,7 @@ public sealed class ListIncotermsQueryHandler(PlatformDbContext dbContext)
             q = q.Where(i => i.IsActive);
 
         return await q.OrderBy(i => i.Code)
-            .Select(i => new IncotermDto(i.Id, i.Code, i.Name, i.IsActive))
+            .Select(i => new IncotermDto(i.Id, i.Code, i.Name, i.IsActive, i.CreatedOnUtc))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
     }

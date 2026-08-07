@@ -6,7 +6,8 @@ public sealed record SettingDto(
     string Value,
     string ValueKind,
     string Label,
-    string? Description);
+    string? Description,
+    DateTimeOffset CreatedOnUtc);
 
 public sealed record CurrencyDto(
     Guid Id,
@@ -14,7 +15,8 @@ public sealed record CurrencyDto(
     string Name,
     string Symbol,
     int Decimals,
-    bool IsActive);
+    bool IsActive,
+    DateTimeOffset CreatedOnUtc);
 
 public sealed record ExchangeRateDto(
     Guid Id,
@@ -31,11 +33,11 @@ public sealed record ExchangeRateCurrentDto(
     DateOnly? EffectiveDate,
     bool IsBaseCurrency);
 
-public sealed record TaxCodeDto(Guid Id, string Code, string Name, decimal RatePct, bool IsActive);
+public sealed record TaxCodeDto(Guid Id, string Code, string Name, decimal RatePct, bool IsActive, DateTimeOffset CreatedOnUtc);
 
-public sealed record IncotermDto(Guid Id, string Code, string Name, bool IsActive);
+public sealed record IncotermDto(Guid Id, string Code, string Name, bool IsActive, DateTimeOffset CreatedOnUtc);
 
-public sealed record ItemDto(Guid Id, string ItemCode, string Description, string Uom, bool IsActive);
+public sealed record ItemDto(Guid Id, string ItemCode, string Description, string Uom, bool IsActive, DateTimeOffset CreatedOnUtc);
 
 public sealed record PaymentScheduleRowDto(
     Guid Id,
@@ -57,7 +59,8 @@ public sealed record PaymentTermDto(
     int? MinimumDaysBeforeDue,
     decimal? DiscountPct,
     int? DiscountDays,
-    IReadOnlyList<PaymentScheduleRowDto> Rows);
+    IReadOnlyList<PaymentScheduleRowDto> Rows,
+    DateTimeOffset CreatedOnUtc);
 
 public sealed record LocationAddressDto(
     Guid Id,
@@ -76,7 +79,8 @@ public sealed record LocationDto(
     string Code,
     string Name,
     bool IsActive,
-    IReadOnlyList<LocationAddressDto> Addresses);
+    IReadOnlyList<LocationAddressDto> Addresses,
+    DateTimeOffset CreatedOnUtc);
 
 public sealed record NumberingSchemeDto(
     Guid Id,
@@ -84,7 +88,8 @@ public sealed record NumberingSchemeDto(
     string Prefix,
     bool YearSegment,
     int Digits,
-    string PreviewExample);
+    string PreviewExample,
+    DateTimeOffset CreatedOnUtc);
 
 public sealed record ScheduleInstalmentDto(
     DateOnly? DueDate,

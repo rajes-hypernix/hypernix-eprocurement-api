@@ -1,10 +1,10 @@
 namespace FSH.Modules.Platform.Contracts.Dtos;
 
-public sealed record CountryDto(Guid Id, string Code, string Name, bool IsActive);
+public sealed record CountryDto(Guid Id, string Code, string Name, bool IsActive, DateTimeOffset CreatedOnUtc);
 
-public sealed record StateDto(Guid Id, Guid CountryId, string Code, string Name, bool IsActive);
+public sealed record StateDto(Guid Id, Guid CountryId, string Code, string Name, bool IsActive, DateTimeOffset CreatedOnUtc);
 
-public sealed record CityDto(Guid Id, Guid StateId, string Name, bool IsActive);
+public sealed record CityDto(Guid Id, Guid StateId, string Name, bool IsActive, DateTimeOffset CreatedOnUtc);
 
 /// <summary>
 /// Bank list/catalog row. Audit actor stamps are not included — open History (Auditing) on demand.
@@ -17,7 +17,7 @@ public sealed record BankDto(
     bool IsActive,
     DateTimeOffset CreatedOnUtc);
 
-public sealed record CustomListDto(Guid Id, string Key, string Name, bool IsActive);
+public sealed record CustomListDto(Guid Id, string Key, string Name, bool IsActive, DateTimeOffset CreatedOnUtc);
 
 public sealed record CustomListItemDto(
     Guid Id,
@@ -25,7 +25,8 @@ public sealed record CustomListItemDto(
     string Code,
     string Label,
     int SortOrder,
-    bool IsActive);
+    bool IsActive,
+    DateTimeOffset CreatedOnUtc);
 
 public sealed record CityLookupDto(Guid Id, string Name);
 
@@ -43,7 +44,8 @@ public sealed record OrgUnitDto(
     string Name,
     string Type,
     Guid? ParentId,
-    bool IsActive);
+    bool IsActive,
+    DateTimeOffset CreatedOnUtc);
 
 public sealed record OrgCatalogDto(IReadOnlyList<OrgUnitDto> Units);
 

@@ -79,7 +79,8 @@ public sealed class SearchUsersQueryHandler : IQueryHandler<SearchUsersQuery, Pa
             IsActive = u.IsActive,
             EmailConfirmed = u.EmailConfirmed,
             PhoneNumber = u.PhoneNumber,
-            ImageUrl = u.ImageUrl != null ? u.ImageUrl.ToString() : null
+            ImageUrl = u.ImageUrl != null ? u.ImageUrl.ToString() : null,
+            CreatedOnUtc = u.CreatedOnUtc,
         });
 
         var pagedResult = await projected.ToPagedResponseAsync(query, cancellationToken).ConfigureAwait(false);
@@ -100,7 +101,9 @@ public sealed class SearchUsersQueryHandler : IQueryHandler<SearchUsersQuery, Pa
         ["lastname"] = u => u.LastName,
         ["email"] = u => u.Email,
         ["username"] = u => u.UserName,
-        ["isactive"] = u => u.IsActive
+        ["isactive"] = u => u.IsActive,
+        ["createdonutc"] = u => u.CreatedOnUtc,
+        ["created"] = u => u.CreatedOnUtc,
     };
 
     private static IQueryable<FshUser> ApplySorting(IQueryable<FshUser> query, string? sort)

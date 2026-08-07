@@ -25,7 +25,7 @@ public sealed class ListNumberingSchemesQueryHandler(PlatformDbContext dbContext
         {
             var preview = await generator.PeekAsync(scheme.RecordType, cancellationToken).ConfigureAwait(false);
             result.Add(new NumberingSchemeDto(
-                scheme.Id, scheme.RecordType, scheme.Prefix, scheme.YearSegment, scheme.Digits, preview));
+                scheme.Id, scheme.RecordType, scheme.Prefix, scheme.YearSegment, scheme.Digits, preview, scheme.CreatedOnUtc));
         }
 
         return result;

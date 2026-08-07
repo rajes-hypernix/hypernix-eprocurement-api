@@ -10,6 +10,7 @@ export type SettingDto = {
   valueKind: string;
   label: string;
   description?: string | null;
+  createdOnUtc: string;
 };
 
 export type CurrencyDto = {
@@ -19,6 +20,7 @@ export type CurrencyDto = {
   symbol: string;
   decimals: number;
   isActive: boolean;
+  createdOnUtc: string;
 };
 
 export type ExchangeRateCurrentDto = {
@@ -44,6 +46,7 @@ export type TaxCodeDto = {
   name: string;
   ratePct: number;
   isActive: boolean;
+  createdOnUtc: string;
 };
 
 export type IncotermDto = {
@@ -51,6 +54,7 @@ export type IncotermDto = {
   code: string;
   name: string;
   isActive: boolean;
+  createdOnUtc: string;
 };
 
 export type ItemDto = {
@@ -59,6 +63,7 @@ export type ItemDto = {
   description: string;
   uom: string;
   isActive: boolean;
+  createdOnUtc: string;
 };
 
 export type PaymentScheduleRowDto = {
@@ -83,6 +88,7 @@ export type PaymentTermDto = {
   discountPct?: number | null;
   discountDays?: number | null;
   rows: PaymentScheduleRowDto[];
+  createdOnUtc: string;
 };
 
 export type PaymentScheduleRowInput = {
@@ -132,6 +138,7 @@ export type LocationDto = {
   name: string;
   isActive: boolean;
   addresses: LocationAddressDto[];
+  createdOnUtc: string;
 };
 
 export type NumberingSchemeDto = {
@@ -141,6 +148,7 @@ export type NumberingSchemeDto = {
   yearSegment: boolean;
   digits: number;
   previewExample: string;
+  createdOnUtc: string;
 };
 
 // ---- Settings ----

@@ -4,6 +4,7 @@ using FSH.Framework.Core.Context;
 using FSH.Framework.Core.Exceptions;
 using FSH.Framework.Shared.Constants;
 using FSH.Framework.Shared.Multitenancy;
+using FSH.Modules.Auditing.Contracts;
 using FSH.Modules.Identity.Contracts.DTOs;
 using FSH.Modules.Identity.Contracts.Services;
 using FSH.Modules.Identity.Data;
@@ -19,7 +20,8 @@ internal sealed class UserRoleService(
     IdentityDbContext db,
     IMultiTenantContextAccessor<AppTenantInfo> multiTenantContextAccessor,
     ICurrentUser currentUser,
-    IUserPermissionService userPermissionService) : IUserRoleService
+    IUserPermissionService userPermissionService,
+    IAuditClient auditClient) : IUserRoleService
 {
     public async Task<string> AssignRolesAsync(string userId, List<UserRoleDto> userRoles, CancellationToken cancellationToken)
     {
@@ -30,12 +32,13 @@ internal sealed class UserRoleService(
 
         await ValidateAdminRoleChangeAsync(user, userRoles);
 
-        var assignedRoles = await ProcessRoleAssignmentsAsync(user, userRoles);
+        var (addedRoles, removedRoles) = await ProcessRoleAssignmentsAsync(user, userRoles);
 
-        await RaiseRolesAssignedEventAsync(user, assignedRoles, cancellationToken);
+        await RaiseRolesAssignedEventAsync(user, addedRoles, cancellationToken);
+        await AuditRoleChangesAsync(userId, addedRoles, removedRoles, cancellationToken).ConfigureAwait(false);
 
         // Any role mutation (add or remove) invalidates the cached permission set; flush
-        // unconditionally rather than gating on assignedRoles, which only tracks additions.
+        // unconditionally rather than gating on addedRoles, which only tracks additions.
         await userPermissionService.InvalidatePermissionCacheAsync(userId, cancellationToken).ConfigureAwait(false);
 
         return "User Roles Updated Successfully.";
@@ -122,9 +125,12 @@ internal sealed class UserRoleService(
         }
     }
 
-    private async Task<List<string>> ProcessRoleAssignmentsAsync(FshUser user, List<UserRoleDto> userRoles)
+    private async Task<(List<string> Added, List<string> Removed)> ProcessRoleAssignmentsAsync(
+        FshUser user,
+        List<UserRoleDto> userRoles)
     {
-        var assignedRoles = new List<string>();
+        var addedRoles = new List<string>();
+        var removedRoles = new List<string>();
 
         foreach (var userRole in userRoles)
         {
@@ -133,21 +139,25 @@ internal sealed class UserRoleService(
                 continue;
             }
 
+            var roleName = userRole.RoleName!;
+            var inRole = await userManager.IsInRoleAsync(user, roleName);
+
             if (userRole.Enabled)
             {
-                if (!await userManager.IsInRoleAsync(user, userRole.RoleName!))
+                if (!inRole)
                 {
-                    await userManager.AddToRoleAsync(user, userRole.RoleName!);
-                    assignedRoles.Add(userRole.RoleName!);
+                    await userManager.AddToRoleAsync(user, roleName);
+                    addedRoles.Add(roleName);
                 }
             }
-            else
+            else if (inRole)
             {
-                await userManager.RemoveFromRoleAsync(user, userRole.RoleName!);
+                await userManager.RemoveFromRoleAsync(user, roleName);
+                removedRoles.Add(roleName);
             }
         }
 
-        return assignedRoles;
+        return (addedRoles, removedRoles);
     }
 
     private async Task RaiseRolesAssignedEventAsync(FshUser user, List<string> assignedRoles, CancellationToken cancellationToken)
@@ -160,5 +170,81 @@ internal sealed class UserRoleService(
         var tenantId = multiTenantContextAccessor?.MultiTenantContext?.TenantInfo?.Id;
         user.RecordRolesAssigned(assignedRoles, tenantId);
         await db.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Writes a friendly EntityChange against the user key so History shows role adds/removes
+    /// (AspNet UserRoles join rows are PK-only and are skipped by the EF change interceptor).
+    /// </summary>
+    private async Task AuditRoleChangesAsync(
+        string userId,
+        List<string> addedRoles,
+        List<string> removedRoles,
+        CancellationToken cancellationToken)
+    {
+        if (addedRoles.Count == 0 && removedRoles.Count == 0)
+        {
+            return;
+        }
+
+        var changes = new List<PropertyChange>();
+        if (addedRoles.Count > 0)
+        {
+            changes.Add(new PropertyChange(
+                Name: "RolesAdded",
+                DataType: "string",
+                OldValue: null,
+                NewValue: string.Join(", ", addedRoles),
+                IsSensitive: false));
+        }
+
+        if (removedRoles.Count > 0)
+        {
+            changes.Add(new PropertyChange(
+                Name: "RolesRemoved",
+                DataType: "string",
+                OldValue: string.Join(", ", removedRoles),
+                NewValue: null,
+                IsSensitive: false));
+        }
+
+        await auditClient.WriteEntityChangeAsync(
+            dbContext: nameof(IdentityDbContext),
+            schema: IdentityModuleConstants.SchemaName,
+            table: "UserRoles",
+            entityName: "UserRole",
+            key: $"Id:{userId}",
+            operation: EntityOperation.Update,
+            changes: changes,
+            source: "Identity",
+            ct: cancellationToken).ConfigureAwait(false);
+
+        if (addedRoles.Count > 0)
+        {
+            await auditClient.WriteSecurityAsync(
+                SecurityAction.RoleAssigned,
+                subjectId: userId,
+                claims: new Dictionary<string, object?>
+                {
+                    ["targetUserId"] = userId,
+                    ["roles"] = addedRoles.ToArray(),
+                },
+                source: "Identity",
+                ct: cancellationToken).ConfigureAwait(false);
+        }
+
+        if (removedRoles.Count > 0)
+        {
+            await auditClient.WriteSecurityAsync(
+                SecurityAction.RoleRevoked,
+                subjectId: userId,
+                claims: new Dictionary<string, object?>
+                {
+                    ["targetUserId"] = userId,
+                    ["roles"] = removedRoles.ToArray(),
+                },
+                source: "Identity",
+                ct: cancellationToken).ConfigureAwait(false);
+        }
     }
 }

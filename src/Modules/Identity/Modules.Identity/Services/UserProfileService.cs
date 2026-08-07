@@ -48,6 +48,7 @@ internal sealed class UserProfileService(
             EmailConfirmed = user.EmailConfirmed,
             PhoneNumber = user.PhoneNumber,
             TwoFactorEnabled = user.TwoFactorEnabled,
+            CreatedOnUtc = user.CreatedOnUtc,
         };
     }
 
@@ -68,7 +69,8 @@ internal sealed class UserProfileService(
                 FirstName = user.FirstName,
                 LastName = user.LastName,
                 ImageUrl = ResolveImageUrl(user.ImageUrl),
-                IsActive = user.IsActive
+                IsActive = user.IsActive,
+                CreatedOnUtc = user.CreatedOnUtc,
             });
         }
 
@@ -113,6 +115,64 @@ internal sealed class UserProfileService(
         if (!result.Succeeded)
         {
             throw new CustomException("Update profile failed");
+        }
+    }
+
+    public async Task AdminUpdateAsync(
+        string userId,
+        string firstName,
+        string lastName,
+        string? phoneNumber,
+        string? email,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureValidTenant();
+
+        var user = await userManager.FindByIdAsync(userId)
+            ?? throw new NotFoundException("user not found");
+
+        user.FirstName = firstName.Trim();
+        user.LastName = lastName.Trim();
+
+        var normalizedPhone = string.IsNullOrWhiteSpace(phoneNumber) ? null : phoneNumber.Trim();
+        var currentPhoneNumber = await userManager.GetPhoneNumberAsync(user);
+        if (!string.Equals(normalizedPhone, currentPhoneNumber, StringComparison.Ordinal))
+        {
+            var phoneResult = await userManager.SetPhoneNumberAsync(user, normalizedPhone);
+            if (!phoneResult.Succeeded)
+            {
+                throw new CustomException(
+                    "Update phone failed",
+                    phoneResult.Errors.Select(e => e.Description).ToList());
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(email))
+        {
+            var normalizedEmail = email.Trim();
+            if (!string.Equals(normalizedEmail, user.Email, StringComparison.OrdinalIgnoreCase))
+            {
+                if (await ExistsWithEmailAsync(normalizedEmail, user.Id, cancellationToken).ConfigureAwait(false))
+                {
+                    throw new CustomException("Email is already in use.");
+                }
+
+                var emailResult = await userManager.SetEmailAsync(user, normalizedEmail);
+                if (!emailResult.Succeeded)
+                {
+                    throw new CustomException(
+                        "Update email failed",
+                        emailResult.Errors.Select(e => e.Description).ToList());
+                }
+            }
+        }
+
+        var result = await userManager.UpdateAsync(user);
+        if (!result.Succeeded)
+        {
+            throw new CustomException(
+                "Update user failed",
+                result.Errors.Select(e => e.Description).ToList());
         }
     }
 

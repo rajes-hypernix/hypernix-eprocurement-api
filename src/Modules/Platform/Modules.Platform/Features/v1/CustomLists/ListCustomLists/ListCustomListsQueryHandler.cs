@@ -17,7 +17,7 @@ public sealed class ListCustomListsQueryHandler(PlatformDbContext dbContext)
             q = q.Where(l => l.IsActive);
 
         return await q.OrderBy(l => l.Key)
-            .Select(l => new CustomListDto(l.Id, l.Key, l.Name, l.IsActive))
+            .Select(l => new CustomListDto(l.Id, l.Key, l.Name, l.IsActive, l.CreatedOnUtc))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
     }

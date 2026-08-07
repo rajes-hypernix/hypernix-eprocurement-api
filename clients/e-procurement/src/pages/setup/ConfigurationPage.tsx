@@ -260,6 +260,8 @@ function Field({ label, value }: { label: string; value: string }) {
 
 type HistoryOpen = (args: { title: string; entityId: string }) => void;
 
+type PendingStatus = { id: string; name: string; activate: boolean };
+
 // ---- main export ----
 
 export function ConfigurationPage({
@@ -364,6 +366,13 @@ function SettingsTab({ onHistory }: { onHistory: HistoryOpen }) {
       },
       { id: "value", header: "Value", render: (s) => <code>{s.value}</code> },
       {
+        id: "created",
+        header: "Created",
+        sortable: true,
+        sortValue: (s) => Date.parse(s.createdOnUtc) || 0,
+        render: (s) => <span className="hint">{dateTimeMY(s.createdOnUtc)}</span>,
+      },
+      {
         id: "actions",
         header: "",
         align: "right",
@@ -459,6 +468,7 @@ function CurrenciesTab({ onHistory }: { onHistory: HistoryOpen }) {
   const [editName, setEditName] = useState("");
   const [editSymbol, setEditSymbol] = useState("");
   const [editDecimals, setEditDecimals] = useState("2");
+  const [pendingStatus, setPendingStatus] = useState<PendingStatus | null>(null);
 
   const currenciesQuery = useQuery({ queryKey: ["currencies", false], queryFn: () => listCurrencies(false) });
   const currencies = currenciesQuery.data ?? [];
@@ -497,7 +507,10 @@ function CurrenciesTab({ onHistory }: { onHistory: HistoryOpen }) {
 
   const toggleCurrency = useMutation({
     mutationFn: ({ id, active }: { id: string; active: boolean }) => setCurrencyActive(id, active),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ["currencies"] }),
+    onSuccess: () => {
+      setPendingStatus(null);
+      void qc.invalidateQueries({ queryKey: ["currencies"] });
+    },
     onError: (e) => showErrorFrom(e, "Could not update currency"),
   });
 
@@ -526,7 +539,7 @@ function CurrenciesTab({ onHistory }: { onHistory: HistoryOpen }) {
       } else {
         const id = await createCurrency({ code: rowCode, name: rowName, symbol: rowSymbol, decimals: dec });
         if (active === false) await setCurrencyActive(id, false);
-        byCode.set(rowCode, { id, code: rowCode, name: rowName, symbol: rowSymbol, decimals: dec, isActive: active ?? true });
+        byCode.set(rowCode, { id, code: rowCode, name: rowName, symbol: rowSymbol, decimals: dec, isActive: active ?? true, createdOnUtc: new Date().toISOString() });
       }
     });
   };
@@ -564,6 +577,13 @@ function CurrenciesTab({ onHistory }: { onHistory: HistoryOpen }) {
         render: (c) => <StatusBadge active={c.isActive} />,
       },
       {
+        id: "created",
+        header: "Created",
+        sortable: true,
+        sortValue: (c) => Date.parse(c.createdOnUtc) || 0,
+        render: (c) => <span className="hint">{dateTimeMY(c.createdOnUtc)}</span>,
+      },
+      {
         id: "actions",
         header: "",
         align: "right",
@@ -583,16 +603,17 @@ function CurrenciesTab({ onHistory }: { onHistory: HistoryOpen }) {
                 }}
               />
               <IconButton
-                icon={c.isActive ? "lock" : "unlock"}
+                icon={c.isActive ? "x" : "check"}
                 label={c.isActive ? "Deactivate" : "Activate"}
-                onClick={() => toggleCurrency.mutate({ id: c.id, active: !c.isActive })}
+                danger={c.isActive}
+                onClick={() => setPendingStatus({ id: c.id, name: c.name, activate: !c.isActive })}
               />
             </Gated>
           </div>
         ),
       },
     ],
-    [onHistory, toggleCurrency],
+    [onHistory],
   );
 
   return (
@@ -729,6 +750,24 @@ function CurrenciesTab({ onHistory }: { onHistory: HistoryOpen }) {
             </div>
           </div>
         </Modal>
+      ) : null}
+
+      {pendingStatus ? (
+        <ConfirmModal
+          title={pendingStatus.activate ? "Activate currency" : "Deactivate currency"}
+          icon={pendingStatus.activate ? "check" : "x"}
+          danger={!pendingStatus.activate}
+          busy={toggleCurrency.isPending}
+          confirmLabel={pendingStatus.activate ? "Activate" : "Deactivate"}
+          body={
+            <p className="hint" style={{ marginTop: 0 }}>
+              {pendingStatus.activate ? "Activate" : "Deactivate"} currency{" "}
+              <strong>{pendingStatus.name}</strong>?
+            </p>
+          }
+          onCancel={() => setPendingStatus(null)}
+          onConfirm={() => toggleCurrency.mutate({ id: pendingStatus.id, active: pendingStatus.activate })}
+        />
       ) : null}
     </>
   );
@@ -979,6 +1018,7 @@ function TaxTab({ onHistory }: { onHistory: HistoryOpen }) {
   const qc = useQueryClient();
   const { showErrorFrom } = useErrorDialog();
   const [importOpen, setImportOpen] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState<PendingStatus | null>(null);
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [ratePct, setRatePct] = useState("");
@@ -1011,7 +1051,10 @@ function TaxTab({ onHistory }: { onHistory: HistoryOpen }) {
 
   const toggle = useMutation({
     mutationFn: ({ id, active }: { id: string; active: boolean }) => setTaxCodeActive(id, active),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ["tax-codes"] }),
+    onSuccess: () => {
+      setPendingStatus(null);
+      void qc.invalidateQueries({ queryKey: ["tax-codes"] });
+    },
     onError: (e) => showErrorFrom(e, "Could not update tax code"),
   });
 
@@ -1038,7 +1081,7 @@ function TaxTab({ onHistory }: { onHistory: HistoryOpen }) {
       } else {
         const id = await createTaxCode({ code: rowCode, name: rowName, ratePct: rateVal });
         if (active === false) await setTaxCodeActive(id, false);
-        byCode.set(rowCode, { id, code: rowCode, name: rowName, ratePct: rateVal, isActive: active ?? true });
+        byCode.set(rowCode, { id, code: rowCode, name: rowName, ratePct: rateVal, isActive: active ?? true, createdOnUtc: new Date().toISOString() });
       }
     });
   };
@@ -1069,6 +1112,13 @@ function TaxTab({ onHistory }: { onHistory: HistoryOpen }) {
         render: (t) => <StatusBadge active={t.isActive} />,
       },
       {
+        id: "created",
+        header: "Created",
+        sortable: true,
+        sortValue: (t) => Date.parse(t.createdOnUtc) || 0,
+        render: (t) => <span className="hint">{dateTimeMY(t.createdOnUtc)}</span>,
+      },
+      {
         id: "actions",
         header: "",
         align: "right",
@@ -1087,16 +1137,17 @@ function TaxTab({ onHistory }: { onHistory: HistoryOpen }) {
                 }}
               />
               <IconButton
-                icon={t.isActive ? "lock" : "unlock"}
+                icon={t.isActive ? "x" : "check"}
                 label={t.isActive ? "Deactivate" : "Activate"}
-                onClick={() => toggle.mutate({ id: t.id, active: !t.isActive })}
+                danger={t.isActive}
+                onClick={() => setPendingStatus({ id: t.id, name: t.name, activate: !t.isActive })}
               />
             </Gated>
           </div>
         ),
       },
     ],
-    [onHistory, toggle],
+    [onHistory],
   );
 
   return (
@@ -1225,6 +1276,24 @@ function TaxTab({ onHistory }: { onHistory: HistoryOpen }) {
           </div>
         </Modal>
       ) : null}
+
+      {pendingStatus ? (
+        <ConfirmModal
+          title={pendingStatus.activate ? "Activate tax code" : "Deactivate tax code"}
+          icon={pendingStatus.activate ? "check" : "x"}
+          danger={!pendingStatus.activate}
+          busy={toggle.isPending}
+          confirmLabel={pendingStatus.activate ? "Activate" : "Deactivate"}
+          body={
+            <p className="hint" style={{ marginTop: 0 }}>
+              {pendingStatus.activate ? "Activate" : "Deactivate"} tax code{" "}
+              <strong>{pendingStatus.name}</strong>?
+            </p>
+          }
+          onCancel={() => setPendingStatus(null)}
+          onConfirm={() => toggle.mutate({ id: pendingStatus.id, active: pendingStatus.activate })}
+        />
+      ) : null}
     </>
   );
 }
@@ -1244,6 +1313,7 @@ function PaymentTab({ onHistory }: { onHistory: HistoryOpen }) {
   const qc = useQueryClient();
   const { showErrorFrom } = useErrorDialog();
   const [importOpen, setImportOpen] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState<PendingStatus | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState<"create" | PaymentTermDto | null>(null);
   const [previewBaseDate, setPreviewBaseDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -1261,6 +1331,7 @@ function PaymentTab({ onHistory }: { onHistory: HistoryOpen }) {
   const toggle = useMutation({
     mutationFn: ({ id, active }: { id: string; active: boolean }) => setPaymentTermActive(id, active),
     onSuccess: () => {
+      setPendingStatus(null);
       void qc.invalidateQueries({ queryKey: ["payment-terms"] });
       void qc.invalidateQueries({ queryKey: ["payment-term"] });
     },
@@ -1336,6 +1407,13 @@ function PaymentTab({ onHistory }: { onHistory: HistoryOpen }) {
         render: (t) => <StatusBadge active={t.isActive} />,
       },
       {
+        id: "created",
+        header: "Created",
+        sortable: true,
+        sortValue: (t) => Date.parse(t.createdOnUtc) || 0,
+        render: (t) => <span className="hint">{dateTimeMY(t.createdOnUtc)}</span>,
+      },
+      {
         id: "actions",
         header: "",
         align: "right",
@@ -1354,16 +1432,17 @@ function PaymentTab({ onHistory }: { onHistory: HistoryOpen }) {
             <Gated permission={FshPermissions.configuration.manage}>
               <IconButton icon="edit" label="Edit" onClick={() => setFormOpen(t)} />
               <IconButton
-                icon={t.isActive ? "lock" : "unlock"}
+                icon={t.isActive ? "x" : "check"}
                 label={t.isActive ? "Deactivate" : "Activate"}
-                onClick={() => toggle.mutate({ id: t.id, active: !t.isActive })}
+                danger={t.isActive}
+                onClick={() => setPendingStatus({ id: t.id, name: t.name, activate: !t.isActive })}
               />
             </Gated>
           </div>
         ),
       },
     ],
-    [onHistory, toggle],
+    [onHistory],
   );
 
   const formModal = formOpen ? (
@@ -1626,6 +1705,24 @@ function PaymentTab({ onHistory }: { onHistory: HistoryOpen }) {
       ) : null}
 
       {formModal}
+
+      {pendingStatus ? (
+        <ConfirmModal
+          title={pendingStatus.activate ? "Activate payment term" : "Deactivate payment term"}
+          icon={pendingStatus.activate ? "check" : "x"}
+          danger={!pendingStatus.activate}
+          busy={toggle.isPending}
+          confirmLabel={pendingStatus.activate ? "Activate" : "Deactivate"}
+          body={
+            <p className="hint" style={{ marginTop: 0 }}>
+              {pendingStatus.activate ? "Activate" : "Deactivate"} payment term{" "}
+              <strong>{pendingStatus.name}</strong>?
+            </p>
+          }
+          onCancel={() => setPendingStatus(null)}
+          onConfirm={() => toggle.mutate({ id: pendingStatus.id, active: pendingStatus.activate })}
+        />
+      ) : null}
     </>
   );
 }
@@ -1869,6 +1966,7 @@ function IncotermsTab({ onHistory }: { onHistory: HistoryOpen }) {
   const qc = useQueryClient();
   const { showErrorFrom } = useErrorDialog();
   const [importOpen, setImportOpen] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState<PendingStatus | null>(null);
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [editing, setEditing] = useState<IncotermDto | null>(null);
@@ -1898,7 +1996,10 @@ function IncotermsTab({ onHistory }: { onHistory: HistoryOpen }) {
 
   const toggle = useMutation({
     mutationFn: ({ id, active }: { id: string; active: boolean }) => setIncotermActive(id, active),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ["incoterms"] }),
+    onSuccess: () => {
+      setPendingStatus(null);
+      void qc.invalidateQueries({ queryKey: ["incoterms"] });
+    },
     onError: (e) => showErrorFrom(e, "Could not update incoterm"),
   });
 
@@ -1921,7 +2022,7 @@ function IncotermsTab({ onHistory }: { onHistory: HistoryOpen }) {
       } else {
         const id = await createIncoterm({ code: rowCode, name: rowName });
         if (active === false) await setIncotermActive(id, false);
-        byCode.set(rowCode, { id, code: rowCode, name: rowName, isActive: active ?? true });
+        byCode.set(rowCode, { id, code: rowCode, name: rowName, isActive: active ?? true, createdOnUtc: new Date().toISOString() });
       }
     });
   };
@@ -1944,6 +2045,13 @@ function IncotermsTab({ onHistory }: { onHistory: HistoryOpen }) {
         render: (i) => <StatusBadge active={i.isActive} />,
       },
       {
+        id: "created",
+        header: "Created",
+        sortable: true,
+        sortValue: (i) => Date.parse(i.createdOnUtc) || 0,
+        render: (i) => <span className="hint">{dateTimeMY(i.createdOnUtc)}</span>,
+      },
+      {
         id: "actions",
         header: "",
         align: "right",
@@ -1961,16 +2069,17 @@ function IncotermsTab({ onHistory }: { onHistory: HistoryOpen }) {
                 }}
               />
               <IconButton
-                icon={i.isActive ? "lock" : "unlock"}
+                icon={i.isActive ? "x" : "check"}
                 label={i.isActive ? "Deactivate" : "Activate"}
-                onClick={() => toggle.mutate({ id: i.id, active: !i.isActive })}
+                danger={i.isActive}
+                onClick={() => setPendingStatus({ id: i.id, name: i.name, activate: !i.isActive })}
               />
             </Gated>
           </div>
         ),
       },
     ],
-    [onHistory, toggle],
+    [onHistory],
   );
 
   return (
@@ -2088,6 +2197,24 @@ function IncotermsTab({ onHistory }: { onHistory: HistoryOpen }) {
           </div>
         </Modal>
       ) : null}
+
+      {pendingStatus ? (
+        <ConfirmModal
+          title={pendingStatus.activate ? "Activate incoterm" : "Deactivate incoterm"}
+          icon={pendingStatus.activate ? "check" : "x"}
+          danger={!pendingStatus.activate}
+          busy={toggle.isPending}
+          confirmLabel={pendingStatus.activate ? "Activate" : "Deactivate"}
+          body={
+            <p className="hint" style={{ marginTop: 0 }}>
+              {pendingStatus.activate ? "Activate" : "Deactivate"} incoterm{" "}
+              <strong>{pendingStatus.name}</strong>?
+            </p>
+          }
+          onCancel={() => setPendingStatus(null)}
+          onConfirm={() => toggle.mutate({ id: pendingStatus.id, active: pendingStatus.activate })}
+        />
+      ) : null}
     </>
   );
 }
@@ -2201,6 +2328,7 @@ function LocationsTab({ onHistory }: { onHistory: HistoryOpen }) {
   const qc = useQueryClient();
   const { showErrorFrom } = useErrorDialog();
   const [importOpen, setImportOpen] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState<PendingStatus | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
@@ -2264,7 +2392,10 @@ function LocationsTab({ onHistory }: { onHistory: HistoryOpen }) {
 
   const toggle = useMutation({
     mutationFn: ({ id, active }: { id: string; active: boolean }) => setLocationActive(id, active),
-    onSuccess: invalidateAll,
+    onSuccess: () => {
+      setPendingStatus(null);
+      invalidateAll();
+    },
     onError: (e) => showErrorFrom(e, "Could not update location"),
   });
 
@@ -2384,6 +2515,13 @@ function LocationsTab({ onHistory }: { onHistory: HistoryOpen }) {
         render: (l) => <StatusBadge active={l.isActive} />,
       },
       {
+        id: "created",
+        header: "Created",
+        sortable: true,
+        sortValue: (l) => Date.parse(l.createdOnUtc) || 0,
+        render: (l) => <span className="hint">{dateTimeMY(l.createdOnUtc)}</span>,
+      },
+      {
         id: "actions",
         header: "",
         align: "right",
@@ -2402,16 +2540,17 @@ function LocationsTab({ onHistory }: { onHistory: HistoryOpen }) {
                 }}
               />
               <IconButton
-                icon={l.isActive ? "lock" : "unlock"}
+                icon={l.isActive ? "x" : "check"}
                 label={l.isActive ? "Deactivate" : "Activate"}
-                onClick={() => toggle.mutate({ id: l.id, active: !l.isActive })}
+                danger={l.isActive}
+                onClick={() => setPendingStatus({ id: l.id, name: l.name, activate: !l.isActive })}
               />
             </Gated>
           </div>
         ),
       },
     ],
-    [onHistory, toggle],
+    [onHistory],
   );
 
   if (selectedId) {
@@ -2747,6 +2886,24 @@ function LocationsTab({ onHistory }: { onHistory: HistoryOpen }) {
           </div>
         </Modal>
       ) : null}
+
+      {pendingStatus ? (
+        <ConfirmModal
+          title={pendingStatus.activate ? "Activate location" : "Deactivate location"}
+          icon={pendingStatus.activate ? "check" : "x"}
+          danger={!pendingStatus.activate}
+          busy={toggle.isPending}
+          confirmLabel={pendingStatus.activate ? "Activate" : "Deactivate"}
+          body={
+            <p className="hint" style={{ marginTop: 0 }}>
+              {pendingStatus.activate ? "Activate" : "Deactivate"} location{" "}
+              <strong>{pendingStatus.name}</strong>?
+            </p>
+          }
+          onCancel={() => setPendingStatus(null)}
+          onConfirm={() => toggle.mutate({ id: pendingStatus.id, active: pendingStatus.activate })}
+        />
+      ) : null}
     </>
   );
 }
@@ -2765,6 +2922,7 @@ function ItemsTab({ onHistory }: { onHistory: HistoryOpen }) {
   const [editDescription, setEditDescription] = useState("");
   const [editUom, setEditUom] = useState("");
   const [pendingDelete, setPendingDelete] = useState<ItemDto | null>(null);
+  const [pendingStatus, setPendingStatus] = useState<PendingStatus | null>(null);
 
   const query = useQuery({ queryKey: ["items", false], queryFn: () => listItems(false) });
   const rowsData = query.data ?? [];
@@ -2792,7 +2950,10 @@ function ItemsTab({ onHistory }: { onHistory: HistoryOpen }) {
 
   const toggle = useMutation({
     mutationFn: ({ id, active }: { id: string; active: boolean }) => setItemActive(id, active),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ["items"] }),
+    onSuccess: () => {
+      setPendingStatus(null);
+      void qc.invalidateQueries({ queryKey: ["items"] });
+    },
     onError: (e) => showErrorFrom(e, "Could not update item"),
   });
 
@@ -2825,7 +2986,7 @@ function ItemsTab({ onHistory }: { onHistory: HistoryOpen }) {
       } else {
         const id = await createItem({ itemCode: rowCode, description: desc, uom: rowUom || null });
         if (active === false) await setItemActive(id, false);
-        byCode.set(rowCode, { id, itemCode: rowCode, description: desc, uom: rowUom, isActive: active ?? true });
+        byCode.set(rowCode, { id, itemCode: rowCode, description: desc, uom: rowUom, isActive: active ?? true, createdOnUtc: new Date().toISOString() });
       }
     });
   };
@@ -2855,6 +3016,13 @@ function ItemsTab({ onHistory }: { onHistory: HistoryOpen }) {
         render: (i) => <StatusBadge active={i.isActive} />,
       },
       {
+        id: "created",
+        header: "Created",
+        sortable: true,
+        sortValue: (i) => Date.parse(i.createdOnUtc) || 0,
+        render: (i) => <span className="hint">{dateTimeMY(i.createdOnUtc)}</span>,
+      },
+      {
         id: "actions",
         header: "",
         align: "right",
@@ -2874,9 +3042,10 @@ function ItemsTab({ onHistory }: { onHistory: HistoryOpen }) {
                 }}
               />
               <IconButton
-                icon={i.isActive ? "lock" : "unlock"}
+                icon={i.isActive ? "x" : "check"}
                 label={i.isActive ? "Deactivate" : "Activate"}
-                onClick={() => toggle.mutate({ id: i.id, active: !i.isActive })}
+                danger={i.isActive}
+                onClick={() => setPendingStatus({ id: i.id, name: i.itemCode, activate: !i.isActive })}
               />
               <IconButton icon="trash" label="Delete" danger onClick={() => setPendingDelete(i)} />
             </Gated>
@@ -2884,7 +3053,7 @@ function ItemsTab({ onHistory }: { onHistory: HistoryOpen }) {
         ),
       },
     ],
-    [onHistory, toggle],
+    [onHistory],
   );
 
   return (
@@ -3035,6 +3204,24 @@ function ItemsTab({ onHistory }: { onHistory: HistoryOpen }) {
           onConfirm={() => remove.mutate(pendingDelete.id)}
         />
       ) : null}
+
+      {pendingStatus ? (
+        <ConfirmModal
+          title={pendingStatus.activate ? "Activate item" : "Deactivate item"}
+          icon={pendingStatus.activate ? "check" : "x"}
+          danger={!pendingStatus.activate}
+          busy={toggle.isPending}
+          confirmLabel={pendingStatus.activate ? "Activate" : "Deactivate"}
+          body={
+            <p className="hint" style={{ marginTop: 0 }}>
+              {pendingStatus.activate ? "Activate" : "Deactivate"} item{" "}
+              <strong>{pendingStatus.name}</strong>?
+            </p>
+          }
+          onCancel={() => setPendingStatus(null)}
+          onConfirm={() => toggle.mutate({ id: pendingStatus.id, active: pendingStatus.activate })}
+        />
+      ) : null}
     </>
   );
 }
@@ -3092,6 +3279,13 @@ function NumberingTab({ onHistory }: { onHistory: HistoryOpen }) {
       },
       { id: "digits", header: "Digits", align: "right", sortable: true, sortValue: (s) => s.digits, render: (s) => s.digits },
       { id: "preview", header: "Preview", render: (s) => <code>{s.previewExample}</code> },
+      {
+        id: "created",
+        header: "Created",
+        sortable: true,
+        sortValue: (s) => Date.parse(s.createdOnUtc) || 0,
+        render: (s) => <span className="hint">{dateTimeMY(s.createdOnUtc)}</span>,
+      },
       {
         id: "actions",
         header: "",
@@ -3202,6 +3396,7 @@ const CUSTOM_FIELD_RECORD_TYPES = ["Requisition", "PurchaseOrder", "Vendor"];
 function CustomFieldsTab() {
   const qc = useQueryClient();
   const { showErrorFrom } = useErrorDialog();
+  const [pendingStatus, setPendingStatus] = useState<PendingStatus | null>(null);
   const [code, setCode] = useState("");
   const [label, setLabel] = useState("");
   const [dataType, setDataType] = useState("Text");
@@ -3238,7 +3433,10 @@ function CustomFieldsTab() {
 
   const toggle = useMutation({
     mutationFn: ({ id, active }: { id: string; active: boolean }) => setCustomFieldDefActive(id, active),
-    onSuccess: invalidate,
+    onSuccess: () => {
+      setPendingStatus(null);
+      invalidate();
+    },
     onError: (e) => showErrorFrom(e, "Could not update custom field"),
   });
 
@@ -3288,13 +3486,17 @@ function CustomFieldsTab() {
         header: "",
         align: "right",
         render: (d) => (
-          <button type="button" className="btn btn-out btn-sm" onClick={() => toggle.mutate({ id: d.id, active: !d.isActive })}>
+          <button
+            type="button"
+            className="btn btn-out btn-sm"
+            onClick={() => setPendingStatus({ id: d.id, name: d.label, activate: !d.isActive })}
+          >
             {d.isActive ? "Deactivate" : "Activate"}
           </button>
         ),
       },
     ],
-    [applyTo, removeFrom, toggle],
+    [applyTo, removeFrom],
   );
 
   return (
@@ -3377,6 +3579,24 @@ function CustomFieldsTab() {
           <TableFooter total={rows.length} active={rows.filter((d) => d.isActive).length} />
         </div>
       </div>
+
+      {pendingStatus ? (
+        <ConfirmModal
+          title={pendingStatus.activate ? "Activate custom field" : "Deactivate custom field"}
+          icon={pendingStatus.activate ? "check" : "x"}
+          danger={!pendingStatus.activate}
+          busy={toggle.isPending}
+          confirmLabel={pendingStatus.activate ? "Activate" : "Deactivate"}
+          body={
+            <p className="hint" style={{ marginTop: 0 }}>
+              {pendingStatus.activate ? "Activate" : "Deactivate"} custom field{" "}
+              <strong>{pendingStatus.name}</strong>?
+            </p>
+          }
+          onCancel={() => setPendingStatus(null)}
+          onConfirm={() => toggle.mutate({ id: pendingStatus.id, active: pendingStatus.activate })}
+        />
+      ) : null}
     </>
   );
 }

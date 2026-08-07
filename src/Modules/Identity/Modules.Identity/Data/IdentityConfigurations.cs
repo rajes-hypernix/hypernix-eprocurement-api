@@ -19,6 +19,10 @@ public class ApplicationUserConfig : IEntityTypeConfiguration<FshUser>
         builder
             .Property(u => u.ObjectId)
                 .HasMaxLength(256);
+
+        builder
+            .Property(u => u.CreatedOnUtc)
+                .IsRequired();
     }
 }
 
@@ -32,6 +36,10 @@ public class ApplicationRoleConfig : IEntityTypeConfiguration<FshRole>
             .ToTable("Roles", IdentityModuleConstants.SchemaName)
             .IsMultiTenant()
                 .AdjustUniqueIndexes();
+
+        builder
+            .Property(r => r.CreatedOnUtc)
+                .IsRequired();
     }
 }
 

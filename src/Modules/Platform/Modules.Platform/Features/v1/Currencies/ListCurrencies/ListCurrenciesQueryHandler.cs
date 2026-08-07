@@ -17,7 +17,7 @@ public sealed class ListCurrenciesQueryHandler(PlatformDbContext dbContext)
             q = q.Where(c => c.IsActive);
 
         return await q.OrderBy(c => c.Code)
-            .Select(c => new CurrencyDto(c.Id, c.Code, c.Name, c.Symbol, c.Decimals, c.IsActive))
+            .Select(c => new CurrencyDto(c.Id, c.Code, c.Name, c.Symbol, c.Decimals, c.IsActive, c.CreatedOnUtc))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
     }

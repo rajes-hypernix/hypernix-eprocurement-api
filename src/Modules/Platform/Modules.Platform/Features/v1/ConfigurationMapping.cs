@@ -18,7 +18,8 @@ internal static class ConfigurationMapping
         term.MinimumDaysBeforeDue,
         term.DiscountPct,
         term.DiscountDays,
-        [.. term.Rows.OrderBy(r => r.Seq).Select(ToDto)]);
+        [.. term.Rows.OrderBy(r => r.Seq).Select(ToDto)],
+        term.CreatedOnUtc);
 
     internal static PaymentScheduleRowDto ToDto(PaymentScheduleRow row) => new(
         row.Id,
@@ -33,7 +34,8 @@ internal static class ConfigurationMapping
         location.Code,
         location.Name,
         location.IsActive,
-        [.. location.Addresses.OrderBy(a => a.Sort).Select(ToDto)]);
+        [.. location.Addresses.OrderBy(a => a.Sort).Select(ToDto)],
+        location.CreatedOnUtc);
 
     internal static LocationAddressDto ToDto(LocationAddress address) => new(
         address.Id,

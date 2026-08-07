@@ -19,4 +19,9 @@ public interface IUserPasswordService
     /// Changes the current user's password.
     /// </summary>
     Task ChangePasswordAsync(string password, string newPassword, string confirmNewPassword, string userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Admin sets a new password for a user without knowing the current password.
+    /// </summary>
+    Task AdminSetPasswordAsync(string userId, string password, string confirmPassword, CancellationToken cancellationToken = default);
 }

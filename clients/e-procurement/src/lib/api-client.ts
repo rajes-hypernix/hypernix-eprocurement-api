@@ -67,6 +67,39 @@ async function parseError(response: Response): Promise<ApiError | undefined> {
   }
 }
 
+function flattenProblemErrors(errs: ApiError["errors"] | undefined): string[] {
+  if (!errs) return [];
+  if (Array.isArray(errs)) return errs.map(String).map((s) => s.trim()).filter(Boolean);
+  if (typeof errs === "object") {
+    return Object.values(errs)
+      .flat()
+      .map(String)
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
+/** Build a user-facing message from ProblemDetails (detail + Identity/validation errors). */
+export function messageFromProblem(problem: ApiError | undefined, fallback: string): string {
+  const flat = flattenProblemErrors(problem?.errors);
+  const detail = problem?.detail?.trim() ?? "";
+  const isGenericDetail =
+    !detail ||
+    /^an unexpected error occurred/i.test(detail) ||
+    /^one or more validation errors occurred\.?$/i.test(detail);
+
+  if (flat.length > 0) {
+    if (detail && !isGenericDetail) {
+      const joined = flat.join(" ");
+      return joined.toLowerCase().includes(detail.toLowerCase()) ? joined : `${detail} ${joined}`.trim();
+    }
+    return flat.join(" ");
+  }
+
+  return detail || problem?.title || fallback;
+}
+
 function mergeSignal(userSignal: AbortSignal | null | undefined, timeoutMs: number): AbortSignal {
   const timeoutSignal = AbortSignal.timeout(timeoutMs);
   if (!userSignal) return timeoutSignal;
@@ -135,7 +168,7 @@ export async function apiFetch<T = unknown>(
     const problem = await parseError(response);
     throw new ApiRequestError(
       response.status,
-      problem?.detail ?? problem?.title ?? response.statusText,
+      messageFromProblem(problem, response.statusText || "Request failed"),
       problem,
     );
   }

@@ -29,6 +29,11 @@ public interface IUserProfileService
     Task UpdateAsync(string userId, string firstName, string lastName, string phoneNumber, FileUploadRequest image, bool deleteCurrentImage, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Admin update of any user in the tenant (name, phone, email). Does not refresh the caller's sign-in.
+    /// </summary>
+    Task AdminUpdateAsync(string userId, string firstName, string lastName, string? phoneNumber, string? email, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Sets the profile image URL directly (no upload). Used by the presigned-upload flow:
     /// the client uploads via the Files module, then calls this with the resulting durable
     /// <c>publicUrl</c>. Passing <c>null</c> clears the image.

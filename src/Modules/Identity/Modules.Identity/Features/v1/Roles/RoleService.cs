@@ -79,7 +79,13 @@ public sealed class RoleService(RoleManager<FshRole> roleManager,
             .OrderBy(r => r.Name)
             .Skip((page - 1) * size)
             .Take(size)
-            .Select(r => new RoleDto { Id = r.Id, Name = r.Name!, Description = r.Description })
+            .Select(r => new RoleDto
+            {
+                Id = r.Id,
+                Name = r.Name!,
+                Description = r.Description,
+                CreatedOnUtc = r.CreatedOnUtc,
+            })
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
@@ -99,7 +105,13 @@ public sealed class RoleService(RoleManager<FshRole> roleManager,
 
         _ = role ?? throw new NotFoundException("role not found");
 
-        return new RoleDto { Id = role.Id, Name = role.Name!, Description = role.Description };
+        return new RoleDto
+        {
+            Id = role.Id,
+            Name = role.Name!,
+            Description = role.Description,
+            CreatedOnUtc = role.CreatedOnUtc,
+        };
     }
 
     public async Task<RoleDto> CreateOrUpdateRoleAsync(string roleId, string name, string description, CancellationToken cancellationToken = default)
@@ -128,7 +140,13 @@ public sealed class RoleService(RoleManager<FshRole> roleManager,
             await roleManager.CreateAsync(role);
         }
 
-        return new RoleDto { Id = role.Id, Name = role.Name!, Description = role.Description };
+        return new RoleDto
+        {
+            Id = role.Id,
+            Name = role.Name!,
+            Description = role.Description,
+            CreatedOnUtc = role.CreatedOnUtc,
+        };
     }
 
     public async Task DeleteRoleAsync(string id, CancellationToken cancellationToken = default)

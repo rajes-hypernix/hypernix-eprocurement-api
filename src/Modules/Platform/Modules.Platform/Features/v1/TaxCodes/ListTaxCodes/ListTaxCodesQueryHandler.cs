@@ -17,7 +17,7 @@ public sealed class ListTaxCodesQueryHandler(PlatformDbContext dbContext)
             q = q.Where(t => t.IsActive);
 
         return await q.OrderBy(t => t.Code)
-            .Select(t => new TaxCodeDto(t.Id, t.Code, t.Name, t.RatePct, t.IsActive))
+            .Select(t => new TaxCodeDto(t.Id, t.Code, t.Name, t.RatePct, t.IsActive, t.CreatedOnUtc))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
     }

@@ -12,6 +12,7 @@ export type UserDto = {
   phoneNumber?: string;
   imageUrl?: string;
   twoFactorEnabled?: boolean;
+  createdOnUtc?: string;
 };
 
 export type UserRoleDto = {
@@ -25,6 +26,7 @@ export type RoleDto = {
   id: string;
   name: string;
   description?: string | null;
+  createdOnUtc?: string;
   permissions?: string[] | null;
 };
 
@@ -124,6 +126,19 @@ export async function searchUsers(params: SearchUsersParams = {}): Promise<Paged
   );
 }
 
+/** Load every page for the current filter (used by Excel export). */
+export async function searchAllUsers(params: Omit<SearchUsersParams, "pageNumber" | "pageSize"> = {}): Promise<UserDto[]> {
+  const pageSize = 100; // API max (PagedQueryValidator)
+  const first = await searchUsers({ ...params, pageNumber: 1, pageSize });
+  const items = [...(first.items ?? [])];
+  const totalPages = Math.max(1, first.totalPages ?? 1);
+  for (let page = 2; page <= totalPages; page++) {
+    const next = await searchUsers({ ...params, pageNumber: page, pageSize });
+    items.push(...(next.items ?? []));
+  }
+  return items;
+}
+
 export async function getUserById(id: string): Promise<UserDto> {
   return apiFetch<UserDto>(`${ApiPaths.identity}/users/${encodeURIComponent(id)}`);
 }
@@ -156,6 +171,42 @@ export async function registerUser(input: RegisterUserInput): Promise<RegisterUs
   return apiFetch<RegisterUserResponse>(`${ApiPaths.identity}/register`, {
     method: "POST",
     body: JSON.stringify(input),
+  });
+}
+
+export type AdminUpdateUserInput = {
+  firstName: string;
+  lastName: string;
+  phoneNumber?: string | null;
+  email?: string | null;
+};
+
+/** Admin update of another user's profile (name / phone / email). */
+export async function adminUpdateUser(userId: string, input: AdminUpdateUserInput): Promise<void> {
+  await apiFetch<void>(`${ApiPaths.identity}/users/${encodeURIComponent(userId)}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      userId,
+      firstName: input.firstName,
+      lastName: input.lastName,
+      phoneNumber: input.phoneNumber ?? null,
+      email: input.email ?? null,
+    }),
+  });
+}
+
+/** Admin sets a new password for a user (no current password required). */
+export async function adminSetPassword(
+  userId: string,
+  input: { password: string; confirmPassword: string },
+): Promise<string> {
+  return apiFetch<string>(`${ApiPaths.identity}/users/${encodeURIComponent(userId)}/set-password`, {
+    method: "POST",
+    body: JSON.stringify({
+      userId,
+      password: input.password,
+      confirmPassword: input.confirmPassword,
+    }),
   });
 }
 

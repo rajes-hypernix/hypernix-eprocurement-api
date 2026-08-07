@@ -125,6 +125,42 @@ internal sealed class UserPasswordService(
         await passwordHistoryService.SavePasswordHistoryAsync(userId, cancellationToken);
     }
 
+    public async Task AdminSetPasswordAsync(
+        string userId,
+        string password,
+        string confirmPassword,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureValidTenant();
+
+        if (!string.Equals(password, confirmPassword, StringComparison.Ordinal))
+        {
+            throw new CustomException("Passwords do not match.");
+        }
+
+        var user = await userManager.FindByIdAsync(userId)
+            ?? throw new NotFoundException("user not found");
+
+        if (await passwordHistoryService.IsPasswordInHistoryAsync(userId, password, cancellationToken).ConfigureAwait(false))
+        {
+            throw new CustomException("Password has been used recently. Choose a different password.");
+        }
+
+        var token = await userManager.GeneratePasswordResetTokenAsync(user).ConfigureAwait(false);
+        var result = await userManager.ResetPasswordAsync(user, token, password).ConfigureAwait(false);
+        if (!result.Succeeded)
+        {
+            var errors = result.Errors.Select(e => e.Description).ToList();
+            throw new CustomException("failed to set password", errors);
+        }
+
+        var tenantId = multiTenantContextAccessor?.MultiTenantContext?.TenantInfo?.Id;
+        user.RecordPasswordChanged(wasReset: true, tenantId);
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await passwordExpiryService.UpdateLastPasswordChangeDateAsync(userId, cancellationToken).ConfigureAwait(false);
+        await passwordHistoryService.SavePasswordHistoryAsync(userId, cancellationToken).ConfigureAwait(false);
+    }
+
     private void EnsureValidTenant()
     {
         if (string.IsNullOrWhiteSpace(multiTenantContextAccessor?.MultiTenantContext?.TenantInfo?.Id))

@@ -48,6 +48,8 @@ using FSH.Modules.Identity.Features.v1.TwoFactor.VerifyEnroll;
 using FSH.Modules.Identity.Features.v1.Users.AssignUserRoles;
 using FSH.Modules.Identity.Features.v1.Users.ChangePassword;
 using FSH.Modules.Identity.Features.v1.Users.AdminConfirmEmail;
+using FSH.Modules.Identity.Features.v1.Users.AdminSetPassword;
+using FSH.Modules.Identity.Features.v1.Users.AdminUpdateUser;
 using FSH.Modules.Identity.Features.v1.Users.ConfirmEmail;
 using FSH.Modules.Identity.Features.v1.Users.ResendConfirmationEmail;
 using FSH.Modules.Identity.Features.v1.Users.DeleteUser;
@@ -221,6 +223,8 @@ public class IdentityModule : IModule
         group.MapResetPasswordEndpoint().RequireRateLimiting("auth");
         group.MapSelfRegisterUserEndpoint().RequireRateLimiting("auth");
         group.MapToggleUserStatusEndpoint();
+        group.MapAdminUpdateUserEndpoint();
+        group.MapAdminSetPasswordEndpoint();
         group.MapUpdateUserEndpoint();
         group.MapSetProfileImageEndpoint();
 

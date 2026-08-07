@@ -14,7 +14,7 @@ public sealed class ListSettingsQueryHandler(PlatformDbContext dbContext)
         ArgumentNullException.ThrowIfNull(query);
         return await dbContext.Settings.AsNoTracking()
             .OrderBy(s => s.Key)
-            .Select(s => new SettingDto(s.Id, s.Key, s.Value, s.ValueKind, s.Label, s.Description))
+            .Select(s => new SettingDto(s.Id, s.Key, s.Value, s.ValueKind, s.Label, s.Description, s.CreatedOnUtc))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
     }

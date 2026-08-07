@@ -4,11 +4,7 @@ import {
   RoleCreatePage,
   RoleDetailPage,
 } from "@/pages/admin/AdminRoles";
-import {
-  UsersListPage,
-  UserCreatePage,
-  UserDetailPage,
-} from "@/pages/admin/AdminUsers";
+import { UsersListPage } from "@/pages/admin/AdminUsers";
 
 /** Route switch for /admin and /admin/* */
 export function AdminPage() {
@@ -26,8 +22,7 @@ export function AdminPage() {
       return <RoleDetailPage roleId={roleId} onBack={() => go("roles")} />;
     }
   }
-  if (route === "new") return <UserCreatePage onBack={() => go("")} onSaved={(id) => go(id)} />;
-  if (route) return <UserDetailPage userId={route} onBack={() => go("")} />;
 
+  // Legacy /admin/:userId and /admin/new → list (add/edit are dialogs on the list)
   return <UsersListPage onNavigate={go} />;
 }

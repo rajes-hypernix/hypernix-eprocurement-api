@@ -6,6 +6,9 @@ public class FshRole : IdentityRole
 {
     public string? Description { get; set; }
 
+    /// <summary>When the role was created (UTC).</summary>
+    public DateTimeOffset CreatedOnUtc { get; set; }
+
     public FshRole(string name, string? description = null)
         : base(name)
     {
@@ -13,5 +16,6 @@ public class FshRole : IdentityRole
 
         Description = description;
         NormalizedName = name.ToUpperInvariant();
+        CreatedOnUtc = TimeProvider.System.GetUtcNow();
     }
 }

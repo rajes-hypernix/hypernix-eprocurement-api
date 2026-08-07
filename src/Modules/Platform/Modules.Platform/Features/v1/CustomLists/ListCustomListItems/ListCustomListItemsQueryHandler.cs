@@ -30,6 +30,6 @@ public sealed class ListCustomListItemsQueryHandler(PlatformDbContext dbContext)
         return [.. items
             .OrderBy(i => i.SortOrder)
             .ThenBy(i => i.Code)
-            .Select(i => new CustomListItemDto(i.Id, i.ListId, i.Code, i.Label, i.SortOrder, i.IsActive))];
+            .Select(i => new CustomListItemDto(i.Id, i.ListId, i.Code, i.Label, i.SortOrder, i.IsActive, i.CreatedOnUtc))];
     }
 }

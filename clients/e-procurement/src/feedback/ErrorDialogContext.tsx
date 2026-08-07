@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import { AlertModal } from "@/components/ui";
-import { ApiRequestError } from "@/lib/api-client";
+import { ApiRequestError, messageFromProblem } from "@/lib/api-client";
 
 type ErrorDialogState = {
   title: string;
@@ -16,23 +16,10 @@ type ErrorDialogApi = {
 
 const ErrorDialogContext = createContext<ErrorDialogApi | null>(null);
 
-/** Prefer ProblemDetails detail / validation errors over generic wrappers. */
+/** Prefer ProblemDetails validation / Identity error lists over generic wrappers. */
 export function formatApiError(e: unknown): string {
   if (e instanceof ApiRequestError) {
-    const p = e.problem;
-    const detail = p?.detail?.trim();
-    if (detail && !/^an unexpected error occurred/i.test(detail)) return detail;
-
-    const errs = p?.errors;
-    if (Array.isArray(errs) && errs.length > 0) return errs.join(" ");
-    if (errs && typeof errs === "object") {
-      const flat = Object.values(errs).flat().filter(Boolean);
-      if (flat.length > 0) return flat.join(" ");
-    }
-
-    if (detail) return detail;
-    if (e.message && !/^an unexpected error occurred/i.test(e.message)) return e.message;
-    return detail || e.message || "Something went wrong.";
+    return messageFromProblem(e.problem, e.message || "Something went wrong.");
   }
   if (e instanceof Error) return e.message;
   return "Something went wrong.";

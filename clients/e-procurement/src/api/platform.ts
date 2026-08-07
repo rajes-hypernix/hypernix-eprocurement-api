@@ -6,6 +6,7 @@ export type CountryDto = {
   code: string;
   name: string;
   isActive: boolean;
+  createdOnUtc: string;
 };
 
 export type StateDto = {
@@ -14,6 +15,7 @@ export type StateDto = {
   code: string;
   name: string;
   isActive: boolean;
+  createdOnUtc: string;
 };
 
 export type CityDto = {
@@ -21,6 +23,7 @@ export type CityDto = {
   stateId: string;
   name: string;
   isActive: boolean;
+  createdOnUtc: string;
 };
 
 export type BankDto = {
@@ -40,6 +43,7 @@ export type OrgUnitDto = {
   type: string;
   parentId?: string | null;
   isActive: boolean;
+  createdOnUtc: string;
 };
 
 export type OrgCatalogDto = {
@@ -69,6 +73,7 @@ export type CustomListDto = {
   key: string;
   name: string;
   isActive: boolean;
+  createdOnUtc: string;
 };
 
 export type CustomListItemDto = {
@@ -78,6 +83,7 @@ export type CustomListItemDto = {
   label: string;
   sortOrder: number;
   isActive: boolean;
+  createdOnUtc: string;
 };
 
 /** Reason-code list keys used by Sourcing governance actions. */

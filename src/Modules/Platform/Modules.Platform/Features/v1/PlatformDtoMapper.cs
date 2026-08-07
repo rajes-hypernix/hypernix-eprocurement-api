@@ -6,7 +6,7 @@ namespace FSH.Modules.Platform.Features.v1;
 internal static class PlatformDtoMapper
 {
     internal static OrgUnitDto ToDto(OrgUnit unit) =>
-        new(unit.Id, unit.Code, unit.Name, unit.Type.ToString(), unit.ParentId, unit.IsActive);
+        new(unit.Id, unit.Code, unit.Name, unit.Type.ToString(), unit.ParentId, unit.IsActive, unit.CreatedOnUtc);
 
     internal static FormTemplateQuestionDto ToDto(FormTemplateQuestion q) =>
         new(q.Id, q.Order, q.Label, q.Type, q.Required, q.ConfigJson, q.Help);

@@ -17,7 +17,7 @@ public sealed class ListCountriesQueryHandler(PlatformDbContext dbContext)
             q = q.Where(c => c.IsActive);
 
         return await q.OrderBy(c => c.Name)
-            .Select(c => new CountryDto(c.Id, c.Code, c.Name, c.IsActive))
+            .Select(c => new CountryDto(c.Id, c.Code, c.Name, c.IsActive, c.CreatedOnUtc))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
     }

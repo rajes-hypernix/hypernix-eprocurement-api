@@ -17,7 +17,7 @@ public sealed class ListStatesQueryHandler(PlatformDbContext dbContext)
             q = q.Where(s => s.IsActive);
 
         return await q.OrderBy(s => s.Name)
-            .Select(s => new StateDto(s.Id, s.CountryId, s.Code, s.Name, s.IsActive))
+            .Select(s => new StateDto(s.Id, s.CountryId, s.Code, s.Name, s.IsActive, s.CreatedOnUtc))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
     }

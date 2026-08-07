@@ -20,6 +20,9 @@ public class FshUser : IdentityUser, IHasDomainEvents
     /// <summary>Set only for vendor-portal logins — links this Identity user to a Suppliers Vendor.</summary>
     public Guid? VendorId { get; set; }
 
+    /// <summary>When the account was created (UTC).</summary>
+    public DateTimeOffset CreatedOnUtc { get; set; } = TimeProvider.System.GetUtcNow();
+
     /// <summary>Timestamp when the user last changed their password</summary>
     public DateTime LastPasswordChangeDate { get; set; } = TimeProvider.System.GetUtcNow().UtcDateTime;
 
