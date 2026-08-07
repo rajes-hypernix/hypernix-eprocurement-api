@@ -41,6 +41,7 @@ const PATHS: Record<string, string> = {
   field: '<rect x="3" y="8" width="18" height="8" rx="1.5"/><path d="M7 12h6"/><path d="M17 10v4"/>',
   form: '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h5"/><path d="M4 18h16"/>',
   hash: '<path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/>',
+  minus: '<path d="M5 12h14"/>',
   subtab: '<rect x="3" y="7" width="18" height="14" rx="2"/><path d="M3 11h18"/><path d="M7 7V5a2 2 0 0 1 2-2h2v4M13 7V3h2a2 2 0 0 1 2 2v2"/>',
   sublist: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M3 14h18"/><path d="M8 9v11"/>',
 }

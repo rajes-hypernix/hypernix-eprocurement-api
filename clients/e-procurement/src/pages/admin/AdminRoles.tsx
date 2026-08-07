@@ -12,6 +12,7 @@ import {
 import { Icon } from "@/components/Icon";
 import { Gated } from "@/components/Gated";
 import { ConfirmModal, EmptyState, Notice, Spinner } from "@/components/ui";
+import { useAuth } from "@/auth/use-auth";
 import { useErrorDialog } from "@/feedback/ErrorDialogContext";
 import { dateTimeMY } from "@/lib/format";
 import { FshPermissions } from "@/lib/fsh-permissions";
@@ -155,21 +156,176 @@ export function RoleCreatePage({
   );
 }
 
-function groupCatalog(entries: PermissionCatalogEntryDto[]): Map<string, PermissionCatalogEntryDto[]> {
-  const map = new Map<string, PermissionCatalogEntryDto[]>();
-  for (const e of entries) {
-    const list = map.get(e.resource) ?? [];
-    list.push(e);
-    map.set(e.resource, list);
+type TriState = "all" | "partial" | "none";
+
+type ModuleNode = {
+  resource: string;
+  label: string;
+  perms: PermissionCatalogEntryDto[];
+};
+
+type AreaGroup = {
+  area: string;
+  modules: ModuleNode[];
+};
+
+/** Flat Identity resources (no `Area.` prefix) → Identity group. */
+const IDENTITY_RESOURCES = new Set([
+  "Users",
+  "UserRoles",
+  "Roles",
+  "RoleClaims",
+  "Sessions",
+  "Groups",
+  "Impersonation",
+]);
+
+const AREA_ORDER = [
+  "Identity",
+  "Platform",
+  "Suppliers",
+  "Sourcing",
+  "Procurement",
+  "Catalog",
+  "Notifications",
+  "Files",
+  "Tickets",
+  "Billing",
+  "Webhooks",
+  "Auditing",
+  "Multitenancy",
+];
+
+function humanizeLabel(value: string): string {
+  const spaced = value
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/[._-]+/g, " ")
+    .trim();
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
+function humanizeAction(action: string): string {
+  return humanizeLabel(action);
+}
+
+function resolveArea(resource: string): { area: string; label: string } {
+  if (IDENTITY_RESOURCES.has(resource)) return { area: "Identity", label: resource };
+  if (resource === "Tenants") return { area: "Multitenancy", label: "Tenants" };
+  if (resource === "AuditTrails") return { area: "Auditing", label: "AuditTrails" };
+  const dot = resource.indexOf(".");
+  if (dot > 0) {
+    return { area: resource.slice(0, dot), label: resource.slice(dot + 1) };
   }
-  return map;
+  return { area: resource, label: resource };
+}
+
+function areaSortIndex(area: string): number {
+  const i = AREA_ORDER.indexOf(area);
+  return i >= 0 ? i : AREA_ORDER.length;
+}
+
+function buildAreas(entries: PermissionCatalogEntryDto[]): AreaGroup[] {
+  const byResource = new Map<string, PermissionCatalogEntryDto[]>();
+  for (const e of entries) {
+    const list = byResource.get(e.resource) ?? [];
+    list.push(e);
+    byResource.set(e.resource, list);
+  }
+
+  const byArea = new Map<string, ModuleNode[]>();
+  for (const [resource, perms] of byResource) {
+    const { area, label } = resolveArea(resource);
+    const list = byArea.get(area) ?? [];
+    list.push({
+      resource,
+      label,
+      perms: [...perms].sort((a, b) => a.action.localeCompare(b.action)),
+    });
+    byArea.set(area, list);
+  }
+
+  return [...byArea.entries()]
+    .sort(([a], [b]) => {
+      const d = areaSortIndex(a) - areaSortIndex(b);
+      return d !== 0 ? d : a.localeCompare(b);
+    })
+    .map(([area, modules]) => ({
+      area,
+      modules: modules.sort((a, b) => a.label.localeCompare(b.label)),
+    }));
+}
+
+function moduleTriState(module: ModuleNode, selected: Set<string>): TriState {
+  const onCount = module.perms.filter((p) => selected.has(p.name)).length;
+  if (onCount === 0) return "none";
+  if (onCount === module.perms.length) return "all";
+  return "partial";
+}
+
+function areaTriState(group: AreaGroup, selected: Set<string>): TriState {
+  let on = 0;
+  let total = 0;
+  for (const m of group.modules) {
+    total += m.perms.length;
+    on += m.perms.filter((p) => selected.has(p.name)).length;
+  }
+  if (on === 0) return "none";
+  if (on === total) return "all";
+  return "partial";
+}
+
+function areaPermCount(group: AreaGroup, selected: Set<string>): { on: number; total: number } {
+  let on = 0;
+  let total = 0;
+  for (const m of group.modules) {
+    total += m.perms.length;
+    on += m.perms.filter((p) => selected.has(p.name)).length;
+  }
+  return { on, total };
+}
+
+function TriCheckbox({
+  state,
+  editable,
+  onClick,
+  size = 16,
+}: {
+  state: TriState;
+  editable: boolean;
+  onClick?: () => void;
+  size?: number;
+}) {
+  return (
+    <button
+      type="button"
+      className={`role-tri role-tri--${state}${editable ? " editable" : ""}`}
+      style={{ width: size, height: size }}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (editable) onClick?.();
+      }}
+      disabled={!editable}
+      aria-checked={state === "all" ? "true" : state === "partial" ? "mixed" : "false"}
+      role="checkbox"
+    >
+      {state === "all" ? <Icon name="check" size={Math.round(size * 0.7)} /> : null}
+      {state === "partial" ? <Icon name="minus" size={Math.round(size * 0.7)} /> : null}
+    </button>
+  );
 }
 
 export function RoleDetailPage({ roleId, onBack }: { roleId: string; onBack: () => void }) {
   const qc = useQueryClient();
+  const { user: authUser } = useAuth();
   const { showError, showErrorFrom } = useErrorDialog();
   const [pendingDelete, setPendingDelete] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [query, setQuery] = useState("");
+  const [expandedAreas, setExpandedAreas] = useState<Set<string>>(() => new Set());
+  const [expandedModules, setExpandedModules] = useState<Set<string>>(() => new Set());
+  const [expandedSeeded, setExpandedSeeded] = useState(false);
+
+  const canUpdateRoles = (authUser?.permissions ?? []).includes(FshPermissions.roles.update);
 
   const roleQuery = useQuery({
     queryKey: ["roles", roleId],
@@ -183,12 +339,77 @@ export function RoleDetailPage({ roleId, onBack }: { roleId: string; onBack: () 
 
   const role = roleQuery.data;
   const isSystem = role ? SYSTEM_ROLES.has(role.name) : false;
+  const editable = !isSystem && canUpdateRoles;
 
   useEffect(() => {
     if (role?.permissions) setSelected(new Set(role.permissions));
   }, [role?.permissions]);
 
-  const grouped = useMemo(() => groupCatalog(catalogQuery.data ?? []), [catalogQuery.data]);
+  const areas = useMemo(() => buildAreas(catalogQuery.data ?? []), [catalogQuery.data]);
+
+  // Open areas/modules that already have grants once catalog + selection are ready.
+  useEffect(() => {
+    if (expandedSeeded || areas.length === 0 || !role?.permissions) return;
+    const openAreas = new Set<string>();
+    const openModules = new Set<string>();
+    for (const g of areas) {
+      let areaHasGrant = false;
+      for (const m of g.modules) {
+        if (m.perms.some((p) => selected.has(p.name))) {
+          openModules.add(m.resource);
+          areaHasGrant = true;
+        }
+      }
+      if (areaHasGrant) openAreas.add(g.area);
+    }
+    setExpandedAreas(openAreas);
+    setExpandedModules(openModules);
+    setExpandedSeeded(true);
+  }, [areas, role?.permissions, selected, expandedSeeded]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return areas;
+    return areas
+      .map((g) => {
+        if (g.area.toLowerCase().includes(q)) return g;
+        const modules = g.modules
+          .map((m) => {
+            if (
+              m.resource.toLowerCase().includes(q) ||
+              m.label.toLowerCase().includes(q) ||
+              humanizeLabel(m.label).toLowerCase().includes(q)
+            ) {
+              return m;
+            }
+            const perms = m.perms.filter(
+              (p) =>
+                p.action.toLowerCase().includes(q) ||
+                p.name.toLowerCase().includes(q) ||
+                humanizeAction(p.action).toLowerCase().includes(q) ||
+                p.description.toLowerCase().includes(q),
+            );
+            return perms.length ? { ...m, perms } : null;
+          })
+          .filter((m): m is ModuleNode => m != null);
+        return modules.length ? { ...g, modules } : null;
+      })
+      .filter((g): g is AreaGroup => g != null);
+  }, [areas, query]);
+
+  const totals = useMemo(() => {
+    let granted = 0;
+    let total = 0;
+    for (const g of areas) {
+      for (const m of g.modules) {
+        for (const p of m.perms) {
+          total += 1;
+          if (selected.has(p.name)) granted += 1;
+        }
+      }
+    }
+    return { granted, total };
+  }, [areas, selected]);
 
   const saveProfile = useMutation({
     mutationFn: (input: { name: string; description: string }) =>
@@ -225,12 +446,70 @@ export function RoleDetailPage({ roleId, onBack }: { roleId: string; onBack: () 
   }, [role]);
 
   const togglePerm = (perm: string) => {
+    if (!editable) return;
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(perm)) next.delete(perm);
       else next.add(perm);
       return next;
     });
+  };
+
+  const toggleModule = (module: ModuleNode) => {
+    if (!editable) return;
+    const state = moduleTriState(module, selected);
+    const nextOn = state !== "all";
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (const p of module.perms) {
+        if (nextOn) next.add(p.name);
+        else next.delete(p.name);
+      }
+      return next;
+    });
+  };
+
+  const toggleArea = (group: AreaGroup) => {
+    if (!editable) return;
+    const state = areaTriState(group, selected);
+    const nextOn = state !== "all";
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (const m of group.modules) {
+        for (const p of m.perms) {
+          if (nextOn) next.add(p.name);
+          else next.delete(p.name);
+        }
+      }
+      return next;
+    });
+  };
+
+  const toggleExpandedArea = (area: string) => {
+    setExpandedAreas((prev) => {
+      const next = new Set(prev);
+      if (next.has(area)) next.delete(area);
+      else next.add(area);
+      return next;
+    });
+  };
+
+  const toggleExpandedModule = (resource: string) => {
+    setExpandedModules((prev) => {
+      const next = new Set(prev);
+      if (next.has(resource)) next.delete(resource);
+      else next.add(resource);
+      return next;
+    });
+  };
+
+  const expandAll = () => {
+    setExpandedAreas(new Set(filtered.map((g) => g.area)));
+    setExpandedModules(new Set(filtered.flatMap((g) => g.modules.map((m) => m.resource))));
+  };
+  const collapseAll = () => {
+    setExpandedAreas(new Set());
+    setExpandedModules(new Set());
   };
 
   if (roleQuery.isPending) return <Spinner label="Loading role…" />;
@@ -265,7 +544,14 @@ export function RoleDetailPage({ roleId, onBack }: { roleId: string; onBack: () 
 
       {isSystem ? (
         <Notice tone="warn">Built-in role — name and permissions are read-only.</Notice>
-      ) : null}
+      ) : !canUpdateRoles ? (
+        <Notice tone="warn">You can view this role, but you do not have permission to change it.</Notice>
+      ) : (
+        <Notice tone="success">
+          Editable — click an area or module checkbox to toggle everything under it, or click individual
+          permissions.
+        </Notice>
+      )}
 
       {!isSystem ? (
         <div className="card" style={{ marginBottom: 14 }}>
@@ -275,7 +561,7 @@ export function RoleDetailPage({ roleId, onBack }: { roleId: string; onBack: () 
           <div className="cbody">
             <div className="field">
               <label>Name</label>
-              <input value={name} onChange={(e) => setName(e.target.value)} />
+              <input value={name} onChange={(e) => setName(e.target.value)} disabled={!editable} />
             </div>
             <div className="field">
               <label>Description</label>
@@ -283,9 +569,10 @@ export function RoleDetailPage({ roleId, onBack }: { roleId: string; onBack: () 
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={2}
+                disabled={!editable}
               />
             </div>
-            <Gated permission={FshPermissions.roles.update}>
+            {editable ? (
               <button
                 type="button"
                 className="btn btn-out btn-sm"
@@ -300,41 +587,148 @@ export function RoleDetailPage({ roleId, onBack }: { roleId: string; onBack: () 
               >
                 {saveProfile.isPending ? "Saving…" : "Save profile"}
               </button>
-            </Gated>
+            ) : null}
           </div>
         </div>
       ) : null}
 
       <div className="card">
         <div className="chead">
-          <h3>Permissions ({selected.size})</h3>
+          <h3>Permissions</h3>
+          <span className="hint" style={{ marginLeft: "auto" }}>
+            {totals.granted}/{totals.total} granted
+          </span>
         </div>
         <div className="cbody">
           {catalogQuery.isPending ? (
             <Spinner label="Loading catalog…" />
           ) : (
             <>
-              {[...grouped.entries()].map(([resource, entries]) => (
-                <div key={resource} style={{ marginBottom: 20 }}>
-                  <h4 style={{ marginBottom: 8 }}>{resource}</h4>
-                  {entries.map((entry) => (
-                    <label key={entry.name} style={{ display: "flex", gap: 10, marginBottom: 6 }}>
-                      <input
-                        type="checkbox"
-                        checked={selected.has(entry.name)}
-                        disabled={isSystem}
-                        onChange={() => togglePerm(entry.name)}
-                      />
-                      <span>
-                        <strong>{entry.action}</strong>
-                        <span className="hint"> — {entry.description}</span>
-                      </span>
-                    </label>
-                  ))}
+              <div className="role-tree-controls">
+                <div className="field" style={{ margin: 0, flex: 1 }}>
+                  <label>Filter</label>
+                  <input
+                    value={query}
+                    placeholder="Filter areas, modules, or permissions…"
+                    onChange={(e) => setQuery(e.target.value)}
+                  />
                 </div>
-              ))}
-              {!isSystem ? (
-                <Gated permission={FshPermissions.roles.update}>
+                <button type="button" className="lnk role-tree-link" onClick={expandAll}>
+                  Expand all
+                </button>
+                <button type="button" className="lnk role-tree-link" onClick={collapseAll}>
+                  Collapse all
+                </button>
+              </div>
+
+              {filtered.length === 0 ? (
+                <EmptyState icon="list">No permissions match the filter.</EmptyState>
+              ) : (
+                <div className="role-tree">
+                  {filtered.map((g) => {
+                    const areaState = areaTriState(g, selected);
+                    const areaOpen = expandedAreas.has(g.area);
+                    const areaCount = areaPermCount(g, selected);
+                    return (
+                      <div key={g.area} className="role-tree-area">
+                        <div
+                          className="role-tree-row role-tree-area-row"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => toggleExpandedArea(g.area)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              toggleExpandedArea(g.area);
+                            }
+                          }}
+                        >
+                          <span className={`role-tree-caret${areaOpen ? " open" : ""}`}>
+                            <Icon name="chev" size={15} />
+                          </span>
+                          <TriCheckbox
+                            state={areaState}
+                            editable={editable}
+                            onClick={() => toggleArea(g)}
+                          />
+                          <span className="role-tree-name">{humanizeLabel(g.area)}</span>
+                          <span className="role-tree-badge">
+                            {areaCount.on}/{areaCount.total}
+                          </span>
+                        </div>
+                        {areaOpen ? (
+                          <div className="role-tree-area-body">
+                            {g.modules.map((m) => {
+                              const state = moduleTriState(m, selected);
+                              const isOpen = expandedModules.has(m.resource);
+                              const onCount = m.perms.filter((p) => selected.has(p.name)).length;
+                              return (
+                                <div key={m.resource} className="role-tree-node">
+                                  <div
+                                    className="role-tree-row"
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={() => toggleExpandedModule(m.resource)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter" || e.key === " ") {
+                                        e.preventDefault();
+                                        toggleExpandedModule(m.resource);
+                                      }
+                                    }}
+                                  >
+                                    <span className={`role-tree-caret${isOpen ? " open" : ""}`}>
+                                      <Icon name="chev" size={14} />
+                                    </span>
+                                    <TriCheckbox
+                                      state={state}
+                                      editable={editable}
+                                      onClick={() => toggleModule(m)}
+                                    />
+                                    <span className="role-tree-name role-tree-name--mod">
+                                      {humanizeLabel(m.label)}
+                                    </span>
+                                    <span className="role-tree-badge">
+                                      {onCount}/{m.perms.length}
+                                    </span>
+                                  </div>
+                                  {isOpen ? (
+                                    <div className="role-tree-children">
+                                      {m.perms.map((p) => {
+                                        const on = selected.has(p.name);
+                                        return (
+                                          <button
+                                            key={p.name}
+                                            type="button"
+                                            className={`role-tree-leaf${on ? " on" : ""}${editable ? " editable" : ""}`}
+                                            disabled={!editable}
+                                            title={p.description || p.name}
+                                            onClick={() => togglePerm(p.name)}
+                                          >
+                                            <TriCheckbox
+                                              state={on ? "all" : "none"}
+                                              editable={editable}
+                                              onClick={() => togglePerm(p.name)}
+                                              size={14}
+                                            />
+                                            {humanizeAction(p.action)}
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  ) : null}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {editable ? (
+                <div className="actionbar" style={{ marginTop: 16 }}>
                   <button
                     type="button"
                     className="btn btn-pri btn-sm"
@@ -343,7 +737,7 @@ export function RoleDetailPage({ roleId, onBack }: { roleId: string; onBack: () 
                   >
                     {savePerms.isPending ? "Saving…" : "Save permissions"}
                   </button>
-                </Gated>
+                </div>
               ) : null}
             </>
           )}

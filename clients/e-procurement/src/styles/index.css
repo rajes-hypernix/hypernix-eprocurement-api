@@ -1497,3 +1497,139 @@ table.da-pos td:last-child, table.da-pos th:last-child { text-align: right; }
     grid-template-columns: 1fr;
   }
 }
+
+/* ---- Role permissions tree (Admin roles detail) ---- */
+.role-tree-controls {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.role-tree-link {
+  font-size: 12px;
+  font-weight: 600;
+  padding-bottom: 8px;
+  white-space: nowrap;
+}
+.role-tree {
+  border: 1px solid var(--line);
+  background: #fff;
+}
+.role-tree-area {
+  border-bottom: 1px solid var(--line);
+}
+.role-tree-area:last-child {
+  border-bottom: none;
+}
+.role-tree-area-row {
+  background: var(--soft, #f2ede1);
+}
+.role-tree-area-row:hover {
+  background: #ebe4d6;
+}
+.role-tree-area-body {
+  border-top: 1px solid var(--line);
+}
+.role-tree-node {
+  border-bottom: 1px solid var(--line);
+}
+.role-tree-area-body > .role-tree-node:last-child {
+  border-bottom: none;
+}
+.role-tree-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  background: #fff;
+}
+.role-tree-area-body .role-tree-row {
+  padding-left: 28px;
+}
+.role-tree-row:hover {
+  background: var(--cream, #faf7f0);
+}
+.role-tree-caret {
+  display: inline-flex;
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+.role-tree-caret.open {
+  transform: rotate(90deg);
+}
+.role-tree-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  flex: 1;
+}
+.role-tree-name--mod {
+  font-weight: 600;
+  font-size: 13px;
+}
+.role-tree-badge {
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--soft, #f2ede1);
+  border: 1px solid var(--line);
+  padding: 1px 8px;
+}
+.role-tree-area-body .role-tree-badge {
+  background: #ebe4d6;
+}
+.role-tree-children {
+  padding: 4px 14px 12px 62px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  background: #fcfaf5;
+  border-top: 1px solid var(--line);
+}
+.role-tree-leaf {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  padding: 5px 10px 5px 6px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--muted);
+  cursor: default;
+}
+.role-tree-leaf.on {
+  color: var(--ink);
+}
+.role-tree-leaf.editable {
+  cursor: pointer;
+}
+.role-tri {
+  border-radius: 0;
+  border: 1.5px solid var(--muted);
+  background: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: transparent;
+  padding: 0;
+  flex-shrink: 0;
+}
+.role-tri--all {
+  background: #3f7d63;
+  border-color: #3f7d63;
+  color: #fff;
+}
+.role-tri--partial {
+  background: #fff;
+  border-color: var(--teal);
+  color: var(--teal);
+}
+.role-tri--none {
+  color: transparent;
+}
+.role-tri.editable {
+  cursor: pointer;
+}
+.role-tri:disabled {
+  cursor: default;
+}
