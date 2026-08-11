@@ -43,15 +43,17 @@ export function Modal({
   icon = "check",
   children,
   footer,
+  wide = false,
 }: {
   title: ReactNode;
   icon?: string;
   children: ReactNode;
   footer: ReactNode;
+  wide?: boolean;
 }) {
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal">
+      <div className={`modal${wide ? " wide" : ""}`}>
         <div className="mhead">
           <Icon name={icon} size={20} />
           <h3>{title}</h3>

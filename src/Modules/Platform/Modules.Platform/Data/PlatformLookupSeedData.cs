@@ -6,33 +6,32 @@ namespace FSH.Modules.Platform.Data;
 /// <summary>Idempotent Malaysia-focused geo, banks, and RFQ reason-code lists.</summary>
 public static class PlatformLookupSeedData
 {
+    /// <summary>Full MY state / federal territory set (POC CustomListSeed parity).</summary>
+    private static readonly (string Code, string Name, string[] Cities)[] MalaysiaStates =
+    [
+        ("JHR", "Johor", ["Johor Bahru", "Pasir Gudang", "Batu Pahat", "Skudai"]),
+        ("KDH", "Kedah", ["Alor Setar", "Sungai Petani"]),
+        ("KTN", "Kelantan", ["Kota Bharu"]),
+        ("MLK", "Melaka", ["Melaka City"]),
+        ("NSN", "Negeri Sembilan", ["Seremban"]),
+        ("PHG", "Pahang", ["Kuantan"]),
+        ("PNG", "Pulau Pinang", ["George Town", "Butterworth", "Bayan Lepas"]),
+        ("PRK", "Perak", ["Ipoh"]),
+        ("PLS", "Perlis", ["Kangar"]),
+        ("SGR", "Selangor", ["Shah Alam", "Petaling Jaya", "Subang Jaya", "Klang"]),
+        ("TRG", "Terengganu", ["Kuala Terengganu"]),
+        ("SBH", "Sabah", ["Kota Kinabalu", "Sandakan", "Tawau"]),
+        ("SWK", "Sarawak", ["Kuching", "Miri", "Bintulu", "Sibu"]),
+        ("KUL", "Wilayah Persekutuan Kuala Lumpur", ["Kuala Lumpur"]),
+        ("LBN", "Wilayah Persekutuan Labuan", ["Labuan"]),
+        ("PJY", "Wilayah Persekutuan Putrajaya", ["Putrajaya"]),
+    ];
+
     public static void Seed(PlatformDbContext db)
     {
         ArgumentNullException.ThrowIfNull(db);
 
-        if (!db.Countries.Any())
-        {
-            var my = Country.Create("MY", "Malaysia");
-            db.Countries.Add(my);
-
-            var states = new (string Code, string Name, string[] Cities)[]
-            {
-                ("SGR", "Selangor", ["Shah Alam", "Petaling Jaya", "Subang Jaya"]),
-                ("KUL", "Wilayah Persekutuan Kuala Lumpur", ["Kuala Lumpur"]),
-                ("JHR", "Johor", ["Johor Bahru", "Skudai"]),
-                ("PNG", "Pulau Pinang", ["George Town", "Bayan Lepas"]),
-                ("SBH", "Sabah", ["Kota Kinabalu"]),
-                ("SWK", "Sarawak", ["Kuching"]),
-            };
-
-            foreach (var (code, name, cities) in states)
-            {
-                var state = State.Create(my.Id, code, name);
-                db.States.Add(state);
-                foreach (var city in cities)
-                    db.Cities.Add(City.Create(state.Id, city));
-            }
-        }
+        EnsureMalaysiaGeo(db);
 
         if (!db.Banks.Any())
         {
@@ -71,17 +70,7 @@ public static class PlatformLookupSeedData
             ]);
         }
 
-        if (!db.OrgUnits.Any())
-        {
-            db.OrgUnits.AddRange(
-                OrgUnit.Create("OPS", "Operations", OrgUnitType.Department),
-                OrgUnit.Create("PROC", "Procurement", OrgUnitType.Department),
-                OrgUnit.Create("FIN", "Finance", OrgUnitType.Department),
-                OrgUnit.Create("HQ-KL", "Headquarters — Kuala Lumpur", OrgUnitType.Location),
-                OrgUnit.Create("PLANT-JHR", "Johor Plant", OrgUnitType.Location),
-                OrgUnit.Create("CC-1000", "Cost Centre 1000", OrgUnitType.CostCentre),
-                OrgUnit.Create("CC-2000", "Cost Centre 2000", OrgUnitType.CostCentre));
-        }
+        EnsureOrgUnits(db);
 
         if (!db.FormTemplates.Any())
         {
@@ -97,6 +86,73 @@ public static class PlatformLookupSeedData
             nonSwec.AddQuestion(3, "Willing to undergo financial assessment?", "yesno", required: true);
             db.FormTemplates.Add(nonSwec);
         }
+    }
+
+    /// <summary>
+    /// Creates Malaysia + full state/city set on empty geo, or inserts any missing MY states
+    /// on databases that were seeded with the earlier partial list.
+    /// </summary>
+    private static void EnsureMalaysiaGeo(PlatformDbContext db)
+    {
+        var my = db.Countries.FirstOrDefault(c => c.Code == "MY" && !c.IsDeleted);
+        if (my is null)
+        {
+            my = Country.Create("MY", "Malaysia");
+            db.Countries.Add(my);
+        }
+
+        var existingCodes = db.States
+            .Where(s => s.CountryId == my.Id && !s.IsDeleted)
+            .Select(s => s.Code)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var (code, name, cities) in MalaysiaStates)
+        {
+            if (existingCodes.Contains(code))
+                continue;
+
+            var state = State.Create(my.Id, code, name);
+            db.States.Add(state);
+            foreach (var city in cities)
+                db.Cities.Add(City.Create(state.Id, city));
+        }
+    }
+
+    /// <summary>
+    /// Seeds sample org units across the Classification dimensions used on the PR form.
+    /// Additive: missing types/codes are inserted even when some units already exist.
+    /// </summary>
+    private static void EnsureOrgUnits(PlatformDbContext db)
+    {
+        var existing = db.OrgUnits
+            .Select(u => u.Code)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        void Add(string code, string name, OrgUnitType type)
+        {
+            if (existing.Contains(code))
+                return;
+            db.OrgUnits.Add(OrgUnit.Create(code, name, type));
+            existing.Add(code);
+        }
+
+        Add("OPS", "Operations", OrgUnitType.Department);
+        Add("PROC", "Procurement", OrgUnitType.Department);
+        Add("FIN", "Finance", OrgUnitType.Department);
+
+        Add("HQ-KL", "Headquarters — Kuala Lumpur", OrgUnitType.Location);
+        Add("PLANT-JHR", "Johor Plant", OrgUnitType.Location);
+        Add("PLANT-BTU", "Bintulu Plant", OrgUnitType.Location);
+
+        Add("CAT-PIPING", "Piping", OrgUnitType.Category);
+        Add("CAT-ELEC", "Electrical", OrgUnitType.Category);
+        Add("CAT-MECH", "Mechanical", OrgUnitType.Category);
+
+        Add("PRJ-TA2026", "TA-2026", OrgUnitType.Project);
+        Add("PRJ-OPS", "Operations Capex", OrgUnitType.Project);
+
+        Add("CC-1000", "Cost Centre 1000", OrgUnitType.CostCentre);
+        Add("CC-2000", "Cost Centre 2000", OrgUnitType.CostCentre);
     }
 
     private static void SeedList(

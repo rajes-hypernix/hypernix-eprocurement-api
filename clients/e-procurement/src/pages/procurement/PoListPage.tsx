@@ -6,6 +6,7 @@ import { Gated } from "@/components/Gated";
 import { Icon } from "@/components/Icon";
 import { EmptyState, Spinner } from "@/components/ui";
 import { PoStatusBadge } from "@/components/procurement/badges";
+import { PoFromPrModal } from "@/pages/procurement/PoFromPrModal";
 import { FshPermissions } from "@/lib/fsh-permissions";
 import { fmt, dateMY } from "@/lib/format";
 
@@ -30,6 +31,7 @@ export function PoListPage({
   const { isVendor } = useAuth();
   const [tab, setTab] = useState<Tab>("all");
   const [q, setQ] = useState("");
+  const [fromPrOpen, setFromPrOpen] = useState(false);
 
   const { data, isPending } = useQuery({
     queryKey: ["purchase-orders"],
@@ -72,7 +74,12 @@ export function PoListPage({
           </p>
         </div>
         {!isVendor ? (
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <Gated permission={FshPermissions.purchaseOrders.createFromRequisition}>
+              <button type="button" className="btn btn-out btn-sm" onClick={() => setFromPrOpen(true)}>
+                <Icon name="doc" size={15} /> From requisition…
+              </button>
+            </Gated>
             <Gated permission={FshPermissions.purchaseOrders.createFromRequisition}>
               <button type="button" className="btn btn-out btn-sm" onClick={() => onNavigate("order-builder")}>
                 <Icon name="box" size={15} /> Order builder
@@ -182,6 +189,16 @@ export function PoListPage({
           </table>
         )}
       </div>
+
+      {fromPrOpen ? (
+        <PoFromPrModal
+          onClose={() => setFromPrOpen(false)}
+          onCreated={(id) => {
+            setFromPrOpen(false);
+            onOpen(id);
+          }}
+        />
+      ) : null}
     </>
   );
 }

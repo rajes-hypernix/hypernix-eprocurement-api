@@ -14,15 +14,33 @@ import {
   type PrLineInput,
 } from "@/api/sourcing";
 import { listItems, listLocations, listTaxCodes, type ItemDto, type TaxCodeDto } from "@/api/configuration";
+import { listOrgUnits, type OrgUnitDto } from "@/api/platform";
 import { Icon } from "@/components/Icon";
 import { ConfirmModal, Notice, Spinner } from "@/components/ui";
 import { SourcingStatusBadge } from "@/components/sourcing/badges";
 import { CustomFieldsSection } from "@/components/customfields/CustomFieldsSection";
+import { PoFromPrModal } from "@/pages/procurement/PoFromPrModal";
 import { ApiRequestError } from "@/lib/api-client";
 import { fmt } from "@/lib/format";
 import { useAuth } from "@/auth/use-auth";
 import { FshPermissions } from "@/lib/fsh-permissions";
 import { Gated } from "@/components/Gated";
+
+function unitsOfType(units: OrgUnitDto[], type: string): OrgUnitDto[] {
+  return units.filter((u) => u.type === type);
+}
+
+function matchOrgUnitId(units: OrgUnitDto[], name: string, code?: string | null): string {
+  if (code) {
+    const byCode = units.find((u) => u.code === code);
+    if (byCode) return byCode.id;
+  }
+  if (name) {
+    const byName = units.find((u) => u.name === name || u.code === name);
+    if (byName) return byName.id;
+  }
+  return "";
+}
 
 type TabKey = "items" | "shipping" | "attachments";
 
@@ -123,20 +141,32 @@ export function RequisitionFormPage({
     queryFn: () => listLocations(true),
     staleTime: 60_000,
   });
+  const { data: orgUnits = [] } = useQuery({
+    queryKey: ["org-units", true],
+    queryFn: () => listOrgUnits(undefined, true),
+    staleTime: 60_000,
+  });
 
   const taxById = useMemo(() => new Map(taxCodes.map((t) => [t.id, t])), [taxCodes]);
   const itemByCode = useMemo(() => new Map(items.map((i) => [i.itemCode, i])), [items]);
+  const deptUnits = useMemo(() => unitsOfType(orgUnits, "Department"), [orgUnits]);
+  const classLocationUnits = useMemo(() => unitsOfType(orgUnits, "Location"), [orgUnits]);
+  const categoryUnits = useMemo(() => unitsOfType(orgUnits, "Category"), [orgUnits]);
+  const projectUnits = useMemo(() => unitsOfType(orgUnits, "Project"), [orgUnits]);
 
   const [requestor, setRequestor] = useState("");
   const [department, setDepartment] = useState("");
+  const [departmentCode, setDepartmentCode] = useState<string | null>(null);
   const [location, setLocation] = useState("");
   const [locationCode, setLocationCode] = useState<string | null>(null);
   const [category, setCategory] = useState("");
+  const [categoryCode, setCategoryCode] = useState<string | null>(null);
   const [job, setJob] = useState("");
   const [memo, setMemo] = useState("");
   const [costCentre, setCostCentre] = useState("");
   const [project, setProject] = useState("");
   const [requiredOn, setRequiredOn] = useState("");
+  const [createPoOpen, setCreatePoOpen] = useState(false);
   const [currency, setCurrency] = useState("MYR");
   const [lines, setLines] = useState<DraftLine[]>(() => [blankLine()]);
   const [shipMode, setShipMode] = useState<"location" | "adhoc">("location");
@@ -154,9 +184,11 @@ export function RequisitionFormPage({
     if (!existing || hydratedId === existing.id) return;
     setRequestor(existing.requestor);
     setDepartment(existing.department);
+    setDepartmentCode(existing.departmentCode ?? null);
     setLocation(existing.location);
     setLocationCode(existing.locationCode ?? null);
     setCategory(existing.category);
+    setCategoryCode(existing.categoryCode ?? null);
     setJob(existing.job);
     setMemo(existing.memo);
     setCostCentre(existing.costCentre);
@@ -209,17 +241,22 @@ export function RequisitionFormPage({
     return { subtotal, sst, gross: subtotal + sst };
   }, [lines, taxById]);
 
-  const selectedLocationId = useMemo(() => {
-    if (locationCode) {
-      const byCode = locations.find((l) => l.code === locationCode);
-      if (byCode) return byCode.id;
-    }
-    if (location) {
-      const byName = locations.find((l) => l.name === location || l.code === location);
-      if (byName) return byName.id;
-    }
-    return "";
-  }, [locations, location, locationCode]);
+  const selectedDeptId = useMemo(
+    () => matchOrgUnitId(deptUnits, department, departmentCode),
+    [deptUnits, department, departmentCode],
+  );
+  const selectedClassLocationId = useMemo(
+    () => matchOrgUnitId(classLocationUnits, location, locationCode),
+    [classLocationUnits, location, locationCode],
+  );
+  const selectedCategoryId = useMemo(
+    () => matchOrgUnitId(categoryUnits, category, categoryCode),
+    [categoryUnits, category, categoryCode],
+  );
+  const selectedProjectId = useMemo(
+    () => matchOrgUnitId(projectUnits, project ?? "", null),
+    [projectUnits, project],
+  );
 
   const shipLocation = locations.find((l) => l.id === shipToLocationId);
 
@@ -290,9 +327,11 @@ export function RequisitionFormPage({
       createRequisition({
         requestor,
         department,
+        departmentCode,
         location,
         locationCode,
         category,
+        categoryCode,
         job,
         memo,
         costCentre,
@@ -311,9 +350,11 @@ export function RequisitionFormPage({
     mutationFn: () =>
       updateRequisition(id!, {
         department,
+        departmentCode,
         location,
         locationCode,
         category,
+        categoryCode,
         job,
         memo,
         costCentre,
@@ -331,9 +372,11 @@ export function RequisitionFormPage({
       if (editable) {
         await updateRequisition(id!, {
           department,
+          departmentCode,
           location,
           locationCode,
           category,
+          categoryCode,
           job,
           memo,
           costCentre,
@@ -412,7 +455,7 @@ export function RequisitionFormPage({
   const busy = create.isPending || update.isPending || submit.isPending;
   const canCreatePo =
     !isNew &&
-    headerStatus === "Submitted" &&
+    ["Submitted", "PartiallySourced", "PartiallyOrdered"].includes(headerStatus) &&
     (authUser?.permissions ?? []).includes(FshPermissions.purchaseOrders.createFromRequisition);
   const hasLiveLine = existing?.lines.some((l) => l.lifecycleStatus === "InRfq" || l.lifecycleStatus === "Awarded");
 
@@ -439,7 +482,7 @@ export function RequisitionFormPage({
         <div className="pr-form-actions">
           {canCreatePo ? (
             <Gated permission={FshPermissions.purchaseOrders.createFromRequisition}>
-              <button type="button" className="btn btn-out btn-sm" onClick={() => void navigate("/order-builder")}>
+              <button type="button" className="btn btn-out btn-sm" onClick={() => setCreatePoOpen(true)}>
                 <Icon name="box" size={14} /> Create Purchase Order
               </button>
             </Gated>
@@ -620,51 +663,83 @@ export function RequisitionFormPage({
           <div className="grid g2 pr-class-grid">
             <div className="field">
               <label>Department</label>
-              <input
-                value={department}
-                placeholder="e.g. Maintenance"
-                onChange={(e) => setDepartment(e.target.value)}
+              <select
+                value={selectedDeptId}
                 disabled={!editable}
-              />
+                onChange={(e) => {
+                  const u = deptUnits.find((x) => x.id === e.target.value);
+                  setDepartment(u?.name ?? "");
+                  setDepartmentCode(u?.code ?? null);
+                }}
+              >
+                <option value="">Select department…</option>
+                {deptUnits.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.code} — {u.name}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="field">
               <label>Location</label>
               <select
-                value={selectedLocationId}
+                value={selectedClassLocationId}
                 disabled={!editable}
                 onChange={(e) => {
-                  const loc = locations.find((l) => l.id === e.target.value);
-                  setLocation(loc?.name ?? "");
-                  setLocationCode(loc?.code ?? null);
+                  const u = classLocationUnits.find((x) => x.id === e.target.value);
+                  setLocation(u?.name ?? "");
+                  setLocationCode(u?.code ?? null);
                 }}
               >
-                <option value="">e.g. Bintulu Plant</option>
-                {locations.map((l) => (
-                  <option key={l.id} value={l.id}>
-                    {l.name}
+                <option value="">Select location…</option>
+                {classLocationUnits.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.code} — {u.name}
                   </option>
                 ))}
               </select>
             </div>
             <div className="field">
               <label>Category</label>
-              <input
-                value={category}
-                placeholder="e.g. Piping"
-                onChange={(e) => setCategory(e.target.value)}
+              <select
+                value={selectedCategoryId}
                 disabled={!editable}
-              />
+                onChange={(e) => {
+                  const u = categoryUnits.find((x) => x.id === e.target.value);
+                  setCategory(u?.name ?? "");
+                  setCategoryCode(u?.code ?? null);
+                }}
+              >
+                <option value="">Select category…</option>
+                {categoryUnits.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.code} — {u.name}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="field">
               <label>Project</label>
-              <input
-                value={project}
-                placeholder="Select…"
-                onChange={(e) => setProject(e.target.value)}
+              <select
+                value={selectedProjectId}
                 disabled={!editable}
-              />
+                onChange={(e) => {
+                  const u = projectUnits.find((x) => x.id === e.target.value);
+                  setProject(u?.name ?? "");
+                }}
+              >
+                <option value="">Select project…</option>
+                {projectUnits.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.code} — {u.name}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
+          <p className="hint" style={{ margin: "10px 0 0" }}>
+            Values come from Setup → Lookups → Organisation units (types Department, Location, Category, Project).
+          </p>
         </div>
       </div>
 
@@ -1027,6 +1102,17 @@ export function RequisitionFormPage({
           busy={cancelPr.isPending}
           onCancel={() => setCancelling(false)}
           onConfirm={() => cancelPr.mutate()}
+        />
+      ) : null}
+
+      {createPoOpen && id ? (
+        <PoFromPrModal
+          initialPrId={id}
+          onClose={() => setCreatePoOpen(false)}
+          onCreated={(poId) => {
+            setCreatePoOpen(false);
+            void navigate(`/pos/${poId}`);
+          }}
         />
       ) : null}
     </>

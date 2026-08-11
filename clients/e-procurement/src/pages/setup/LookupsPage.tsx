@@ -53,6 +53,7 @@ import { formatApiError, useErrorDialog } from "@/feedback/ErrorDialogContext";
 import { activeLabel, cellActive, cellStr, exportRowsToExcel, parseExcelFile } from "@/lib/excel";
 import { dateTimeMY } from "@/lib/format";
 import { FshPermissions } from "@/lib/fsh-permissions";
+import { ORG_UNIT_TYPES } from "@/lib/org-unit-types";
 
 type Tab = "lists" | "countries" | "banks" | "org";
 
@@ -2346,7 +2347,7 @@ function OrgTab({ onHistory }: { onHistory: HistoryOpen }) {
   const { showErrorFrom } = useErrorDialog();
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
-  const [type, setType] = useState("");
+  const [type, setType] = useState<string>(ORG_UNIT_TYPES[0]);
   const [parentId, setParentId] = useState("");
   const [importOpen, setImportOpen] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<PendingStatus | null>(null);
@@ -2367,7 +2368,7 @@ function OrgTab({ onHistory }: { onHistory: HistoryOpen }) {
     onSuccess: () => {
       setCode("");
       setName("");
-      setType("");
+      setType(ORG_UNIT_TYPES[0]);
       setParentId("");
       void qc.invalidateQueries({ queryKey: ["org-units"] });
     },
@@ -2537,7 +2538,13 @@ function OrgTab({ onHistory }: { onHistory: HistoryOpen }) {
               </div>
               <div className="field" style={{ margin: 0, minWidth: 140 }}>
                 <label>Type</label>
-                <input value={type} onChange={(e) => setType(e.target.value)} placeholder="e.g. Department" />
+                <select value={type} onChange={(e) => setType(e.target.value)}>
+                  {ORG_UNIT_TYPES.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="field" style={{ margin: 0, minWidth: 180 }}>
                 <label>Parent (optional)</label>
