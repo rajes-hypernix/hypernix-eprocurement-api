@@ -10,13 +10,38 @@ export default defineConfig(({ mode, command }) => {
   // Relative base so IIS/virtual-directory deploys resolve ./assets/* next to index.html
   // instead of site-root /assets/* (common cause of 404 after manual publish).
   const base = env.VITE_BASE_PATH?.trim() || (command === "build" ? "./" : "/");
+  const buildTime = Date.now();
 
   return {
     base,
-    plugins: [react()],
+    plugins: [
+      react(),
+      {
+        name: "inject-build-version",
+        transformIndexHtml(html) {
+          const versionMeta = `<meta name="app-version" content='${JSON.stringify({
+            version: String(buildTime),
+            buildTime,
+          })}' />`;
+          return html.replace("<head>", `<head>\n    ${versionMeta}`);
+        },
+      },
+    ],
+    define: {
+      "import.meta.env.VITE_BUILD_TIME": JSON.stringify(buildTime),
+    },
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
+      },
+    },
+    build: {
+      rollupOptions: {
+        output: {
+          entryFileNames: "assets/[name]-[hash].js",
+          chunkFileNames: "assets/[name]-[hash].js",
+          assetFileNames: "assets/[name]-[hash].[ext]",
+        },
       },
     },
     server: {

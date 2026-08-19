@@ -83,7 +83,7 @@ export function Kv({ k, v }: { k: string; v: ReactNode }) {
   );
 }
 
-export function Stat({ label, value, sub }: { label: string; value: ReactNode; sub?: string }) {
+export function Stat({ label, value, sub }: { label: string; value: ReactNode; sub?: ReactNode }) {
   return (
     <div className="card stat">
       <div className="lbl">{label}</div>

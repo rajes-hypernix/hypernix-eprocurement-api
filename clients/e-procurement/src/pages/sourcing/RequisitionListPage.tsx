@@ -20,6 +20,7 @@ import { EmptyState, Modal, Notice, Spinner } from "@/components/ui";
 import { SourcingStatusBadge } from "@/components/sourcing/badges";
 import { ViewBuilder, ViewPicker } from "@/components/views/SavedViewControls";
 import { ApiRequestError } from "@/lib/api-client";
+import { dateMY } from "@/lib/format";
 
 const PR_KANBAN_COLUMNS: { key: string; label: string }[] = [
   { key: "Draft", label: "Draft" },
@@ -29,11 +30,35 @@ const PR_KANBAN_COLUMNS: { key: string; label: string }[] = [
   { key: "Cancelled", label: "Cancelled" },
 ];
 
-/** Header-gate for grouping — line-level lifecycle (Open) is checked once lines are loaded. */
+const STATUS_LABELS: Record<string, string> = Object.fromEntries(PR_KANBAN_COLUMNS.map((c) => [c.key, c.label]));
+
+type FacetKey = "requestor" | "department" | "location" | "job" | "category" | "headerStatus";
+const FACETS: { key: FacetKey; label: string }[] = [
+  { key: "requestor", label: "Requestor" },
+  { key: "department", label: "Dept" },
+  { key: "location", label: "Location" },
+  { key: "job", label: "Job" },
+  { key: "category", label: "Category" },
+  { key: "headerStatus", label: "Status" },
+];
+const EMPTY_FACETS: Record<FacetKey, string> = {
+  requestor: "all",
+  department: "all",
+  location: "all",
+  job: "all",
+  category: "all",
+  headerStatus: "all",
+};
+
+/** Header-gate for grouping — line-level lifecycle (Open) is checked via openLineCount. */
 const SOURCE_ELIGIBLE_HEADER = new Set(["Submitted", "PartiallySourced"]);
 const isLineSourceable = (l: PrLineDto) => l.lifecycleStatus === "Open";
+const hasAvailableLines = (r: { headerStatus: string; openLineCount: number }) =>
+  SOURCE_ELIGIBLE_HEADER.has(r.headerStatus) && r.openLineCount > 0;
 
 type LineModal = { kind: "cancel" | "release"; prId: string; lineId: string; item: string };
+
+const TABLE_COLS = 10;
 
 export function RequisitionListPage({
   onOpen,
@@ -49,8 +74,8 @@ export function RequisitionListPage({
 }) {
   const qc = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [status, setStatus] = useState("all");
-  const [q, setQ] = useState("");
+  const [facets, setFacets] = useState<Record<FacetKey, string>>({ ...EMPTY_FACETS });
+  const [show, setShow] = useState<"all" | "avail">("all");
   const [view, setView] = useState<"table" | "board">("table");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [grouped, setGrouped] = useState<Set<string>>(new Set());
@@ -96,18 +121,61 @@ export function RequisitionListPage({
     [selectedViewId, viewRun],
   );
 
-  const filtered = useMemo(() => {
-    return rows.filter((r) => {
-      if (viewIds && !viewIds.has(r.id)) return false;
-      if (status !== "all" && r.headerStatus !== status) return false;
-      if (q.trim() && !`${r.code} ${r.requestor} ${r.department}`.toLowerCase().includes(q.trim().toLowerCase())) {
-        return false;
+  const scoped = useMemo(
+    () => (viewIds ? rows.filter((r) => viewIds.has(r.id)) : rows),
+    [rows, viewIds],
+  );
+
+  const facetOptions = useMemo(() => {
+    const opts: Record<FacetKey, string[]> = {
+      requestor: [],
+      department: [],
+      location: [],
+      job: [],
+      category: [],
+      headerStatus: [],
+    };
+    for (const key of FACETS.map((f) => f.key)) {
+      const set = new Set<string>();
+      for (const r of scoped) {
+        const v =
+          key === "requestor"
+            ? r.requestor
+            : key === "department"
+              ? r.department
+              : key === "location"
+                ? r.location
+                : key === "job"
+                  ? r.job
+                  : key === "category"
+                    ? r.category
+                    : r.headerStatus;
+        if (v?.trim()) set.add(v);
       }
+      opts[key] = [...set].sort((a, b) => a.localeCompare(b));
+    }
+    return opts;
+  }, [scoped]);
+
+  const filtered = useMemo(() => {
+    return scoped.filter((r) => {
+      if (facets.requestor !== "all" && r.requestor !== facets.requestor) return false;
+      if (facets.department !== "all" && r.department !== facets.department) return false;
+      if (facets.location !== "all" && r.location !== facets.location) return false;
+      if (facets.job !== "all" && r.job !== facets.job) return false;
+      if (facets.category !== "all" && r.category !== facets.category) return false;
+      if (facets.headerStatus !== "all" && r.headerStatus !== facets.headerStatus) return false;
+      if (show === "avail" && !hasAvailableLines(r)) return false;
       return true;
     });
-  }, [rows, status, q, viewIds]);
+  }, [scoped, facets, show]);
 
-  const groupable = filtered.filter((r) => SOURCE_ELIGIBLE_HEADER.has(r.headerStatus));
+  const resetFilters = () => {
+    setFacets({ ...EMPTY_FACETS });
+    setShow("all");
+  };
+
+  const groupable = filtered.filter(hasAvailableLines);
   const allGrouped = groupable.length > 0 && groupable.every((r) => grouped.has(r.id));
   const someGrouped = groupable.some((r) => grouped.has(r.id));
 
@@ -118,6 +186,8 @@ export function RequisitionListPage({
     return n;
   };
   const toggleExpand = (id: string) => setExpanded((p) => setMember(p, id, !p.has(id)));
+  const expandAll = () => setExpanded(new Set(filtered.map((r) => r.id)));
+  const collapseAll = () => setExpanded(new Set());
   const setGroup = (id: string, on: boolean) => setGrouped((p) => setMember(p, id, on));
   const selectAllGroupable = (on: boolean) =>
     setGrouped((p) => {
@@ -152,7 +222,7 @@ export function RequisitionListPage({
       <div className="pagehead">
         <div>
           <h1>Requisitions</h1>
-          <p>Raise demand, then release lines into an RFQ once ready to source.</p>
+          <p>All requisitions. Expand one to act on its lines; group them to source.</p>
         </div>
         <div className="spacer" />
         <div className="viewtoggle">
@@ -167,7 +237,7 @@ export function RequisitionListPage({
           <Icon name="box" size={15} /> Build RFQ
         </button>
         <button type="button" className="btn btn-pri btn-sm" onClick={onNew}>
-          <Icon name="plus" size={15} /> New requisition
+          <Icon name="plus" size={15} /> Create Requisition
         </button>
       </div>
 
@@ -187,21 +257,35 @@ export function RequisitionListPage({
 
       <div className="card" style={{ marginBottom: 14 }}>
         <div className="cbody">
-          <div className="filterbar">
+          <div className="filterbar filterbar-auto">
+            {FACETS.map((f) => (
+              <div className="field" style={{ margin: 0 }} key={f.key}>
+                <label>{f.label}</label>
+                <select
+                  value={facets[f.key]}
+                  onChange={(e) => setFacets((prev) => ({ ...prev, [f.key]: e.target.value }))}
+                >
+                  <option value="all">All</option>
+                  {facetOptions[f.key].map((v) => (
+                    <option key={v} value={v}>
+                      {f.key === "headerStatus" ? (STATUS_LABELS[v] ?? v) : v}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ))}
             <div className="field" style={{ margin: 0 }}>
-              <label>Search code / requestor / department</label>
-              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="PR-2026-…" />
-            </div>
-            <div className="field" style={{ margin: 0, minWidth: 180 }}>
-              <label>Status</label>
-              <select value={status} onChange={(e) => setStatus(e.target.value)}>
-                <option value="all">All</option>
-                <option value="Draft">Draft</option>
-                <option value="Submitted">Submitted</option>
-                <option value="PartiallySourced">Partially sourced</option>
-                <option value="Sourced">Sourced</option>
-                <option value="Cancelled">Cancelled</option>
+              <label>Show</label>
+              <select value={show} onChange={(e) => setShow(e.target.value as "all" | "avail")}>
+                <option value="all">All PRs</option>
+                <option value="avail">With available lines</option>
               </select>
+            </div>
+            <div className="field" style={{ margin: 0 }}>
+              <label>&nbsp;</label>
+              <button type="button" className="freset" onClick={resetFilters}>
+                Reset
+              </button>
             </div>
           </div>
         </div>
@@ -262,6 +346,15 @@ export function RequisitionListPage({
             </div>
           )}
 
+          <div className="actbar" style={{ justifyContent: "flex-end", marginBottom: 8 }}>
+            <button type="button" className="freset" onClick={expandAll}>
+              Expand all
+            </button>
+            <button type="button" className="freset" onClick={collapseAll}>
+              Collapse all
+            </button>
+          </div>
+
           <div className="card">
             {isPending ? (
               <Spinner label="Loading requisitions…" />
@@ -281,18 +374,21 @@ export function RequisitionListPage({
                         aria-label="Select all source-eligible requisitions"
                       />
                     </th>
-                    <th>Code</th>
+                    <th style={{ width: 132 }}>PR #</th>
                     <th>Requestor</th>
-                    <th>Department</th>
-                    <th className="amt">Lines</th>
-                    <th>Status</th>
+                    <th>Dept</th>
+                    <th>Location</th>
+                    <th>Job</th>
+                    <th>Category</th>
+                    <th>Required by</th>
+                    <th>PR status</th>
                     <th />
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.map((r) => {
                     const open = expanded.has(r.id);
-                    const canGroup = SOURCE_ELIGIBLE_HEADER.has(r.headerStatus);
+                    const canGroup = hasAvailableLines(r);
                     return (
                       <FragmentRows key={r.id}>
                         <tr
@@ -309,15 +405,18 @@ export function RequisitionListPage({
                               aria-label={`Group ${r.code}`}
                             />
                           </td>
-                          <td>
+                          <td style={{ whiteSpace: "nowrap" }}>
                             <span className="chev">
                               <Icon name="chev" size={13} />
                             </span>{" "}
                             <span style={{ fontWeight: 700, color: "var(--teal)" }}>{r.code}</span>
                           </td>
-                          <td>{r.requestor}</td>
-                          <td>{r.department}</td>
-                          <td className="amt">{r.lineCount}</td>
+                          <td>{r.requestor || "—"}</td>
+                          <td>{r.department || "—"}</td>
+                          <td>{r.location || "—"}</td>
+                          <td>{r.job || "—"}</td>
+                          <td>{r.category || "—"}</td>
+                          <td>{dateMY(r.requiredOn)}</td>
                           <td>
                             <SourcingStatusBadge status={r.headerStatus} />
                           </td>
@@ -331,7 +430,7 @@ export function RequisitionListPage({
                         </tr>
                         {open ? (
                           <tr>
-                            <td colSpan={7} style={{ padding: 0, background: "#fbfbf9" }}>
+                            <td colSpan={TABLE_COLS} style={{ padding: 0, background: "#fbfbf9" }}>
                               <ExpandedLines
                                 prId={r.id}
                                 onCancel={(lineId, item) => {
@@ -352,8 +451,8 @@ export function RequisitionListPage({
                   })}
                   {filtered.length === 0 ? (
                     <tr>
-                      <td colSpan={7}>
-                        <EmptyState>No requisitions match the filter.</EmptyState>
+                      <td colSpan={TABLE_COLS}>
+                        <EmptyState>No PRs match these filters.</EmptyState>
                       </td>
                     </tr>
                   ) : null}

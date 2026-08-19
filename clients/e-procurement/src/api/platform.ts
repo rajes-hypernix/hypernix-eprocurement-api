@@ -361,6 +361,16 @@ export function createFormTemplate(input: {
   });
 }
 
+export function updateFormTemplate(
+  id: string,
+  input: { name: string; questions: CreateFormTemplateQuestionDto[] },
+): Promise<string> {
+  return apiFetch<string>(`${ROOT}/form-templates/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
 export function setFormTemplateActive(id: string, isActive: boolean): Promise<string> {
   return apiFetch<string>(`${ROOT}/form-templates/${encodeURIComponent(id)}/active`, {
     method: "PUT",

@@ -25,3 +25,8 @@ public sealed record CreateFormTemplateQuestionDto(
     string? Help = null);
 
 public sealed record SetFormTemplateActiveCommand(Guid Id, bool IsActive) : ICommand<Guid>;
+
+public sealed record UpdateFormTemplateCommand(
+    Guid Id,
+    string Name,
+    IReadOnlyList<CreateFormTemplateQuestionDto> Questions) : ICommand<Guid>;

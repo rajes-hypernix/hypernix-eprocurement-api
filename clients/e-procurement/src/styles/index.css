@@ -1128,6 +1128,69 @@ tr.out td { opacity: 0.6; }
 .addpr-body { flex: 1; overflow: auto; padding: 20px 22px; }
 .addpr-body .pagehead { display: none; }
 
+/* ---- RFQ Review dossier + readiness checklist (POC R2-S3T6) ---- */
+.rv-card { margin-bottom: 14px; }
+.rv-edit { display: inline-flex; align-items: center; gap: 4px; background: none; border: none; padding: 0; cursor: pointer; color: var(--teal-d); font-size: 12.5px; font-weight: 700; font-family: inherit; }
+.rv-edit:hover { text-decoration: underline; }
+.rv-v { font-weight: 600; color: var(--ink); font-size: 13px; }
+.rv-items .prtag + .prtag { margin-left: 4px; }
+.rv-items td .hint { font-size: 12px; }
+.rv-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; }
+.rv-qgroup { margin-bottom: 10px; }
+.rv-qgroup:last-child { margin-bottom: 0; }
+.rv-qhead { font-size: 11px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+.rv-qline { font-size: 13px; color: var(--ink); font-weight: 600; padding: 3px 0; }
+.rv-ck { display: flex; align-items: baseline; gap: 8px; padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: 13px; }
+.rv-ck:last-of-type { border-bottom: none; }
+.rv-ck .rv-ckic { display: inline-flex; align-self: center; flex-shrink: 0; }
+.rv-ck.ok .rv-ckic { color: var(--teal); }
+.rv-ck.warn .rv-ckic, .rv-ck.warn .rv-cklabel { color: var(--amber-deep); }
+.rv-ck.hard .rv-ckic, .rv-ck.hard .rv-cklabel { color: var(--red); }
+.rv-cklabel { font-weight: 700; }
+.rv-ckwhy { color: var(--muted); font-size: 12.5px; }
+.rv-ckblock { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--red-ink, #9b2c2c); background: var(--red-bg); border: 1px solid var(--red); padding: 1px 6px; margin-left: auto; white-space: nowrap; }
+.rv-cerwarn { display: flex; align-items: flex-start; gap: 7px; margin-top: 10px; padding: 9px 12px; font-size: 12.5px; line-height: 1.5; color: var(--amber-deep); background: var(--amber-bg); border: 1px solid var(--amber); }
+.rv-cerwarn svg { flex-shrink: 0; margin-top: 2px; }
+.ferr { color: var(--red); font-size: 12px; font-weight: 600; }
+
+/* ---- Drawer basket: preloaded row chip + unsource marker + est-total ---- */
+.bk-pre-chip {
+  display: inline-flex; align-items: center; gap: 3px; margin-left: 6px;
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px;
+  color: var(--teal-d, #0f6e56); background: var(--chip-teal-bg, #e1f0ec);
+  border: 1px solid var(--chip-teal-line, #b6d6cc); padding: 1px 6px; border-radius: 999px;
+}
+.bk-line.pre { background: #fafaf6; }
+.bk-line.removedpre { opacity: 0.55; text-decoration: line-through; }
+.bk-line.removedpre .bk-pre-chip { display: none; }
+.bk-unsrc {
+  font-size: 11px; font-weight: 600; color: var(--red, #c44536); margin-top: 2px;
+}
+.rfq-esttotal {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 13px; font-weight: 700; color: var(--teal-d, #0f6e56);
+  margin-right: 12px; white-space: nowrap;
+}
+/* Transaction Shipping / similar titled bands (POC .txn-band). */
+.txn-band { background: #fff; border: 1px solid var(--line, #E4DED2); margin-top: 14px; }
+.txn-bandbar {
+  background: var(--soft, #F6F4EF); border-bottom: 1px solid var(--line, #E4DED2);
+  padding: 8px 14px; font-size: 13.5px; font-weight: 700; color: var(--ink);
+}
+.txn-bandbody { padding: 12px 14px; }
+/* R3-S1T4b: currency-aware rate row (non-base transactions only). */
+.rate-row { display: flex; flex-direction: column; gap: 3px; margin: 8px 0; }
+.rate-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12.5px; color: var(--ink); }
+.rate-fact.rate-missing { color: var(--amber-ink, #9a6700); font-weight: 700; }
+.rate-equiv { font-size: 12px; }
+
+/* Award comparison matrix */
+.comp-wrap { overflow-x: auto; }
+table.comp { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+table.comp th, table.comp td { border: 1px solid var(--line); padding: 8px 10px; vertical-align: top; }
+table.comp th { background: var(--soft, #F6F4EF); font-weight: 700; }
+table.comp .vcol { min-width: 120px; }
+
 /* ---- View toggle + RFQ kanban board ---- */
 .viewtoggle { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 0; overflow: hidden; margin-right: 10px; }
 .viewtoggle button { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; padding: 7px 12px; border: none; background: #fff; color: var(--muted); cursor: pointer; }

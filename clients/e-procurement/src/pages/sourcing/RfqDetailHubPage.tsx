@@ -14,8 +14,15 @@ import {
 import { Icon } from "@/components/Icon";
 import { ConfirmModal, Modal, Notice } from "@/components/ui";
 import { Kv, Stat } from "@/components/vendors/EntityPage";
-import { SourcingStatusBadge, EnvelopeTag } from "@/components/sourcing/badges";
-import { dateTimeMY } from "@/lib/format";
+import {
+  BidProgressBadge,
+  EnvelopeTag,
+  InvitationStatusBadge,
+  RfqStatusBadge,
+} from "@/components/sourcing/badges";
+import { CustomFieldsSection } from "@/components/customfields/CustomFieldsSection";
+import { SegmentsSection } from "@/components/segments/SegmentsSection";
+import { dateTimeMY, fmt } from "@/lib/format";
 import { ApiRequestError } from "@/lib/api-client";
 
 const RESCINDABLE = new Set(["Invited", "Viewed", "IntendToBid", "Declined"]);
@@ -36,6 +43,7 @@ export function RfqDetailHubPage({
   const [rescinding, setRescinding] = useState<RfqInvitationDto | null>(null);
   const [extending, setExtending] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [closing, setClosing] = useState(false);
   const [reasonCode, setReasonCode] = useState("");
   const [note, setNote] = useState("");
   const [newClosesUtc, setNewClosesUtc] = useState("");
@@ -62,6 +70,7 @@ export function RfqDetailHubPage({
   const canGovern = rfq.status === "Draft" || rfq.status === "Open";
   const invitedVendorIds = new Set(rfq.invitations.map((i) => i.vendorId));
   const submittedCount = rfq.invitations.filter((i) => i.status === "BidSubmitted").length;
+  const liveInvites = rfq.invitations.filter((i) => i.status !== "Rescinded");
 
   const invite = useMutation({
     mutationFn: (vendorId: string) => inviteVendor(rfq.id, vendorId),
@@ -95,7 +104,14 @@ export function RfqDetailHubPage({
     onError: onErr,
   });
 
-  const close = useMutation({ mutationFn: () => closeRfq(rfq.id), onSuccess: refresh, onError: onErr });
+  const close = useMutation({
+    mutationFn: () => closeRfq(rfq.id),
+    onSuccess: () => {
+      setClosing(false);
+      refresh();
+    },
+    onError: onErr,
+  });
   const cancel = useMutation({
     mutationFn: () => cancelRfq(rfq.id),
     onSuccess: () => {
@@ -130,10 +146,14 @@ export function RfqDetailHubPage({
       </div>
       <div className="pagehead">
         <div>
-          <h1 style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            {rfq.code} <EnvelopeTag envelope={rfq.envelope} /> <SourcingStatusBadge status={rfq.status} />
+          <h1 style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            {rfq.code} <EnvelopeTag envelope={rfq.envelope} /> <RfqStatusBadge status={rfq.status} />
           </h1>
-          <p>{rfq.title || <span className="hint">(untitled)</span>}</p>
+          <p>
+            {rfq.title || <span className="hint">(untitled)</span>}
+            {" · from "}
+            {(rfq.prRefs ?? []).join(", ") || "—"}
+          </p>
         </div>
         <div className="spacer" />
         {cta}
@@ -151,10 +171,29 @@ export function RfqDetailHubPage({
       ) : null}
 
       <div className="grid g3" style={{ marginBottom: 14 }}>
-        <Stat label="Bids received" value={`${submittedCount}/${rfq.invitations.length}`} />
+        <Stat
+          label="Bids received"
+          value={`${submittedCount}/${liveInvites.length}`}
+          sub={
+            rfq.status === "Open" ? (
+              <BidProgressBadge bidCount={submittedCount} invitedCount={liveInvites.length} />
+            ) : undefined
+          }
+        />
         <Stat label="Closes" value={dateTimeMY(rfq.closesUtc)} sub={rfq.extensionCount > 0 ? `Extended ${rfq.extensionCount}×` : undefined} />
         <Stat label="Lines" value={rfq.lines.length} />
       </div>
+
+      <CustomFieldsSection
+        recordType="Rfq"
+        recordId={rfq.id}
+        readOnly={rfq.status === "Cancelled" || rfq.status === "Awarded"}
+      />
+      <SegmentsSection
+        recordType="Rfq"
+        recordId={rfq.id}
+        readOnly={rfq.status === "Cancelled" || rfq.status === "Awarded"}
+      />
 
       {canGovern ? (
         <div className="actionbar" style={{ marginBottom: 14 }}>
@@ -166,7 +205,7 @@ export function RfqDetailHubPage({
               <button type="button" className="btn btn-out btn-sm" onClick={() => setExtending(true)}>
                 Extend deadline
               </button>
-              <button type="button" className="btn btn-out btn-sm" onClick={() => close.mutate()} disabled={close.isPending}>
+              <button type="button" className="btn btn-out btn-sm" onClick={() => setClosing(true)} disabled={close.isPending}>
                 Close bids
               </button>
             </>
@@ -181,6 +220,11 @@ export function RfqDetailHubPage({
       <div className="card">
         <div className="chead">
           <h3>Invited vendors</h3>
+          {rfq.envelope === "Dual" && !rfq.technicalOpened ? (
+            <span className="hint" style={{ marginLeft: 8 }}>
+              <Icon name="lock" size={12} /> Sealed until technical open
+            </span>
+          ) : null}
         </div>
         <div className="cbody">
           <table>
@@ -201,7 +245,7 @@ export function RfqDetailHubPage({
                     <div className="hint">{i.vendorCode}</div>
                   </td>
                   <td>
-                    <SourcingStatusBadge status={i.status} />
+                    <InvitationStatusBadge status={i.status} />
                   </td>
                   <td className="hint" title={i.declineNote ?? i.rescindNote ?? undefined}>
                     {i.declineReasonCode ?? i.rescindReasonCode ?? "—"}
@@ -216,9 +260,57 @@ export function RfqDetailHubPage({
                   </td>
                 </tr>
               ))}
+              {rfq.invitations.length === 0 ? (
+                <tr>
+                  <td colSpan={5}>
+                    <p className="hint" style={{ margin: 0 }}>
+                      No vendors invited.
+                    </p>
+                  </td>
+                </tr>
+              ) : null}
             </tbody>
           </table>
         </div>
+      </div>
+
+      <div className="card" style={{ marginTop: 14 }}>
+        <div className="chead">
+          <h3>Line items</h3>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Code</th>
+              <th>Item</th>
+              <th className="amt">Qty</th>
+              <th>UoM</th>
+              <th>PR</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rfq.lines.map((l) => (
+              <tr key={l.lineCode}>
+                <td>{l.itemCode}</td>
+                <td>{l.description}</td>
+                <td className="amt">{fmt(l.qty)}</td>
+                <td>{l.uom}</td>
+                <td>
+                  <span className="prtag">{l.prRef ?? "—"}</span>
+                </td>
+              </tr>
+            ))}
+            {rfq.lines.length === 0 ? (
+              <tr>
+                <td colSpan={5}>
+                  <p className="hint" style={{ margin: 0 }}>
+                    No lines on this RFQ.
+                  </p>
+                </td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
       </div>
 
       <div className="card" style={{ marginTop: 14 }}>
@@ -353,11 +445,25 @@ export function RfqDetailHubPage({
         />
       ) : null}
 
+      {closing ? (
+        <ConfirmModal
+          title={`Close bids for ${rfq.code}?`}
+          icon="clock"
+          body="Vendors will no longer be able to submit or revise bids. You can proceed to bid opening after closing."
+          cancelLabel="Not yet"
+          confirmLabel="Close bids now"
+          busy={close.isPending}
+          onCancel={() => setClosing(false)}
+          onConfirm={() => close.mutate()}
+        />
+      ) : null}
+
       {cancelling ? (
         <ConfirmModal
           title="Cancel RFQ"
           icon="x"
           body="This returns any sourced PR lines to Open and cannot be undone."
+          cancelLabel="Keep RFQ"
           confirmLabel="Cancel RFQ"
           danger
           busy={cancel.isPending}

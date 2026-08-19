@@ -53,7 +53,20 @@ public sealed class SubmitAwardCommandHandler(
         }
 
         var allocations = command.Allocations
-            .Select(a => new AwardAllocation(a.RfqLineCode, a.VendorId, a.Qty, a.UnitPrice))
+            .Select(a =>
+            {
+                // Stamp unit price from the vendor's submitted bid — never trust a client-typed price.
+                var rfqLine = rfq.Lines.FirstOrDefault(l => l.LineCode == a.RfqLineCode)
+                    ?? throw new SourcingRuleException($"RFQ line {a.RfqLineCode} does not exist.");
+                if (!bidsByVendor.TryGetValue(a.VendorId, out var bid))
+                {
+                    throw new SourcingRuleException("Cannot allocate to a vendor with no bid on this RFQ.");
+                }
+
+                var offered = bid.Lines.FirstOrDefault(l => l.ItemCode == rfqLine.ItemCode && l.Bidding && l.Price > 0)
+                    ?? throw new SourcingRuleException($"Vendor did not bid on line {a.RfqLineCode}.");
+                return new AwardAllocation(a.RfqLineCode, a.VendorId, a.Qty, offered.Price);
+            })
             .ToList();
         AwardAllocationValidator.Validate(rfq, bidsByVendor, allocations);
 

@@ -16,7 +16,7 @@ export function EvaluationPage() {
     return <TechnicalScoringPage rfqId={segments[0]!} onBack={() => go(segments[0]!)} />;
   }
   if (segments.length === 1) {
-    return <BidOpeningDetailPage rfqId={segments[0]!} onBack={() => go("")} onScore={() => go(`${segments[0]}/score`)} />;
+    return <BidOpeningDetailPage rfqId={segments[0]!} onBack={() => go("")} onScore={() => go(`${segments[0]}/score`)} onAward={() => void navigate(`/awards/${segments[0]}`)} />;
   }
 
   return <BidOpeningsListPage onOpen={(id) => go(id)} />;

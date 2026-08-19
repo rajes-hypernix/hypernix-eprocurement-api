@@ -7,6 +7,8 @@ public sealed record RfqDetailDto(
     string Envelope,
     string Status,
     string Currency,
+    decimal? ExchangeRateToBase,
+    string BaseCurrency,
     string? OwnerUserId,
     DateTime? OpensUtc,
     DateTime? ClosesUtc,
@@ -27,4 +29,11 @@ public sealed record RfqDetailDto(
     IReadOnlyList<RfqInvitationDto> Invitations,
     IReadOnlyList<RfqEventDto> Events,
     DateTime CreatedUtc,
-    DateTime UpdatedUtc);
+    DateTime UpdatedUtc,
+    DateTime? ClarificationDeadlineUtc = null,
+    int? BidValidityDays = null,
+    bool PartialBidsAllowed = true,
+    Guid? IncotermId = null,
+    string? IncotermCode = null,
+    string? IncotermSuffix = null,
+    string? Incoterm = null);

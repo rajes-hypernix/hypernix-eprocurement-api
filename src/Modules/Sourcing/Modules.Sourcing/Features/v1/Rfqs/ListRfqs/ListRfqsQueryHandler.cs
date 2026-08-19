@@ -16,10 +16,24 @@ public sealed class ListRfqsQueryHandler(SourcingDbContext dbContext)
         var rfqs = await dbContext.Rfqs
             .AsNoTracking()
             .Include(r => r.Invitations)
+            .Include(r => r.Lines)
             .OrderByDescending(r => r.CreatedUtc)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        return [.. rfqs.Select(RfqDtoMapper.ToListItemDto)];
+        var rfqIds = rfqs.Select(r => r.Id).ToList();
+        var bidCountsByRfq = await dbContext.Bids
+            .AsNoTracking()
+            .Where(b => rfqIds.Contains(b.RfqId))
+            .GroupBy(b => b.RfqId)
+            .Select(g => new { RfqId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.RfqId, x => x.Count, cancellationToken)
+            .ConfigureAwait(false);
+
+        return
+        [
+            .. rfqs.Select(r =>
+                RfqDtoMapper.ToListItemDto(r, bidCountsByRfq.TryGetValue(r.Id, out var count) ? count : 0))
+        ];
     }
 }

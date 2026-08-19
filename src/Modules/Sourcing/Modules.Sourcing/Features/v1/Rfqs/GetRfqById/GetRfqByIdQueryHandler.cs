@@ -1,4 +1,5 @@
 using FSH.Framework.Core.Exceptions;
+using FSH.Modules.Platform.Contracts.v1.Configuration;
 using FSH.Modules.Sourcing.Contracts.Dtos;
 using FSH.Modules.Sourcing.Contracts.v1.Rfqs;
 using FSH.Modules.Sourcing.Data;
@@ -37,6 +38,9 @@ public sealed class GetRfqByIdQueryHandler(SourcingDbContext dbContext, IMediato
             }
         }
 
-        return RfqDtoMapper.ToDetailDto(rfq, vendorLookup);
+        var rates = await mediator.Send(new ListCurrentExchangeRatesQuery(), cancellationToken).ConfigureAwait(false);
+        var baseCurrency = RfqExchangeRateSupport.ResolveBaseCurrency(rates);
+
+        return RfqDtoMapper.ToDetailDto(rfq, vendorLookup, baseCurrency);
     }
 }

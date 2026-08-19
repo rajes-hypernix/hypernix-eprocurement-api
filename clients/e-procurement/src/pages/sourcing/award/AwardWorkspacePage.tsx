@@ -1,8 +1,17 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/auth/use-auth";
-import { approveAward, getAward, getAwardEligibility, getRfq, submitAward, type AwardAllocationDto } from "@/api/sourcing";
+import {
+  approveAward,
+  getAward,
+  getAwardEligibility,
+  submitAward,
+  type AwardAllocationDto,
+  type AwardCompareLineDto,
+  type AwardQaItemDto,
+  type AwardResponseDto,
+} from "@/api/sourcing";
 import { createPurchaseOrdersFromAward } from "@/api/procurement";
 import { Icon } from "@/components/Icon";
 import { Gated } from "@/components/Gated";
@@ -12,7 +21,7 @@ import { FshPermissions } from "@/lib/fsh-permissions";
 import { fmt } from "@/lib/format";
 import { ApiRequestError } from "@/lib/api-client";
 
-type Cell = { checked: boolean; qty: number; unitPrice: number };
+const cellKey = (lineCode: string, vendorId: string) => `${lineCode}::${vendorId}`;
 
 export function AwardWorkspacePage({ rfqId, onBack }: { rfqId: string; onBack: () => void }) {
   const qc = useQueryClient();
@@ -21,10 +30,11 @@ export function AwardWorkspacePage({ rfqId, onBack }: { rfqId: string; onBack: (
   const [err, setErr] = useState<string | null>(null);
   const [approving, setApproving] = useState(false);
   const [creatingPos, setCreatingPos] = useState(false);
-  const [cells, setCells] = useState<Record<string, Cell>>({});
+  /** Allocated qty per line::vendor — 0 / missing = not selected. */
+  const [alloc, setAlloc] = useState<Record<string, number>>({});
+  const [seeded, setSeeded] = useState(false);
 
-  const { data: rfq, isPending: rfqPending } = useQuery({ queryKey: ["rfq", rfqId], queryFn: () => getRfq(rfqId) });
-  const { data: eligibility, isPending: eligPending } = useQuery({
+  const { data: elig, isPending: eligPending } = useQuery({
     queryKey: ["award-eligibility", rfqId],
     queryFn: () => getAwardEligibility(rfqId),
   });
@@ -36,19 +46,75 @@ export function AwardWorkspacePage({ rfqId, onBack }: { rfqId: string; onBack: (
   };
   const onErr = (e: Error) => setErr(e instanceof ApiRequestError ? e.message : e.message);
 
-  const eligibleVendors = useMemo(() => (eligibility ?? []).filter((v) => v.eligible), [eligibility]);
-  const sealed = (eligibility ?? []).some((v) => v.masked);
+  // Seed recommended allocation once commercial is revealed.
+  useEffect(() => {
+    if (!elig?.commercialRevealed || seeded) return;
+    const next: Record<string, number> = {};
+    for (const line of elig.lines) {
+      if (!line.recommendedVendorId) continue;
+      const opt = line.options.find((o) => o.vendorId === line.recommendedVendorId);
+      if (!opt) continue;
+      next[cellKey(line.lineCode, line.recommendedVendorId)] = Math.min(line.requiredQty, opt.offeredQty);
+    }
+    setAlloc(next);
+    setSeeded(true);
+  }, [elig, seeded]);
 
-  const cellKey = (lineCode: string, vendorId: string) => `${lineCode}|${vendorId}`;
+  const cols = elig?.ranking ?? [];
+  const currency = elig?.currency ?? "MYR";
+
+  const optFor = (lineCode: string, vendorId: string) =>
+    elig?.lines.find((l) => l.lineCode === lineCode)?.options.find((o) => o.vendorId === vendorId);
+
+  const lineAllocated = (lineCode: string) =>
+    cols.reduce((s, c) => s + (alloc[cellKey(lineCode, c.vendorId)] ?? 0), 0);
+
+  const setQty = (key: string, qty: number) => setAlloc((a) => ({ ...a, [key]: Math.max(0, qty) }));
+
+  const toggleCell = (line: AwardCompareLineDto, vendorId: string, on: boolean) => {
+    const key = cellKey(line.lineCode, vendorId);
+    if (!on) {
+      setAlloc((a) => {
+        const next = { ...a };
+        delete next[key];
+        return next;
+      });
+      return;
+    }
+    const offered = optFor(line.lineCode, vendorId)?.offeredQty ?? line.requiredQty;
+    const remaining = line.requiredQty - lineAllocated(line.lineCode);
+    setAlloc((a) => ({
+      ...a,
+      [key]: Math.max(1, Math.min(offered, remaining > 0 ? remaining : line.requiredQty)),
+    }));
+  };
+
+  const summary = useMemo(() => {
+    const byV = new Map<string, { name: string; total: number }>();
+    for (const [key, qty] of Object.entries(alloc)) {
+      if (!qty) continue;
+      const [lineCode, vendorId] = key.split("::") as [string, string];
+      const o = optFor(lineCode, vendorId);
+      if (!o) continue;
+      const cur = byV.get(vendorId) ?? { name: o.vendorName, total: 0 };
+      cur.total += o.unitPrice * qty;
+      byV.set(vendorId, cur);
+    }
+    const rows = [...byV.values()];
+    return { rows, grand: rows.reduce((s, r) => s + r.total, 0) };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [alloc, elig]);
 
   const submit = useMutation({
     mutationFn: () => {
-      const allocations: AwardAllocationDto[] = Object.entries(cells)
-        .filter(([, c]) => c.checked && c.qty > 0)
-        .map(([key, c]) => {
-          const [lineCode, vendorId] = key.split("|") as [string, string];
-          return { rfqLineCode: lineCode, vendorId, qty: c.qty, unitPrice: c.unitPrice };
-        });
+      const allocations: AwardAllocationDto[] = [];
+      for (const [key, qty] of Object.entries(alloc)) {
+        if (!qty) continue;
+        const [lineCode, vendorId] = key.split("::") as [string, string];
+        const o = optFor(lineCode, vendorId);
+        if (!o) continue;
+        allocations.push({ rfqLineCode: lineCode, vendorId, qty, unitPrice: o.unitPrice });
+      }
       return submitAward(rfqId, allocations);
     },
     onSuccess: refresh,
@@ -79,16 +145,16 @@ export function AwardWorkspacePage({ rfqId, onBack }: { rfqId: string; onBack: (
     },
   });
 
-  if (rfqPending || eligPending || !rfq) return <Spinner label="Loading award workspace…" />;
+  if (eligPending || !elig) return <Spinner label="Loading award workspace…" />;
 
-  if (sealed) {
+  if (!elig.commercialRevealed) {
     return (
       <>
         <div className="crumb">
           <button type="button" className="lnk" onClick={onBack}>
             Awards
           </button>{" "}
-          <Icon name="chev" size={12} /> {rfq.code}
+          <Icon name="chev" size={12} /> {elig.code}
         </div>
         <Notice tone="warn" icon="lock">
           Commercial envelope is sealed. Open it under Bid Openings before awarding.
@@ -100,7 +166,7 @@ export function AwardWorkspacePage({ rfqId, onBack }: { rfqId: string; onBack: (
   const isPendingApproval = award?.status === "PendingApproval";
   const isApproved = award?.status === "Approved";
   const canApprove = isPendingApproval && award!.createdByUserId !== user?.id;
-  const total = Object.values(cells).reduce((s, c) => (c.checked ? s + c.qty * c.unitPrice : s), 0);
+  const locked = isPendingApproval || isApproved;
 
   return (
     <>
@@ -108,14 +174,16 @@ export function AwardWorkspacePage({ rfqId, onBack }: { rfqId: string; onBack: (
         <button type="button" className="lnk" onClick={onBack}>
           Awards
         </button>{" "}
-        <Icon name="chev" size={12} /> {rfq.code}
+        <Icon name="chev" size={12} /> {elig.code}
       </div>
       <div className="pagehead">
         <div>
           <h1 style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            {rfq.code} {award ? <SourcingStatusBadge status={award.status} /> : null}
+            {elig.code} {award ? <SourcingStatusBadge status={award.status} /> : null}
           </h1>
-          <p>{rfq.title}</p>
+          <p>
+            {elig.title} · {elig.envelope} envelope
+          </p>
         </div>
       </div>
 
@@ -135,98 +203,202 @@ export function AwardWorkspacePage({ rfqId, onBack }: { rfqId: string; onBack: (
         </Notice>
       ) : null}
 
-      <div className="card">
+      <div className="card" style={{ marginBottom: 16 }}>
         <div className="chead">
-          <h3>Allocation</h3>
-          <span className="sub">· lowest eligible price highlighted per line</span>
+          <h3>Award comparison</h3>
+          <div className="spacer" />
+          <span className="badge b-teal">Eligible vendors only · split allowed</span>
         </div>
-        <div className="cbody">
-          <table>
+        <div className="cbody" style={{ paddingBottom: 0 }}>
+          <p className="hint" style={{ marginTop: 0 }}>
+            Recommended (lowest) per line is highlighted. Tick vendor(s) to award each line — split quantity across vendors by ticking more than one.
+          </p>
+        </div>
+        <div className="comp-wrap">
+          <table className="comp">
             <thead>
               <tr>
-                <th>Line</th>
-                {eligibleVendors.map((v) => (
-                  <th key={v.vendorId} className="amt">
-                    {v.masked ? v.alias : v.vendorName}
+                <th style={{ minWidth: 220 }}>Line item</th>
+                {cols.map((c) => (
+                  <th key={c.vendorId} className="vcol" style={{ textAlign: "center" }}>
+                    {c.vendorName}
+                    {c.recommended ? (
+                      <div className="hint" style={{ fontWeight: 500 }}>
+                        recommended
+                      </div>
+                    ) : null}
                   </th>
                 ))}
+                <th className="amt">Allocated</th>
               </tr>
             </thead>
             <tbody>
-              {rfq.lines.map((l) => {
-                const linePrices = eligibleVendors.map((v) => cells[cellKey(l.lineCode, v.vendorId)]?.unitPrice ?? Infinity);
-                const min = Math.min(...linePrices.filter((p) => p > 0));
+              {elig.lines.map((l) => {
+                const alloced = lineAllocated(l.lineCode);
+                const over = alloced > l.requiredQty;
                 return (
                   <tr key={l.lineCode}>
                     <td>
-                      {l.lineCode} · {l.itemCode}
+                      <div style={{ fontWeight: 600 }}>{l.description}</div>
                       <div className="hint">
-                        {l.qty} {l.uom} required
+                        {l.lineCode} · {l.itemCode} · need {l.requiredQty} {l.uom}
                       </div>
                     </td>
-                    {eligibleVendors.map((v) => {
-                      const key = cellKey(l.lineCode, v.vendorId);
-                      const cell = cells[key] ?? { checked: false, qty: 0, unitPrice: 0 };
-                      const isLowest = cell.unitPrice > 0 && cell.unitPrice === min;
+                    {cols.map((c) => {
+                      const opt = optFor(l.lineCode, c.vendorId);
+                      const key = cellKey(l.lineCode, c.vendorId);
+                      const qty = alloc[key] ?? 0;
+                      const isRec = l.recommendedVendorId === c.vendorId;
+                      if (!opt) {
+                        return (
+                          <td key={c.vendorId} className="vcol" style={{ textAlign: "center" }}>
+                            <span className="hint">No bid</span>
+                          </td>
+                        );
+                      }
                       return (
-                        <td key={v.vendorId} className="amt" style={isLowest ? { background: "var(--soft)" } : undefined}>
-                          <label style={{ display: "flex", alignItems: "center", gap: 4, justifyContent: "flex-end" }}>
+                        <td
+                          key={c.vendorId}
+                          className="vcol"
+                          style={{ textAlign: "center", background: isRec ? "var(--green-bg)" : undefined }}
+                        >
+                          <label className="ck" style={{ justifyContent: "center", gap: 6 }}>
                             <input
                               type="checkbox"
-                              disabled={isPendingApproval || isApproved}
-                              checked={cell.checked}
-                              onChange={(e) =>
-                                setCells((xs) => ({ ...xs, [key]: { ...cell, checked: e.target.checked, qty: e.target.checked ? l.qty : 0 } }))
-                              }
+                              style={{ width: "auto" }}
+                              checked={qty > 0}
+                              disabled={locked}
+                              onChange={(e) => toggleCell(l, c.vendorId, e.target.checked)}
+                              aria-label={`Award ${l.lineCode} to ${c.vendorName}`}
                             />
+                            <span style={{ fontWeight: 700 }}>
+                              {currency} {fmt(opt.unitPrice)}
+                            </span>
                           </label>
-                          {cell.checked ? (
-                            <div style={{ display: "flex", gap: 4, justifyContent: "flex-end", marginTop: 4 }}>
-                              <input
-                                type="number"
-                                style={{ width: 60 }}
-                                value={cell.qty}
-                                max={l.qty}
-                                disabled={isPendingApproval || isApproved}
-                                onChange={(e) => setCells((xs) => ({ ...xs, [key]: { ...cell, qty: Math.min(Number(e.target.value), l.qty) } }))}
-                              />
-                              <input
-                                type="number"
-                                style={{ width: 70 }}
-                                value={cell.unitPrice}
-                                disabled={isPendingApproval || isApproved}
-                                onChange={(e) => setCells((xs) => ({ ...xs, [key]: { ...cell, unitPrice: Number(e.target.value) } }))}
-                              />
-                            </div>
+                          {qty > 0 ? (
+                            <input
+                              type="number"
+                              min={0}
+                              max={Math.min(opt.offeredQty, l.requiredQty)}
+                              value={qty}
+                              disabled={locked}
+                              style={{ width: 76, textAlign: "right", marginTop: 4 }}
+                              onChange={(e) => setQty(key, Number(e.target.value))}
+                              aria-label={`Qty ${l.lineCode} ${c.vendorName}`}
+                            />
                           ) : null}
                         </td>
                       );
                     })}
+                    <td
+                      className="amt"
+                      style={{
+                        fontWeight: 700,
+                        color: over ? "var(--red)" : alloced === l.requiredQty ? "#2f9e6e" : "var(--muted)",
+                      }}
+                    >
+                      {alloced}/{l.requiredQty}
+                    </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
-          <p className="hint" style={{ marginTop: 8 }}>
-            Allocated quantity/price is validated server-side against each vendor's actual submitted bid.
+        </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div className="chead">
+          <h3>Award summary</h3>
+        </div>
+        <div className="cbody">
+          {summary.rows.map((r) => (
+            <div className="file" key={r.name} style={{ justifyContent: "space-between" }}>
+              <div style={{ fontWeight: 600 }}>{r.name}</div>
+              <div style={{ fontWeight: 700, color: "var(--teal)" }}>
+                {currency} {fmt(r.total)}
+              </div>
+            </div>
+          ))}
+          {summary.rows.length === 0 ? <p className="hint" style={{ margin: 0 }}>No lines allocated yet.</p> : null}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              paddingTop: 12,
+              marginTop: 6,
+              borderTop: "2px solid #333",
+              fontWeight: 700,
+              fontSize: 15,
+            }}
+          >
+            <span>Total award value</span>
+            <span>
+              {currency} {fmt(summary.grand)}
+            </span>
+          </div>
+          <p className="hint" style={{ marginBottom: 0 }}>
+            {summary.rows.length} purchase order{summary.rows.length !== 1 ? "s" : ""} will be created (one per awarded vendor) once approved.
           </p>
         </div>
       </div>
 
-      <div className="card" style={{ marginTop: 14 }}>
+      <div className="card" style={{ marginBottom: 16 }}>
         <div className="chead">
-          <h3>Summary</h3>
+          <h3>Combined evaluation</h3>
+          <div className="spacer" />
+          <span className="hint">{elig.envelope === "Dual" ? "technical 70% · commercial 30%" : "lowest price"}</span>
         </div>
-        <div className="cbody">
-          <p style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Total: {rfq.currency} {fmt(total)}</p>
-        </div>
+        <table>
+          <thead>
+            <tr>
+              <th style={{ width: 50 }}>Rank</th>
+              <th>Vendor</th>
+              {elig.envelope === "Dual" ? <th className="amt">Technical</th> : null}
+              <th className="amt">Price score</th>
+              <th className="amt">Combined</th>
+            </tr>
+          </thead>
+          <tbody>
+            {elig.ranking.map((r, i) => (
+              <tr key={r.vendorId}>
+                <td style={{ textAlign: "center", fontWeight: 700 }}>{i + 1}</td>
+                <td style={{ fontWeight: 600 }}>
+                  {r.vendorName}
+                  {r.recommended ? (
+                    <span className="badge b-green" style={{ marginLeft: 8 }}>
+                      Recommended
+                    </span>
+                  ) : null}
+                </td>
+                {elig.envelope === "Dual" ? <td className="amt">{r.technicalScore ?? "—"}</td> : null}
+                <td className="amt">{r.priceScore}</td>
+                <td className="amt" style={{ fontWeight: 800, color: "var(--teal)" }}>
+                  {r.combined}
+                </td>
+              </tr>
+            ))}
+            {elig.ranking.length === 0 ? (
+              <tr>
+                <td colSpan={elig.envelope === "Dual" ? 5 : 4}>
+                  <p className="hint" style={{ margin: 0 }}>
+                    No eligible vendors yet.
+                  </p>
+                </td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
       </div>
+
+      <ResponsesCard title="Technical responses" questions={elig.technicalQuestions} responses={elig.responses} />
+      <ResponsesCard title="Commercial responses" questions={elig.commercialQuestions} responses={elig.responses} />
 
       <div className="actionbar" style={{ marginTop: 14 }}>
         <div className="spacer" style={{ flex: 1 }} />
         {!isApproved ? (
-          <button type="button" className="btn btn-out" disabled={submit.isPending} onClick={() => submit.mutate()}>
-            {award ? "Resubmit for approval" : "Submit for approval"}
+          <button type="button" className="btn btn-pri" disabled={submit.isPending || locked} onClick={() => submit.mutate()}>
+            <Icon name="award" size={15} /> {award ? "Resubmit for approval" : "Submit for approval"}
           </button>
         ) : null}
         {isPendingApproval ? (
@@ -274,5 +446,55 @@ export function AwardWorkspacePage({ rfqId, onBack }: { rfqId: string; onBack: (
         />
       ) : null}
     </>
+  );
+}
+
+function ResponsesCard({
+  title,
+  questions,
+  responses,
+}: {
+  title: string;
+  questions: AwardQaItemDto[];
+  responses: AwardResponseDto[];
+}) {
+  if (questions.length === 0 || responses.length === 0) return null;
+  return (
+    <div className="card" style={{ marginBottom: 16 }}>
+      <div className="chead">
+        <h3>{title}</h3>
+        <div className="spacer" />
+        <span className="hint">progressed vendors</span>
+      </div>
+      <div style={{ overflowX: "auto" }}>
+        <table>
+          <thead>
+            <tr>
+              <th style={{ minWidth: 230 }}>Question</th>
+              {responses.map((r) => (
+                <th key={r.vendorId} style={{ whiteSpace: "normal" }}>
+                  {r.vendorName}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {questions.map((q) => (
+              <tr key={q.order}>
+                <td style={{ fontWeight: 600, whiteSpace: "normal", maxWidth: 260 }}>{q.label || "Untitled"}</td>
+                {responses.map((r) => {
+                  const a = r.answers.find((x) => x.questionOrder === q.order)?.value;
+                  return (
+                    <td key={r.vendorId} style={{ whiteSpace: "normal" }}>
+                      {a || <span className="hint">—</span>}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }

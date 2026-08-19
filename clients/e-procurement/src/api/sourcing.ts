@@ -70,9 +70,14 @@ export type RequisitionListItemDto = {
   code: string;
   requestor: string;
   department: string;
+  location: string;
+  category: string;
+  job: string;
+  requiredOn?: string | null;
   headerStatus: string;
   submitted: boolean;
   lineCount: number;
+  openLineCount: number;
   createdUtc: string;
 };
 
@@ -261,6 +266,8 @@ export type RfqDetailDto = {
   envelope: string;
   status: string;
   currency: string;
+  exchangeRateToBase?: number | null;
+  baseCurrency?: string;
   ownerUserId?: string | null;
   opensUtc?: string | null;
   closesUtc?: string | null;
@@ -282,6 +289,13 @@ export type RfqDetailDto = {
   events: RfqEventDto[];
   createdUtc: string;
   updatedUtc: string;
+  clarificationDeadlineUtc?: string | null;
+  bidValidityDays?: number | null;
+  partialBidsAllowed: boolean;
+  incotermId?: string | null;
+  incotermCode?: string | null;
+  incotermSuffix?: string | null;
+  incoterm?: string | null;
 };
 
 export type RfqListItemDto = {
@@ -294,6 +308,7 @@ export type RfqListItemDto = {
   closesUtc?: string | null;
   invitedCount: number;
   lineCount: number;
+  bidCount: number;
 };
 
 export type CreateRfqDraftRequest = {
@@ -316,6 +331,12 @@ export type UpdateRfqDraftRequest = {
   commercialSections: string[];
   technicalEvaluatorIds: string[];
   commercialEvaluatorIds: string[];
+  clarificationDeadlineUtc?: string | null;
+  bidValidityDays?: number | null;
+  partialBidsAllowed?: boolean;
+  incotermId?: string | null;
+  incotermCode?: string | null;
+  incotermSuffix?: string | null;
 };
 
 export function listRfqs(): Promise<RfqListItemDto[]> {
@@ -332,6 +353,11 @@ export function createRfqDraft(body: CreateRfqDraftRequest): Promise<string> {
 
 export function updateRfqDraft(id: string, body: UpdateRfqDraftRequest): Promise<string> {
   return apiFetch(`${ROOT}/rfqs/${id}`, { method: "PUT", body: JSON.stringify(body) });
+}
+
+/** Re-snapshot Platform current FX onto a draft RFQ (POC R3-S1T4a). */
+export function updateRfqRate(id: string): Promise<string> {
+  return apiFetch(`${ROOT}/rfqs/${id}/update-rate`, { method: "POST" });
 }
 
 export function releaseRfq(id: string): Promise<string> {
@@ -576,7 +602,66 @@ export type AwardEligibilityRowDto = {
   technicallyPassed: boolean;
 };
 
-export function getAwardEligibility(rfqId: string): Promise<AwardEligibilityRowDto[]> {
+export type AwardVendorOptionDto = {
+  vendorId: string;
+  vendorName: string;
+  unitPrice: number;
+  offeredQty: number;
+};
+
+export type AwardCompareLineDto = {
+  lineCode: string;
+  itemCode: string;
+  description: string;
+  requiredQty: number;
+  uom: string;
+  options: AwardVendorOptionDto[];
+  recommendedVendorId?: string | null;
+};
+
+export type AwardRankRowDto = {
+  vendorId: string;
+  vendorName: string;
+  technicalScore?: number | null;
+  priceScore: number;
+  combined: number;
+  recommended: boolean;
+};
+
+export type AwardQaItemDto = {
+  order: number;
+  label: string;
+  type: string;
+  configJson?: string | null;
+  group: string;
+};
+
+export type AwardQaAnswerDto = { questionOrder: number; value: string };
+
+export type AwardResponseDto = {
+  vendorId: string;
+  vendorName: string;
+  answers: AwardQaAnswerDto[];
+};
+
+export type AwardEligibilityDto = {
+  rfqId: string;
+  code: string;
+  title: string;
+  envelope: string;
+  currency: string;
+  commercialRevealed: boolean;
+  techFinalized: boolean;
+  masked: boolean;
+  lines: AwardCompareLineDto[];
+  ranking: AwardRankRowDto[];
+  vendors: AwardEligibilityRowDto[];
+  technicalQuestions: AwardQaItemDto[];
+  commercialQuestions: AwardQaItemDto[];
+  responses: AwardResponseDto[];
+};
+
+export function getAwardEligibility(rfqId: string): Promise<AwardEligibilityDto> {
   return apiFetch(`${ROOT}/rfqs/${rfqId}/award-eligibility`);
 }
 

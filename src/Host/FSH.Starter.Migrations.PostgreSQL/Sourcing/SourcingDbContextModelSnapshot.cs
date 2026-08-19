@@ -503,6 +503,12 @@ namespace FSH.Starter.Migrations.PostgreSQL.Sourcing
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
 
+                    b.Property<int?>("BidValidityDays")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("ClarificationDeadlineUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime?>("ClosedUtc")
                         .HasColumnType("timestamp with time zone");
 
@@ -538,8 +544,23 @@ namespace FSH.Starter.Migrations.PostgreSQL.Sourcing
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
+                    b.Property<decimal?>("ExchangeRateToBase")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)");
+
                     b.Property<int>("ExtensionCount")
                         .HasColumnType("integer");
+
+                    b.Property<string>("IncotermCode")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<Guid?>("IncotermId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("IncotermSuffix")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
 
                     b.Property<DateTime?>("OpensUtc")
                         .HasColumnType("timestamp with time zone");
@@ -550,6 +571,11 @@ namespace FSH.Starter.Migrations.PostgreSQL.Sourcing
                     b.Property<string>("OwnerUserId")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
+
+                    b.Property<bool>("PartialBidsAllowed")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
 
                     b.Property<string>("PrRefs")
                         .IsRequired()
@@ -593,6 +619,8 @@ namespace FSH.Starter.Migrations.PostgreSQL.Sourcing
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("IncotermId");
 
                     b.HasIndex("Status");
 

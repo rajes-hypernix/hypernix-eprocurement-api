@@ -3391,7 +3391,7 @@ const CUSTOM_FIELD_DATA_TYPES = [
   "Text", "LongText", "Int", "Decimal", "Money", "Date", "DateTime", "Bool",
   "ListValue", "Percent", "Email", "Telephone", "Hyperlink", "RecordRef",
 ];
-const CUSTOM_FIELD_RECORD_TYPES = ["Requisition", "PurchaseOrder", "Vendor"];
+const CUSTOM_FIELD_RECORD_TYPES = ["Requisition", "PurchaseOrder", "Vendor", "Rfq"];
 
 function CustomFieldsTab() {
   const qc = useQueryClient();

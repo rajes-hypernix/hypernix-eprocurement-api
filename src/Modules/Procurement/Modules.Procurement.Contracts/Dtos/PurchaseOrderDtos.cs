@@ -13,6 +13,7 @@ public sealed record PurchaseOrderDto(
     Guid? ShipToLocationId,
     Guid? ShipToAddressId,
     string? ShipToAdhoc,
+    Guid? IncotermId,
     string? IncotermCode,
     string? IncotermSuffix,
     string? Memo,

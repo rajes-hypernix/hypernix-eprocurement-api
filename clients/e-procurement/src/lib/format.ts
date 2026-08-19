@@ -38,3 +38,14 @@ export function formatVendorType(type: string | null | undefined): string {
 export function isSwecType(type: string | null | undefined): boolean {
   return type === "SWEC" || type === "Swec";
 }
+
+const ROLE_LABELS: Record<string, string> = {
+  Buyer: "Buyer",
+  Approver: "Approver (DoA)",
+  TechEvaluator: "Technical Evaluator",
+  CommEvaluator: "Commercial Evaluator",
+  Admin: "Admin",
+  Vendor: "Vendor",
+};
+
+export const roleLabel = (r: string) => ROLE_LABELS[r] ?? r;

@@ -30,7 +30,12 @@ public sealed class RfqConfiguration : IEntityTypeConfiguration<Rfq>
         builder.Property(x => x.Envelope).IsRequired().HasConversion<string>().HasMaxLength(20);
         builder.Property(x => x.Status).IsRequired().HasConversion<string>().HasMaxLength(20);
         builder.Property(x => x.Currency).IsRequired().HasMaxLength(3);
+        builder.Property(x => x.ExchangeRateToBase).HasPrecision(18, 6);
         builder.Property(x => x.OwnerUserId).HasMaxLength(100);
+        builder.Property(x => x.IncotermCode).HasMaxLength(10);
+        builder.Property(x => x.IncotermSuffix).HasMaxLength(200);
+        builder.HasIndex(x => x.IncotermId);
+        builder.Property(x => x.PartialBidsAllowed).HasDefaultValue(true);
         builder.HasIndex(x => x.Status);
 
         builder.Property(x => x.PrRefs).HasConversion(StringListConverter).Metadata.SetValueComparer(StringListComparer);

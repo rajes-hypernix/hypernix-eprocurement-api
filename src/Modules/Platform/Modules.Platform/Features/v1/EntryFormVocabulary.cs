@@ -33,6 +33,7 @@ internal static class EntryFormVocabulary
                 new("DeliveryDate", "Delivery date", "Date"),
             ],
             [PlatformRecordType.Vendor] = [],
+            [PlatformRecordType.Rfq] = [],
         };
 
     internal static NativeField? Find(PlatformRecordType recordType, string fieldKey) =>

@@ -18,6 +18,13 @@ public sealed class Rfq : AggregateRoot<Guid>
     public RfqEnvelope Envelope { get; private set; } = RfqEnvelope.Dual;
     public RfqStatus Status { get; private set; } = RfqStatus.Draft;
     public string Currency { get; private set; } = "MYR";
+
+    /// <summary>
+    /// Units of base currency per 1 unit of <see cref="Currency"/>, snapshotted at create / Update-rate.
+    /// Base currency → 1; foreign with no Platform rate row → null.
+    /// </summary>
+    public decimal? ExchangeRateToBase { get; private set; }
+
     public string? OwnerUserId { get; private set; }
     public DateTime? OpensUtc { get; private set; }
     public DateTime? ClosesUtc { get; private set; }
@@ -28,6 +35,17 @@ public sealed class Rfq : AggregateRoot<Guid>
     public DateTime? ReleasedUtc { get; private set; }
     public DateTime? ClosedUtc { get; private set; }
     public int ExtensionCount { get; private set; }
+
+    public DateTime? ClarificationDeadlineUtc { get; private set; }
+    public int? BidValidityDays { get; private set; }
+    public bool PartialBidsAllowed { get; private set; } = true;
+
+    /// <summary>Platform Incoterm master id (no cross-DB FK — same pattern as TaxCodeId on PR lines).</summary>
+    public Guid? IncotermId { get; private set; }
+
+    /// <summary>Snapshot of the master code at save time (survives rename/deactivate).</summary>
+    public string? IncotermCode { get; private set; }
+    public string? IncotermSuffix { get; private set; }
 
     /// <summary>Reserved for a future multi-round flow — always 1 today.</summary>
     public int RoundNumber { get; private set; } = 1;
@@ -70,7 +88,8 @@ public sealed class Rfq : AggregateRoot<Guid>
         string currency,
         string? ownerUserId,
         IReadOnlyList<string> prRefs,
-        IReadOnlyList<RfqLine> lines)
+        IReadOnlyList<RfqLine> lines,
+        decimal? exchangeRateToBase = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(code);
         ArgumentNullException.ThrowIfNull(lines);
@@ -82,7 +101,8 @@ public sealed class Rfq : AggregateRoot<Guid>
             Code = code.Trim(),
             Title = title ?? string.Empty,
             Envelope = envelope,
-            Currency = string.IsNullOrWhiteSpace(currency) ? "MYR" : currency,
+            Currency = string.IsNullOrWhiteSpace(currency) ? "MYR" : currency.Trim().ToUpperInvariant(),
+            ExchangeRateToBase = exchangeRateToBase,
             OwnerUserId = ownerUserId,
             CreatedUtc = now,
             UpdatedUtc = now,
@@ -90,6 +110,14 @@ public sealed class Rfq : AggregateRoot<Guid>
         rfq.PrRefs.AddRange(prRefs);
         rfq._lines.AddRange(lines);
         return rfq;
+    }
+
+    /// <summary>Draft-only re-snapshot of Platform current FX for <see cref="Currency"/>.</summary>
+    public void SetExchangeRateToBase(decimal? rate)
+    {
+        RequireStatus(RfqStatus.Draft, "update exchange rate");
+        ExchangeRateToBase = rate;
+        UpdatedUtc = DateTime.UtcNow;
     }
 
     public void UpdateDraft(
@@ -103,14 +131,26 @@ public sealed class Rfq : AggregateRoot<Guid>
         IReadOnlyList<string> technicalSections,
         IReadOnlyList<string> commercialSections,
         IReadOnlyList<string> technicalEvaluatorIds,
-        IReadOnlyList<string> commercialEvaluatorIds)
+        IReadOnlyList<string> commercialEvaluatorIds,
+        DateTime? clarificationDeadlineUtc = null,
+        int? bidValidityDays = null,
+        bool partialBidsAllowed = true,
+        Guid? incotermId = null,
+        string? incotermCode = null,
+        string? incotermSuffix = null)
     {
         RequireStatus(RfqStatus.Draft, "update");
         Title = title;
         Envelope = envelope;
-        Currency = currency;
+        Currency = string.IsNullOrWhiteSpace(currency) ? Currency : currency.Trim().ToUpperInvariant();
         OpensUtc = opensUtc;
         ClosesUtc = closesUtc;
+        ClarificationDeadlineUtc = clarificationDeadlineUtc;
+        BidValidityDays = bidValidityDays;
+        PartialBidsAllowed = partialBidsAllowed;
+        IncotermId = incotermId;
+        IncotermCode = string.IsNullOrWhiteSpace(incotermCode) ? null : incotermCode.Trim().ToUpperInvariant();
+        IncotermSuffix = string.IsNullOrWhiteSpace(incotermSuffix) ? null : incotermSuffix.Trim();
         _lines.Clear();
         _lines.AddRange(lines);
         _formItems.Clear();

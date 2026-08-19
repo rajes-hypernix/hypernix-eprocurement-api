@@ -9,10 +9,12 @@ export function BidOpeningDetailPage({
   rfqId,
   onBack,
   onScore,
+  onAward,
 }: {
   rfqId: string;
   onBack: () => void;
   onScore: () => void;
+  onAward: () => void;
 }) {
   const qc = useQueryClient();
   const [err, setErr] = useState<string | null>(null);
@@ -120,7 +122,12 @@ export function BidOpeningDetailPage({
           </div>
           <div className="cbody">
             {status.commercialOpened ? (
-              <p className="hint" style={{ margin: 0 }}>Opened — pricing is revealed for award.</p>
+              <>
+                <p className="hint" style={{ margin: "0 0 8px" }}>Opened — pricing is revealed for award.</p>
+                <button type="button" className="btn btn-pri btn-sm" onClick={onAward}>
+                  View commercial evaluation <Icon name="chev" size={13} />
+                </button>
+              </>
             ) : (
               <button
                 type="button"

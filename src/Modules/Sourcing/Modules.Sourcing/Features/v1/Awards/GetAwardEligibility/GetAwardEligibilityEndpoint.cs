@@ -16,7 +16,7 @@ public static class GetAwardEligibilityEndpoint
                 (Guid rfqId, IMediator mediator, CancellationToken ct) =>
                     mediator.Send(new GetAwardEligibilityQuery(rfqId), ct))
             .WithName("GetAwardEligibility")
-            .WithSummary("Get each invited vendor's award eligibility — identity/pricing masked until commercial reveal")
+            .WithSummary("Commercial compare payload — line×vendor bid prices, ranking, and Q&A (masked until commercial reveal)")
             .RequirePermission(SourcingPermissions.Award.View);
     }
 }

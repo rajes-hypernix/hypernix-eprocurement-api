@@ -55,6 +55,7 @@ using FSH.Modules.Platform.Features.v1.FormTemplates.CreateFormTemplate;
 using FSH.Modules.Platform.Features.v1.FormTemplates.GetFormTemplate;
 using FSH.Modules.Platform.Features.v1.FormTemplates.ListFormTemplates;
 using FSH.Modules.Platform.Features.v1.FormTemplates.SetFormTemplateActive;
+using FSH.Modules.Platform.Features.v1.FormTemplates.UpdateFormTemplate;
 using FSH.Modules.Platform.Features.v1.Incoterms.CreateIncoterm;
 using FSH.Modules.Platform.Features.v1.Incoterms.ListIncoterms;
 using FSH.Modules.Platform.Features.v1.Incoterms.SetIncotermActive;
@@ -188,6 +189,7 @@ public sealed class PlatformModule : IModule
         group.MapListFormTemplatesEndpoint();
         group.MapGetFormTemplateEndpoint();
         group.MapCreateFormTemplateEndpoint();
+        group.MapUpdateFormTemplateEndpoint();
         group.MapSetFormTemplateActiveEndpoint();
 
         group.MapListSavedViewsEndpoint();

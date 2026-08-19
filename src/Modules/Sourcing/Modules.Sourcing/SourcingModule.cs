@@ -48,6 +48,7 @@ using FSH.Modules.Sourcing.Features.v1.Rfqs.ListRfqs;
 using FSH.Modules.Sourcing.Features.v1.Rfqs.ReleaseRfq;
 using FSH.Modules.Sourcing.Features.v1.Rfqs.RescindInvitation;
 using FSH.Modules.Sourcing.Features.v1.Rfqs.UpdateRfqDraft;
+using FSH.Modules.Sourcing.Features.v1.Rfqs.UpdateRfqRate;
 using FSH.Modules.Sourcing.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
@@ -108,6 +109,7 @@ public sealed class SourcingModule : IModule
 
         group.MapCreateRfqDraftEndpoint();
         group.MapUpdateRfqDraftEndpoint();
+        group.MapUpdateRfqRateEndpoint();
         group.MapInviteVendorEndpoint();
         group.MapRescindInvitationEndpoint();
         group.MapDeclineInvitationEndpoint();

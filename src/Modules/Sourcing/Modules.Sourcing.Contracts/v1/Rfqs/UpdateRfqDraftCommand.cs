@@ -15,4 +15,10 @@ public sealed record UpdateRfqDraftCommand(
     IReadOnlyList<string> TechnicalSections,
     IReadOnlyList<string> CommercialSections,
     IReadOnlyList<string> TechnicalEvaluatorIds,
-    IReadOnlyList<string> CommercialEvaluatorIds) : ICommand<Guid>;
+    IReadOnlyList<string> CommercialEvaluatorIds,
+    DateTime? ClarificationDeadlineUtc = null,
+    int? BidValidityDays = null,
+    bool PartialBidsAllowed = true,
+    Guid? IncotermId = null,
+    string? IncotermCode = null,
+    string? IncotermSuffix = null) : ICommand<Guid>;

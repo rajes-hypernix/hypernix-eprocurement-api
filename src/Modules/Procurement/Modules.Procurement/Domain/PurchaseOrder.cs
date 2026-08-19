@@ -29,6 +29,9 @@ public sealed class PurchaseOrder : AggregateRoot<Guid>
 
     public string? IncotermCode { get; private set; }
     public string? IncotermSuffix { get; private set; }
+
+    /// <summary>Platform Incoterm master id (no cross-DB FK — mirrors RFQ / TaxCodeId pattern).</summary>
+    public Guid? IncotermId { get; private set; }
     public string? Memo { get; private set; }
     public string? VendorRef { get; private set; }
     public DateOnly? RequiredDate { get; private set; }
@@ -122,11 +125,12 @@ public sealed class PurchaseOrder : AggregateRoot<Guid>
     }
 
     public void SetDetails(
-        string? incotermCode, string? incotermSuffix, string? memo, string? vendorRef,
+        Guid? incotermId, string? incotermCode, string? incotermSuffix, string? memo, string? vendorRef,
         DateOnly? requiredDate, DateOnly? deliveryDate)
     {
-        IncotermCode = incotermCode;
-        IncotermSuffix = incotermSuffix;
+        IncotermId = incotermId;
+        IncotermCode = string.IsNullOrWhiteSpace(incotermCode) ? null : incotermCode.Trim().ToUpperInvariant();
+        IncotermSuffix = string.IsNullOrWhiteSpace(incotermSuffix) ? null : incotermSuffix.Trim();
         Memo = memo;
         VendorRef = vendorRef;
         RequiredDate = requiredDate;

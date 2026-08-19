@@ -47,6 +47,11 @@ test.describe("Sourcing lists", () => {
     const main = page.getByRole("main");
     await expect(main.getByRole("heading", { name: "RFQs" })).toBeVisible();
     await expect(main.getByText("RFQ-2026-0001")).toBeVisible();
+    await expect(main.getByText("Open · Awaiting bids")).toBeVisible();
+    await expect(main.getByText("Partially bid · 1/3")).toBeVisible();
+    await expect(main.getByRole("button", { name: "More actions" })).toBeVisible();
+    await main.getByRole("button", { name: "More actions" }).click();
+    await expect(main.getByRole("button", { name: "Close bids" })).toBeVisible();
     await expect(main.getByRole("button", { name: "Board", exact: true })).toBeVisible();
     await main.getByRole("button", { name: "Board", exact: true }).click();
     await expect(main.locator(".kanban")).toBeVisible();

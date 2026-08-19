@@ -5,7 +5,7 @@ namespace FSH.Modules.Platform.Domain;
 /// separate from <see cref="ViewRecordType"/> (Saved Views' own, narrower enum) — the two are
 /// maintained independently, per the old source's precedent of Views having its own vocabulary.
 /// </summary>
-public enum PlatformRecordType { Requisition, PurchaseOrder, Vendor }
+public enum PlatformRecordType { Requisition, PurchaseOrder, Vendor, Rfq }
 
 /// <summary>
 /// Sparse-column value storage (see <see cref="CustomFieldValue"/>) — no JSON, ever. Image/Document

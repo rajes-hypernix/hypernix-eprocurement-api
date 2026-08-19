@@ -38,6 +38,7 @@ export type PurchaseOrderDto = {
   shipToAdhoc?: string | null;
   incotermCode?: string | null;
   incotermSuffix?: string | null;
+  incotermId?: string | null;
   memo?: string | null;
   vendorRef?: string | null;
   requiredDate?: string | null;

@@ -84,21 +84,38 @@ public sealed class SourcingSavedViewRowSource(SourcingDbContext dbContext, ISav
             .ToDictionaryAsync(x => x.RfqId, x => x.Count, ct)
             .ConfigureAwait(false);
 
-        // Rfq is not a PlatformRecordType (no custom fields/segments for it) — no supplemental merge.
-        return [.. rfqs.Select(r => (IDictionary<string, object?>)new Dictionary<string, object?>
+        var supplemental = await supplementalData
+            .GetSupplementalFieldsAsync("Rfq", rfqIds, ct)
+            .ConfigureAwait(false);
+
+        var rows = new List<IDictionary<string, object?>>(rfqs.Count);
+        foreach (var r in rfqs)
         {
-            ["Id"] = r.Id,
-            ["Code"] = r.Code,
-            ["Title"] = r.Title,
-            ["Envelope"] = r.Envelope.ToString(),
-            ["Status"] = r.Status.ToString(),
-            ["Currency"] = r.Currency,
-            ["ClosesUtc"] = r.ClosesUtc,
-            ["InvitedCount"] = r.Invitations.Count,
-            ["LineCount"] = r.Lines.Count,
-            ["QuestionCount"] = r.FormItems.Count,
-            ["BidCount"] = bidCountsByRfq.TryGetValue(r.Id, out var count) ? count : 0,
-            ["OwnerUserId"] = r.OwnerUserId,
-        })];
+            Dictionary<string, object?> row = new()
+            {
+                ["Id"] = r.Id,
+                ["Code"] = r.Code,
+                ["Title"] = r.Title,
+                ["Envelope"] = r.Envelope.ToString(),
+                ["Status"] = r.Status.ToString(),
+                ["Currency"] = r.Currency,
+                ["ClosesUtc"] = r.ClosesUtc,
+                ["InvitedCount"] = r.Invitations.Count,
+                ["LineCount"] = r.Lines.Count,
+                ["QuestionCount"] = r.FormItems.Count,
+                ["BidCount"] = bidCountsByRfq.TryGetValue(r.Id, out var count) ? count : 0,
+                ["OwnerUserId"] = r.OwnerUserId,
+            };
+
+            if (supplemental.TryGetValue(r.Id, out var extra))
+            {
+                foreach (var (key, value) in extra)
+                    row[key] = value;
+            }
+
+            rows.Add(row);
+        }
+
+        return rows;
     }
 }

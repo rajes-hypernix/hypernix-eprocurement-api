@@ -84,6 +84,7 @@ public static class ViewsSeedData
         ViewRecordType.Requisition,
         ViewRecordType.PurchaseOrder,
         ViewRecordType.Vendor,
+        ViewRecordType.Rfq,
     ];
 
     public static string SegmentFieldKey(OrgUnitType dimension) => $"Segment_{dimension}";

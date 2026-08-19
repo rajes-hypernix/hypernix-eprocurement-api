@@ -19,6 +19,7 @@ public sealed class PurchaseOrderConfiguration : IEntityTypeConfiguration<Purcha
         builder.Property(x => x.Currency).IsRequired().HasMaxLength(10);
         builder.Property(x => x.IncotermCode).HasMaxLength(10);
         builder.Property(x => x.IncotermSuffix).HasMaxLength(200);
+        builder.HasIndex(x => x.IncotermId);
         builder.Property(x => x.Memo).HasMaxLength(2000);
         builder.Property(x => x.VendorRef).HasMaxLength(100);
         builder.Property(x => x.ShipToAdhoc).HasMaxLength(400);

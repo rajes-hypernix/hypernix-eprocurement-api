@@ -35,7 +35,12 @@ public sealed record RequisitionListItemDto(
     string Code,
     string Requestor,
     string Department,
+    string Location,
+    string Category,
+    string Job,
+    DateOnly? RequiredOn,
     string HeaderStatus,
     bool Submitted,
     int LineCount,
+    int OpenLineCount,
     DateTime CreatedUtc);

@@ -84,6 +84,23 @@ internal static class RequisitionDtoMapper
             estAmount);
     }
 
-    internal static RequisitionListItemDto ToListItemDto(PurchaseRequisition pr) =>
-        new(pr.Id, pr.Code, pr.Requestor, pr.Department, pr.HeaderStatus.ToString(), pr.Submitted, pr.Lines.Count, pr.CreatedUtc);
+    internal static RequisitionListItemDto ToListItemDto(PurchaseRequisition pr)
+    {
+        ArgumentNullException.ThrowIfNull(pr);
+        var openLines = pr.Lines.Count(l => l.LifecycleStatus == PrLineStatus.Open);
+        return new(
+            pr.Id,
+            pr.Code,
+            pr.Requestor,
+            pr.Department,
+            pr.Location,
+            pr.Category,
+            pr.Job,
+            pr.RequiredOn,
+            pr.HeaderStatus.ToString(),
+            pr.Submitted,
+            pr.Lines.Count,
+            openLines,
+            pr.CreatedUtc);
+    }
 }

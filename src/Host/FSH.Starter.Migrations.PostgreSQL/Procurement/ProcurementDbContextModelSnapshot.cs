@@ -379,6 +379,9 @@ namespace FSH.Starter.Migrations.PostgreSQL.Procurement
                         .HasMaxLength(10)
                         .HasColumnType("character varying(10)");
 
+                    b.Property<Guid?>("IncotermId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("IncotermSuffix")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
@@ -437,6 +440,8 @@ namespace FSH.Starter.Migrations.PostgreSQL.Procurement
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("IncotermId");
 
                     b.HasIndex("Code", "TenantId")
                         .IsUnique()

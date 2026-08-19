@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query-client";
 import { AuthProvider } from "@/auth/auth-context";
 import { GlobalLoadingBar } from "@/components/GlobalLoadingBar";
+import { VersionChecker } from "@/components/VersionChecker";
 import { ErrorDialogProvider } from "@/feedback/ErrorDialogContext";
 import { env } from "@/env";
 import { createAppRouter } from "@/routes";
@@ -16,6 +17,7 @@ export function App() {
       <AuthProvider>
         <ErrorDialogProvider>
           <GlobalLoadingBar />
+          <VersionChecker />
           <RouterProvider router={router} />
         </ErrorDialogProvider>
       </AuthProvider>

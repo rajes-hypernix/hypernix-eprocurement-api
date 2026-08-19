@@ -9,4 +9,6 @@ public sealed record RfqListItemDto(
     string Currency,
     DateTime? ClosesUtc,
     int InvitedCount,
-    int LineCount);
+    int LineCount,
+    int BidCount);
+

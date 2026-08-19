@@ -39,6 +39,13 @@ public sealed class FormTemplate : AggregateRoot<Guid>, IAuditableEntity
         Touch(modifiedBy);
     }
 
+    public void Rename(string name, string? modifiedBy = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        Name = name.Trim();
+        Touch(modifiedBy);
+    }
+
     public FormTemplateQuestion AddQuestion(
         int order,
         string label,

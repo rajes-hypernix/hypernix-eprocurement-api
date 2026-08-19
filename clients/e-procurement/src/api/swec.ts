@@ -10,6 +10,8 @@ export interface SwecIndex {
   tree: SwecNode[];
   label: (code: string) => string;
   path: (code: string) => string;
+  /** A code plus all of its descendant codes — for branch-aware category matching. */
+  desc: (code: string) => string[];
 }
 
 export function buildSwecIndex(rows: SwecCategoryDto[]): SwecIndex {
@@ -24,11 +26,24 @@ export function buildSwecIndex(rows: SwecCategoryDto[]): SwecIndex {
     else tree.push(n);
   }
 
+  const desc = (code: string): string[] => {
+    const out: string[] = [];
+    const walk = (n: SwecNode) => {
+      if (n.code) out.push(n.code);
+      n.children.forEach(walk);
+    };
+    const n = nodes.get(code);
+    if (n) walk(n);
+    else out.push(code);
+    return out;
+  };
+
   return {
     byCode,
     tree,
     label: (code) => byCode.get(code)?.name ?? code,
     path: (code) => byCode.get(code)?.pathText ?? code,
+    desc,
   };
 }
 

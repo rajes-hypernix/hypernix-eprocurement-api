@@ -9,7 +9,7 @@ internal static class ProcurementDtoMapper
         po.Id, po.Code, po.AwardId, po.RfqId, po.SourcePrId, po.SourceKind.ToString(), po.VendorId,
         po.Status.ToString(), po.Currency,
         po.ShipToLocationId, po.ShipToAddressId, po.ShipToAdhoc,
-        po.IncotermCode, po.IncotermSuffix, po.Memo, po.VendorRef, po.RequiredDate, po.DeliveryDate,
+        po.IncotermId, po.IncotermCode, po.IncotermSuffix, po.Memo, po.VendorRef, po.RequiredDate, po.DeliveryDate,
         po.VerifiedUtc, po.IssuedUtc, po.EntryFormId, po.TotalValue,
         [.. po.Lines.Select(ToDto)],
         po.CreatedUtc, po.UpdatedUtc);

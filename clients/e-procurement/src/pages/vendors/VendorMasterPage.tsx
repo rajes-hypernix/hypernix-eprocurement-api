@@ -43,6 +43,13 @@ export function VendorMasterPage({
     });
   }, [data?.items, type, region]);
 
+  const resetFilters = () => {
+    setQ("");
+    setType("all");
+    setRegion("all");
+    setPage(1);
+  };
+
   const swecCount = vendors.filter((v) => isSwecType(v.type)).length;
   const totalCount = data?.totalCount ?? 0;
   const totalPages = data?.totalPages ?? 1;
@@ -75,13 +82,14 @@ export function VendorMasterPage({
 
       <div className="card" style={{ marginBottom: 14 }}>
         <div className="cbody">
-          <div className="filterbar">
+          <div className="filterbar filterbar-auto">
             <div className="field" style={{ margin: 0 }}>
               <label>Search vendor / code</label>
               <input
                 type="text"
                 value={q}
                 placeholder="name or SWK-V-…"
+                aria-label="Search vendor / code"
                 onChange={(e) => {
                   setQ(e.target.value);
                   setPage(1);
@@ -106,6 +114,12 @@ export function VendorMasterPage({
                   </option>
                 ))}
               </select>
+            </div>
+            <div className="field" style={{ margin: 0 }}>
+              <label>&nbsp;</label>
+              <button type="button" className="freset" onClick={resetFilters}>
+                Reset
+              </button>
             </div>
           </div>
         </div>
