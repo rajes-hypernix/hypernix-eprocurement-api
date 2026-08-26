@@ -98,6 +98,7 @@ export function ConfirmModal({
   icon = "check",
   body,
   confirmLabel,
+  confirmIcon,
   cancelLabel = "Cancel",
   danger = false,
   busy = false,
@@ -108,6 +109,7 @@ export function ConfirmModal({
   icon?: string;
   body: ReactNode;
   confirmLabel: string;
+  confirmIcon?: string;
   cancelLabel?: string;
   danger?: boolean;
   busy?: boolean;
@@ -129,7 +131,7 @@ export function ConfirmModal({
             disabled={busy}
             onClick={onConfirm}
           >
-            {confirmLabel}
+            {confirmIcon ? <Icon name={confirmIcon} size={15} /> : null} {confirmLabel}
           </button>
         </>
       }

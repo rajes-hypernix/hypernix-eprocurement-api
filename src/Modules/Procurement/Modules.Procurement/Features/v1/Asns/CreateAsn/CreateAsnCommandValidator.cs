@@ -9,7 +9,7 @@ public sealed class CreateAsnCommandValidator : AbstractValidator<CreateAsnComma
     {
         RuleFor(x => x.PoId).NotEmpty();
         RuleFor(x => x.Carrier).NotEmpty().MaximumLength(200);
-        RuleFor(x => x.TrackingNo).NotEmpty().MaximumLength(200);
+        RuleFor(x => x.TrackingNo).MaximumLength(200);
         RuleFor(x => x.Lines).NotEmpty();
         RuleForEach(x => x.Lines).ChildRules(line =>
         {

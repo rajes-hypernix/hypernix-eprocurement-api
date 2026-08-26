@@ -132,6 +132,58 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--teal); }
   gap: 9px;
   font-size: 12.5px;
 }
+.act-as {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 4px;
+}
+.act-as-label {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.act-as-select {
+  width: auto;
+  max-width: 160px;
+  background: rgba(255, 255, 255, 0.13);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-control);
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: inherit;
+  padding: 6px 8px;
+}
+.act-as-select option {
+  color: var(--ink);
+  background: #fff;
+}
+.role-preview-banner {
+  position: sticky;
+  top: 58px;
+  z-index: 49;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 22px;
+  background: #f6e7b0;
+  border-bottom: 1px solid #e2c96a;
+  color: #5c4a12;
+  font-size: 13px;
+}
+.role-preview-banner strong {
+  font-weight: 700;
+}
+.role-preview-stop {
+  flex-shrink: 0;
+  color: #5c4a12;
+  border-color: #c9ae5a;
+  background: rgba(255, 255, 255, 0.45);
+}
 
 /* Phase 6 — notification bell (topbar) + inbox */
 .notif-bell {
@@ -425,16 +477,35 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--teal); }
   font-size: 13.5px;
   margin-bottom: 2px;
   cursor: pointer;
+  text-decoration: none;
+}
+.nav-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+.nav-row .nav {
+  flex: 1;
+  min-width: 0;
 }
 .nav:hover {
   background: var(--soft);
+}
+.nav:visited {
+  color: #54606a;
 }
 .nav.on {
   background: var(--teal-nav);
   color: #fff;
 }
+.nav.on:visited {
+  color: #fff;
+}
 .nav.nav-parent-on {
   background: var(--soft);
+  color: var(--ink);
+}
+.nav.nav-parent-on:visited {
   color: var(--ink);
 }
 .nav .ic {
@@ -1533,6 +1604,9 @@ table.da-pos td:last-child, table.da-pos th:last-child { text-align: right; }
   .tb-center { display: none; }
   .whoami .ptext { display: none; }
   .whoami .tb-signout { margin-left: 6px; padding: 6px 10px; font-size: 12px; }
+  .act-as-label { display: none; }
+  .act-as-select { max-width: 108px; }
+  .role-preview-banner { top: 58px; padding: 8px 12px; flex-wrap: wrap; }
 
   .side.side-rail { display: none; }
   .side-drawer-layer.open {

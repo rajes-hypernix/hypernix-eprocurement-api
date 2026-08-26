@@ -14,9 +14,12 @@ const PO_LIST = [
     code: "PO-2026-0001",
     rfqId: "dddddddd-dddd-dddd-dddd-dddddddddddd",
     vendorId: VENDOR_ID,
+    vendorName: "Acme Supplies",
     status: "Issued",
     currency: "MYR",
     totalValue: 1500,
+    receivedQty: 0,
+    totalQty: 2,
     createdUtc: "2026-07-01T00:00:00Z",
   },
 ];
@@ -24,6 +27,7 @@ const PO_LIST = [
 const PO_DETAIL = {
   ...PO_LIST[0],
   awardId: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+  sourceKind: "FromAward",
   updatedUtc: "2026-07-01T00:00:00Z",
   lines: [
     {
@@ -36,6 +40,8 @@ const PO_DETAIL = {
       receivedQty: 0,
       invoicedQty: 0,
       rfqLineCode: "L1",
+      priceConfirmed: true,
+      lineTotal: 1500,
     },
   ],
 };
@@ -44,12 +50,14 @@ const ASN = {
   id: ASN_ID,
   code: "ASN-2026-0001",
   poId: PO_ID,
+  poCode: "PO-2026-0001",
+  vendorName: "Acme Supplies",
   status: "InTransit",
   carrier: "DHL",
   trackingNo: "DHL123",
   shippedDate: "2026-07-10",
   expectedDate: "2026-07-12",
-  lines: [{ id: "asn-line-1", itemCode: "PUMP-01", shippedQty: 2, lotNo: null }],
+  lines: [{ id: "asn-line-1", itemCode: "PUMP-01", description: "Centrifugal pump", uom: "EA", shippedQty: 2, lotNo: null }],
   createdUtc: "2026-07-10T00:00:00Z",
 };
 
@@ -127,24 +135,31 @@ test.describe("Procurement", () => {
     await page.goto("/pos");
     await expect(page.getByRole("heading", { name: "Purchase Orders" })).toBeVisible();
     await expect(page.getByText("PO-2026-0001")).toBeVisible();
+    await expect(page.getByText("Acme Supplies")).toBeVisible();
     await expect(page.getByText("Issued").first()).toBeVisible();
   });
 
-  test("opens PO detail from the list", async ({ page }) => {
+  test("opens PO record from the list and hops to fulfilment", async ({ page }) => {
     await page.goto("/pos");
     await page.getByText("PO-2026-0001").click();
     await expect(page).toHaveURL(new RegExp(`/pos/${PO_ID}$`));
     await expect(page.getByText("PUMP-01")).toBeVisible();
     await expect(page.getByText("Centrifugal pump")).toBeVisible();
+    await expect(page.getByText("Acme Supplies").first()).toBeVisible();
+    await page.getByRole("button", { name: /Fulfilment/i }).click();
+    await expect(page).toHaveURL(new RegExp(`/pos/detail/${PO_ID}$`));
+    await expect(page.getByRole("button", { name: /PO form/i })).toBeVisible();
   });
 
   test("lists deliveries and opens ASN detail", async ({ page }) => {
     await page.goto("/deliveries");
     await expect(page.getByRole("heading", { name: "Deliveries" })).toBeVisible();
     await expect(page.getByText("ASN-2026-0001")).toBeVisible();
+    await expect(page.getByText("PO-2026-0001").first()).toBeVisible();
     await page.getByText("ASN-2026-0001").click();
     await expect(page).toHaveURL(new RegExp(`/deliveries/asn/${ASN_ID}$`));
-    await expect(page.getByText("DHL", { exact: true })).toBeVisible();
+    await expect(page.getByText("DHL123")).toBeVisible();
+    await expect(page.getByText("Centrifugal pump")).toBeVisible();
     await expect(page.getByRole("button", { name: /Receive goods/i })).toBeVisible();
   });
 

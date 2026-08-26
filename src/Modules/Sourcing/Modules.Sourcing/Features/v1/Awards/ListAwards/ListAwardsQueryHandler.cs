@@ -27,6 +27,6 @@ public sealed class ListAwardsQueryHandler(SourcingDbContext dbContext)
             .ConfigureAwait(false);
 
         return [.. awards.Select(a => new AwardListItemDto(
-            a.Id, a.Code, a.RfqId, rfqCodes.GetValueOrDefault(a.RfqId, string.Empty), a.Status.ToString(), a.TotalValue, a.CreatedUtc))];
+            a.Id, a.Code, a.RfqId, rfqCodes.GetValueOrDefault(a.RfqId, string.Empty), a.Status.ToString(), a.TotalValue, a.CreatedUtc, a.ApproverUserId))];
     }
 }

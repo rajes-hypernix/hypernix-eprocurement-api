@@ -1,4 +1,5 @@
 import { env } from "@/env";
+import { isRolePreviewActive } from "@/auth/role-preview-guard";
 import { tokenStore } from "@/auth/token-store";
 
 export type ApiError = {
@@ -21,7 +22,14 @@ export class ApiRequestError extends Error {
   }
 }
 
-type RequestInitEx = RequestInit & { skipAuth?: boolean; timeoutMs?: number };
+type RequestInitEx = RequestInit & {
+  skipAuth?: boolean;
+  timeoutMs?: number;
+  /** Allow a mutating call while role preview is on (unused by default). */
+  skipPreviewGuard?: boolean;
+};
+
+const PREVIEW_BLOCKED_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 
@@ -110,8 +118,16 @@ export async function apiFetch<T = unknown>(
   path: string,
   init: RequestInitEx = {},
 ): Promise<T> {
-  const { skipAuth, headers, timeoutMs, signal, ...rest } = init;
+  const { skipAuth, skipPreviewGuard, headers, timeoutMs, signal, ...rest } = init;
   const effectiveTimeout = timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const method = (rest.method ?? "GET").toUpperCase();
+  if (!skipPreviewGuard && isRolePreviewActive() && PREVIEW_BLOCKED_METHODS.has(method)) {
+    throw new ApiRequestError(403, "Role preview is view-only. Stop preview to make changes.", {
+      status: 403,
+      title: "Role preview",
+      detail: "Role preview is view-only. Stop preview to make changes.",
+    });
+  }
 
   const mergedHeaders = new Headers(headers);
   if (!mergedHeaders.has("Content-Type") && rest.body && typeof rest.body === "string") {

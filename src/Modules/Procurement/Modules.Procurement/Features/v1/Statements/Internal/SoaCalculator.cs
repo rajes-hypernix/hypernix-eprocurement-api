@@ -12,7 +12,8 @@ internal sealed class SoaCalculator(
     List<PurchaseOrder> pos,
     List<Grn> grns,
     List<Invoice> invoices,
-    DateTime asOf)
+    DateTime asOf,
+    IReadOnlyDictionary<Guid, string> vendorNames)
 {
     private readonly Dictionary<Guid, Guid> _vendorByPoId = pos.ToDictionary(p => p.Id, p => p.VendorId);
 
@@ -30,11 +31,14 @@ internal sealed class SoaCalculator(
             .Distinct()
             .ToList();
 
-    public static string VendorName(Guid vendorId) => vendorId.ToString("N")[..8].ToUpperInvariant();
+    public string Name(Guid vendorId) =>
+        vendorNames.TryGetValue(vendorId, out var name) && !string.IsNullOrWhiteSpace(name)
+            ? name
+            : "Vendor";
 
     public StatementSummaryDto ToSummary(Guid vendorId) => new(
         vendorId,
-        VendorName(vendorId),
+        Name(vendorId),
         Invoiced(vendorId),
         PaidAmount,
         Balance(vendorId),
@@ -42,13 +46,23 @@ internal sealed class SoaCalculator(
 
     public StatementDetailDto ToDetail(Guid vendorId) => new(
         vendorId,
-        VendorName(vendorId),
+        Name(vendorId),
         Invoiced(vendorId),
         PaidAmount,
         Balance(vendorId),
         Grni(vendorId),
         Aging(vendorId),
         Ledger(vendorId));
+
+    public StatementDetailDto EmptyDetail(Guid vendorId) => new(
+        vendorId,
+        Name(vendorId),
+        0,
+        0,
+        0,
+        0,
+        new AgingDto(0, 0, 0, 0),
+        []);
 
     private Guid? VendorIdForInvoice(Invoice invoice) =>
         _vendorByPoId.TryGetValue(invoice.PoId, out var vid) ? vid : null;
@@ -89,7 +103,8 @@ internal sealed class SoaCalculator(
     {
         var e = new List<(DateOnly? D, string Ds, string Type, string Ref, decimal Credit, decimal Debit, decimal? Memo)>();
 
-        foreach (var p in pos.Where(x => x.VendorId == vendorId && x.Status != PoStatus.Draft))
+        // POC: Draft and Verified are pre-issue — no "PO issued" row until the PO actually issues.
+        foreach (var p in pos.Where(x => x.VendorId == vendorId && x.Status is not (PoStatus.Draft or PoStatus.Verified)))
         {
             e.Add((null, "", "PO issued", p.Code, 0, 0, p.Lines.Sum(l => l.Qty * l.UnitPrice)));
         }

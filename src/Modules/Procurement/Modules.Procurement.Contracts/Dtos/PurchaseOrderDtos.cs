@@ -26,7 +26,8 @@ public sealed record PurchaseOrderDto(
     decimal TotalValue,
     IReadOnlyList<PoLineDto> Lines,
     DateTime CreatedUtc,
-    DateTime UpdatedUtc);
+    DateTime UpdatedUtc,
+    string VendorName = "");
 
 public sealed record PoLineDto(
     Guid Id,
@@ -41,7 +42,8 @@ public sealed record PoLineDto(
     Guid? SourcePrLineId,
     Guid? TaxCodeId,
     bool PriceConfirmed,
-    decimal LineTotal);
+    decimal LineTotal,
+    decimal OpenQty = 0);
 
 public sealed record PurchaseOrderListItemDto(
     Guid Id,
@@ -53,4 +55,8 @@ public sealed record PurchaseOrderListItemDto(
     string Status,
     string Currency,
     decimal TotalValue,
-    DateTime CreatedUtc);
+    DateTime CreatedUtc,
+    string VendorName = "",
+    decimal ReceivedQty = 0,
+    decimal TotalQty = 0,
+    Guid? AwardId = null);

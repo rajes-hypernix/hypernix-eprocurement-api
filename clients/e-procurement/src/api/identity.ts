@@ -211,7 +211,9 @@ export async function adminSetPassword(
 }
 
 export async function listRoles(): Promise<RoleDto[]> {
-  const result = await apiFetch<RoleDto[] | { items?: RoleDto[] }>(`${ApiPaths.identity}/roles`);
+  const result = await apiFetch<RoleDto[] | { items?: RoleDto[] }>(
+    `${ApiPaths.identity}/roles${toQuery({ PageNumber: 1, PageSize: 100 })}`,
+  );
   if (Array.isArray(result)) return result;
   return result.items ?? [];
 }

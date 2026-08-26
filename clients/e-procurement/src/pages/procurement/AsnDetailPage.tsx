@@ -1,13 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
-import { getAsn, getGrnByAsn, getPurchaseOrder } from "@/api/procurement";
+import { getAsn, getGrnByAsn } from "@/api/procurement";
 import { useAuth } from "@/auth/use-auth";
 import { Icon } from "@/components/Icon";
-import { Spinner } from "@/components/ui";
-import { AsnStatusBadge, PoStatusBadge } from "@/components/procurement/badges";
-import { fmt, dateMY, dateTimeMY } from "@/lib/format";
+import { EmptyState, Spinner } from "@/components/ui";
+import { AsnStatusBadge } from "@/components/procurement/badges";
+import { fmt, dateMY } from "@/lib/format";
 
-function shortId(id: string): string {
-  return id.length > 8 ? `${id.slice(0, 8)}…` : id;
+function poLabel(asn: { poCode?: string | null; poId: string }): string {
+  return asn.poCode?.trim() || asn.poId;
 }
 
 export function AsnDetailPage({
@@ -21,22 +21,45 @@ export function AsnDetailPage({
 }) {
   const { isVendor } = useAuth();
 
-  const { data: asn, isPending: asnPending } = useQuery({
+  const { data: asn, isPending: asnPending, isError } = useQuery({
     queryKey: ["asn", id],
     queryFn: () => getAsn(id),
+    retry: false,
   });
   const { data: grn } = useQuery({
     queryKey: ["grn-by-asn", id],
     queryFn: () => getGrnByAsn(id),
-    enabled: Boolean(asn?.status === "Received"),
-  });
-  const { data: po } = useQuery({
-    queryKey: ["purchase-order", asn?.poId],
-    queryFn: () => getPurchaseOrder(asn!.poId),
-    enabled: Boolean(asn?.poId),
+    enabled: Boolean(asn),
+    retry: false,
   });
 
-  if (asnPending || !asn) return <Spinner label="Loading ASN…" />;
+  if (asnPending) return <Spinner label="Loading ASN…" />;
+
+  if (isError || !asn) {
+    return (
+      <>
+        <div className="crumb">
+          <button type="button" className="lnk" onClick={onBack}>
+            Deliveries
+          </button>
+        </div>
+        <div className="pagehead">
+          <div>
+            <h1>Shipping notice</h1>
+            <p>This ASN was not found.</p>
+          </div>
+          <button type="button" className="btn btn-out" onClick={onBack}>
+            <Icon name="back" size={15} /> Back
+          </button>
+        </div>
+        <div className="card">
+          <div className="cbody">
+            <EmptyState>No shipping notice for this id.</EmptyState>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   const canReceive = !isVendor && asn.status === "InTransit";
 
@@ -51,104 +74,81 @@ export function AsnDetailPage({
 
       <div className="pagehead">
         <div>
-          <h1 style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            {asn.code} <AsnStatusBadge status={asn.status} />
-          </h1>
+          <h1>{asn.code}</h1>
           <p>
-            PO {po?.code ?? shortId(asn.poId)}
-            {po ? (
-              <>
-                {" "}
-                · <PoStatusBadge status={po.status} />
-              </>
-            ) : null}
+            {poLabel(asn)}
+            {asn.vendorName ? ` · ${asn.vendorName}` : ""}
+            {asn.expectedDate ? ` · expected ${dateMY(asn.expectedDate)}` : ""}
           </p>
         </div>
       </div>
 
-      <div className="card">
-        <div className="chead">
-          <h3>Shipment</h3>
-        </div>
-        <div className="cbody">
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
-            <div>
-              <div className="hint">Carrier</div>
-              <div style={{ fontWeight: 600 }}>{asn.carrier}</div>
-            </div>
-            <div>
-              <div className="hint">Tracking no.</div>
-              <div style={{ fontWeight: 600 }}>{asn.trackingNo}</div>
-            </div>
-            <div>
-              <div className="hint">Shipped</div>
-              <div>{dateMY(asn.shippedDate)}</div>
-            </div>
-            <div>
-              <div className="hint">Expected</div>
-              <div>{dateMY(asn.expectedDate)}</div>
-            </div>
-            <div>
-              <div className="hint">Created</div>
-              <div>{dateTimeMY(asn.createdUtc)}</div>
-            </div>
-          </div>
-        </div>
+      <div className="ribbon">
+        <AsnStatusBadge status={asn.status} />
+        {grn ? (
+          <span className="badge b-green" style={{ marginLeft: 6 }}>
+            <Icon name="check" size={11} /> Received · {grn.code}
+          </span>
+        ) : null}
       </div>
 
-      <div className="card" style={{ marginTop: 14 }}>
+      <div className="card" style={{ marginBottom: 16 }}>
         <div className="chead">
-          <h3>Lines</h3>
+          <h3>Shipment lines</h3>
+          <span className="hint">tracking {asn.trackingNo || "—"}</span>
         </div>
-        <div className="cbody">
+        <table>
+          <thead>
+            <tr>
+              <th>Code</th>
+              <th>Item</th>
+              <th className="amt">Shipped</th>
+              <th>Lot</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(asn.lines ?? []).map((l) => (
+              <tr key={l.id}>
+                <td>{l.itemCode}</td>
+                <td>{l.description || "—"}</td>
+                <td className="amt">
+                  {fmt(l.shippedQty)}
+                  {l.uom ? ` ${l.uom}` : ""}
+                </td>
+                <td>{l.lotNo || "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {grn ? (
+        <div className="card">
+          <div className="chead">
+            <h3>Goods receipt · {grn.code}</h3>
+          </div>
           <table>
             <thead>
               <tr>
-                <th>Item</th>
-                <th className="amt">Shipped qty</th>
-                <th>Lot no.</th>
+                <th>Code</th>
+                <th className="amt">Expected</th>
+                <th className="amt">Received</th>
+                <th>Condition</th>
               </tr>
             </thead>
             <tbody>
-              {(asn.lines ?? []).map((l) => (
+              {(grn.lines ?? []).map((l) => (
                 <tr key={l.id}>
-                  <td style={{ fontWeight: 600 }}>{l.itemCode}</td>
-                  <td className="amt">{fmt(l.shippedQty)}</td>
-                  <td>{l.lotNo ?? "—"}</td>
+                  <td>{l.itemCode}</td>
+                  <td className="amt">{fmt(l.expectedQty)}</td>
+                  <td className="amt">{fmt(l.receivedQty)}</td>
+                  <td>
+                    <span className={`badge ${l.condition === "Short" ? "b-amber" : "b-green"}`}>{l.condition}</span>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
-      </div>
-
-      {grn ? (
-        <div className="card" style={{ marginTop: 14 }}>
-          <div className="chead">
-            <h3>Goods receipt · {grn.code}</h3>
-          </div>
-          <div className="cbody">
-            <table>
-              <thead>
-                <tr>
-                  <th>Item</th>
-                  <th className="amt">Expected</th>
-                  <th className="amt">Received</th>
-                  <th>Condition</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(grn.lines ?? []).map((l) => (
-                  <tr key={l.id}>
-                    <td style={{ fontWeight: 600 }}>{l.itemCode}</td>
-                    <td className="amt">{fmt(l.expectedQty)}</td>
-                    <td className="amt">{fmt(l.receivedQty)}</td>
-                    <td>{l.condition}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
         </div>
       ) : null}
 

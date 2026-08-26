@@ -12,10 +12,10 @@ import {
   type AwardQaItemDto,
   type AwardResponseDto,
 } from "@/api/sourcing";
-import { createPurchaseOrdersFromAward } from "@/api/procurement";
+import { createPurchaseOrdersFromAward, listPurchaseOrders } from "@/api/procurement";
 import { Icon } from "@/components/Icon";
 import { Gated } from "@/components/Gated";
-import { ConfirmModal, Notice, Spinner } from "@/components/ui";
+import { ConfirmModal, Modal, Notice, Spinner } from "@/components/ui";
 import { SourcingStatusBadge } from "@/components/sourcing/badges";
 import { FshPermissions } from "@/lib/fsh-permissions";
 import { fmt } from "@/lib/format";
@@ -29,7 +29,7 @@ export function AwardWorkspacePage({ rfqId, onBack }: { rfqId: string; onBack: (
   const { user } = useAuth();
   const [err, setErr] = useState<string | null>(null);
   const [approving, setApproving] = useState(false);
-  const [creatingPos, setCreatingPos] = useState(false);
+  const [generatedPos, setGeneratedPos] = useState<string[] | null>(null);
   /** Allocated qty per line::vendor — 0 / missing = not selected. */
   const [alloc, setAlloc] = useState<Record<string, number>>({});
   const [seeded, setSeeded] = useState(false);
@@ -39,10 +39,17 @@ export function AwardWorkspacePage({ rfqId, onBack }: { rfqId: string; onBack: (
     queryFn: () => getAwardEligibility(rfqId),
   });
   const { data: award } = useQuery({ queryKey: ["award", rfqId], queryFn: () => getAward(rfqId) });
+  const { data: pos } = useQuery({
+    queryKey: ["purchase-orders"],
+    queryFn: listPurchaseOrders,
+  });
 
   const refresh = () => {
     void qc.invalidateQueries({ queryKey: ["award", rfqId] });
     void qc.invalidateQueries({ queryKey: ["award-eligibility", rfqId] });
+    void qc.invalidateQueries({ queryKey: ["awards"] });
+    void qc.invalidateQueries({ queryKey: ["rfqs"] });
+    void qc.invalidateQueries({ queryKey: ["purchase-orders"] });
   };
   const onErr = (e: Error) => setErr(e instanceof ApiRequestError ? e.message : e.message);
 
@@ -123,9 +130,16 @@ export function AwardWorkspacePage({ rfqId, onBack }: { rfqId: string; onBack: (
 
   const approve = useMutation({
     mutationFn: () => approveAward(rfqId),
-    onSuccess: () => {
+    onSuccess: async () => {
       setApproving(false);
       refresh();
+      try {
+        const codes = await createPurchaseOrdersFromAward(rfqId);
+        setGeneratedPos(codes);
+        void qc.invalidateQueries({ queryKey: ["purchase-orders"] });
+      } catch (e) {
+        onErr(e instanceof Error ? e : new Error("Could not generate purchase orders."));
+      }
     },
     onError: (e: Error) => {
       setApproving(false);
@@ -135,14 +149,11 @@ export function AwardWorkspacePage({ rfqId, onBack }: { rfqId: string; onBack: (
 
   const createPos = useMutation({
     mutationFn: () => createPurchaseOrdersFromAward(rfqId),
-    onSuccess: () => {
-      setCreatingPos(false);
-      void navigate("/pos");
+    onSuccess: (codes) => {
+      setGeneratedPos(codes);
+      refresh();
     },
-    onError: (e: Error) => {
-      setCreatingPos(false);
-      onErr(e);
-    },
+    onError: onErr,
   });
 
   if (eligPending || !elig) return <Spinner label="Loading award workspace…" />;
@@ -167,20 +178,127 @@ export function AwardWorkspacePage({ rfqId, onBack }: { rfqId: string; onBack: (
   const isApproved = award?.status === "Approved";
   const canApprove = isPendingApproval && award!.createdByUserId !== user?.id;
   const locked = isPendingApproval || isApproved;
+  const awardPos = (pos ?? []).filter((p) => p.awardId && award && p.awardId === award.id);
+  const vendorName = (vendorId: string) =>
+    elig.ranking.find((r) => r.vendorId === vendorId)?.vendorName
+    ?? elig.lines.flatMap((l) => l.options).find((o) => o.vendorId === vendorId)?.vendorName
+    ?? vendorId;
 
-  return (
+  const header = (
     <>
       <div className="crumb">
         <button type="button" className="lnk" onClick={onBack}>
-          Awards
+          Awards &amp; POs
         </button>{" "}
         <Icon name="chev" size={12} /> {elig.code}
       </div>
       <div className="pagehead">
         <div>
-          <h1 style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            {elig.code} {award ? <SourcingStatusBadge status={award.status} /> : null}
-          </h1>
+          <h1>Award — {elig.code}</h1>
+          <p>
+            {elig.title} · {elig.envelope} envelope
+          </p>
+        </div>
+      </div>
+    </>
+  );
+
+  if (isApproved && award) {
+    return (
+      <>
+        {header}
+        <Notice tone="success" icon="check">
+          {award.code} approved
+          {award.approverUserId ? ` by ${award.approverUserId}` : ""}. {awardPos.length} PO(s) generated.
+        </Notice>
+        <div className="card">
+          <div className="chead">
+            <h3>Award outcome</h3>
+            <span className="badge b-green">Approved</span>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Line</th>
+                <th>Vendor</th>
+                <th className="amt">Qty</th>
+                <th className="amt">Unit price</th>
+                <th className="amt">Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              {award.allocations.map((al, i) => (
+                <tr key={`${al.rfqLineCode}-${al.vendorId}-${i}`}>
+                  <td>{al.rfqLineCode}</td>
+                  <td>{vendorName(al.vendorId)}</td>
+                  <td className="amt">{fmt(al.qty)}</td>
+                  <td className="amt">RM {fmt(al.unitPrice)}</td>
+                  <td className="amt">RM {fmt(al.qty * al.unitPrice)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="cbody" style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, borderTop: "2px solid #333" }}>
+            <span>
+              Total award value
+              {awardPos.length > 0 ? ` · PO ${awardPos.map((p) => p.code).join(", ")}` : ""}
+            </span>
+            <span>RM {fmt(award.totalValue)}</span>
+          </div>
+        </div>
+        {awardPos.length === 0 ? (
+          <div className="actionbar" style={{ marginTop: 14 }}>
+            <div className="spacer" style={{ flex: 1 }} />
+            <Gated permission={FshPermissions.purchaseOrders.createFromAward}>
+              <button type="button" className="btn btn-pri" disabled={createPos.isPending} onClick={() => createPos.mutate()}>
+                Create purchase orders
+              </button>
+            </Gated>
+          </div>
+        ) : (
+          <div className="actionbar" style={{ marginTop: 14 }}>
+            <div className="spacer" style={{ flex: 1 }} />
+            <button type="button" className="btn btn-out" onClick={() => void navigate("/pos")}>
+              Open purchase orders
+            </button>
+          </div>
+        )}
+        {generatedPos ? (
+          <Modal
+            title="Award confirmed"
+            icon="check"
+            footer={
+              <button type="button" className="btn btn-pri" onClick={() => { setGeneratedPos(null); onBack(); }}>
+                View awards
+              </button>
+            }
+          >
+            <div className="health health-ok" style={{ marginBottom: 14 }}>
+              <span className="dot" /> {(awardPos.length || generatedPos.length)} purchase order(s) generated as Draft — verify and issue each PO.
+            </div>
+            {(awardPos.length > 0 ? awardPos.map((p) => p.code) : generatedPos).map((code) => (
+              <div className="file" key={code} style={{ justifyContent: "space-between" }}>
+                <div style={{ fontWeight: 700 }}>{code}</div>
+                <span className="badge b-grey">Draft</span>
+              </div>
+            ))}
+          </Modal>
+        ) : null}
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div className="crumb">
+        <button type="button" className="lnk" onClick={onBack}>
+          Awards &amp; POs
+        </button>{" "}
+        <Icon name="chev" size={12} /> {elig.code}
+      </div>
+      <div className="pagehead">
+        <div>
+          <h1>Award — {elig.code}</h1>
           <p>
             {elig.title} · {elig.envelope} envelope
           </p>
@@ -195,11 +313,6 @@ export function AwardWorkspacePage({ rfqId, onBack }: { rfqId: string; onBack: (
       {isPendingApproval ? (
         <Notice tone="warn" icon="flag">
           Pending approval — a different Approver-permissioned user must approve this award.
-        </Notice>
-      ) : null}
-      {isApproved ? (
-        <Notice tone="success" icon="check">
-          Approved on {award?.approvedUtc ? new Date(award.approvedUtc).toLocaleString("en-MY") : "—"}.
         </Notice>
       ) : null}
 
@@ -396,11 +509,9 @@ export function AwardWorkspacePage({ rfqId, onBack }: { rfqId: string; onBack: (
 
       <div className="actionbar" style={{ marginTop: 14 }}>
         <div className="spacer" style={{ flex: 1 }} />
-        {!isApproved ? (
-          <button type="button" className="btn btn-pri" disabled={submit.isPending || locked} onClick={() => submit.mutate()}>
-            <Icon name="award" size={15} /> {award ? "Resubmit for approval" : "Submit for approval"}
-          </button>
-        ) : null}
+        <button type="button" className="btn btn-pri" disabled={submit.isPending || locked} onClick={() => submit.mutate()}>
+          <Icon name="award" size={15} /> {award ? "Resubmit for approval" : "Submit for approval"}
+        </button>
         {isPendingApproval ? (
           <Gated permission={FshPermissions.award.approve}>
             <button
@@ -414,35 +525,17 @@ export function AwardWorkspacePage({ rfqId, onBack }: { rfqId: string; onBack: (
             </button>
           </Gated>
         ) : null}
-        {isApproved ? (
-          <Gated permission={FshPermissions.purchaseOrders.createFromAward}>
-            <button type="button" className="btn btn-pri" disabled={createPos.isPending} onClick={() => setCreatingPos(true)}>
-              Create purchase orders
-            </button>
-          </Gated>
-        ) : null}
       </div>
 
       {approving ? (
         <ConfirmModal
           title="Approve award"
           icon="check"
-          body="This approves the award. Purchase orders can then be generated in Procurement."
+          body="This approves the award and generates one draft purchase order per awarded vendor."
           confirmLabel="Approve"
           busy={approve.isPending}
           onCancel={() => setApproving(false)}
           onConfirm={() => approve.mutate()}
-        />
-      ) : null}
-      {creatingPos ? (
-        <ConfirmModal
-          title="Create purchase orders"
-          icon="box"
-          body="Generate purchase orders from this approved award and open the PO list."
-          confirmLabel="Create POs"
-          busy={createPos.isPending}
-          onCancel={() => setCreatingPos(false)}
-          onConfirm={() => createPos.mutate()}
         />
       ) : null}
     </>

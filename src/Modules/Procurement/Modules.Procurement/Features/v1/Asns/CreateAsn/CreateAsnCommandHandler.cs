@@ -68,6 +68,6 @@ public sealed class CreateAsnCommandHandler(
 
         dbContext.Asns.Add(asn);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        return ProcurementDtoMapper.ToDto(asn);
+        return ProcurementDtoMapper.ToDto(asn, po.Code);
     }
 }

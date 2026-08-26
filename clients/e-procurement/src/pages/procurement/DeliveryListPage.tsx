@@ -5,12 +5,12 @@ import { useAuth } from "@/auth/use-auth";
 import { Icon } from "@/components/Icon";
 import { EmptyState, Spinner } from "@/components/ui";
 import { AsnStatusBadge, PoStatusBadge } from "@/components/procurement/badges";
-import { dateMY } from "@/lib/format";
+import { dateMY, fmt } from "@/lib/format";
 
 const READY_TO_SHIP = new Set(["Acknowledged", "PartiallyReceived"]);
 
-function shortId(id: string): string {
-  return id.length > 8 ? `${id.slice(0, 8)}…` : id;
+function poLabel(a: { poCode?: string | null; poId: string }): string {
+  return a.poCode?.trim() || a.poId;
 }
 
 export function DeliveryListPage({
@@ -24,6 +24,7 @@ export function DeliveryListPage({
 }) {
   const { isVendor } = useAuth();
   const [q, setQ] = useState("");
+  const [status, setStatus] = useState("all");
 
   const { data: asns, isPending: asnsPending } = useQuery({
     queryKey: ["asns"],
@@ -41,14 +42,13 @@ export function DeliveryListPage({
   );
 
   const rows = useMemo(() => {
-    const items = asns ?? [];
-    if (!q.trim()) return items;
     const needle = q.trim().toLowerCase();
-    return items.filter(
-      (a) =>
-        `${a.code} ${a.carrier} ${a.trackingNo} ${a.poId}`.toLowerCase().includes(needle),
-    );
-  }, [asns, q]);
+    return (asns ?? []).filter((a) => {
+      if (status !== "all" && a.status !== status) return false;
+      if (!needle) return true;
+      return `${a.code} ${poLabel(a)} ${a.carrier} ${a.trackingNo}`.toLowerCase().includes(needle);
+    });
+  }, [asns, q, status]);
 
   const isPending = asnsPending || (isVendor && posPending);
 
@@ -57,7 +57,7 @@ export function DeliveryListPage({
       <div className="pagehead">
         <div>
           <h1>Deliveries</h1>
-          <p>Advance shipping notices and goods receipt against purchase orders.</p>
+          <p>Advance shipping notices and goods receipts. The buyer receives against each ASN on delivery.</p>
         </div>
       </div>
 
@@ -65,18 +65,19 @@ export function DeliveryListPage({
         <div className="card" style={{ marginBottom: 14 }}>
           <div className="chead">
             <h3>Ready to ship</h3>
-            <span className="sub">· acknowledged POs awaiting ASN</span>
+            <span className="hint">acknowledged POs</span>
           </div>
           <div className="cbody">
             {posPending ? (
               <Spinner label="Loading POs…" />
             ) : readyPos.length === 0 ? (
-              <EmptyState>No POs ready for shipping.</EmptyState>
+              <EmptyState>No acknowledged POs ready to ship.</EmptyState>
             ) : (
               <table>
                 <thead>
                   <tr>
                     <th>PO</th>
+                    <th className="amt">Value</th>
                     <th>Status</th>
                     <th />
                   </tr>
@@ -84,13 +85,16 @@ export function DeliveryListPage({
                 <tbody>
                   {readyPos.map((p) => (
                     <tr key={p.id}>
-                      <td style={{ fontWeight: 700 }}>{p.code}</td>
+                      <td style={{ fontWeight: 700, color: "var(--teal)" }}>{p.code}</td>
+                      <td className="amt">
+                        {p.currency} {fmt(p.totalValue)}
+                      </td>
                       <td>
                         <PoStatusBadge status={p.status} />
                       </td>
                       <td className="amt">
                         <button type="button" className="btn btn-pri btn-sm" onClick={() => onNewAsn(p.id)}>
-                          Create ASN
+                          <Icon name="send" size={13} /> New shipping notice
                         </button>
                       </td>
                     </tr>
@@ -106,8 +110,16 @@ export function DeliveryListPage({
         <div className="cbody">
           <div className="filterbar">
             <div className="field" style={{ margin: 0 }}>
-              <label>Search code / carrier / tracking / PO</label>
-              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="ASN-2026-…" />
+              <label>ASN</label>
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="ASN or PO number…" />
+            </div>
+            <div className="field" style={{ margin: 0, minWidth: 180 }}>
+              <label>Status</label>
+              <select value={status} onChange={(e) => setStatus(e.target.value)}>
+                <option value="all">All</option>
+                <option value="InTransit">In transit</option>
+                <option value="Received">Received</option>
+              </select>
             </div>
           </div>
         </div>
@@ -120,26 +132,24 @@ export function DeliveryListPage({
           <table>
             <thead>
               <tr>
-                <th>Code</th>
+                <th>ASN</th>
                 <th>PO</th>
                 <th>Carrier</th>
-                <th>Tracking</th>
-                <th>Status</th>
                 <th>Expected</th>
+                <th>Status</th>
                 <th />
               </tr>
             </thead>
             <tbody>
               {rows.map((a) => (
                 <tr key={a.id} className="drillrow" onClick={() => onOpen(a.id)}>
-                  <td style={{ fontWeight: 700 }}>{a.code}</td>
-                  <td>{shortId(a.poId)}</td>
-                  <td>{a.carrier}</td>
-                  <td>{a.trackingNo}</td>
+                  <td style={{ fontWeight: 700, color: "var(--teal)" }}>{a.code}</td>
+                  <td>{poLabel(a)}</td>
+                  <td>{a.carrier || "—"}</td>
+                  <td>{dateMY(a.expectedDate)}</td>
                   <td>
                     <AsnStatusBadge status={a.status} />
                   </td>
-                  <td>{dateMY(a.expectedDate)}</td>
                   <td className="amt">
                     {!isVendor && a.status === "InTransit" ? (
                       <button
@@ -162,8 +172,8 @@ export function DeliveryListPage({
               ))}
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={7}>
-                    <EmptyState>No shipping notices match the filter.</EmptyState>
+                  <td colSpan={6}>
+                    <EmptyState>No shipping notices match these filters.</EmptyState>
                   </td>
                 </tr>
               ) : null}

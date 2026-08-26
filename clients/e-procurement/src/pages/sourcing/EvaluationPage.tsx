@@ -13,7 +13,13 @@ export function EvaluationPage() {
   const go = (path: string) => void navigate(`/openings${path ? `/${path}` : ""}`);
 
   if (segments.length === 2 && segments[1] === "score") {
-    return <TechnicalScoringPage rfqId={segments[0]!} onBack={() => go(segments[0]!)} />;
+    return (
+      <TechnicalScoringPage
+        rfqId={segments[0]!}
+        onBack={() => go(segments[0]!)}
+        onOpenCommercial={() => go(segments[0]!)}
+      />
+    );
   }
   if (segments.length === 1) {
     return <BidOpeningDetailPage rfqId={segments[0]!} onBack={() => go("")} onScore={() => go(`${segments[0]}/score`)} onAward={() => void navigate(`/awards/${segments[0]}`)} />;

@@ -16,7 +16,7 @@ public static class GetGrnByAsnEndpoint
                 async (Guid asnId, IMediator mediator, CancellationToken ct) =>
                 {
                     var result = await mediator.Send(new GetGrnByAsnQuery(asnId), ct);
-                    return result is null ? Results.NoContent() : Results.Ok(result);
+                    return result is null ? Results.NotFound() : Results.Ok(result);
                 })
             .WithName("GetGrnByAsn")
             .WithSummary("Get the GRN for an ASN")

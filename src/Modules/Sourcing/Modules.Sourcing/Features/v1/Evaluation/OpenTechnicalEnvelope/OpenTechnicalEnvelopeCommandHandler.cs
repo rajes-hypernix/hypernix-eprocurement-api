@@ -1,3 +1,4 @@
+using FSH.Framework.Core.Context;
 using FSH.Framework.Core.Exceptions;
 using FSH.Modules.Sourcing.Contracts.v1.Evaluation;
 using FSH.Modules.Sourcing.Data;
@@ -6,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FSH.Modules.Sourcing.Features.v1.Evaluation.OpenTechnicalEnvelope;
 
-public sealed class OpenTechnicalEnvelopeCommandHandler(SourcingDbContext dbContext)
+public sealed class OpenTechnicalEnvelopeCommandHandler(SourcingDbContext dbContext, ICurrentUser currentUser)
     : ICommandHandler<OpenTechnicalEnvelopeCommand, Guid>
 {
     public async ValueTask<Guid> Handle(OpenTechnicalEnvelopeCommand command, CancellationToken cancellationToken)
@@ -17,6 +18,12 @@ public sealed class OpenTechnicalEnvelopeCommandHandler(SourcingDbContext dbCont
             .FirstOrDefaultAsync(r => r.Id == command.RfqId, cancellationToken)
             .ConfigureAwait(false)
             ?? throw new NotFoundException($"RFQ {command.RfqId} not found.");
+
+        string me = currentUser.GetUserId().ToString();
+        if (!rfq.TechnicalEvaluatorIds.Any(id => string.Equals(id, me, StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new ForbiddenException("Only an assigned technical evaluator can open the technical envelope.");
+        }
 
         rfq.OpenTechnicalEnvelope();
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

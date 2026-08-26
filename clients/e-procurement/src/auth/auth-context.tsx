@@ -11,8 +11,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { tokenStore } from "@/auth/token-store";
 import { decodeJwt, isTokenExpired, type JwtClaims } from "@/auth/jwt";
 import { AmbiguousTenantError, issueToken, resolveTenantByEmail } from "@/auth/api";
+import { setRolePreviewActive } from "@/auth/role-preview-guard";
 import { refreshAccessToken } from "@/lib/api-client";
-import { getMyPermissions } from "@/api/identity";
+import { getMyPermissions, getRoleWithPermissions } from "@/api/identity";
+import { FshPermissions } from "@/lib/fsh-permissions";
 
 export type AuthUser = {
   id: string;
@@ -23,12 +25,22 @@ export type AuthUser = {
   permissions: string[];
 };
 
+export type RolePreview = {
+  roleId: string;
+  roleName: string;
+};
+
 export type AuthContextValue = {
   user: AuthUser | null;
   isAuthenticated: boolean;
   isInitializing: boolean;
   permissionsHydrated: boolean;
   isVendor: boolean;
+  /** True when the real user (not the overlay) may open Act as role. */
+  canPreviewRoles: boolean;
+  rolePreview: RolePreview | null;
+  startRolePreview: (roleId: string, roleName: string) => Promise<void>;
+  stopRolePreview: () => void;
   login: (input: {
     email: string;
     password: string;
@@ -74,10 +86,15 @@ function readStoredSession(): { claims: JwtClaims | null; usable: boolean } {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
-  const [user, setUser] = useState<AuthUser | null>(() => {
+  const [actualUser, setActualUser] = useState<AuthUser | null>(() => {
     const { claims, usable } = readStoredSession();
     return usable ? claimsToUser(claims, tokenStore.getPermissions()) : null;
   });
+  const [rolePreviewState, setRolePreviewState] = useState<{
+    roleId: string;
+    roleName: string;
+    permissions: string[];
+  } | null>(null);
   const [isInitializing, setIsInitializing] = useState<boolean>(
     () => !readStoredSession().usable && tokenStore.getRefreshToken() !== null,
   );
@@ -85,7 +102,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!tokenStore.getAccessToken()) return true;
     return tokenStore.getPermissions().length > 0;
   });
-  const lastHydratedSubject = useRef<string | null>(user?.id ?? null);
+  const lastHydratedSubject = useRef<string | null>(actualUser?.id ?? null);
+
+  const user = useMemo<AuthUser | null>(() => {
+    if (!actualUser) return null;
+    if (!rolePreviewState) return actualUser;
+    return { ...actualUser, permissions: rolePreviewState.permissions };
+  }, [actualUser, rolePreviewState]);
+
+  /** Vendor portal is JWT vendorId — never inferred from a previewed role name. */
+  const isVendor = Boolean(actualUser?.vendorId);
+  const canPreviewRoles =
+    Boolean(actualUser) &&
+    !actualUser?.vendorId &&
+    (actualUser?.permissions ?? []).includes(FshPermissions.roles.view);
+  const rolePreview: RolePreview | null = rolePreviewState
+    ? { roleId: rolePreviewState.roleId, roleName: rolePreviewState.roleName }
+    : null;
+
+  useEffect(() => {
+    setRolePreviewActive(rolePreviewState !== null);
+    return () => setRolePreviewActive(false);
+  }, [rolePreviewState]);
 
   useEffect(() => {
     if (!isInitializing) return;
@@ -105,15 +143,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [isInitializing]);
 
   useEffect(() => {
-    if (!user) {
+    if (!actualUser) {
       lastHydratedSubject.current = null;
       setPermissionsHydrated(true);
       return;
     }
-    if (lastHydratedSubject.current === user.id && permissionsHydrated) {
+    if (lastHydratedSubject.current === actualUser.id && permissionsHydrated) {
       return;
     }
-    lastHydratedSubject.current = user.id;
+    lastHydratedSubject.current = actualUser.id;
     let cancelled = false;
     void (async () => {
       try {
@@ -128,7 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [user, permissionsHydrated]);
+  }, [actualUser, permissionsHydrated]);
 
   useEffect(() => {
     return tokenStore.subscribe(() => {
@@ -137,7 +175,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         claims && !isTokenExpired(claims)
           ? claimsToUser(claims, tokenStore.getPermissions())
           : null;
-      setUser(next);
+      setActualUser(next);
     });
   }, []);
 
@@ -151,7 +189,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       const claims = decodeJwt(tokenStore.getAccessToken());
-      setUser(
+      setActualUser(
         claims && !isTokenExpired(claims)
           ? claimsToUser(claims, tokenStore.getPermissions())
           : null,
@@ -167,6 +205,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     tenant?: string;
     rememberMe?: boolean;
   }) => {
+    setRolePreviewState(null);
+    setRolePreviewActive(false);
     const remember = Boolean(input.rememberMe);
     // Wipe any prior session first so hydration/refresh cannot race-clear the new login.
     tokenStore.setRememberMe(remember);
@@ -206,9 +246,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
+    setRolePreviewState(null);
+    setRolePreviewActive(false);
     tokenStore.clear();
     queryClient.clear();
   }, [queryClient]);
+
+  const startRolePreview = useCallback(async (roleId: string, roleName: string) => {
+    const role = await getRoleWithPermissions(roleId);
+    setRolePreviewState({
+      roleId: role.id,
+      roleName: role.name || roleName,
+      permissions: role.permissions ?? [],
+    });
+  }, []);
+
+  const stopRolePreview = useCallback(() => {
+    setRolePreviewState(null);
+    setRolePreviewActive(false);
+  }, []);
 
   const refreshPermissions = useCallback(async () => {
     try {
@@ -220,7 +276,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const applyLocalProfile = useCallback((patch: { name?: string }) => {
-    setUser((prev) => {
+    setActualUser((prev) => {
       if (!prev) return prev;
       return {
         ...prev,
@@ -235,13 +291,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: user !== null,
       isInitializing,
       permissionsHydrated,
-      isVendor: Boolean(user?.vendorId),
+      isVendor,
+      canPreviewRoles,
+      rolePreview,
+      startRolePreview,
+      stopRolePreview,
       login,
       logout,
       refreshPermissions,
       applyLocalProfile,
     }),
-    [user, isInitializing, permissionsHydrated, login, logout, refreshPermissions, applyLocalProfile],
+    [
+      user,
+      isInitializing,
+      permissionsHydrated,
+      isVendor,
+      canPreviewRoles,
+      rolePreview,
+      startRolePreview,
+      stopRolePreview,
+      login,
+      logout,
+      refreshPermissions,
+      applyLocalProfile,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

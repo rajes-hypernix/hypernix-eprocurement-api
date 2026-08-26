@@ -2,12 +2,16 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getAsn, receiveAsn, type ReceiveLineInput } from "@/api/procurement";
 import { Icon } from "@/components/Icon";
-import { Notice, Spinner } from "@/components/ui";
+import { ConfirmModal, Notice, Spinner } from "@/components/ui";
 import { AsnStatusBadge } from "@/components/procurement/badges";
 import { fmt } from "@/lib/format";
 import { ApiRequestError } from "@/lib/api-client";
 
-type LineDraft = { itemCode: string; shippedQty: number; receivedQty: number };
+type LineDraft = { itemCode: string; description: string; shippedQty: number; receivedQty: number };
+
+function poLabel(asn: { poCode?: string | null; poId: string }): string {
+  return asn.poCode?.trim() || asn.poId;
+}
 
 export function ReceiveAsnPage({
   asnId,
@@ -22,10 +26,12 @@ export function ReceiveAsnPage({
   const [err, setErr] = useState<string | null>(null);
   const [lines, setLines] = useState<LineDraft[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  const [confirm, setConfirm] = useState(false);
 
   const { data: asn, isPending } = useQuery({
     queryKey: ["asn", asnId],
     queryFn: () => getAsn(asnId),
+    retry: false,
   });
 
   if (asn && !hydrated) {
@@ -33,6 +39,7 @@ export function ReceiveAsnPage({
     setLines(
       (asn.lines ?? []).map((l) => ({
         itemCode: l.itemCode,
+        description: l.description ?? "",
         shippedQty: l.shippedQty,
         receivedQty: l.shippedQty,
       })),
@@ -54,9 +61,13 @@ export function ReceiveAsnPage({
       void qc.invalidateQueries({ queryKey: ["asns"] });
       void qc.invalidateQueries({ queryKey: ["purchase-orders"] });
       void qc.invalidateQueries({ queryKey: ["grn-by-asn", asnId] });
+      setConfirm(false);
       onDone();
     },
-    onError: onErr,
+    onError: (e: Error) => {
+      setConfirm(false);
+      onErr(e);
+    },
   });
 
   if (isPending || !asn) return <Spinner label="Loading ASN…" />;
@@ -66,7 +77,7 @@ export function ReceiveAsnPage({
       <>
         <div className="crumb">
           <button type="button" className="lnk" onClick={onBack}>
-            ASN
+            Deliveries
           </button>{" "}
           <Icon name="chev" size={12} /> {asn.code}
         </div>
@@ -81,18 +92,27 @@ export function ReceiveAsnPage({
     <>
       <div className="crumb">
         <button type="button" className="lnk" onClick={onBack}>
-          ASN
+          Deliveries
         </button>{" "}
-        <Icon name="chev" size={12} /> Receive · {asn.code}
+        <Icon name="chev" size={12} /> Receive {asn.code}
       </div>
 
       <div className="pagehead">
         <div>
-          <h1>Receive goods · {asn.code}</h1>
+          <h1>Goods receipt — {asn.code}</h1>
           <p>
-            {asn.carrier} · {asn.trackingNo}
+            {poLabel(asn)}
+            {asn.vendorName ? ` · ${asn.vendorName}` : ""} · carrier {asn.carrier || "—"}
           </p>
         </div>
+        <button
+          type="button"
+          className="btn btn-pri"
+          disabled={totalReceived <= 0 || receive.isPending}
+          onClick={() => setConfirm(true)}
+        >
+          <Icon name="box" size={15} /> Post receipt
+        </button>
       </div>
 
       {err ? (
@@ -103,57 +123,55 @@ export function ReceiveAsnPage({
 
       <div className="card">
         <div className="chead">
-          <h3>Receipt quantities</h3>
-          <span className="sub">· capped to shipped qty per line</span>
+          <h3>Receive lines</h3>
+          <span className="hint">received is capped to shipped; under-receipt = Short</span>
         </div>
-        <div className="cbody">
-          <table>
-            <thead>
-              <tr>
-                <th>Item</th>
-                <th className="amt">Shipped</th>
-                <th className="amt">Receive qty</th>
+        <table>
+          <thead>
+            <tr>
+              <th>Code</th>
+              <th>Item</th>
+              <th className="amt">Shipped</th>
+              <th className="amt">Receive now</th>
+            </tr>
+          </thead>
+          <tbody>
+            {lines.map((l) => (
+              <tr key={l.itemCode}>
+                <td>{l.itemCode}</td>
+                <td>{l.description || "—"}</td>
+                <td className="amt">{fmt(l.shippedQty)}</td>
+                <td className="amt" style={{ width: 110 }}>
+                  <input
+                    type="number"
+                    min={0}
+                    max={l.shippedQty}
+                    value={l.receivedQty}
+                    aria-label={`Receive ${l.itemCode}`}
+                    onChange={(e) => {
+                      const v = Math.min(Math.max(0, Number(e.target.value)), l.shippedQty);
+                      setLines((xs) => xs.map((x) => (x.itemCode === l.itemCode ? { ...x, receivedQty: v } : x)));
+                    }}
+                  />
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {lines.map((l) => (
-                <tr key={l.itemCode}>
-                  <td style={{ fontWeight: 600 }}>{l.itemCode}</td>
-                  <td className="amt">{fmt(l.shippedQty)}</td>
-                  <td className="amt">
-                    <input
-                      type="number"
-                      style={{ width: 80 }}
-                      min={0}
-                      max={l.shippedQty}
-                      value={l.receivedQty}
-                      onChange={(e) => {
-                        const v = Math.min(Math.max(0, Number(e.target.value)), l.shippedQty);
-                        setLines((xs) => xs.map((x) => (x.itemCode === l.itemCode ? { ...x, receivedQty: v } : x)));
-                      }}
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
       </div>
 
-      <div className="actionbar" style={{ marginTop: 14 }}>
-        <div className="spacer" style={{ flex: 1 }} />
-        <button type="button" className="btn btn-out" onClick={onBack}>
-          Cancel
-        </button>
-        <button
-          type="button"
-          className="btn btn-pri"
-          disabled={totalReceived <= 0 || receive.isPending}
-          onClick={() => receive.mutate()}
-        >
-          Confirm receipt
-        </button>
-      </div>
+      {confirm ? (
+        <ConfirmModal
+          icon="box"
+          title={`Post goods receipt for ${asn.code}?`}
+          body={`This records the received quantities as a goods receipt and updates ${poLabel(asn)} and its 3-way match.`}
+          cancelLabel="Not yet"
+          confirmLabel="Post receipt"
+          busy={receive.isPending}
+          onCancel={() => setConfirm(false)}
+          onConfirm={() => receive.mutate()}
+        />
+      ) : null}
     </>
   );
 }

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/auth/use-auth";
 import { searchVendors } from "@/api/suppliers";
@@ -29,6 +30,10 @@ export function ClarificationsPage() {
   const [newVendorSearch, setNewVendorSearch] = useState("");
   const [newBody, setNewBody] = useState("");
   const [newPublish, setNewPublish] = useState(false);
+
+  const [searchParams] = useSearchParams();
+  const prefillVendorId = searchParams.get("vendorId");
+  const prefillConsumed = useRef(false);
 
   const { data: threads, isPending } = useQuery({ queryKey: ["clar-threads"], queryFn: listClarificationThreads });
   const { data: messages } = useQuery({
@@ -62,8 +67,11 @@ export function ClarificationsPage() {
   });
 
   const startNew = useMutation({
-    mutationFn: () =>
-      sendClarification(newScope, newScope === "general" || newPublish ? (isVendor ? user!.vendorId! : null) : newVendorId, newBody, newPublish),
+    mutationFn: () => {
+      const vendorId = isVendor ? user!.vendorId! : newVendorId || null;
+      const broadcast = Boolean(newPublish && newScope !== "general");
+      return sendClarification(newScope, broadcast ? null : vendorId, newBody, newPublish);
+    },
     onSuccess: () => {
       setComposing(false);
       setNewBody("");
@@ -74,6 +82,19 @@ export function ClarificationsPage() {
     },
     onError: onErr,
   });
+
+  useEffect(() => {
+    if (prefillConsumed.current || !prefillVendorId || isVendor || threads === undefined) return;
+    prefillConsumed.current = true;
+    const hit = threads.find((t) => t.vendorId === prefillVendorId);
+    if (hit) {
+      setActive(hit);
+      return;
+    }
+    setNewVendorId(prefillVendorId);
+    setNewScope("general");
+    setComposing(true);
+  }, [prefillVendorId, isVendor, threads]);
 
   return (
     <>
@@ -196,7 +217,7 @@ export function ClarificationsPage() {
               <button
                 type="button"
                 className="btn btn-pri"
-                disabled={!newBody.trim() || (!isVendor && newScope !== "general" && !newPublish && !newVendorId) || startNew.isPending}
+                disabled={!newBody.trim() || (!isVendor && !newPublish && !newVendorId) || startNew.isPending}
                 onClick={() => startNew.mutate()}
               >
                 Send
@@ -230,6 +251,11 @@ export function ClarificationsPage() {
           {!isVendor && !newPublish ? (
             <div className="field">
               <label>Vendor</label>
+              {newVendorId && newVendorSearch.trim().length <= 1 ? (
+                <p className="hint" style={{ margin: "0 0 8px" }}>
+                  Vendor selected from statement. Search to pick a different one.
+                </p>
+              ) : null}
               <input value={newVendorSearch} onChange={(e) => setNewVendorSearch(e.target.value)} placeholder="Search vendor…" />
               {vendorResults?.items.map((v) => (
                 <div

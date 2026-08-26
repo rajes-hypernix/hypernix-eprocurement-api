@@ -501,8 +501,12 @@ export function withdrawBid(rfqId: string): Promise<BidDto> {
 // Evaluation
 // ---------------------------------------------------------------------------
 
+export type EvaluatorDto = { id: string; name: string };
+
 export type BidOpeningStatusDto = {
   rfqId: string;
+  code: string;
+  title: string;
   envelope: string;
   rfqStatus: string;
   technicalOpened: boolean;
@@ -510,6 +514,9 @@ export type BidOpeningStatusDto = {
   commercialOpened: boolean;
   invitedCount: number;
   submittedBidCount: number;
+  evaluators: EvaluatorDto[];
+  canOpenTechnical: boolean;
+  canOpenCommercial: boolean;
 };
 
 export type TechnicalScoreDetailDto = { evaluatorId: string; criterion: string; score: number };
@@ -528,6 +535,15 @@ export type TechnicalEvalRowDto = {
 export type TechnicalScoreDto = { vendorId: string; criterion: string; score: number };
 
 export const TECHNICAL_CRITERIA = ["Compliance", "Experience", "Delivery", "QA"] as const;
+
+export const TECHNICAL_CRITERIA_META: { key: (typeof TECHNICAL_CRITERIA)[number]; label: string; weight: number }[] = [
+  { key: "Compliance", label: "Compliance", weight: 35 },
+  { key: "Experience", label: "Experience", weight: 20 },
+  { key: "Delivery", label: "Delivery", weight: 20 },
+  { key: "QA", label: "QA", weight: 25 },
+];
+
+export const TECHNICAL_PASS_THRESHOLD = 70;
 
 export function getBidOpening(rfqId: string): Promise<BidOpeningStatusDto> {
   return apiFetch(`${ROOT}/rfqs/${rfqId}/bid-opening`);
@@ -589,6 +605,7 @@ export type AwardListItemDto = {
   status: string;
   totalValue: number;
   createdUtc: string;
+  approverUserId?: string | null;
 };
 
 export type AwardEligibilityRowDto = {

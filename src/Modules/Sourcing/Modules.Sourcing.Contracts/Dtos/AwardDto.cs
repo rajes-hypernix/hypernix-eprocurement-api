@@ -20,4 +20,5 @@ public sealed record AwardListItemDto(
     string RfqCode,
     string Status,
     decimal TotalValue,
-    DateTime CreatedUtc);
+    DateTime CreatedUtc,
+    string? ApproverUserId = null);

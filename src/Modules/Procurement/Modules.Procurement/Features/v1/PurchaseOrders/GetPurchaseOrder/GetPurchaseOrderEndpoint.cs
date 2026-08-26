@@ -16,7 +16,7 @@ public static class GetPurchaseOrderEndpoint
                 async (Guid poId, IMediator mediator, CancellationToken ct) =>
                 {
                     var result = await mediator.Send(new GetPurchaseOrderQuery(poId), ct);
-                    return result is null ? Results.NoContent() : Results.Ok(result);
+                    return result is null ? Results.NotFound() : Results.Ok(result);
                 })
             .WithName("GetPurchaseOrder")
             .WithSummary("Get a purchase order by ID")

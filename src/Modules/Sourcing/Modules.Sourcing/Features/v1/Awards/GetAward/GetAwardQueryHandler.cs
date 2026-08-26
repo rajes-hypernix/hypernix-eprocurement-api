@@ -15,7 +15,8 @@ public sealed class GetAwardQueryHandler(SourcingDbContext dbContext)
 
         var award = await dbContext.Awards
             .AsNoTracking()
-            .FirstOrDefaultAsync(a => a.RfqId == query.RfqId, cancellationToken)
+                    .Include(a => a.Allocations)
+                    .FirstOrDefaultAsync(a => a.RfqId == query.RfqId, cancellationToken)
             .ConfigureAwait(false);
 
         return award is null ? null : AwardDtoMapper.ToDto(award);

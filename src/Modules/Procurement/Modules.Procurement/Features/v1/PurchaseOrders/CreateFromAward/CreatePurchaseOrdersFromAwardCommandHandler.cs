@@ -3,6 +3,7 @@ using FSH.Modules.Procurement.Contracts.v1.PurchaseOrders;
 using FSH.Modules.Procurement.Data;
 using FSH.Modules.Procurement.Domain;
 using FSH.Modules.Sourcing.Contracts.v1.Awards;
+using FSH.Modules.Sourcing.Contracts.v1.Rfqs;
 using Mediator;
 using Microsoft.EntityFrameworkCore;
 
@@ -24,23 +25,35 @@ public sealed class CreatePurchaseOrdersFromAwardCommandHandler(
         if (!string.Equals(award.Status, "Approved", StringComparison.Ordinal))
             throw new ProcurementRuleException("Award must be Approved before creating purchase orders.");
 
-        bool alreadyExists = await dbContext.PurchaseOrders
-            .AnyAsync(po => po.AwardId == award.Id, cancellationToken)
+        var existing = await dbContext.PurchaseOrders
+            .AsNoTracking()
+            .Where(po => po.AwardId == award.Id)
+            .Select(po => po.Id)
+            .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        if (alreadyExists)
-            throw new ProcurementRuleException($"Purchase orders already exist for award {award.Code}.");
+        if (existing.Count > 0)
+        {
+            return existing;
+        }
 
-        var vendorGroups = award.Allocations.GroupBy(a => a.VendorId);
+        var rfq = await mediator.Send(new GetRfqByIdQuery(award.RfqId), cancellationToken).ConfigureAwait(false);
         var poIds = new List<Guid>();
 
-        foreach (var group in vendorGroups)
+        foreach (var group in award.Allocations.GroupBy(a => a.VendorId))
         {
             string code = await codeGen.NextPoCodeAsync(cancellationToken).ConfigureAwait(false);
-            var po = PurchaseOrder.Create(code, group.Key, "MYR", PoSourceKind.FromAward, awardId: award.Id, rfqId: award.RfqId);
+            var po = PurchaseOrder.Create(code, group.Key, rfq.Currency, PoSourceKind.FromAward, awardId: award.Id, rfqId: award.RfqId);
+            po.SetDetails(rfq.IncotermId, rfq.IncotermCode, rfq.IncotermSuffix, memo: null, vendorRef: null, requiredDate: null, deliveryDate: null);
 
             foreach (var alloc in group)
             {
-                po.AddLine(alloc.RfqLineCode, alloc.RfqLineCode, "EA", alloc.Qty, alloc.UnitPrice, alloc.RfqLineCode);
+                var rfqLine = rfq.Lines.FirstOrDefault(l =>
+                    string.Equals(l.LineCode, alloc.RfqLineCode, StringComparison.Ordinal)
+                    || string.Equals(l.ItemCode, alloc.RfqLineCode, StringComparison.Ordinal));
+                string itemCode = rfqLine?.ItemCode ?? alloc.RfqLineCode;
+                string description = rfqLine?.Description ?? alloc.RfqLineCode;
+                string uom = rfqLine?.Uom ?? "EA";
+                po.AddLine(itemCode, description, uom, alloc.Qty, alloc.UnitPrice, alloc.RfqLineCode, priceConfirmed: true);
             }
 
             dbContext.PurchaseOrders.Add(po);

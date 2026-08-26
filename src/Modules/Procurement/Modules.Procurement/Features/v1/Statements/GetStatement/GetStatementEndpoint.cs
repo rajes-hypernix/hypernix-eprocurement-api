@@ -16,7 +16,7 @@ public static class GetStatementEndpoint
                 async (Guid vendorId, IMediator mediator, CancellationToken ct) =>
                 {
                     var result = await mediator.Send(new GetStatementQuery(vendorId), ct);
-                    return result is null ? Results.NoContent() : Results.Ok(result);
+                    return result is null ? Results.NotFound() : Results.Ok(result);
                 })
             .WithName("GetStatement")
             .WithSummary("Get one vendor's statement of account")

@@ -16,7 +16,7 @@ public static class GetAsnEndpoint
                 async (Guid asnId, IMediator mediator, CancellationToken ct) =>
                 {
                     var result = await mediator.Send(new GetAsnQuery(asnId), ct);
-                    return result is null ? Results.NoContent() : Results.Ok(result);
+                    return result is null ? Results.NotFound() : Results.Ok(result);
                 })
             .WithName("GetAsn")
             .WithSummary("Get an ASN by ID")

@@ -18,11 +18,11 @@ export function DeliveriesPage() {
   }
   if (route.startsWith("new/")) {
     const poId = route.slice("new/".length);
-    return <AsnFormPage poId={poId} onBack={() => go("")} onSaved={(asnId) => go(`asn/${asnId}`)} />;
+    return <AsnFormPage poId={poId} onBack={() => go("")} />;
   }
   if (route.startsWith("receive/")) {
     const asnId = route.slice("receive/".length);
-    return <ReceiveAsnPage asnId={asnId} onBack={() => go(`asn/${asnId}`)} onDone={() => go("")} />;
+    return <ReceiveAsnPage asnId={asnId} onBack={() => go(`asn/${asnId}`)} onDone={() => go(`asn/${asnId}`)} />;
   }
 
   return (

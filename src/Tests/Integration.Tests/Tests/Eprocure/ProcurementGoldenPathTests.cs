@@ -82,7 +82,7 @@ public sealed class ProcurementGoldenPathTests
                 trackingNo = "TRK-1",
                 shippedDate = (DateOnly?)null,
                 expectedDate = (DateOnly?)null,
-                lines = new[] { new { itemCode = "L1", shippedQty = 10m, lotNo = (string?)null } }
+                lines = new[] { new { itemCode = "ITEM-1", shippedQty = 10m, lotNo = (string?)null } }
             });
         await EprocureFlowHelper.EnsureSuccessAsync(asnResp, "Create ASN");
         var asn = await asnResp.DeserializeAsync<AsnDto>();

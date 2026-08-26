@@ -2,13 +2,20 @@ import { Link } from "react-router-dom";
 import { useAuth } from "@/auth/use-auth";
 import { Icon } from "@/components/Icon";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { RoleActAsSelect } from "@/components/RoleActAsSelect";
 import { TopBarNav } from "@/components/TopBarNav";
 import { initials } from "@/lib/format";
 
 export function TopBar({ onOpenNav }: { onOpenNav?: () => void }) {
-  const { user, isVendor, logout } = useAuth();
+  const { user, isVendor, logout, rolePreview } = useAuth();
   const name = user?.name ?? user?.email ?? "User";
-  const sub = isVendor ? "Vendor" : user?.tenant ? `Tenant · ${user.tenant}` : "Buyer";
+  const sub = rolePreview
+    ? `Preview · ${rolePreview.roleName}`
+    : isVendor
+      ? "Vendor"
+      : user?.tenant
+        ? `Tenant · ${user.tenant}`
+        : "Buyer";
 
   return (
     <div className="topbar">
@@ -46,6 +53,7 @@ export function TopBar({ onOpenNav }: { onOpenNav?: () => void }) {
       <div className="spacer" />
       <NotificationBell />
       <div className="whoami">
+        <RoleActAsSelect />
         <Link to="/profile" className="prof-chip prof-chip-link" title="Edit profile" style={{ marginLeft: 4 }}>
           <span className="av">{initials(name)}</span>
           <div className="ptext">

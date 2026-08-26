@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { BUYER_NAV, type NavGroup, type NavItem } from "@/nav";
 import { Icon } from "@/components/Icon";
 
@@ -34,7 +35,8 @@ export function Sidebar({
   nav?: NavGroup[];
   /** Full path+search used for highlighting, e.g. `/masters?tab=banks`. */
   activeHref: string;
-  onSelect: (href: string) => void;
+  /** Called on a normal in-tab click (used to close the mobile drawer). */
+  onSelect?: () => void;
   variant?: "rail" | "drawer";
   onClose?: () => void;
 }) {
@@ -77,47 +79,37 @@ export function Sidebar({
     const open = !!openKeys[item.key];
     const active = isItemActive(item, activeHref, hasChildren);
     const childActive = item.children?.some((c) => isItemActive(c, activeHref));
+    const href = itemHref(item);
 
     return (
       <div key={item.key} className={depth > 0 ? "nav-branch" : undefined}>
-        <div
-          className={`nav${active && !hasChildren ? " on" : ""}${hasChildren && (active || childActive) ? " nav-parent-on" : ""}${depth > 0 ? " nav-child" : ""}`}
-          role="button"
-          tabIndex={0}
-          aria-current={active && !hasChildren ? "page" : undefined}
-          aria-expanded={hasChildren ? open : undefined}
-          aria-label={!showLabels ? item.label : undefined}
-          title={!showLabels ? item.label : undefined}
-          onClick={() => {
-            if (hasChildren && showLabels) {
-              setOpenKeys((prev) => ({ ...prev, [item.key]: true }));
-              onSelect(itemHref(item));
-              return;
-            }
-            onSelect(itemHref(item));
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
+        <div className="nav-row">
+          <Link
+            to={href}
+            className={`nav${active && !hasChildren ? " on" : ""}${hasChildren && (active || childActive) ? " nav-parent-on" : ""}${depth > 0 ? " nav-child" : ""}`}
+            aria-current={active && !hasChildren ? "page" : undefined}
+            aria-label={!showLabels ? item.label : undefined}
+            title={!showLabels ? item.label : undefined}
+            onClick={(e) => {
+              if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
               if (hasChildren && showLabels) {
                 setOpenKeys((prev) => ({ ...prev, [item.key]: true }));
-                onSelect(itemHref(item));
-              } else {
-                onSelect(itemHref(item));
               }
-            }
-          }}
-        >
-          <span className="ic">
-            <Icon name={item.icon} />
-          </span>
-          {showLabels ? <span className="nav-label">{item.label}</span> : null}
+              onSelect?.();
+            }}
+          >
+            <span className="ic">
+              <Icon name={item.icon} />
+            </span>
+            {showLabels ? <span className="nav-label">{item.label}</span> : null}
+          </Link>
           {showLabels && hasChildren ? (
             <button
               type="button"
               className={`nav-caret${open ? " open" : ""}`}
               aria-label={open ? `Collapse ${item.label}` : `Expand ${item.label}`}
               onClick={(e) => {
+                e.preventDefault();
                 e.stopPropagation();
                 toggleOpen(item.key);
               }}

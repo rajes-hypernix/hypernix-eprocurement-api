@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -35,6 +36,7 @@ export function StatementsPage() {
 }
 
 function StatementList({ onOpen }: { onOpen: (id: string) => void }) {
+  const [vendorQ, setVendorQ] = useState("");
   const { data: rows = [], isPending } = useQuery({
     queryKey: ["statements"],
     queryFn: listStatements,
@@ -43,6 +45,11 @@ function StatementList({ onOpen }: { onOpen: (id: string) => void }) {
   const totBal = rows.reduce((a, r) => a + (r.balance ?? 0), 0);
   const totGrni = rows.reduce((a, r) => a + (r.grni ?? 0), 0);
   const withBal = rows.filter((r) => (r.balance ?? 0) > 0).length;
+  const q = vendorQ.trim().toLowerCase();
+  const filtered = useMemo(
+    () => (q ? rows.filter((r) => (r.vendorName ?? "").toLowerCase().includes(q)) : rows),
+    [rows, q],
+  );
 
   return (
     <>
@@ -82,6 +89,29 @@ function StatementList({ onOpen }: { onOpen: (id: string) => void }) {
             </div>
           </div>
 
+          <div className="card" style={{ marginBottom: 14 }}>
+            <div className="cbody">
+              <div className="filterbar filterbar-auto">
+                <div className="field" style={{ margin: 0, flex: 1, minWidth: 200 }}>
+                  <label>Vendor</label>
+                  <input
+                    type="text"
+                    value={vendorQ}
+                    placeholder="Vendor name…"
+                    aria-label="Search statements"
+                    onChange={(e) => setVendorQ(e.target.value)}
+                  />
+                </div>
+                <div className="field" style={{ margin: 0 }}>
+                  <label>&nbsp;</label>
+                  <button type="button" className="freset" onClick={() => setVendorQ("")}>
+                    Reset
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="card">
             <table>
               <thead>
@@ -95,7 +125,7 @@ function StatementList({ onOpen }: { onOpen: (id: string) => void }) {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r) => (
+                {filtered.map((r) => (
                   <tr key={r.vendorId} className="rowlink" onClick={() => onOpen(r.vendorId)}>
                     <td style={{ fontWeight: 700 }}>{r.vendorName}</td>
                     <td className="amt">RM {fmt(r.invoiced)}</td>
@@ -117,10 +147,14 @@ function StatementList({ onOpen }: { onOpen: (id: string) => void }) {
                     </td>
                   </tr>
                 ))}
-                {rows.length === 0 ? (
+                {filtered.length === 0 ? (
                   <tr>
                     <td colSpan={6}>
-                      <EmptyState>No vendor statement activity yet.</EmptyState>
+                      <EmptyState>
+                        {rows.length === 0
+                          ? "No vendor statement activity yet."
+                          : "No statements match this search."}
+                      </EmptyState>
                     </td>
                   </tr>
                 ) : null}
@@ -145,15 +179,18 @@ function Aging({ s }: { s: StatementDetailDto }) {
       <div className="grid g4" style={{ padding: "14px 16px" }}>
         {(
           [
-            ["Current (≤30d)", a?.current],
-            ["31–60 days", a?.d30],
-            ["61–90 days", a?.d60],
-            ["90+ days", a?.d90],
+            ["Current (≤30d)", a?.current, false],
+            ["31–60 days", a?.d30, false],
+            ["61–90 days", a?.d60, false],
+            ["90+ days", a?.d90, true],
           ] as const
-        ).map(([label, v]) => (
+        ).map(([label, v, warn]) => (
           <div className="card stat tone-teal" key={label}>
             <div className="lbl">{label}</div>
-            <div className="num" style={{ fontSize: 17 }}>
+            <div
+              className="num"
+              style={{ fontSize: 17, color: warn && (v ?? 0) > 0 ? "var(--red)" : undefined }}
+            >
               RM {fmt(v)}
             </div>
           </div>
@@ -169,7 +206,7 @@ function LedgerCard({ s }: { s: StatementDetailDto }) {
       <div className="chead">
         <h3>Ledger</h3>
         <div className="spacer" />
-        <span className="hint">running balance</span>
+        <span className="hint">PO · goods receipt · invoice · payment</span>
       </div>
       <table>
         <thead>
@@ -211,63 +248,100 @@ function LedgerCard({ s }: { s: StatementDetailDto }) {
   );
 }
 
-function Summary({ s }: { s: StatementDetailDto }) {
+function Summary({ s, forVendor = false }: { s: StatementDetailDto; forVendor?: boolean }) {
+  const cards = forVendor
+    ? [
+        { lbl: "Balance owed to you", val: s.balance, sub: "open balance", tone: "tone-teal" },
+        { lbl: "Invoiced", val: s.invoiced, sub: "incl. SST", tone: "tone-sage" },
+        { lbl: "Paid to you", val: s.paid, sub: "0 until Payments module", tone: "tone-clay" },
+        { lbl: "GRNI", val: s.grni, sub: "to be invoiced", tone: "tone-amber" },
+      ]
+    : [
+        { lbl: "Open balance", val: s.balance, sub: "payable", tone: "tone-teal" },
+        { lbl: "Invoiced", val: s.invoiced, sub: "incl. SST", tone: "tone-sage" },
+        { lbl: "Paid", val: s.paid, sub: "0 until Payments module", tone: "tone-clay" },
+        { lbl: "GRNI", val: s.grni, sub: "to be invoiced", tone: "tone-amber" },
+      ];
+
   return (
     <div className="grid g4" style={{ marginBottom: 16 }}>
-      <div className="card stat tone-teal">
-        <div className="lbl">Invoiced</div>
-        <div className="num" style={{ fontSize: 18 }}>
-          RM {fmt(s.invoiced)}
+      {cards.map((c) => (
+        <div className={`card stat ${c.tone}`} key={c.lbl}>
+          <div className="lbl">{c.lbl}</div>
+          <div
+            className="num"
+            style={{ fontSize: 18, color: c.lbl.startsWith("Open") || c.lbl.startsWith("Balance") ? "var(--teal)" : undefined }}
+          >
+            RM {fmt(c.val)}
+          </div>
+          <div className="sub">{c.sub}</div>
         </div>
-      </div>
-      <div className="card stat tone-sage">
-        <div className="lbl">Paid</div>
-        <div className="num" style={{ fontSize: 18 }}>
-          RM {fmt(s.paid)}
-        </div>
-        <div className="sub">0 until Payments module</div>
-      </div>
-      <div className="card stat tone-clay">
-        <div className="lbl">Open balance</div>
-        <div className="num" style={{ fontSize: 18 }}>
-          RM {fmt(s.balance)}
-        </div>
-      </div>
-      <div className="card stat tone-amber">
-        <div className="lbl">GRNI accrual</div>
-        <div className="num" style={{ fontSize: 18 }}>
-          RM {fmt(s.grni)}
-        </div>
-      </div>
+      ))}
     </div>
   );
 }
 
 function StatementDetail({ vendorId, onBack }: { vendorId: string; onBack: () => void }) {
-  const { data: s, isPending } = useQuery({
+  const navigate = useNavigate();
+  const { data: s, isPending, isError } = useQuery({
     queryKey: ["statement", vendorId],
     queryFn: () => getStatement(vendorId),
+    retry: false,
   });
 
-  if (isPending || !s) return <Spinner label="Loading statement…" />;
+  if (isPending) return <Spinner label="Loading statement…" />;
+
+  if (isError || !s) {
+    return (
+      <>
+        <div className="crumb">
+          <button type="button" className="lnk" onClick={onBack}>
+            Statements
+          </button>
+        </div>
+        <div className="pagehead">
+          <div>
+            <h1>Statement</h1>
+            <p>No statement was found for this vendor. There may be no PO activity yet.</p>
+          </div>
+          <div className="spacer" />
+          <button type="button" className="btn btn-out" onClick={onBack}>
+            <Icon name="back" size={15} /> Back
+          </button>
+        </div>
+        <div className="card">
+          <div className="cbody">
+            <EmptyState>No statement for this vendor.</EmptyState>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
       <div className="crumb">
-        <a onClick={onBack}>Statements</a> <Icon name="chev" size={13} /> <span>{s.vendorName}</span>
+        <button type="button" className="lnk" onClick={onBack}>
+          Statements
+        </button>{" "}
+        <Icon name="chev" size={13} /> <span>{s.vendorName}</span>
       </div>
       <div className="pagehead">
         <div>
           <h1>{s.vendorName}</h1>
-          <p>
-            Statement of account · derived from POs, goods receipts and invoices. Paid is 0 until
-            Payments module exists.
-          </p>
+          <p>Statement of account · derived from POs, goods receipts and invoices.</p>
         </div>
         <div className="spacer" />
         <div className="actbar">
           <button type="button" className="btn btn-out" onClick={onBack}>
             <Icon name="back" size={15} /> Back
+          </button>
+          <button
+            type="button"
+            className="btn btn-out"
+            onClick={() => void navigate(`/chats?vendorId=${encodeURIComponent(vendorId)}`)}
+          >
+            <Icon name="msg" size={15} /> Message vendor
           </button>
         </div>
       </div>
@@ -309,13 +383,10 @@ function VendorStatement() {
       <div className="pagehead">
         <div>
           <h1>Statement of Account</h1>
-          <p>
-            Your running ledger, open balance and GRNI accrual. Paid is 0 until Payments module
-            exists.
-          </p>
+          <p>Your running ledger, open balance and GRNI accrual.</p>
         </div>
       </div>
-      <Summary s={s} />
+      <Summary s={s} forVendor />
       <Aging s={s} />
       <LedgerCard s={s} />
     </>

@@ -1,5 +1,5 @@
 import { FshPermissions } from "@/lib/fsh-permissions";
-import type { NavGroup } from "@/nav";
+import type { NavGroup, NavItem } from "@/nav";
 
 /**
  * Maps old eProcure AUTHORIZATION-MATRIX action names (nav `action` / `<Gated>`)
@@ -127,4 +127,36 @@ export function gateNav(groups: NavGroup[], granted: readonly string[]): NavGrou
         }),
     }))
     .filter((g) => g.items.length > 0);
+}
+
+function itemPath(item: NavItem): string {
+  return (item.href ?? `/${item.key}`).split("?")[0];
+}
+
+function flattenNavItems(groups: NavGroup[]): NavItem[] {
+  return groups.flatMap((g) => g.items.flatMap((item) => [item, ...(item.children ?? [])]));
+}
+
+function pathMatches(pathname: string, itemPathname: string): boolean {
+  if (pathname === itemPathname) return true;
+  return itemPathname !== "/" && pathname.startsWith(`${itemPathname}/`);
+}
+
+/** True when the current path is still in the gated nav (or is always-allowed profile). */
+export function isPathAllowedByNav(pathname: string, groups: NavGroup[]): boolean {
+  if (pathname === "/profile" || pathname.startsWith("/profile/")) return true;
+  return flattenNavItems(groups).some((item) => pathMatches(pathname, itemPath(item)));
+}
+
+/** Workspace routes that are not listed as top-level nav keys. */
+export function isExtraWorkspacePathAllowed(pathname: string, granted: readonly string[]): boolean {
+  if (pathname.startsWith("/consolidate")) return hasOldAction(granted, "ViewRequisitions");
+  if (pathname.startsWith("/order-builder")) return hasOldAction(granted, "ViewPos");
+  return false;
+}
+
+export function firstNavHref(groups: NavGroup[]): string {
+  const item = groups[0]?.items[0];
+  if (!item) return "/profile";
+  return item.href ?? `/${item.key}`;
 }

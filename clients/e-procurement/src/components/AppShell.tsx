@@ -2,15 +2,21 @@ import { useEffect, useMemo, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { TopBar } from "@/components/TopBar";
 import { Sidebar } from "@/components/Sidebar";
+import { RolePreviewBanner } from "@/components/RolePreviewBanner";
 import { useAuth } from "@/auth/use-auth";
-import { gateNav } from "@/lib/permissions-map";
+import {
+  firstNavHref,
+  gateNav,
+  isExtraWorkspacePathAllowed,
+  isPathAllowedByNav,
+} from "@/lib/permissions-map";
 import { BUYER_NAV, VENDOR_NAV } from "@/nav";
 
 const EMPTY_PERMS: readonly string[] = [];
 
 /** Layout mirrors original eprocure/web App.tsx shell (TopBar + .shell + Sidebar + .main). */
 export function AppShell() {
-  const { isVendor, user, permissionsHydrated } = useAuth();
+  const { isVendor, user, permissionsHydrated, rolePreview } = useAuth();
   const navigate = useNavigate();
   const { pathname, search } = useLocation();
   const [navOpen, setNavOpen] = useState(false);
@@ -41,16 +47,20 @@ export function AppShell() {
     };
   }, [navOpen]);
 
-  const go = (href: string) => {
-    setNavOpen(false);
-    void navigate(href.startsWith("/") ? href : `/${href}`);
-  };
+  useEffect(() => {
+    if (!rolePreview || !permissionsHydrated) return;
+    if (isPathAllowedByNav(pathname, nav) || isExtraWorkspacePathAllowed(pathname, granted)) {
+      return;
+    }
+    void navigate(firstNavHref(nav), { replace: true });
+  }, [rolePreview, permissionsHydrated, pathname, nav, granted, navigate]);
 
   return (
     <>
       <TopBar onOpenNav={() => setNavOpen(true)} />
+      <RolePreviewBanner />
       <div className="shell">
-        <Sidebar nav={nav} activeHref={activeHref} onSelect={go} />
+        <Sidebar nav={nav} activeHref={activeHref} onSelect={() => setNavOpen(false)} />
         <div className={`side-drawer-layer${navOpen ? " open" : ""}`} aria-hidden={!navOpen}>
           <button
             type="button"
@@ -63,7 +73,7 @@ export function AppShell() {
             variant="drawer"
             nav={nav}
             activeHref={activeHref}
-            onSelect={go}
+            onSelect={() => setNavOpen(false)}
             onClose={() => setNavOpen(false)}
           />
         </div>

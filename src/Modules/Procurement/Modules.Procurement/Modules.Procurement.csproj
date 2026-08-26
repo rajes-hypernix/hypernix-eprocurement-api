@@ -7,13 +7,18 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\BuildingBlocks\Persistence\Persistence.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\Eventing\Eventing.csproj" />
+    <ProjectReference Include="..\..\Communication\Modules.Communication.Contracts\Modules.Communication.Contracts.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\Web\Web.csproj" />
     <ProjectReference Include="..\Modules.Procurement.Contracts\Modules.Procurement.Contracts.csproj" />
     <ProjectReference Include="..\..\Sourcing\Modules.Sourcing.Contracts\Modules.Sourcing.Contracts.csproj" />
     <ProjectReference Include="..\..\Identity\Modules.Identity.Contracts\Modules.Identity.Contracts.csproj" />
     <ProjectReference Include="..\..\Suppliers\Modules.Suppliers.Contracts\Modules.Suppliers.Contracts.csproj" />
     <ProjectReference Include="..\..\Platform\Modules.Platform.Contracts\Modules.Platform.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Procurement.Tests" />
   </ItemGroup>
 
 </Project>

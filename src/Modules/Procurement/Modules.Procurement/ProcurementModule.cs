@@ -1,4 +1,5 @@
 using Asp.Versioning;
+using FSH.Framework.Eventing;
 using FSH.Framework.Persistence;
 using FSH.Framework.Shared.Constants;
 using FSH.Framework.Web.Modules;
@@ -53,6 +54,7 @@ public sealed class ProcurementModule : IModule
         builder.Services.AddScoped<IDbInitializer, ProcurementDbInitializer>();
         builder.Services.AddScoped<IProcurementCodeGenerator, ProcurementCodeGenerator>();
         builder.Services.AddScoped<ISavedViewRowSource, ProcurementSavedViewRowSource>();
+        builder.Services.AddIntegrationEventHandlers(typeof(ProcurementModule).Assembly);
         builder.Services.AddHealthChecks()
             .AddDbContextCheck<ProcurementDbContext>(
                 name: "db:procurement",

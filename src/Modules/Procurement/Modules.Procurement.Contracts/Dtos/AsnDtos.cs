@@ -10,10 +10,14 @@ public sealed record AsnDto(
     DateOnly? ShippedDate,
     DateOnly? ExpectedDate,
     IReadOnlyList<AsnLineDto> Lines,
-    DateTime CreatedUtc);
+    DateTime CreatedUtc,
+    string? PoCode = null,
+    string? VendorName = null);
 
 public sealed record AsnLineDto(
     Guid Id,
     string ItemCode,
     decimal ShippedQty,
-    string? LotNo);
+    string? LotNo,
+    string? Description = null,
+    string? Uom = null);

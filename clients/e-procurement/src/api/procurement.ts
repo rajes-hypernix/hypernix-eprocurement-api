@@ -21,6 +21,7 @@ export type PoLineDto = {
   taxCodeId?: string | null;
   priceConfirmed: boolean;
   lineTotal: number;
+  openQty?: number;
 };
 
 export type PurchaseOrderDto = {
@@ -49,6 +50,7 @@ export type PurchaseOrderDto = {
   lines: PoLineDto[];
   createdUtc: string;
   updatedUtc: string;
+  vendorName?: string;
 };
 
 export type PurchaseOrderListItemDto = {
@@ -62,6 +64,10 @@ export type PurchaseOrderListItemDto = {
   currency: string;
   totalValue: number;
   createdUtc: string;
+  vendorName?: string;
+  receivedQty?: number;
+  totalQty?: number;
+  awardId?: string | null;
 };
 
 export type CreatePoFromRequisitionLineInput = {
@@ -154,7 +160,14 @@ export function updatePurchaseOrderLine(
 // ASN (shipping notices)
 // ---------------------------------------------------------------------------
 
-export type AsnLineDto = { id: string; itemCode: string; shippedQty: number; lotNo?: string | null };
+export type AsnLineDto = {
+  id: string;
+  itemCode: string;
+  shippedQty: number;
+  lotNo?: string | null;
+  description?: string | null;
+  uom?: string | null;
+};
 
 export type AsnDto = {
   id: string;
@@ -167,6 +180,8 @@ export type AsnDto = {
   expectedDate?: string | null;
   lines: AsnLineDto[];
   createdUtc: string;
+  poCode?: string | null;
+  vendorName?: string | null;
 };
 
 export type AsnLineInput = { itemCode: string; shippedQty: number; lotNo?: string | null };
