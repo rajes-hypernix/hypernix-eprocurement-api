@@ -1,13 +1,18 @@
+using FSH.Framework.Core.Context;
 using FSH.Modules.Procurement.Contracts.Dtos;
 using FSH.Modules.Procurement.Contracts.v1.Asns;
 using FSH.Modules.Procurement.Data;
+using FSH.Modules.Procurement.Services;
 using FSH.Modules.Suppliers.Contracts.Services;
 using Mediator;
 using Microsoft.EntityFrameworkCore;
 
 namespace FSH.Modules.Procurement.Features.v1.Asns.ListAsns;
 
-public sealed class ListAsnsQueryHandler(ProcurementDbContext dbContext, IVendorLookupService vendorLookup)
+public sealed class ListAsnsQueryHandler(
+    ProcurementDbContext dbContext,
+    IVendorLookupService vendorLookup,
+    ICurrentUser currentUser)
     : IQueryHandler<ListAsnsQuery, IReadOnlyList<AsnDto>>
 {
     public async ValueTask<IReadOnlyList<AsnDto>> Handle(ListAsnsQuery query, CancellationToken cancellationToken)
@@ -18,6 +23,12 @@ public sealed class ListAsnsQueryHandler(ProcurementDbContext dbContext, IVendor
         if (query.PoId is Guid poId)
         {
             q = q.Where(a => a.PoId == poId);
+        }
+
+        if (currentUser.GetVendorId() is { } vendorId)
+        {
+            var ownedPoIds = dbContext.PurchaseOrders.AsNoTracking().Where(p => p.VendorId == vendorId).Select(p => p.Id);
+            q = q.Where(a => ownedPoIds.Contains(a.PoId));
         }
 
         var asns = await q

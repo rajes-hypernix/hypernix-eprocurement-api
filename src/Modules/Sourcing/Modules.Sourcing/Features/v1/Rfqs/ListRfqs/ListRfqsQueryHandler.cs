@@ -1,22 +1,32 @@
+using FSH.Framework.Core.Context;
 using FSH.Modules.Sourcing.Contracts.Dtos;
 using FSH.Modules.Sourcing.Contracts.v1.Rfqs;
 using FSH.Modules.Sourcing.Data;
+using FSH.Modules.Sourcing.Services;
 using Mediator;
 using Microsoft.EntityFrameworkCore;
 
 namespace FSH.Modules.Sourcing.Features.v1.Rfqs.ListRfqs;
 
-public sealed class ListRfqsQueryHandler(SourcingDbContext dbContext)
+public sealed class ListRfqsQueryHandler(SourcingDbContext dbContext, ICurrentUser currentUser)
     : IQueryHandler<ListRfqsQuery, IReadOnlyList<RfqListItemDto>>
 {
     public async ValueTask<IReadOnlyList<RfqListItemDto>> Handle(ListRfqsQuery query, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(query);
 
-        var rfqs = await dbContext.Rfqs
+        var rfqQuery = dbContext.Rfqs
             .AsNoTracking()
             .Include(r => r.Invitations)
             .Include(r => r.Lines)
+            .AsQueryable();
+
+        if (currentUser.GetVendorId() is { } vendorId)
+        {
+            rfqQuery = rfqQuery.Where(r => r.Invitations.Any(i => i.VendorId == vendorId));
+        }
+
+        var rfqs = await rfqQuery
             .OrderByDescending(r => r.CreatedUtc)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);

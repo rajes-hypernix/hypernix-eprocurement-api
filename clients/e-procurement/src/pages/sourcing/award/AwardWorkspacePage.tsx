@@ -16,7 +16,6 @@ import { createPurchaseOrdersFromAward, listPurchaseOrders } from "@/api/procure
 import { Icon } from "@/components/Icon";
 import { Gated } from "@/components/Gated";
 import { ConfirmModal, Modal, Notice, Spinner } from "@/components/ui";
-import { SourcingStatusBadge } from "@/components/sourcing/badges";
 import { FshPermissions } from "@/lib/fsh-permissions";
 import { fmt } from "@/lib/format";
 import { ApiRequestError } from "@/lib/api-client";

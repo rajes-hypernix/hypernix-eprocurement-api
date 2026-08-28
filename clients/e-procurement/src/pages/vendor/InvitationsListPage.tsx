@@ -13,7 +13,15 @@ const OUTCOME: Record<string, { label: string; tone: string; cta: string }> = {
 };
 
 /** Shared list for both "My RFQs" (mode=invitations) and "My Bids" (mode=bids) vendor nav entries. */
-export function InvitationsListPage({ mode, onOpen }: { mode: "invitations" | "bids"; onOpen: (rfqId: string) => void }) {
+export function InvitationsListPage({
+  mode,
+  onOpen,
+  embedded = false,
+}: {
+  mode: "invitations" | "bids";
+  onOpen: (rfqId: string) => void;
+  embedded?: boolean;
+}) {
   const { data, isPending } = useQuery({ queryKey: ["my-invitations"], queryFn: listMyInvitations });
 
   const rows = useMemo(() => {
@@ -23,12 +31,18 @@ export function InvitationsListPage({ mode, onOpen }: { mode: "invitations" | "b
 
   return (
     <>
+      {!embedded ? (
       <div className="pagehead">
         <div>
           <h1>{mode === "bids" ? "My Bids" : "My RFQs"}</h1>
           <p>{mode === "bids" ? "Bids you've drafted or submitted." : "RFQs you've been invited to bid on."}</p>
         </div>
       </div>
+      ) : (
+        <div className="chead" style={{ marginBottom: 0 }}>
+          <h3>RFQ invitations</h3>
+        </div>
+      )}
 
       <div className="card">
         {isPending ? (

@@ -6,6 +6,7 @@ using FSH.Modules.Sourcing.Contracts.Dtos;
 using FSH.Modules.Sourcing.Contracts.v1.Evaluation;
 using FSH.Modules.Sourcing.Data;
 using FSH.Modules.Sourcing.Domain;
+using FSH.Modules.Sourcing.Services;
 using Mediator;
 using Microsoft.EntityFrameworkCore;
 
@@ -20,6 +21,11 @@ public sealed class GetBidOpeningQueryHandler(
     public async ValueTask<BidOpeningStatusDto> Handle(GetBidOpeningQuery query, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(query);
+
+        if (currentUser.GetVendorId() is not null)
+        {
+            throw new ForbiddenException("Vendors cannot open sealed bid openings.");
+        }
 
         var rfq = await dbContext.Rfqs
             .AsNoTracking()

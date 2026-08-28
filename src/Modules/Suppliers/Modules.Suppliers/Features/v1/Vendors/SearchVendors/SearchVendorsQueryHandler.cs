@@ -1,3 +1,5 @@
+using FSH.Framework.Core.Context;
+using FSH.Framework.Shared.Constants;
 using FSH.Framework.Shared.Persistence;
 using FSH.Modules.Suppliers.Contracts.Dtos;
 using FSH.Modules.Suppliers.Contracts.v1.Vendors;
@@ -8,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FSH.Modules.Suppliers.Features.v1.Vendors.SearchVendors;
 
-public sealed class SearchVendorsQueryHandler(SuppliersDbContext dbContext)
+public sealed class SearchVendorsQueryHandler(SuppliersDbContext dbContext, ICurrentUser currentUser)
     : IQueryHandler<SearchVendorsQuery, PagedResponse<VendorListItemDto>>
 {
     public async ValueTask<PagedResponse<VendorListItemDto>> Handle(SearchVendorsQuery query, CancellationToken cancellationToken)
@@ -16,6 +18,12 @@ public sealed class SearchVendorsQueryHandler(SuppliersDbContext dbContext)
         ArgumentNullException.ThrowIfNull(query);
 
         var q = dbContext.Vendors.AsNoTracking().AsQueryable();
+
+        var vendorClaim = currentUser.GetUserClaims()?.FirstOrDefault(c => c.Type == ClaimConstants.VendorId)?.Value;
+        if (Guid.TryParse(vendorClaim, out var callerVendorId))
+        {
+            q = q.Where(v => v.Id == callerVendorId);
+        }
 
         if (!string.IsNullOrWhiteSpace(query.Search))
         {

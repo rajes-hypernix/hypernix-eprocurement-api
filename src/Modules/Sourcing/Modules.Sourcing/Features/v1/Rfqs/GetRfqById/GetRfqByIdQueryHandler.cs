@@ -1,20 +1,27 @@
+using FSH.Framework.Core.Context;
 using FSH.Framework.Core.Exceptions;
 using FSH.Modules.Platform.Contracts.v1.Configuration;
 using FSH.Modules.Sourcing.Contracts.Dtos;
 using FSH.Modules.Sourcing.Contracts.v1.Rfqs;
 using FSH.Modules.Sourcing.Data;
+using FSH.Modules.Sourcing.Services;
 using FSH.Modules.Suppliers.Contracts.v1.Vendors;
 using Mediator;
 using Microsoft.EntityFrameworkCore;
 
 namespace FSH.Modules.Sourcing.Features.v1.Rfqs.GetRfqById;
 
-public sealed class GetRfqByIdQueryHandler(SourcingDbContext dbContext, IMediator mediator)
+public sealed class GetRfqByIdQueryHandler(SourcingDbContext dbContext, IMediator mediator, ICurrentUser currentUser)
     : IQueryHandler<GetRfqByIdQuery, RfqDetailDto>
 {
     public async ValueTask<RfqDetailDto> Handle(GetRfqByIdQuery query, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(query);
+
+        if (currentUser.GetVendorId() is not null)
+        {
+            throw new ForbiddenException("Vendors must use the bidding API for invited RFQs.");
+        }
 
         var rfq = await dbContext.Rfqs
             .AsNoTracking()

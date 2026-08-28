@@ -6,6 +6,7 @@ using FSH.Modules.Sourcing.Contracts.Dtos;
 using FSH.Modules.Sourcing.Contracts.v1.Evaluation;
 using FSH.Modules.Sourcing.Data;
 using FSH.Modules.Sourcing.Domain;
+using FSH.Modules.Sourcing.Services;
 using FSH.Modules.Suppliers.Contracts.v1.Vendors;
 using Mediator;
 using Microsoft.EntityFrameworkCore;
@@ -27,6 +28,11 @@ public sealed class GetTechnicalEvalQueryHandler(
     public async ValueTask<IReadOnlyList<TechnicalEvalRowDto>> Handle(GetTechnicalEvalQuery query, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(query);
+
+        if (currentUser.GetVendorId() is not null)
+        {
+            throw new ForbiddenException("Vendors cannot view technical evaluation.");
+        }
 
         var rfq = await dbContext.Rfqs
             .AsNoTracking()

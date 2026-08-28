@@ -1,12 +1,18 @@
 import { Navigate, useNavigate, useParams } from "react-router-dom";
+import { useAuth } from "@/auth/use-auth";
 import { RfqListPage } from "@/pages/sourcing/RfqListPage";
 import { RfqDetailPage } from "@/pages/sourcing/RfqDetailPage";
 
 /** Route switch for /rfqs and /rfqs/* — mirrors VendorsPage splat routing. */
 export function RfqsPage() {
+  const { isVendor } = useAuth();
   const navigate = useNavigate();
   const { "*": rest } = useParams();
   const route = (rest ?? "").replace(/^\/+|\/+$/g, "");
+
+  if (isVendor) {
+    return <Navigate to={route ? `/dashboard/${route}` : "/dashboard"} replace />;
+  }
 
   const go = (path: string) => void navigate(`/rfqs${path ? `/${path}` : ""}`);
 

@@ -1,20 +1,27 @@
+using FSH.Framework.Core.Context;
 using FSH.Framework.Core.Exceptions;
 using FSH.Modules.Sourcing.Contracts.Dtos;
 using FSH.Modules.Sourcing.Contracts.v1.Awards;
 using FSH.Modules.Sourcing.Data;
 using FSH.Modules.Sourcing.Domain;
+using FSH.Modules.Sourcing.Services;
 using FSH.Modules.Suppliers.Contracts.v1.Vendors;
 using Mediator;
 using Microsoft.EntityFrameworkCore;
 
 namespace FSH.Modules.Sourcing.Features.v1.Awards.GetAwardEligibility;
 
-public sealed class GetAwardEligibilityQueryHandler(SourcingDbContext dbContext, IMediator mediator)
+public sealed class GetAwardEligibilityQueryHandler(SourcingDbContext dbContext, IMediator mediator, ICurrentUser currentUser)
     : IQueryHandler<GetAwardEligibilityQuery, AwardEligibilityDto>
 {
     public async ValueTask<AwardEligibilityDto> Handle(GetAwardEligibilityQuery query, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(query);
+
+        if (currentUser.GetVendorId() is not null)
+        {
+            throw new ForbiddenException("Vendors cannot view award workspaces.");
+        }
 
         var rfq = await dbContext.Rfqs
             .AsNoTracking()

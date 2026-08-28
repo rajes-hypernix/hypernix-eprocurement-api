@@ -1,4 +1,5 @@
-import { useNavigate, useParams } from "react-router-dom";
+import { Navigate, useNavigate, useParams } from "react-router-dom";
+import { useAuth } from "@/auth/use-auth";
 import { VendorMasterPage } from "@/pages/vendors/VendorMasterPage";
 import { VendorDetailPage } from "@/pages/vendors/VendorDetailPage";
 import { NewVendorChooserPage } from "@/pages/vendors/NewVendorChooserPage";
@@ -6,9 +7,12 @@ import { ManualVendorFormPage } from "@/pages/vendors/ManualVendorFormPage";
 
 /** Route switch for /vendors and /vendors/* — mirrors original VendorsPage. */
 export function VendorsPage() {
+  const { isVendor } = useAuth();
   const navigate = useNavigate();
   const { "*": rest } = useParams();
   const route = (rest ?? "").replace(/^\/+|\/+$/g, "");
+
+  if (isVendor) return <Navigate to="/dashboard" replace />;
 
   const go = (key: string) => void navigate(`/${key}`);
 

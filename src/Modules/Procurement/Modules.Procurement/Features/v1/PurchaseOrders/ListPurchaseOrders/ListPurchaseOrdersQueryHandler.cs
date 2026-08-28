@@ -1,22 +1,31 @@
+using FSH.Framework.Core.Context;
 using FSH.Modules.Procurement.Contracts.Dtos;
 using FSH.Modules.Procurement.Contracts.v1.PurchaseOrders;
 using FSH.Modules.Procurement.Data;
+using FSH.Modules.Procurement.Services;
 using FSH.Modules.Suppliers.Contracts.Services;
 using Mediator;
 using Microsoft.EntityFrameworkCore;
 
 namespace FSH.Modules.Procurement.Features.v1.PurchaseOrders.ListPurchaseOrders;
 
-public sealed class ListPurchaseOrdersQueryHandler(ProcurementDbContext dbContext, IVendorLookupService vendorLookup)
+public sealed class ListPurchaseOrdersQueryHandler(
+    ProcurementDbContext dbContext,
+    IVendorLookupService vendorLookup,
+    ICurrentUser currentUser)
     : IQueryHandler<ListPurchaseOrdersQuery, IReadOnlyList<PurchaseOrderListItemDto>>
 {
     public async ValueTask<IReadOnlyList<PurchaseOrderListItemDto>> Handle(ListPurchaseOrdersQuery query, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(query);
 
-        var pos = await dbContext.PurchaseOrders
-            .AsNoTracking()
-            .Include(p => p.Lines)
+        var q = dbContext.PurchaseOrders.AsNoTracking().Include(p => p.Lines).AsQueryable();
+        if (currentUser.GetVendorId() is { } vendorId)
+        {
+            q = q.Where(p => p.VendorId == vendorId);
+        }
+
+        var pos = await q
             .OrderByDescending(p => p.CreatedUtc)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);

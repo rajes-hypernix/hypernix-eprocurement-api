@@ -1,12 +1,16 @@
-import { useNavigate, useParams } from "react-router-dom";
+import { Navigate, useNavigate, useParams } from "react-router-dom";
+import { useAuth } from "@/auth/use-auth";
 import { RequisitionListPage } from "@/pages/sourcing/RequisitionListPage";
 import { RequisitionFormPage } from "@/pages/sourcing/RequisitionFormPage";
 
 /** Route switch for /reqs and /reqs/* — mirrors VendorsPage splat routing. */
 export function RequisitionsPage() {
+  const { isVendor } = useAuth();
   const navigate = useNavigate();
   const { "*": rest } = useParams();
   const route = (rest ?? "").replace(/^\/+|\/+$/g, "");
+
+  if (isVendor) return <Navigate to="/dashboard" replace />;
 
   const go = (path: string) => void navigate(`/reqs${path ? `/${path}` : ""}`);
 

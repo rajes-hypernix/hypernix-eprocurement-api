@@ -21,4 +21,12 @@ internal static class CurrentUserVendorExtensions
     /// <summary>Throws 403 when the caller has no vendor-portal login at all (not an ownership check on a specific resource).</summary>
     public static Guid RequireVendorId(this ICurrentUser currentUser) =>
         currentUser.GetVendorId() ?? throw new ForbiddenException("A vendor-portal login is required.");
+
+    public static void EnsureOwns(this ICurrentUser currentUser, Guid resourceVendorId)
+    {
+        if (currentUser.GetVendorId() is { } vid && vid != resourceVendorId)
+        {
+            throw new ForbiddenException("This record is not assigned to your vendor.");
+        }
+    }
 }

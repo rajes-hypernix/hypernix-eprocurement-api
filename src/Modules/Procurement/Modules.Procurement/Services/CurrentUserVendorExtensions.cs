@@ -14,4 +14,13 @@ internal static class CurrentUserVendorExtensions
 
     public static Guid RequireVendorId(this ICurrentUser currentUser) =>
         currentUser.GetVendorId() ?? throw new ForbiddenException("A vendor-portal login is required.");
+
+    /// <summary>Vendor logins may only read records owned by their own vendorId claim.</summary>
+    public static void EnsureOwns(this ICurrentUser currentUser, Guid resourceVendorId)
+    {
+        if (currentUser.GetVendorId() is { } vid && vid != resourceVendorId)
+        {
+            throw new ForbiddenException("This record is not assigned to your vendor.");
+        }
+    }
 }

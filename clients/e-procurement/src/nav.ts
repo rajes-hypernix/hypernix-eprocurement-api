@@ -170,7 +170,7 @@ export const VENDOR_CENTER_TABS: CenterTab[] = [
     key: "portal",
     label: "Vendor portal",
     items: [
-      { key: "dashboard", icon: "dashboard", label: "My RFQs", action: "ViewMyRfqs" },
+      { key: "dashboard", icon: "dashboard", label: "Dashboard", action: "ViewMyRfqs" },
       { key: "bids", icon: "box", label: "My Bids", action: "ViewMyRfqs" },
       { key: "pos", icon: "box", label: "Purchase Orders", action: "ViewPos" },
       { key: "deliveries", icon: "send", label: "Deliveries", action: "ViewAsns" },

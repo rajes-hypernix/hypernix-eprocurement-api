@@ -1,14 +1,18 @@
-import { useNavigate, useParams } from "react-router-dom";
+import { Navigate, useNavigate, useParams } from "react-router-dom";
+import { useAuth } from "@/auth/use-auth";
 import { BidOpeningsListPage } from "@/pages/sourcing/evaluation/BidOpeningsListPage";
 import { BidOpeningDetailPage } from "@/pages/sourcing/evaluation/BidOpeningDetailPage";
 import { TechnicalScoringPage } from "@/pages/sourcing/evaluation/TechnicalScoringPage";
 
 /** Route switch for /openings and /openings/* */
 export function EvaluationPage() {
+  const { isVendor } = useAuth();
   const navigate = useNavigate();
   const { "*": rest } = useParams();
   const route = (rest ?? "").replace(/^\/+|\/+$/g, "");
   const segments = route.split("/").filter(Boolean);
+
+  if (isVendor) return <Navigate to="/dashboard" replace />;
 
   const go = (path: string) => void navigate(`/openings${path ? `/${path}` : ""}`);
 

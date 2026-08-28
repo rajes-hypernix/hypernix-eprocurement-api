@@ -23,6 +23,12 @@ public sealed class GetVendorByIdQueryHandler(SuppliersDbContext dbContext, ICur
             .ConfigureAwait(false)
             ?? throw new NotFoundException($"Vendor {query.VendorId} not found.");
 
+        var vendorClaim = currentUser.GetUserClaims()?.FirstOrDefault(c => c.Type == ClaimConstants.VendorId)?.Value;
+        if (Guid.TryParse(vendorClaim, out var callerVendorId) && callerVendorId != vendor.Id)
+        {
+            throw new ForbiddenException("This record is not assigned to your vendor.");
+        }
+
         bool canViewBankDetails = currentUser.GetUserClaims()?.Any(c =>
             c.Type == ClaimConstants.Permission && c.Value == SuppliersPermissions.Vendors.Update) ?? false;
 

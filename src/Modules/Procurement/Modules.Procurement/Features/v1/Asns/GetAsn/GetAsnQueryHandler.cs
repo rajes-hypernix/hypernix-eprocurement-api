@@ -1,13 +1,18 @@
+using FSH.Framework.Core.Context;
 using FSH.Modules.Procurement.Contracts.Dtos;
 using FSH.Modules.Procurement.Contracts.v1.Asns;
 using FSH.Modules.Procurement.Data;
+using FSH.Modules.Procurement.Services;
 using FSH.Modules.Suppliers.Contracts.Services;
 using Mediator;
 using Microsoft.EntityFrameworkCore;
 
 namespace FSH.Modules.Procurement.Features.v1.Asns.GetAsn;
 
-public sealed class GetAsnQueryHandler(ProcurementDbContext dbContext, IVendorLookupService vendorLookup)
+public sealed class GetAsnQueryHandler(
+    ProcurementDbContext dbContext,
+    IVendorLookupService vendorLookup,
+    ICurrentUser currentUser)
     : IQueryHandler<GetAsnQuery, AsnDto?>
 {
     public async ValueTask<AsnDto?> Handle(GetAsnQuery query, CancellationToken cancellationToken)
@@ -31,6 +36,7 @@ public sealed class GetAsnQueryHandler(ProcurementDbContext dbContext, IVendorLo
         string? vendorName = null;
         if (po is not null)
         {
+            currentUser.EnsureOwns(po.VendorId);
             var vendors = await vendorLookup.GetManyAsync([po.VendorId], cancellationToken).ConfigureAwait(false);
             vendorName = vendors.TryGetValue(po.VendorId, out var v) ? v.Name : null;
         }
