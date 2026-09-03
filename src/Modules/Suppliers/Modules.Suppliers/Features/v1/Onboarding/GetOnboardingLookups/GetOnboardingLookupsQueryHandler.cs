@@ -26,7 +26,7 @@ public sealed class GetOnboardingLookupsQueryHandler(
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        var geo = await mediator.Send(new GetGeoCatalogQuery("MY"), cancellationToken).ConfigureAwait(false);
+        var geo = await mediator.Send(new GetGeoCatalogQuery(null), cancellationToken).ConfigureAwait(false);
         var templates = application.SelectedTemplateIds.Count == 0
             ? []
             : await mediator.Send(new ListFormTemplatesByIdsQuery(application.SelectedTemplateIds), cancellationToken)

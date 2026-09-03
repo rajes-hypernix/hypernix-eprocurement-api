@@ -27,10 +27,28 @@ public static class PlatformLookupSeedData
         ("PJY", "Wilayah Persekutuan Putrajaya", ["Putrajaya"]),
     ];
 
+    /// <summary>POC COUNTRY custom-list parity — states/cities stay Malaysia-only until maintained in Setup.</summary>
+    private static readonly (string Code, string Name)[] CatalogCountries =
+    [
+        ("MY", "Malaysia"),
+        ("SG", "Singapore"),
+        ("BN", "Brunei"),
+        ("ID", "Indonesia"),
+        ("TH", "Thailand"),
+        ("AE", "United Arab Emirates"),
+        ("GB", "United Kingdom"),
+        ("US", "United States"),
+        ("CN", "China"),
+        ("JP", "Japan"),
+        ("AU", "Australia"),
+        ("IN", "India"),
+    ];
+
     public static void Seed(PlatformDbContext db)
     {
         ArgumentNullException.ThrowIfNull(db);
 
+        EnsureCatalogCountries(db);
         EnsureMalaysiaGeo(db);
 
         if (!db.Banks.Any())
@@ -85,6 +103,23 @@ public static class PlatformLookupSeedData
             nonSwec.AddQuestion(2, "Key products / services", "long_text", required: true);
             nonSwec.AddQuestion(3, "Willing to undergo financial assessment?", "yesno", required: true);
             db.FormTemplates.Add(nonSwec);
+        }
+    }
+
+    private static void EnsureCatalogCountries(PlatformDbContext db)
+    {
+        var existing = db.Countries
+            .Where(c => !c.IsDeleted)
+            .Select(c => c.Code)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var (code, name) in CatalogCountries)
+        {
+            if (existing.Contains(code))
+                continue;
+
+            db.Countries.Add(Country.Create(code, name));
+            existing.Add(code);
         }
     }
 

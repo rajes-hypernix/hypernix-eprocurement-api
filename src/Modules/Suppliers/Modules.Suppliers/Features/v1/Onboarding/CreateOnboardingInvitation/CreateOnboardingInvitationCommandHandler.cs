@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using FSH.Framework.Core.Context;
+using FSH.Modules.Identity.Contracts.Services;
 using FSH.Modules.Platform.Contracts.Services;
 using FSH.Modules.Suppliers.Contracts.Dtos;
 using FSH.Modules.Suppliers.Contracts.v1.Onboarding;
@@ -18,7 +19,8 @@ public sealed class CreateOnboardingInvitationCommandHandler(
     IOnboardingNotifier notifier,
     ICurrentUser currentUser,
     IOptions<OnboardingOptions> options,
-    IFormTemplateCatalog formTemplates)
+    IFormTemplateCatalog formTemplates,
+    IUserService users)
     : ICommandHandler<CreateOnboardingInvitationCommand, OnboardingInvitationDto>
 {
     public async ValueTask<OnboardingInvitationDto> Handle(CreateOnboardingInvitationCommand command, CancellationToken cancellationToken)
@@ -28,7 +30,10 @@ public sealed class CreateOnboardingInvitationCommandHandler(
         var templateIds = command.SelectedTemplateIds ?? [];
         await formTemplates.EnsureActiveTemplatesAsync(templateIds, cancellationToken).ConfigureAwait(false);
 
-        string email = string.IsNullOrWhiteSpace(command.Email) ? options.Value.DefaultVendorEmail : command.Email;
+        string email = string.IsNullOrWhiteSpace(command.Email) ? options.Value.DefaultVendorEmail : command.Email.Trim();
+        await InviteEmailUniqueness.EnsureAvailableAsync(dbContext, users, email, cancellationToken)
+            .ConfigureAwait(false);
+
         string rawToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
         var now = DateTime.UtcNow;
 

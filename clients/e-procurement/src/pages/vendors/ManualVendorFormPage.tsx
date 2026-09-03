@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createManualVendor, type CreateManualVendorRequest } from "@/api/suppliers";
 import { getGeoCatalog } from "@/api/platform";
@@ -7,8 +7,8 @@ import { Icon } from "@/components/Icon";
 import { Notice, Spinner } from "@/components/ui";
 import { SwecPicker } from "@/components/vendors/SwecPicker";
 import { ApiRequestError } from "@/lib/api-client";
+import { GeoCascadeFields, regionFromGeo } from "@/components/geo/GeoCascadeFields";
 
-const REGIONS = ["Peninsular", "Sarawak", "Sabah"];
 const CURRENCIES = ["MYR", "USD", "SGD", "EUR"];
 const PAYMENT_TERMS = ["NET30", "NET45", "NET60", "COD"];
 
@@ -55,15 +55,8 @@ export function ManualVendorFormPage({
   const [createdId, setCreatedId] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
-  const country = useMemo(
-    () => geoQ.data?.countries.find((c) => c.code === (f.countryCode || "MY")),
-    [geoQ.data, f.countryCode],
-  );
-  const states = country?.states ?? [];
-  const cities = states.find((s) => s.id === f.stateId)?.cities ?? [];
-  const banks = (geoQ.data?.banks ?? []).filter(
-    (b) => !f.countryCode || b.countryCode === f.countryCode || b.countryCode === "MY",
-  );
+  const countries = geoQ.data?.countries ?? [];
+  const banks = (geoQ.data?.banks ?? []).filter((b) => !f.countryCode || b.countryCode === f.countryCode);
 
   const save = useMutation({
     mutationFn: () => createManualVendor(f),
@@ -185,80 +178,26 @@ export function ManualVendorFormPage({
           <h3>Location</h3>
         </div>
         <div className="cbody">
-          <div className="grid g3">
-            <div className="field">
-              <label>Country</label>
-              <select
-                value={f.countryCode ?? "MY"}
-                onChange={(e) => {
-                  set("countryCode", e.target.value);
-                  set("stateId", null);
-                  set("state", "");
-                  set("cityId", null);
-                  set("city", "");
-                }}
-              >
-                {(geoQ.data?.countries ?? []).map((c) => (
-                  <option key={c.id} value={c.code}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="field">
-              <label>State</label>
-              <select
-                value={f.stateId ?? ""}
-                onChange={(e) => {
-                  const s = states.find((x) => x.id === e.target.value);
-                  set("stateId", s?.id ?? null);
-                  set("state", s?.name ?? "");
-                  set("cityId", null);
-                  set("city", "");
-                }}
-              >
-                <option value="">Select state</option>
-                {states.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="field">
-              <label>City</label>
-              <select
-                value={f.cityId ?? ""}
-                onChange={(e) => {
-                  const c = cities.find((x) => x.id === e.target.value);
-                  set("cityId", c?.id ?? null);
-                  set("city", c?.name ?? "");
-                }}
-              >
-                <option value="">Select city</option>
-                {cities.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div className="grid g2">
-            <div className="field">
-              <label>Region</label>
-              <select value={f.region ?? "Peninsular"} onChange={(e) => set("region", e.target.value)}>
-                {REGIONS.map((r) => (
-                  <option key={r} value={r}>
-                    {r}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="field">
-              <label>Address line</label>
-              <input value={f.addressLine ?? ""} onChange={(e) => set("addressLine", e.target.value)} />
-            </div>
+          <GeoCascadeFields
+            countries={countries}
+            value={{
+              countryCode: f.countryCode || "MY",
+              stateId: f.stateId ?? null,
+              cityId: f.cityId ?? null,
+              state: f.state ?? "",
+              city: f.city ?? "",
+            }}
+            onChange={(geo) =>
+              setF((p) => ({
+                ...p,
+                ...geo,
+                region: regionFromGeo(countries, geo.countryCode, geo.stateId, geo.state),
+              }))
+            }
+          />
+          <div className="field">
+            <label>Address line</label>
+            <input value={f.addressLine ?? ""} onChange={(e) => set("addressLine", e.target.value)} />
           </div>
         </div>
       </div>

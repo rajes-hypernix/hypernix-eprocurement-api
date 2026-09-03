@@ -11,6 +11,9 @@ public sealed class VendorFinancialAssessmentConfiguration : IEntityTypeConfigur
         ArgumentNullException.ThrowIfNull(builder);
         builder.ToTable("VendorFinancialAssessments");
         builder.HasKey(x => x.Id);
+        // App-assigned Guid.CreateVersion7. Without this, EF treats the new assessment as Unchanged
+        // and inserts OnboardingFinancialYears with a missing AssessmentId parent (Postgres 23503).
+        builder.Property(x => x.Id).ValueGeneratedNever();
         builder.HasIndex(x => x.ApplicationId).IsUnique();
         builder.Property(x => x.Remarks).HasMaxLength(4000);
         builder.ConfigureAudit();
@@ -24,6 +27,7 @@ public sealed class VendorFinancialAssessmentConfiguration : IEntityTypeConfigur
             o.HasKey("Id");
             o.HasIndex(y => y.YearIndex);
         });
+        builder.Navigation(x => x.Years).UsePropertyAccessMode(PropertyAccessMode.Field);
 
         builder.OwnsMany(x => x.Snapshots, o =>
         {
@@ -35,6 +39,7 @@ public sealed class VendorFinancialAssessmentConfiguration : IEntityTypeConfigur
             o.Property(s => s.Risk).IsRequired().HasConversion<string>().HasMaxLength(20);
             o.Property(s => s.Statement).HasMaxLength(1000);
         });
+        builder.Navigation(x => x.Snapshots).UsePropertyAccessMode(PropertyAccessMode.Field);
 
         builder.Ignore(x => x.DomainEvents);
     }

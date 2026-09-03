@@ -5,7 +5,6 @@ import { listFormTemplates } from "@/api/platform";
 import { Icon } from "@/components/Icon";
 import { Modal, Notice, Spinner } from "@/components/ui";
 import { ApiRequestError } from "@/lib/api-client";
-import { portalMagicLink } from "@/lib/magic-link";
 
 const DEFAULT_EMAIL = "vendor-invites@hypernix.test";
 
@@ -205,20 +204,8 @@ export function OnboardingInvitePage({ onBack }: { onBack: () => void }) {
         >
           <p style={{ marginTop: 0 }}>
             <b>{sent.applicationCode}</b> · a secure onboarding link has been emailed to{" "}
-            <b>{sent.email}</b>. It expires in 14 days.
+            <b>{sent.email}</b>. It expires in 14 days. Only that inbox can open the application.
           </p>
-          <div className="field" style={{ marginBottom: 0 }}>
-            <label>Magic link (demo)</label>
-            <input
-              readOnly
-              value={portalMagicLink(sent.magicLink)}
-              aria-label="Magic link"
-              onFocus={(e) => e.target.select()}
-            />
-            <p className="hint" style={{ marginTop: 8 }}>
-              Open this URL in a new tab (vendor portal — no login). Keep the Vite app on port 5175.
-            </p>
-          </div>
         </Modal>
       ) : null}
     </>

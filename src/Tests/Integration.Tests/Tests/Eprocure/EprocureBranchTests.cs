@@ -19,6 +19,24 @@ public sealed class EprocureBranchTests
     }
 
     [Fact]
+    public async Task InviteOnboarding_Should_Conflict_When_EmailAlreadyInvited()
+    {
+        using var buyer = await _auth.CreateRootAdminClientAsync();
+        var unique = Guid.NewGuid().ToString("N")[..8];
+        var email = $"dup-{unique}@example.com";
+
+        using var first = await buyer.PostAsJsonAsync(
+            $"{TestConstants.SuppliersBasePath}/onboarding/invitations",
+            new { email, type = "Swec", selectedTemplateIds = (string[]?)null });
+        await EprocureFlowHelper.EnsureSuccessAsync(first, "First invite");
+
+        using var second = await buyer.PostAsJsonAsync(
+            $"{TestConstants.SuppliersBasePath}/onboarding/invitations",
+            new { email, type = "NonSwec", selectedTemplateIds = (string[]?)null });
+        second.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+    }
+
+    [Fact]
     public async Task RejectOnboarding_Should_LeaveApplicationRejected_And_NoVendorLogin()
     {
         using var buyer = await _auth.CreateRootAdminClientAsync();
@@ -62,6 +80,11 @@ public sealed class EprocureBranchTests
         await EprocureFlowHelper.EnsureSuccessAsync(get, "Get application");
         var app = await get.DeserializeAsync<OnboardingApplicationDto>();
         app.Status.ShouldBe("Rejected");
+
+        using var reinvite = await buyer.PostAsJsonAsync(
+            $"{TestConstants.SuppliersBasePath}/onboarding/invitations",
+            new { email, type = "Swec", selectedTemplateIds = (string[]?)null });
+        await EprocureFlowHelper.EnsureSuccessAsync(reinvite, "Re-invite after reject");
 
         await Should.ThrowAsync<HttpRequestException>(async () =>
             await _auth.GetTokenAsync(email, EprocureFlowHelper.DefaultVendorPassword));

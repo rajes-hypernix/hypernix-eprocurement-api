@@ -54,7 +54,9 @@ public sealed class SaveOnboardingDraftCommandHandler(
 
             if (application.Financial is null)
             {
-                application.AttachFinancial(VendorFinancialAssessment.Create(application.Id, years, now));
+                var assessment = VendorFinancialAssessment.Create(application.Id, years, now);
+                application.AttachFinancial(assessment);
+                dbContext.VendorFinancialAssessments.Add(assessment);
             }
             else
             {

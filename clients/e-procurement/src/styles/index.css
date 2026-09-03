@@ -797,6 +797,29 @@ input:not([type='checkbox']):not([type='radio']):not([type='file']), select, tex
   color: var(--ink);
 }
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--teal); box-shadow: var(--focus-ring); }
+
+.PhoneInput {
+  width: 100%;
+  --PhoneInput-color--focus: var(--teal);
+}
+.PhoneInputCountry {
+  margin-right: 8px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: #fff;
+}
+.PhoneInputCountrySelect {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.PhoneInputCountrySelect:focus {
+  border: 0;
+  box-shadow: none;
+}
+
 .field { margin-bottom: var(--space-field); }
 .field label {
   display: block;

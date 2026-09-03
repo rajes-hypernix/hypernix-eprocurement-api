@@ -15,7 +15,8 @@ public static class GetGeoCatalogEndpoint
         return endpoints.MapGet("/catalog/geo",
                 async (string? bankCountryCode, IMediator mediator, CancellationToken ct) =>
                 {
-                    var result = await mediator.Send(new GetGeoCatalogQuery(bankCountryCode ?? "MY"), ct);
+                    var result = await mediator.Send(new GetGeoCatalogQuery(
+                        string.IsNullOrWhiteSpace(bankCountryCode) ? null : bankCountryCode), ct);
                     return Results.Ok(result);
                 })
             .WithName("GetGeoCatalog")

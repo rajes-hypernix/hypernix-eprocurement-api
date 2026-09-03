@@ -26,8 +26,8 @@ import {
 import { formatVendorType, isSwecType } from "@/lib/format";
 import { ApiRequestError } from "@/lib/api-client";
 import { Stat } from "@/components/vendors/EntityPage";
-
-const REGIONS = ["Peninsular", "Sarawak", "Sabah"];
+import { GeoCascadeFields, regionFromGeo } from "@/components/geo/GeoCascadeFields";
+import { ContactPhoneInput } from "@/components/geo/ContactPhoneInput";
 
 const DOCS: { id: string; name: string; req: "all" | "opt" | "swec" | "nonswec" }[] = [
   { id: "ssm", name: "SSM / CCM Registration", req: "all" },
@@ -145,7 +145,7 @@ export function OnboardingForm({
       email: draft.email,
       contactName: draft.contactName,
       contactPhone: draft.contactPhone,
-      region: draft.region || "Peninsular",
+      region: draft.region || (draft.countryCode && draft.countryCode !== "MY" ? "" : "Peninsular"),
       countryCode: draft.countryCode || "MY",
       stateId: draft.stateId ?? null,
       cityId: draft.cityId ?? null,
@@ -309,12 +309,7 @@ export function OnboardingForm({
   const swecIndex = buildSwecIndex(lookups.swec);
   const cur = steps[step];
   const fc = computeFin(fin);
-  const country = lookups.countries.find((c) => c.code === company.countryCode);
-  const states = country?.states ?? [];
-  const cities = states.find((s) => s.id === company.stateId)?.cities ?? [];
-  const banks = lookups.banks.filter(
-    (b) => b.countryCode === company.countryCode || b.countryCode === "MY",
-  );
+  const banks = lookups.banks.filter((b) => b.countryCode === company.countryCode);
 
   return (
     <div className="ob-shell">
@@ -384,80 +379,23 @@ export function OnboardingForm({
                   />
                 </Field>
               </div>
-              <div className="grid g3">
-                <Field label="Country">
-                  <select
-                    value={company.countryCode}
-                    onChange={(e) =>
-                      setCompany({
-                        ...company,
-                        countryCode: e.target.value,
-                        stateId: null,
-                        state: "",
-                        cityId: null,
-                        city: "",
-                      })
-                    }
-                  >
-                    {lookups.countries.map((c) => (
-                      <option key={c.id} value={c.code}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="State / Region">
-                  <select
-                    value={company.stateId ?? ""}
-                    onChange={(e) => {
-                      const s = states.find((x) => x.id === e.target.value);
-                      setCompany({
-                        ...company,
-                        stateId: s?.id ?? null,
-                        state: s?.name ?? "",
-                        cityId: null,
-                        city: "",
-                      });
-                    }}
-                  >
-                    <option value="">Select state</option>
-                    {states.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="City">
-                  <select
-                    value={company.cityId ?? ""}
-                    onChange={(e) => {
-                      const c = cities.find((x) => x.id === e.target.value);
-                      setCompany({ ...company, cityId: c?.id ?? null, city: c?.name ?? "" });
-                    }}
-                  >
-                    <option value="">Select city</option>
-                    {cities.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-              </div>
-              <div className="field">
-                <label>Region</label>
-                <select
-                  value={company.region}
-                  onChange={(e) => setCompany({ ...company, region: e.target.value })}
-                >
-                  {REGIONS.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <GeoCascadeFields
+                countries={lookups.countries}
+                value={{
+                  countryCode: company.countryCode,
+                  stateId: company.stateId,
+                  cityId: company.cityId,
+                  state: company.state,
+                  city: company.city,
+                }}
+                onChange={(geo) =>
+                  setCompany({
+                    ...company,
+                    ...geo,
+                    region: regionFromGeo(lookups.countries, geo.countryCode, geo.stateId, geo.state),
+                  })
+                }
+              />
               <div className="grid g3">
                 <Field label="Primary contact email *">
                   <input
@@ -472,12 +410,14 @@ export function OnboardingForm({
                     onChange={(e) => setCompany({ ...company, contactName: e.target.value })}
                   />
                 </Field>
-                <Field label="Contact phone">
-                  <input
+                <div className="field">
+                  <label htmlFor="contact-phone">Contact phone</label>
+                  <ContactPhoneInput
+                    countryCode={company.countryCode}
                     value={company.contactPhone}
-                    onChange={(e) => setCompany({ ...company, contactPhone: e.target.value })}
+                    onChange={(contactPhone) => setCompany({ ...company, contactPhone })}
                   />
-                </Field>
+                </div>
               </div>
             </Section>
           ) : null}

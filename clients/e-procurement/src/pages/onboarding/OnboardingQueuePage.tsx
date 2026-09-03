@@ -10,7 +10,6 @@ import { Icon } from "@/components/Icon";
 import { ConfirmModal, EmptyState, Modal, Spinner } from "@/components/ui";
 import { TypeBadge } from "@/components/vendors/badges";
 import { dateMY } from "@/lib/format";
-import { portalMagicLink } from "@/lib/magic-link";
 
 const RESENDABLE = new Set(["Invited", "InProgress", "Expired"]);
 
@@ -180,20 +179,8 @@ export function OnboardingQueuePage({ onNavigate }: { onNavigate: (key: string) 
         >
           <p style={{ marginTop: 0 }}>
             A fresh secure link for <b>{resent.applicationCode}</b> has been emailed to{" "}
-            <b>{resent.email}</b> (expires in 14 days).
+            <b>{resent.email}</b> (expires in 14 days). Only that inbox can open the application.
           </p>
-          <div className="field" style={{ marginBottom: 0 }}>
-            <label>Magic link (demo)</label>
-            <input
-              readOnly
-              value={portalMagicLink(resent.magicLink)}
-              aria-label="Magic link"
-              onFocus={(e) => e.target.select()}
-            />
-            <p className="hint" style={{ marginTop: 8 }}>
-              Open this URL in a new tab (vendor portal — no login).
-            </p>
-          </div>
         </Modal>
       ) : null}
     </>
