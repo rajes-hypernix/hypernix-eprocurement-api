@@ -8,8 +8,6 @@ public sealed class CreateOnboardingInvitationCommandValidator : AbstractValidat
     public CreateOnboardingInvitationCommandValidator()
     {
         RuleFor(x => x.Type).NotEmpty();
-        RuleFor(x => x.Email)
-            .EmailAddress()
-            .When(x => !string.IsNullOrWhiteSpace(x.Email));
+        RuleFor(x => x.Email).NotEmpty().EmailAddress();
     }
 }

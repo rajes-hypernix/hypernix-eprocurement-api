@@ -30,7 +30,12 @@ public sealed class CreateOnboardingInvitationCommandHandler(
         var templateIds = command.SelectedTemplateIds ?? [];
         await formTemplates.EnsureActiveTemplatesAsync(templateIds, cancellationToken).ConfigureAwait(false);
 
-        string email = string.IsNullOrWhiteSpace(command.Email) ? options.Value.DefaultVendorEmail : command.Email.Trim();
+        string email = command.Email?.Trim() ?? "";
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            throw new OnboardingRuleException("Enter the vendor email.");
+        }
+
         await InviteEmailUniqueness.EnsureAvailableAsync(dbContext, users, email, cancellationToken)
             .ConfigureAwait(false);
 

@@ -6,8 +6,6 @@ import { Icon } from "@/components/Icon";
 import { Modal, Notice, Spinner } from "@/components/ui";
 import { ApiRequestError } from "@/lib/api-client";
 
-const DEFAULT_EMAIL = "vendor-invites@hypernix.test";
-
 const DOCS: { name: string; req: string; tone: string }[] = [
   { name: "SSM / CCM Registration", req: "Required", tone: "b-red" },
   { name: "ISO 9001:2015 Certificate", req: "Optional", tone: "b-grey" },
@@ -26,7 +24,7 @@ export function OnboardingInvitePage({ onBack }: { onBack: () => void }) {
   });
 
   const [type, setType] = useState<VendorType>("NonSwec");
-  const [email, setEmail] = useState(DEFAULT_EMAIL);
+  const [email, setEmail] = useState("");
   const [deselected, setDeselected] = useState<Set<string>>(new Set());
   const [sent, setSent] = useState<OnboardingInvitationDto | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -95,6 +93,7 @@ export function OnboardingInvitePage({ onBack }: { onBack: () => void }) {
               <input
                 type="email"
                 value={email}
+                placeholder="vendor@company.com"
                 aria-label="Vendor email"
                 onChange={(e) => setEmail(e.target.value)}
               />

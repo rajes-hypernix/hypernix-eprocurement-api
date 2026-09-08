@@ -27,8 +27,10 @@ internal static class InviteEmailUniqueness
                 "This email is already registered as a user and cannot be invited as a vendor.");
         }
 
+        string pattern = EscapeILike(trimmed);
+
         bool vendorLogin = await dbContext.VendorUsers.AsNoTracking()
-            .AnyAsync(u => u.Email.Equals(trimmed, StringComparison.OrdinalIgnoreCase), cancellationToken)
+            .AnyAsync(u => EF.Functions.ILike(u.Email, pattern, "\\"), cancellationToken)
             .ConfigureAwait(false);
         if (vendorLogin)
         {
@@ -37,7 +39,7 @@ internal static class InviteEmailUniqueness
         }
 
         bool vendorContact = await dbContext.Vendors.AsNoTracking()
-            .AnyAsync(v => v.Contacts.Any(c => c.Email.Equals(trimmed, StringComparison.OrdinalIgnoreCase)), cancellationToken)
+            .AnyAsync(v => v.Contacts.Any(c => EF.Functions.ILike(c.Email, pattern, "\\")), cancellationToken)
             .ConfigureAwait(false);
         if (vendorContact)
         {
@@ -50,8 +52,8 @@ internal static class InviteEmailUniqueness
                 a => a.Status != OnboardingStatus.Rejected
                     && a.Status != OnboardingStatus.Revoked
                     && a.Status != OnboardingStatus.Withdrawn
-                    && (a.Email.Equals(trimmed, StringComparison.OrdinalIgnoreCase)
-                        || a.Contacts.Any(c => c.Email.Equals(trimmed, StringComparison.OrdinalIgnoreCase))),
+                    && (EF.Functions.ILike(a.Email, pattern, "\\")
+                        || a.Contacts.Any(c => EF.Functions.ILike(c.Email, pattern, "\\"))),
                 cancellationToken)
             .ConfigureAwait(false);
         if (liveApplication)
@@ -60,4 +62,11 @@ internal static class InviteEmailUniqueness
                 "This email already has an onboarding application. Resend that invitation instead of creating another.");
         }
     }
+
+    /// <summary>Exact ILIKE match — emails can contain '_' which is a LIKE wildcard.</summary>
+    private static string EscapeILike(string value) =>
+        value
+            .Replace("\\", "\\\\", StringComparison.Ordinal)
+            .Replace("%", "\\%", StringComparison.Ordinal)
+            .Replace("_", "\\_", StringComparison.Ordinal);
 }
