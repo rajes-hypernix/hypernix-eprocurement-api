@@ -54,6 +54,52 @@ const FIN_FIELDS: Record<FinKey, keyof OnboardingFinancialYearDto> = {
 
 const answerKey = (templateId: string, order: number) => `${templateId}:${order}`;
 
+const FIN_YEAR_LABELS = ["FY-2", "FY-1", "Current"] as const;
+
+type RequiredGap = { stepKey: string; label: string };
+
+function collectRequiredGaps(input: {
+  company: { name: string; registrationNo: string; email: string };
+  docs: OnboardingDocumentDto[];
+  isSwec: boolean;
+  fin: FinData;
+  templates: FormTemplateDto[];
+  answers: Record<string, string>;
+}): RequiredGap[] {
+  const gaps: RequiredGap[] = [];
+  if (!input.company.name.trim()) gaps.push({ stepKey: "company", label: "Registered name" });
+  if (!input.company.registrationNo.trim()) {
+    gaps.push({ stepKey: "company", label: "Registration number (SSM)" });
+  }
+  if (!input.company.email.trim()) gaps.push({ stepKey: "company", label: "Primary contact email" });
+
+  for (const d of DOCS.filter((x) => x.req === "all")) {
+    if (!input.docs.some((x) => x.key === d.id)) {
+      gaps.push({ stepKey: "docs", label: d.name });
+    }
+  }
+
+  if (!input.isSwec) {
+    for (let i = 0; i < 3; i++) {
+      if (input.fin.totalAssets[i] <= 0 || input.fin.totalLiab[i] <= 0) {
+        gaps.push({
+          stepKey: "fin",
+          label: `${FIN_YEAR_LABELS[i]}: total assets and total liabilities`,
+        });
+      }
+    }
+  }
+
+  for (const t of input.templates) {
+    for (const q of t.questions) {
+      if (q.required && !(input.answers[answerKey(t.id, q.order)] ?? "").trim()) {
+        gaps.push({ stepKey: `tpl:${t.id}`, label: q.label });
+      }
+    }
+  }
+  return gaps;
+}
+
 function finFromDraft(years: OnboardingFinancialYearDto[]): FinData {
   const fin = blankFin();
   for (const y of years) {
@@ -131,6 +177,7 @@ export function OnboardingForm({
   const [step, setStep] = useState(0);
   const [visited, setVisited] = useState<Set<number>>(new Set([0]));
   const [err, setErr] = useState<string | null>(null);
+  const [showGaps, setShowGaps] = useState(false);
   const hydrated = useRef(false);
 
   useEffect(() => {
@@ -186,6 +233,28 @@ export function OnboardingForm({
     s.push({ k: "review", n: "Review & submit" });
     return s;
   }, [isSwec, templates]);
+
+  const gaps = useMemo(
+    () =>
+      collectRequiredGaps({
+        company,
+        docs,
+        isSwec,
+        fin,
+        templates,
+        answers,
+      }),
+    [company, docs, isSwec, fin, templates, answers],
+  );
+
+  const gapsByStep = useMemo(() => {
+    const groups: { stepKey: string; name: string; items: RequiredGap[] }[] = [];
+    for (const st of steps) {
+      const items = gaps.filter((g) => g.stepKey === st.k);
+      if (items.length) groups.push({ stepKey: st.k, name: st.n, items });
+    }
+    return groups;
+  }, [steps, gaps]);
 
   const body = () => ({
     token,
@@ -255,33 +324,19 @@ export function OnboardingForm({
     setStep(t);
   };
 
-  const stepComplete = (k: string): boolean => {
-    if (k === "company") return Boolean(company.name.trim() && company.email.trim());
-    if (k === "docs")
-      return !DOCS.filter((d) => d.req === "all").some((d) => !docs.some((x) => x.key === d.id));
-    if (k === "fin" && !isSwec) {
-      return ![0, 1, 2].some((i) => fin.totalAssets[i] <= 0 || fin.totalLiab[i] <= 0);
-    }
-    if (k.startsWith("tpl:")) {
-      const tpl = templates.find((t) => `tpl:${t.id}` === k);
-      if (!tpl) return true;
-      return !tpl.questions.some(
-        (q) => q.required && !(answers[answerKey(tpl.id, q.order)] ?? "").trim(),
-      );
-    }
-    return true;
-  };
+  const stepComplete = (k: string): boolean => !gaps.some((g) => g.stepKey === k);
 
   const next = () => {
-    const cur = steps[step];
-    if (cur.k === "company") {
-      if (!company.name.trim() || !company.email.trim()) {
-        setErr("Enter registered name and primary contact email before continuing.");
-        return;
-      }
-    }
     setErr(null);
     goto(step + 1);
+  };
+
+  const trySubmit = () => {
+    if (gaps.length) {
+      setShowGaps(true);
+      return;
+    }
+    submit.mutate();
   };
 
   if (draftQ.isPending || lookupsQ.isPending) {
@@ -365,7 +420,7 @@ export function OnboardingForm({
                 </Field>
               </div>
               <div className="grid g2">
-                <Field label="Reg. no. (SSM)">
+                <Field label="Reg. no. (SSM) *">
                   <input
                     value={company.registrationNo}
                     placeholder="1234567-A"
@@ -651,13 +706,14 @@ export function OnboardingForm({
 
           {cur.k === "review" ? (
             <>
-              {stepComplete("company") ? (
+              {gaps.length === 0 ? (
                 <Notice tone="success" icon="check">
                   Looks complete. Submit to route to SPSB procurement.
                 </Notice>
               ) : (
                 <Notice tone="warn" icon="flag">
-                  Company name and email are required before submit.
+                  {gaps.length} required {gaps.length === 1 ? "item is" : "items are"} still
+                  missing. Use the list on the right to jump to each section.
                 </Notice>
               )}
               <Section title="Summary">
@@ -704,13 +760,46 @@ export function OnboardingForm({
                 type="button"
                 className="btn btn-pri"
                 disabled={submit.isPending}
-                onClick={() => submit.mutate()}
+                onClick={trySubmit}
               >
                 <Icon name="check" size={15} /> Submit application
               </button>
             )}
           </div>
         </div>
+
+        <aside
+          className={`obcheck ${gaps.length === 0 ? "ok" : ""} ${showGaps && gaps.length > 0 ? "attn" : ""}`}
+          aria-live="polite"
+        >
+          <div className="obcheck-h">
+            {gaps.length === 0
+              ? "Ready to submit"
+              : `${gaps.length} required ${gaps.length === 1 ? "item" : "items"} left`}
+          </div>
+          {gaps.length === 0 ? (
+            <p className="obcheck-hint">All required fields, documents, and questions are complete.</p>
+          ) : (
+            <>
+              <p className="obcheck-hint">Click an item to open that section.</p>
+              {gapsByStep.map((group) => (
+                <div key={group.stepKey} className="obcheck-group">
+                  <div className="obcheck-sec">{group.name}</div>
+                  {group.items.map((item, i) => (
+                    <button
+                      type="button"
+                      key={`${group.stepKey}:${i}:${item.label}`}
+                      className="obcheck-item"
+                      onClick={() => goto(steps.findIndex((s) => s.k === group.stepKey))}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </>
+          )}
+        </aside>
       </div>
 
       {picking ? (

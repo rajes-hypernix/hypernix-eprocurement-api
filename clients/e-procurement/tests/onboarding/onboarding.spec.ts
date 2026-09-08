@@ -175,6 +175,8 @@ test.describe("Onboarding portal (anonymous)", () => {
     await page.goto("/onboard?token=demo-token");
     await page.getByRole("button", { name: /Start onboarding/i }).click();
     await expect(page.getByRole("heading", { name: /Supplier — onboarding/i })).toBeVisible();
+    await expect(page.getByText(/required items left/i)).toBeVisible();
+    await expect(page.getByRole("button", { name: "Registered name" })).toBeVisible();
 
     const country = page.getByLabel("Country", { exact: true });
     const phoneCountry = page.getByLabel("Phone number country");

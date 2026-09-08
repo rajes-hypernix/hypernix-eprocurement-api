@@ -174,6 +174,16 @@ internal static class EprocureFlowHelper
             application.Id);
     }
 
+    /// <summary>
+    /// Three years of RM'000 figures with positive total assets/liabilities so Non-SWEC submit is valid.
+    /// </summary>
+    public static IReadOnlyList<OnboardingFinancialYearDto> SampleNonSwecFinancialYears() =>
+    [
+        new(0, 100m, 10m, 15m, 200m, 80m, 20m, 40m, 90m, 110m, 30m, 120m),
+        new(1, 110m, 12m, 18m, 210m, 85m, 22m, 42m, 95m, 115m, 32m, 125m),
+        new(2, 120m, 14m, 20m, 220m, 90m, 24m, 45m, 100m, 120m, 35m, 130m),
+    ];
+
     public static async Task EnsureSuccessAsync(HttpResponseMessage response, string step)
     {
         if (response.IsSuccessStatusCode)

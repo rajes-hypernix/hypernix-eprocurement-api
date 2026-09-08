@@ -76,13 +76,12 @@ public sealed class FormTemplateCatalog(PlatformDbContext dbContext) : IFormTemp
         foreach (var answer in answers)
         {
             if (!selectedTemplateIds.Contains(answer.FormTemplateId))
-                throw new PlatformRuleException($"Answer references template {answer.FormTemplateId} not selected on the invitation.");
+                throw new PlatformRuleException("An answer was sent for a questionnaire that is not on this invitation.");
 
             if (!byTemplate.TryGetValue(answer.FormTemplateId, out var questions)
                 || !questions.ContainsKey(answer.QuestionOrder))
             {
-                throw new PlatformRuleException(
-                    $"Unknown question order {answer.QuestionOrder} on template {answer.FormTemplateId}.");
+                throw new PlatformRuleException("An answer was sent for a question that is not on this questionnaire.");
             }
         }
 
@@ -99,7 +98,7 @@ public sealed class FormTemplateCatalog(PlatformDbContext dbContext) : IFormTemp
             foreach (var question in template.Questions.Where(q => q.Required))
             {
                 if (!answered.Contains((template.Id, question.Order)))
-                    throw new PlatformRuleException($"Required question {question.Order} on template {template.Id} is unanswered.");
+                    throw new PlatformRuleException($"Answer the required question \"{question.Label}\" on {template.Name}.");
             }
         }
     }
