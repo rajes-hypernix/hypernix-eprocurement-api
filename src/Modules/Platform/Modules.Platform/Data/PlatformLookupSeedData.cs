@@ -1,5 +1,6 @@
 using FSH.Modules.Platform.Contracts;
 using FSH.Modules.Platform.Domain;
+using Microsoft.EntityFrameworkCore;
 
 namespace FSH.Modules.Platform.Data;
 
@@ -30,7 +31,6 @@ public static class PlatformLookupSeedData
     /// <summary>POC COUNTRY custom-list parity — states/cities stay Malaysia-only until maintained in Setup.</summary>
     private static readonly (string Code, string Name)[] CatalogCountries =
     [
-        ("MY", "Malaysia"),
         ("SG", "Singapore"),
         ("BN", "Brunei"),
         ("ID", "Indonesia"),
@@ -108,10 +108,7 @@ public static class PlatformLookupSeedData
 
     private static void EnsureCatalogCountries(PlatformDbContext db)
     {
-        var existing = db.Countries
-            .Where(c => !c.IsDeleted)
-            .Select(c => c.Code)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var existing = KnownCountryCodes(db);
 
         foreach (var (code, name) in CatalogCountries)
         {
@@ -129,7 +126,8 @@ public static class PlatformLookupSeedData
     /// </summary>
     private static void EnsureMalaysiaGeo(PlatformDbContext db)
     {
-        var my = db.Countries.FirstOrDefault(c => c.Code == "MY" && !c.IsDeleted);
+        var my = db.Countries.Local.FirstOrDefault(c => c.Code == "MY" && !c.IsDeleted)
+            ?? db.Countries.FirstOrDefault(c => c.Code == "MY" && !c.IsDeleted);
         if (my is null)
         {
             my = Country.Create("MY", "Malaysia");
@@ -188,6 +186,19 @@ public static class PlatformLookupSeedData
 
         Add("CC-1000", "Cost Centre 1000", OrgUnitType.CostCentre);
         Add("CC-2000", "Cost Centre 2000", OrgUnitType.CostCentre);
+    }
+
+    private static HashSet<string> KnownCountryCodes(PlatformDbContext db)
+    {
+        var codes = db.Countries.Local
+            .Where(c => !c.IsDeleted)
+            .Select(c => c.Code)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var code in db.Countries.AsNoTracking().Where(c => !c.IsDeleted).Select(c => c.Code))
+            codes.Add(code);
+
+        return codes;
     }
 
     private static void SeedList(

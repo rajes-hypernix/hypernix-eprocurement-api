@@ -34,6 +34,9 @@ public sealed class VendorFinancialAssessmentConfiguration : IEntityTypeConfigur
             o.ToTable("OnboardingFinancialSnapshots");
             o.WithOwner().HasForeignKey("AssessmentId");
             o.HasKey(s => s.Id);
+            // App-assigned Guid.CreateVersion7. Without this, EF tracks the new snapshot as Modified
+            // and issues UPDATE … 0 rows → DbUpdateConcurrencyException on Non-SWEC submit/decision.
+            o.Property(s => s.Id).ValueGeneratedNever();
             o.Property(s => s.Stage).IsRequired().HasConversion<string>().HasMaxLength(20);
             o.Property(s => s.Band).IsRequired().HasConversion<string>().HasMaxLength(5);
             o.Property(s => s.Risk).IsRequired().HasConversion<string>().HasMaxLength(20);
