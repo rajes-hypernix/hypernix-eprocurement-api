@@ -132,7 +132,7 @@ test.describe("Evaluator dashboard", () => {
       permissions: [...EVAL_DASH_PERMS],
     });
     await installEprocShellMocks(page, EVAL_DASH_PERMS);
-    await mockJsonResponse(page, "**/api/v1/sourcing/rfqs**", [
+    await mockJsonResponse(page, "**/api/v1/sourcing/bid-openings**", [
       {
         id: "rfq-eval",
         code: "RFQ-EV-1",

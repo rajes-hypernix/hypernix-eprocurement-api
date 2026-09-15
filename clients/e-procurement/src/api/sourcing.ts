@@ -345,6 +345,11 @@ export function listRfqs(): Promise<RfqListItemDto[]> {
   return apiFetch(`${ROOT}/rfqs`);
 }
 
+/** Closed / evaluation RFQs — gated by ViewOpening, not View RFQs. */
+export function listBidOpenings(): Promise<RfqListItemDto[]> {
+  return apiFetch(`${ROOT}/bid-openings`);
+}
+
 export function getRfq(id: string): Promise<RfqDetailDto> {
   return apiFetch(`${ROOT}/rfqs/${id}`);
 }

@@ -64,6 +64,7 @@ test.describe("Bid Openings", () => {
     await seedAuthedSession(page, { ...TEST_USER, permissions: [...EVAL_PERMS] });
     await installEprocShellMocks(page, EVAL_PERMS);
     await mockJsonResponse(page, `**/api/v1/sourcing/rfqs/${RFQ_ID}/bid-opening`, OPENING);
+    await mockJsonResponse(page, "**/api/v1/sourcing/bid-openings", RFQ_LIST);
     await mockJsonResponse(page, "**/api/v1/sourcing/rfqs", RFQ_LIST);
   });
 

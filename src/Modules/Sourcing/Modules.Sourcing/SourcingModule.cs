@@ -21,6 +21,7 @@ using FSH.Modules.Sourcing.Features.v1.Awards.ListAwards;
 using FSH.Modules.Sourcing.Features.v1.Awards.SubmitAward;
 using FSH.Modules.Sourcing.Features.v1.Evaluation.FinalizeTechnical;
 using FSH.Modules.Sourcing.Features.v1.Evaluation.GetBidOpening;
+using FSH.Modules.Sourcing.Features.v1.Evaluation.ListBidOpenings;
 using FSH.Modules.Sourcing.Features.v1.Evaluation.GetTechnicalEval;
 using FSH.Modules.Sourcing.Features.v1.Evaluation.OpenCommercialEnvelope;
 using FSH.Modules.Sourcing.Features.v1.Evaluation.OpenTechnicalEnvelope;
@@ -129,6 +130,7 @@ public sealed class SourcingModule : IModule
         group.MapSubmitBidEndpoint();
         group.MapWithdrawBidEndpoint();
 
+        group.MapListBidOpeningsEndpoint();
         group.MapGetBidOpeningEndpoint();
         group.MapOpenTechnicalEnvelopeEndpoint();
         group.MapOpenCommercialEnvelopeEndpoint();

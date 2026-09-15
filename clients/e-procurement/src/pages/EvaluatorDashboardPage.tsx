@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { listRfqs } from "@/api/sourcing";
+import { listBidOpenings } from "@/api/sourcing";
 import { getUnreadCount } from "@/api/notifications";
 import { Icon } from "@/components/Icon";
 import { Spinner } from "@/components/ui";
@@ -23,8 +23,8 @@ export function EvaluatorDashboardPage() {
   });
 
   const rfqs = useQuery({
-    queryKey: ["rfqs"],
-    queryFn: listRfqs,
+    queryKey: ["bid-openings"],
+    queryFn: listBidOpenings,
     enabled: canOpenings,
   });
   const unread = useQuery({
@@ -33,16 +33,15 @@ export function EvaluatorDashboardPage() {
     enabled: canNotif,
   });
 
-  const queue = (rfqs.data ?? []).filter(
-    (r) => rfqIsReadyToOpen(r) && rfqAssignedToUser(r, user?.id),
-  );
+  const queue = (rfqs.data ?? []).filter(rfqIsReadyToOpen);
+  const mine = queue.filter((r) => rfqAssignedToUser(r, user?.id));
   const loading = (rfqs.isPending && canOpenings) || (unread.isPending && canNotif);
 
   const subtitle = kind.tech && !kind.commercial
-    ? "Technical envelopes assigned to you — open, score, then finalize."
+    ? "Closed RFQs ready for technical opening and scoring."
     : kind.commercial && !kind.tech
-      ? "Commercial envelopes assigned to you — unseal after technical is finalized."
-      : "RFQs assigned to you for envelope opening and scoring.";
+      ? "Closed RFQs ready for commercial unseal after technical is finalized."
+      : "Closed RFQs ready to open and evaluate.";
 
   return (
     <>
@@ -65,7 +64,9 @@ export function EvaluatorDashboardPage() {
           >
             <div className="lbl">Ready to evaluate</div>
             <div className="num">{queue.length}</div>
-            <div className="sub">Assigned RFQs past close, in evaluation, or awarded</div>
+            <div className="sub">
+              {mine.length} assigned to you · past close, in evaluation, or awarded
+            </div>
           </button>
           {canNotif ? (
             <button
@@ -89,8 +90,8 @@ export function EvaluatorDashboardPage() {
         <div className="cbody">
           {queue.length === 0 ? (
             <p className="muted" style={{ margin: 0 }}>
-              No assigned RFQs are ready to open yet. Bid openings appear after the close time, or after the buyer
-              closes the event early.
+              No RFQs are ready to open yet. Bid openings appear after the close time, or after the buyer closes
+              the event early.
             </p>
           ) : (
             <ul style={{ margin: 0, paddingLeft: 18 }}>

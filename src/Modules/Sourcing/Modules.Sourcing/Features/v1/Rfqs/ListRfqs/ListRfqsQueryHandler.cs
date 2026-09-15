@@ -2,9 +2,8 @@ using FSH.Framework.Core.Context;
 using FSH.Modules.Sourcing.Contracts.Dtos;
 using FSH.Modules.Sourcing.Contracts.v1.Rfqs;
 using FSH.Modules.Sourcing.Data;
-using FSH.Modules.Sourcing.Services;
+using FSH.Modules.Sourcing.Features.v1.Rfqs;
 using Mediator;
-using Microsoft.EntityFrameworkCore;
 
 namespace FSH.Modules.Sourcing.Features.v1.Rfqs.ListRfqs;
 
@@ -15,47 +14,7 @@ public sealed class ListRfqsQueryHandler(SourcingDbContext dbContext, ICurrentUs
     {
         ArgumentNullException.ThrowIfNull(query);
 
-        var rfqQuery = dbContext.Rfqs
-            .Include(r => r.Invitations)
-            .Include(r => r.Lines)
-            .Include(r => r.Events)
-            .AsQueryable();
-
-        if (currentUser.GetVendorId() is { } vendorId)
-        {
-            rfqQuery = rfqQuery.Where(r => r.Invitations.Any(i => i.VendorId == vendorId));
-        }
-
-        var rfqs = await rfqQuery
-            .OrderByDescending(r => r.CreatedUtc)
-            .ToListAsync(cancellationToken)
+        return await RfqListLoader.LoadAsync(dbContext, currentUser, openingsOnly: false, cancellationToken)
             .ConfigureAwait(false);
-
-        var now = DateTime.UtcNow;
-        bool closedAny = false;
-        foreach (var rfq in rfqs)
-        {
-            closedAny |= RfqCloseDue.Apply(rfq, now);
-        }
-
-        if (closedAny)
-        {
-            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        }
-
-        var rfqIds = rfqs.Select(r => r.Id).ToList();
-        var bidCountsByRfq = await dbContext.Bids
-            .AsNoTracking()
-            .Where(b => rfqIds.Contains(b.RfqId))
-            .GroupBy(b => b.RfqId)
-            .Select(g => new { RfqId = g.Key, Count = g.Count() })
-            .ToDictionaryAsync(x => x.RfqId, x => x.Count, cancellationToken)
-            .ConfigureAwait(false);
-
-        return
-        [
-            .. rfqs.Select(r =>
-                RfqDtoMapper.ToListItemDto(r, bidCountsByRfq.TryGetValue(r.Id, out var count) ? count : 0))
-        ];
     }
 }

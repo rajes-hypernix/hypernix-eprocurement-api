@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { listRfqs, type RfqListItemDto } from "@/api/sourcing";
+import { listBidOpenings, type RfqListItemDto } from "@/api/sourcing";
 import { Icon } from "@/components/Icon";
 import { EmptyState, Spinner } from "@/components/ui";
 import { rfqAssignedToUser, rfqIsReadyToOpen } from "@/lib/evaluation-queue";
@@ -28,12 +28,11 @@ export function BidOpeningsListPage({ onOpen }: { onOpen: (id: string) => void }
   const [q, setQ] = useState("");
   const [facets, setFacets] = useState<Record<FacetKey, string>>({ ...EMPTY_FACETS });
 
-  const { data, isPending } = useQuery({ queryKey: ["rfqs"], queryFn: listRfqs });
-  const scoped = useMemo(() => {
-    const ready = (data ?? []).filter(rfqIsReadyToOpen);
-    if (!isEvaluatorWorkspace) return ready;
-    return ready.filter((r) => rfqAssignedToUser(r, user?.id));
-  }, [data, isEvaluatorWorkspace, user?.id]);
+  const { data, isPending, isError, error } = useQuery({
+    queryKey: ["bid-openings"],
+    queryFn: listBidOpenings,
+  });
+  const scoped = useMemo(() => (data ?? []).filter(rfqIsReadyToOpen), [data]);
 
   const facetOptions = useMemo(() => {
     const sets: Record<FacetKey, Set<string>> = { envelope: new Set(), status: new Set() };
@@ -63,9 +62,7 @@ export function BidOpeningsListPage({ onOpen }: { onOpen: (id: string) => void }
         <div>
           <h1>Bid Openings</h1>
           <p>
-            {isEvaluatorWorkspace
-              ? "RFQs assigned to you that are closed or past the close time."
-              : "Closed RFQs ready to open and evaluate. Technical opens and scores before commercial unseals."}
+            Closed RFQs ready to open and evaluate. Opening an envelope still requires you to be listed on that RFQ.
           </p>
         </div>
       </div>
@@ -114,6 +111,8 @@ export function BidOpeningsListPage({ onOpen }: { onOpen: (id: string) => void }
       <div className="card">
         {isPending ? (
           <Spinner label="Loading…" />
+        ) : isError ? (
+          <EmptyState>{error instanceof Error ? error.message : "Could not load RFQs."}</EmptyState>
         ) : (
           <table>
             <thead>
@@ -133,6 +132,11 @@ export function BidOpeningsListPage({ onOpen }: { onOpen: (id: string) => void }
                   <td>{r.title}</td>
                   <td>
                     <EnvelopeBadge envelope={r.envelope} />
+                    {isEvaluatorWorkspace && rfqAssignedToUser(r, user?.id) ? (
+                      <span className="badge b-teal" style={{ marginLeft: 6 }}>
+                        Assigned
+                      </span>
+                    ) : null}
                   </td>
                   <td className="amt">{r.invitedCount}</td>
                   <td>
