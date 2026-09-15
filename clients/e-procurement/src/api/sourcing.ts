@@ -309,6 +309,8 @@ export type RfqListItemDto = {
   invitedCount: number;
   lineCount: number;
   bidCount: number;
+  technicalEvaluatorIds?: string[];
+  commercialEvaluatorIds?: string[];
 };
 
 export type CreateRfqDraftRequest = {

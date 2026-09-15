@@ -40,6 +40,10 @@ public sealed class SourcingDbInitializer(
                 SourcingPermissions.Rfqs.Rescind,
                 SourcingPermissions.Rfqs.Extend,
                 SourcingPermissions.Evaluation.ViewOpening,
+                SourcingPermissions.Evaluation.OpenTechnical,
+                SourcingPermissions.Evaluation.OpenCommercial,
+                SourcingPermissions.Evaluation.Score,
+                SourcingPermissions.Evaluation.FinalizeTechnical,
                 SourcingPermissions.Evaluation.ViewTechnical,
                 SourcingPermissions.Award.View,
                 SourcingPermissions.Award.Submit,
@@ -61,6 +65,7 @@ public sealed class SourcingDbInitializer(
             "TechEvaluator",
             "Technical evaluator — scores sealed bids, blind to vendor identity.",
             [
+                SourcingPermissions.Evaluation.ViewOpening,
                 SourcingPermissions.Evaluation.OpenTechnical,
                 SourcingPermissions.Evaluation.Score,
                 SourcingPermissions.Evaluation.FinalizeTechnical,
@@ -72,6 +77,7 @@ public sealed class SourcingDbInitializer(
             "CommEvaluator",
             "Commercial evaluator — opens the sealed commercial envelope.",
             [
+                SourcingPermissions.Evaluation.ViewOpening,
                 SourcingPermissions.Evaluation.OpenCommercial,
             ],
             cancellationToken).ConfigureAwait(false);

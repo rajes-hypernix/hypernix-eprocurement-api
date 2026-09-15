@@ -18,7 +18,9 @@ internal static class RfqDtoMapper
             rfq.ClosesUtc,
             rfq.Invitations.Count,
             rfq.Lines.Count,
-            bidCount);
+            bidCount,
+            rfq.TechnicalEvaluatorIds,
+            rfq.CommercialEvaluatorIds);
     }
 
     internal static RfqDetailDto ToDetailDto(

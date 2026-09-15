@@ -2,6 +2,7 @@ using FSH.Framework.Core.Context;
 using FSH.Framework.Core.Exceptions;
 using FSH.Modules.Sourcing.Contracts.v1.Evaluation;
 using FSH.Modules.Sourcing.Data;
+using FSH.Modules.Sourcing.Services;
 using Mediator;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,9 +16,12 @@ public sealed class OpenTechnicalEnvelopeCommandHandler(SourcingDbContext dbCont
         ArgumentNullException.ThrowIfNull(command);
 
         var rfq = await dbContext.Rfqs
+            .Include(r => r.Events)
             .FirstOrDefaultAsync(r => r.Id == command.RfqId, cancellationToken)
             .ConfigureAwait(false)
             ?? throw new NotFoundException($"RFQ {command.RfqId} not found.");
+
+        await RfqCloseDue.PersistAsync(dbContext, rfq, cancellationToken).ConfigureAwait(false);
 
         string me = currentUser.GetUserId().ToString();
         if (!rfq.TechnicalEvaluatorIds.Any(id => string.Equals(id, me, StringComparison.OrdinalIgnoreCase)))

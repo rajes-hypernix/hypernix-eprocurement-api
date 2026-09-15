@@ -13,6 +13,7 @@ export type SeededUser = {
   tenant: string;
   vendorId?: string;
   permissions?: string[];
+  roles?: string[];
 };
 
 export function fakeJwt(payload: Record<string, unknown>): string {
@@ -22,6 +23,7 @@ export function fakeJwt(payload: Record<string, unknown>): string {
 }
 
 export function makeAccessToken(user: SeededUser): string {
+  const roles = user.roles ?? [];
   return fakeJwt({
     sub: user.sub,
     email: user.email,
@@ -31,6 +33,7 @@ export function makeAccessToken(user: SeededUser): string {
     tenant: user.tenant,
     vendorId: user.vendorId,
     permissions: user.permissions ?? [],
+    ...(roles.length === 1 ? { role: roles[0] } : roles.length > 1 ? { role: roles } : {}),
     exp: Math.floor(Date.now() / 1000) + 3600,
     iat: Math.floor(Date.now() / 1000),
   });

@@ -86,6 +86,26 @@ public sealed class RfqLifecycleTests
     }
 
     [Fact]
+    public void CloseIfDue_Should_Close_When_ClosesUtcReached()
+    {
+        var rfq = CreateDraft(closesUtc: DateTime.UtcNow.AddMinutes(-1));
+        rfq.InviteVendor(Guid.NewGuid(), DateTime.UtcNow, 72, "buyer");
+        rfq.MarkReleased(DateTime.UtcNow, "buyer");
+
+        rfq.CloseIfDue(DateTime.UtcNow).ShouldNotBeNull();
+        rfq.Status.ShouldBe(RfqStatus.Closed);
+    }
+
+    [Fact]
+    public void CloseIfDue_Should_NoOp_While_WindowOpen()
+    {
+        var rfq = CreateReleased();
+
+        rfq.CloseIfDue(DateTime.UtcNow).ShouldBeNull();
+        rfq.Status.ShouldBe(RfqStatus.Open);
+    }
+
+    [Fact]
     public void DualEnvelope_HappyPath_Flags_Should_Sequence()
     {
         var rfq = CreateReleased();

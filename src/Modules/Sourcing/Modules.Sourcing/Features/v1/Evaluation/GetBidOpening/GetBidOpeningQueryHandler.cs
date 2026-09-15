@@ -28,11 +28,13 @@ public sealed class GetBidOpeningQueryHandler(
         }
 
         var rfq = await dbContext.Rfqs
-            .AsNoTracking()
             .Include(r => r.Invitations)
+            .Include(r => r.Events)
             .FirstOrDefaultAsync(r => r.Id == query.RfqId, cancellationToken)
             .ConfigureAwait(false)
             ?? throw new NotFoundException($"RFQ {query.RfqId} not found.");
+
+        await RfqCloseDue.PersistAsync(dbContext, rfq, cancellationToken).ConfigureAwait(false);
 
         int submittedCount = await dbContext.Bids
             .AsNoTracking()

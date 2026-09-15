@@ -48,6 +48,10 @@ function rowToRfqListItem(r: Record<string, unknown>): RfqListItemDto {
     invitedCount: Number(r.InvitedCount ?? r.invitedCount ?? 0),
     lineCount: Number(r.LineCount ?? r.lineCount ?? 0),
     bidCount: Number(r.BidCount ?? r.bidCount ?? 0),
+    technicalEvaluatorIds: (r.TechnicalEvaluatorIds ?? r.technicalEvaluatorIds ?? undefined) as string[] | undefined,
+    commercialEvaluatorIds: (r.CommercialEvaluatorIds ?? r.commercialEvaluatorIds ?? undefined) as
+      | string[]
+      | undefined,
   };
 }
 

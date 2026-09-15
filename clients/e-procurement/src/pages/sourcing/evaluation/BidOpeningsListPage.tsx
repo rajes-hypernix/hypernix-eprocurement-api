@@ -3,8 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { listRfqs, type RfqListItemDto } from "@/api/sourcing";
 import { Icon } from "@/components/Icon";
 import { EmptyState, Spinner } from "@/components/ui";
-
-const RELEVANT = new Set(["Closed", "Evaluation", "Awarded"]);
+import { rfqAssignedToUser, rfqIsReadyToOpen } from "@/lib/evaluation-queue";
+import { useAuth } from "@/auth/use-auth";
 
 type FacetKey = "envelope" | "status";
 const FACETS: { key: FacetKey; label: string }[] = [
@@ -24,11 +24,16 @@ function EnvelopeBadge({ envelope }: { envelope: string }) {
 }
 
 export function BidOpeningsListPage({ onOpen }: { onOpen: (id: string) => void }) {
+  const { user, isEvaluatorWorkspace } = useAuth();
   const [q, setQ] = useState("");
   const [facets, setFacets] = useState<Record<FacetKey, string>>({ ...EMPTY_FACETS });
 
   const { data, isPending } = useQuery({ queryKey: ["rfqs"], queryFn: listRfqs });
-  const scoped = useMemo(() => (data ?? []).filter((r) => RELEVANT.has(r.status)), [data]);
+  const scoped = useMemo(() => {
+    const ready = (data ?? []).filter(rfqIsReadyToOpen);
+    if (!isEvaluatorWorkspace) return ready;
+    return ready.filter((r) => rfqAssignedToUser(r, user?.id));
+  }, [data, isEvaluatorWorkspace, user?.id]);
 
   const facetOptions = useMemo(() => {
     const sets: Record<FacetKey, Set<string>> = { envelope: new Set(), status: new Set() };
@@ -57,7 +62,11 @@ export function BidOpeningsListPage({ onOpen }: { onOpen: (id: string) => void }
       <div className="pagehead">
         <div>
           <h1>Bid Openings</h1>
-          <p>Closed RFQs ready to open and evaluate. Technical opens and scores before commercial unseals.</p>
+          <p>
+            {isEvaluatorWorkspace
+              ? "RFQs assigned to you that are closed or past the close time."
+              : "Closed RFQs ready to open and evaluate. Technical opens and scores before commercial unseals."}
+          </p>
         </div>
       </div>
 

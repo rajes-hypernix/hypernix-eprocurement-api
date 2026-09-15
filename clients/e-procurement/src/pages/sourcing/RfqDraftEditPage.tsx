@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { searchVendors, type VendorListItemDto } from "@/api/suppliers";
 import { useSwec, type SwecNode } from "@/api/swec";
 import { searchUsers, getUserById, listRoles, type UserDto } from "@/api/identity";
+import { useAuth } from "@/auth/use-auth";
 import {
   listFormTemplates,
   getFormTemplate,
@@ -52,6 +53,27 @@ const userDisplayName = (u: UserDto | undefined, fallbackId: string) => {
   const name = `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim();
   return name || u.userName || u.email || fallbackId;
 };
+
+function mergeSelf(
+  pool: UserDto[],
+  user: { id: string; name?: string; email?: string } | null,
+): UserDto[] {
+  const id = user?.id;
+  if (!id || pool.some((u) => u.id === id)) return pool;
+  const bits = (user.name ?? "").trim().split(/\s+/).filter(Boolean);
+  return [
+    {
+      id,
+      firstName: bits[0] || user.email || "You",
+      lastName: bits.slice(1).join(" ") || undefined,
+      email: user.email,
+      userName: user.email,
+      isActive: true,
+      emailConfirmed: true,
+    },
+    ...pool,
+  ];
+}
 
 type DraftLine = RfqDetailDto["lines"][number];
 
@@ -144,6 +166,7 @@ export function RfqDraftEditPage({
 }) {
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [draft, setDraft] = useState<Draft>(() => fromRfq(rfq));
   const [step, setStep] = useState(0);
   const [notice, setNotice] = useState("");
@@ -257,6 +280,8 @@ export function RfqDraftEditPage({
     },
     enabled: !!commRoleId && draft.envelope === "Dual",
   });
+  const techPool = useMemo(() => mergeSelf(techEvaluators, user), [techEvaluators, user]);
+  const commPool = useMemo(() => mergeSelf(commEvaluators, user), [commEvaluators, user]);
 
   // --- PR detail fetch for money columns ---
   const { data: prList = [] } = useQuery({ queryKey: ["requisitions"], queryFn: listRequisitions });
@@ -423,7 +448,7 @@ export function RfqDraftEditPage({
     const i = evaluatorIds.indexOf(id);
     const u = i >= 0 ? evaluatorResults[i]?.data : undefined;
     const fromPool =
-      techEvaluators.find((x) => x.id === id) ?? commEvaluators.find((x) => x.id === id);
+      techPool.find((x) => x.id === id) ?? commPool.find((x) => x.id === id);
     return userDisplayName(u ?? fromPool, id);
   };
 
@@ -1406,8 +1431,8 @@ export function RfqDraftEditPage({
             </div>
             <div className="cbody">
               <p className="hint" style={{ marginTop: 0 }}>
-                Only assigned evaluators can open and score the sealed technical envelope. Pool is users with the{" "}
-                {roleLabel(TECH_EVAL_ROLE)} role.
+                Only assigned evaluators can open and score the sealed technical envelope. You can
+                assign yourself, or anyone with the {roleLabel(TECH_EVAL_ROLE)} role.
               </p>
               {!techRoleId ? (
                 <p className="hint" style={{ margin: 0 }}>
@@ -1421,7 +1446,7 @@ export function RfqDraftEditPage({
                     Create it in Roles
                   </button>
                 </p>
-              ) : techEvaluators.length === 0 ? (
+              ) : techPool.length === 0 ? (
                 <p className="hint" style={{ margin: 0 }}>
                   No users hold the {roleLabel(TECH_EVAL_ROLE)} role.{" "}
                   <button
@@ -1434,7 +1459,7 @@ export function RfqDraftEditPage({
                   </button>
                 </p>
               ) : (
-                techEvaluators.map((u) => {
+                techPool.map((u) => {
                   const id = u.id ?? "";
                   if (!id) return null;
                   return (
@@ -1452,7 +1477,7 @@ export function RfqDraftEditPage({
               )}
               {/* Orphans: previously assigned users no longer in the role pool */}
               {draft.techEvals
-                .filter((id) => !techEvaluators.some((u) => u.id === id))
+                .filter((id) => !techPool.some((u) => u.id === id))
                 .map((id) => (
                   <label className="ck" key={`orphan-tech-${id}`} style={{ padding: "6px 0" }}>
                     <input
@@ -1473,8 +1498,7 @@ export function RfqDraftEditPage({
             </div>
             <div className="cbody">
               <p className="hint" style={{ marginTop: 0 }}>
-                Commercial evaluators are not required for release — they gate the commercial opening after technical
-                finalisation. Pool is users with the {roleLabel(COMM_EVAL_ROLE)} role.
+                You can assign yourself, or anyone with the {roleLabel(COMM_EVAL_ROLE)} role.
               </p>
               {!commRoleId ? (
                 <p className="hint" style={{ margin: 0 }}>
@@ -1488,7 +1512,7 @@ export function RfqDraftEditPage({
                     Create it in Roles
                   </button>
                 </p>
-              ) : commEvaluators.length === 0 ? (
+              ) : commPool.length === 0 ? (
                 <p className="hint" style={{ margin: 0 }}>
                   No users hold the {roleLabel(COMM_EVAL_ROLE)} role.{" "}
                   <button
@@ -1501,7 +1525,7 @@ export function RfqDraftEditPage({
                   </button>
                 </p>
               ) : (
-                commEvaluators.map((u) => {
+                commPool.map((u) => {
                   const id = u.id ?? "";
                   if (!id) return null;
                   return (
@@ -1518,7 +1542,7 @@ export function RfqDraftEditPage({
                 })
               )}
               {draft.commEvals
-                .filter((id) => !commEvaluators.some((u) => u.id === id))
+                .filter((id) => !commPool.some((u) => u.id === id))
                 .map((id) => (
                   <label className="ck" key={`orphan-comm-${id}`} style={{ padding: "6px 0" }}>
                     <input

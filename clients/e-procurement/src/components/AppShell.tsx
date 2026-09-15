@@ -10,18 +10,18 @@ import {
   isExtraWorkspacePathAllowed,
   isPathAllowedByNav,
 } from "@/lib/permissions-map";
-import { BUYER_NAV, VENDOR_NAV } from "@/nav";
+import { BUYER_NAV, EVALUATOR_NAV, VENDOR_NAV } from "@/nav";
 
 const EMPTY_PERMS: readonly string[] = [];
 
 /** Layout mirrors original eprocure/web App.tsx shell (TopBar + .shell + Sidebar + .main). */
 export function AppShell() {
-  const { isVendor, user, permissionsHydrated, rolePreview } = useAuth();
+  const { isVendor, isEvaluatorWorkspace, user, permissionsHydrated, rolePreview } = useAuth();
   const navigate = useNavigate();
   const { pathname, search } = useLocation();
   const [navOpen, setNavOpen] = useState(false);
   const activeHref = `${pathname}${search}`;
-  const baseNav = isVendor ? VENDOR_NAV : BUYER_NAV;
+  const baseNav = isVendor ? VENDOR_NAV : isEvaluatorWorkspace ? EVALUATOR_NAV : BUYER_NAV;
   const granted = user?.permissions ?? EMPTY_PERMS;
   const permKey = granted.join("\0");
   const nav = useMemo(() => {
@@ -48,12 +48,13 @@ export function AppShell() {
   }, [navOpen]);
 
   useEffect(() => {
-    if (!rolePreview || !permissionsHydrated) return;
+    if (!permissionsHydrated) return;
+    if (!rolePreview && !isEvaluatorWorkspace) return;
     if (isPathAllowedByNav(pathname, nav) || isExtraWorkspacePathAllowed(pathname, granted)) {
       return;
     }
     void navigate(firstNavHref(nav), { replace: true });
-  }, [rolePreview, permissionsHydrated, pathname, nav, granted, navigate]);
+  }, [rolePreview, isEvaluatorWorkspace, permissionsHydrated, pathname, nav, granted, navigate]);
 
   return (
     <>

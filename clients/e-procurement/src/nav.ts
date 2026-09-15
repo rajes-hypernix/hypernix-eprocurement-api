@@ -182,11 +182,24 @@ export const VENDOR_CENTER_TABS: CenterTab[] = [
   },
 ];
 
+export const EVALUATOR_CENTER_TABS: CenterTab[] = [
+  {
+    key: "evaluation",
+    label: "Evaluation",
+    items: [
+      { key: "dashboard", icon: "dashboard", label: "Dashboard", action: "UseDashboards" },
+      { key: "openings", icon: "lock", label: "Bid Openings", action: "ViewBidOpenings" },
+      { key: "notifications", icon: "bell", label: "Notifications", action: "ViewNotifications" },
+    ],
+  },
+];
+
 export const BUYER_NAV: NavGroup[] = tabsToNavGroups(BUYER_CENTER_TABS);
 export const VENDOR_NAV: NavGroup[] = tabsToNavGroups(VENDOR_CENTER_TABS);
+export const EVALUATOR_NAV: NavGroup[] = tabsToNavGroups(EVALUATOR_CENTER_TABS);
 
 /** Buyer labels win on shared keys (e.g. dashboard) so PlaceholderPage titles stay correct for buyers. */
 export const NAV_LABELS: Record<string, string> = Object.fromEntries(
-  [...VENDOR_NAV, ...BUYER_NAV].flatMap((g) => g.items.map((i) => [i.key, i.label])),
+  [...VENDOR_NAV, ...EVALUATOR_NAV, ...BUYER_NAV].flatMap((g) => g.items.map((i) => [i.key, i.label])),
 );
 

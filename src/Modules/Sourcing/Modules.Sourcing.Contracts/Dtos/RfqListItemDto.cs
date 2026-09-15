@@ -10,5 +10,7 @@ public sealed record RfqListItemDto(
     DateTime? ClosesUtc,
     int InvitedCount,
     int LineCount,
-    int BidCount);
+    int BidCount,
+    IReadOnlyList<string> TechnicalEvaluatorIds,
+    IReadOnlyList<string> CommercialEvaluatorIds);
 

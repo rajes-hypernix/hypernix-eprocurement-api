@@ -14,7 +14,10 @@ public enum PrHeaderStatus { Draft, Submitted, PartiallySourced, Sourced, Partia
 
 public enum RfqEnvelope { Single, Dual }
 
-/// <summary>Closing is a server timestamp (ClosesUtc), never a button.</summary>
+/// <summary>
+/// Closing is <see cref="Rfq.ClosesUtc"/> (the bid window ends at that timestamp).
+/// <see cref="Rfq.CloseEarly"/> is optional before that time.
+/// </summary>
 public enum RfqStatus { Draft, Open, Closed, Evaluation, Awarded, Cancelled }
 
 /// <summary>Distinct from RfqStatus; lives entirely on RfqInvitation.</summary>

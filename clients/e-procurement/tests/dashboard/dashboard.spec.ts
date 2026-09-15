@@ -114,3 +114,50 @@ test.describe("Vendor dashboard", () => {
     await expect(page.getByText("Your work queue")).toBeVisible();
   });
 });
+
+const EVAL_DASH_PERMS = [
+  "Permissions.Sourcing.Evaluation.ViewOpening",
+  "Permissions.Sourcing.Evaluation.OpenTechnical",
+  "Permissions.Sourcing.Evaluation.Score",
+  "Permissions.Sourcing.Evaluation.FinalizeTechnical",
+  "Permissions.Sourcing.Rfqs.View",
+  "Permissions.Notifications.Inbox.View",
+] as const;
+
+test.describe("Evaluator dashboard", () => {
+  test.beforeEach(async ({ page }) => {
+    await seedAuthedSession(page, {
+      ...TEST_USER,
+      roles: ["TechEvaluator"],
+      permissions: [...EVAL_DASH_PERMS],
+    });
+    await installEprocShellMocks(page, EVAL_DASH_PERMS);
+    await mockJsonResponse(page, "**/api/v1/sourcing/rfqs**", [
+      {
+        id: "rfq-eval",
+        code: "RFQ-EV-1",
+        title: "Assigned pumps",
+        status: "Closed",
+        envelope: "Dual",
+        invitedCount: 2,
+        bidCount: 1,
+        closesUtc: "2026-01-01T00:00:00Z",
+        technicalEvaluatorIds: [TEST_USER.sub],
+        commercialEvaluatorIds: [],
+      },
+    ]);
+  });
+
+  test("shows evaluation queue and hides buyer sidebar items", async ({ page }) => {
+    await page.goto("/dashboard");
+    await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
+    await expect(page.getByText("Ready to evaluate")).toBeVisible();
+    await expect(page.getByText("RFQ-EV-1")).toBeVisible();
+    await expect(page.getByText("Active requisitions")).toHaveCount(0);
+    const nav = page.getByLabel("Main navigation");
+    await expect(nav.getByRole("link", { name: "Saved Views", exact: true })).toHaveCount(0);
+    await expect(nav.getByRole("link", { name: "Clarifications", exact: true })).toHaveCount(0);
+    await expect(nav.getByRole("link", { name: "User Management", exact: true })).toHaveCount(0);
+    await expect(nav.getByRole("link", { name: "Bid Openings", exact: true })).toBeVisible();
+  });
+});

@@ -10,6 +10,30 @@ export type JwtClaims = {
   [key: string]: unknown;
 };
 
+const ROLE_CLAIM_KEYS = [
+  "role",
+  "roles",
+  "http://schemas.microsoft.com/ws/2008/06/identity/claims/role",
+  "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/role",
+];
+
+function pushRoleValues(out: string[], value: unknown) {
+  if (typeof value === "string" && value.trim()) out.push(value.trim());
+  else if (Array.isArray(value)) {
+    for (const item of value) pushRoleValues(out, item);
+  }
+}
+
+/** Role names from the access token (Identity writes ClaimTypes.Role). */
+export function rolesFromClaims(claims: JwtClaims | null): string[] {
+  if (!claims) return [];
+  const out: string[] = [];
+  for (const key of ROLE_CLAIM_KEYS) {
+    pushRoleValues(out, claims[key]);
+  }
+  return [...new Set(out)];
+}
+
 export function decodeJwt(token: string | null | undefined): JwtClaims | null {
   if (!token) return null;
   const parts = token.split(".");

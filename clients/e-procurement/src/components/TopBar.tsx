@@ -4,18 +4,34 @@ import { Icon } from "@/components/Icon";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { RoleActAsSelect } from "@/components/RoleActAsSelect";
 import { TopBarNav } from "@/components/TopBarNav";
-import { initials } from "@/lib/format";
+import { initials, roleLabel } from "@/lib/format";
+import { evaluatorKind, isEvaluatorRoleName } from "@/lib/workspace";
 
 export function TopBar({ onOpenNav }: { onOpenNav?: () => void }) {
-  const { user, isVendor, logout, rolePreview } = useAuth();
+  const { user, isVendor, isEvaluatorWorkspace, logout, rolePreview } = useAuth();
   const name = user?.name ?? user?.email ?? "User";
+  const kind = evaluatorKind({
+    roles: user?.roles ?? [],
+    permissions: user?.permissions,
+    previewRoleName: rolePreview?.roleName,
+  });
+  const evaluatorCaption =
+    kind.tech && kind.commercial
+      ? "Evaluator"
+      : kind.tech
+        ? roleLabel("TechEvaluator")
+        : kind.commercial
+          ? roleLabel("CommEvaluator")
+          : "Evaluator";
   const sub = rolePreview
-    ? `Preview · ${rolePreview.roleName}`
+    ? `Preview · ${isEvaluatorRoleName(rolePreview.roleName) ? roleLabel(rolePreview.roleName) : rolePreview.roleName}`
     : isVendor
       ? "Vendor"
-      : user?.tenant
-        ? `Tenant · ${user.tenant}`
-        : "Buyer";
+      : isEvaluatorWorkspace
+        ? evaluatorCaption
+        : user?.tenant
+          ? `Tenant · ${user.tenant}`
+          : "Buyer";
 
   return (
     <div className="topbar">

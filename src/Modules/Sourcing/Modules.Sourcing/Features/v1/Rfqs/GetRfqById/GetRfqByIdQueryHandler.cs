@@ -24,12 +24,13 @@ public sealed class GetRfqByIdQueryHandler(SourcingDbContext dbContext, IMediato
         }
 
         var rfq = await dbContext.Rfqs
-            .AsNoTracking()
             .Include(r => r.Invitations)
             .Include(r => r.Events)
             .FirstOrDefaultAsync(r => r.Id == query.RfqId, cancellationToken)
             .ConfigureAwait(false)
             ?? throw new NotFoundException($"RFQ {query.RfqId} not found.");
+
+        await RfqCloseDue.PersistAsync(dbContext, rfq, cancellationToken).ConfigureAwait(false);
 
         var vendorLookup = new Dictionary<Guid, (string Name, string Code)>();
         foreach (var vendorId in rfq.Invitations.Select(i => i.VendorId).Distinct())

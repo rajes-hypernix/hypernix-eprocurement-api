@@ -275,6 +275,25 @@ public sealed class Rfq : AggregateRoot<Guid>
         return AppendEvent(RfqEventType.Closed, nowUtc, actorUserId: actorUserId);
     }
 
+    /// <summary>
+    /// Materializes Open -&gt; Closed when <see cref="ClosesUtc"/> has been reached.
+    /// No-op if still inside the window or not Open.
+    /// </summary>
+    public RfqEvent? CloseIfDue(DateTime nowUtc)
+    {
+        if (Status != RfqStatus.Open)
+        {
+            return null;
+        }
+
+        if (ClosesUtc is null || nowUtc < ClosesUtc.Value)
+        {
+            return null;
+        }
+
+        return CloseEarly(nowUtc, actorUserId: null);
+    }
+
     /// <summary>Closed -&gt; Evaluation (no-op transition mirroring the old system).</summary>
     public void MoveToEvaluationIfClosed()
     {
@@ -469,7 +488,7 @@ public sealed class Rfq : AggregateRoot<Guid>
 
     private void RequireOpenBeforeClose(DateTime nowUtc, string action)
     {
-        if (Status != RfqStatus.Open || (ClosesUtc is { } close && nowUtc > close))
+        if (Status != RfqStatus.Open || (ClosesUtc is { } close && nowUtc >= close))
         {
             throw new SourcingRuleException($"Cannot {action} — bids have closed for {Code}.");
         }

@@ -9,7 +9,8 @@ import {
 } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { tokenStore } from "@/auth/token-store";
-import { decodeJwt, isTokenExpired, type JwtClaims } from "@/auth/jwt";
+import { decodeJwt, isTokenExpired, rolesFromClaims, type JwtClaims } from "@/auth/jwt";
+import { isEvaluatorWorkspace as computeEvaluatorWorkspace } from "@/lib/workspace";
 import { AmbiguousTenantError, issueToken, resolveTenantByEmail } from "@/auth/api";
 import { setRolePreviewActive } from "@/auth/role-preview-guard";
 import { refreshAccessToken } from "@/lib/api-client";
@@ -22,6 +23,7 @@ export type AuthUser = {
   name?: string;
   tenant?: string;
   vendorId?: string;
+  roles: string[];
   permissions: string[];
 };
 
@@ -36,6 +38,8 @@ export type AuthContextValue = {
   isInitializing: boolean;
   permissionsHydrated: boolean;
   isVendor: boolean;
+  /** Tech/Comm evaluator persona — Bid Openings workspace, not buyer P2P. */
+  isEvaluatorWorkspace: boolean;
   /** True when the real user (not the overlay) may open Act as role. */
   canPreviewRoles: boolean;
   rolePreview: RolePreview | null;
@@ -75,6 +79,7 @@ function claimsToUser(claims: JwtClaims | null, permissions: string[]): AuthUser
     name,
     tenant: claims.tenant,
     vendorId,
+    roles: rolesFromClaims(claims),
     permissions,
   };
 }
@@ -112,6 +117,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   /** Vendor portal is JWT vendorId — never inferred from a previewed role name. */
   const isVendor = Boolean(actualUser?.vendorId);
+  const isEvaluatorWorkspace = useMemo(
+    () =>
+      computeEvaluatorWorkspace({
+        isVendor,
+        roles: actualUser?.roles ?? [],
+        permissions: rolePreviewState?.permissions ?? actualUser?.permissions ?? [],
+        previewRoleName: rolePreviewState?.roleName,
+      }),
+    [isVendor, actualUser?.roles, actualUser?.permissions, rolePreviewState],
+  );
   const canPreviewRoles =
     Boolean(actualUser) &&
     !actualUser?.vendorId &&
@@ -292,6 +307,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isInitializing,
       permissionsHydrated,
       isVendor,
+      isEvaluatorWorkspace,
       canPreviewRoles,
       rolePreview,
       startRolePreview,
@@ -306,6 +322,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isInitializing,
       permissionsHydrated,
       isVendor,
+      isEvaluatorWorkspace,
       canPreviewRoles,
       rolePreview,
       startRolePreview,

@@ -16,9 +16,9 @@ public sealed class ListRfqsQueryHandler(SourcingDbContext dbContext, ICurrentUs
         ArgumentNullException.ThrowIfNull(query);
 
         var rfqQuery = dbContext.Rfqs
-            .AsNoTracking()
             .Include(r => r.Invitations)
             .Include(r => r.Lines)
+            .Include(r => r.Events)
             .AsQueryable();
 
         if (currentUser.GetVendorId() is { } vendorId)
@@ -30,6 +30,18 @@ public sealed class ListRfqsQueryHandler(SourcingDbContext dbContext, ICurrentUs
             .OrderByDescending(r => r.CreatedUtc)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
+
+        var now = DateTime.UtcNow;
+        bool closedAny = false;
+        foreach (var rfq in rfqs)
+        {
+            closedAny |= RfqCloseDue.Apply(rfq, now);
+        }
+
+        if (closedAny)
+        {
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
 
         var rfqIds = rfqs.Select(r => r.Id).ToList();
         var bidCountsByRfq = await dbContext.Bids
