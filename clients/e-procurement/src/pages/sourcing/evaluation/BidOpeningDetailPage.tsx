@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getBidOpening, openCommercialEnvelope, openTechnicalEnvelope } from "@/api/sourcing";
+import { useAuth } from "@/auth/use-auth";
 import { Icon } from "@/components/Icon";
 import { ConfirmModal, Notice, Spinner } from "@/components/ui";
 import { ApiRequestError } from "@/lib/api-client";
+import { FshPermissions } from "@/lib/fsh-permissions";
 
 export function BidOpeningDetailPage({
   rfqId,
@@ -17,6 +19,14 @@ export function BidOpeningDetailPage({
   onAward: () => void;
 }) {
   const qc = useQueryClient();
+  const { user } = useAuth();
+  const granted = user?.permissions ?? [];
+  const canPermOpenTech = granted.includes(FshPermissions.evaluation.openTechnical);
+  const canPermScore =
+    granted.includes(FshPermissions.evaluation.score) ||
+    granted.includes(FshPermissions.evaluation.viewTechnical);
+  const canPermOpenComm = granted.includes(FshPermissions.evaluation.openCommercial);
+  const canPermViewAward = granted.includes(FshPermissions.award.view);
   const [err, setErr] = useState<string | null>(null);
   const [authorise, setAuthorise] = useState(false);
 
@@ -25,6 +35,7 @@ export function BidOpeningDetailPage({
   const refresh = () => {
     void qc.invalidateQueries({ queryKey: ["bid-opening", rfqId] });
     void qc.invalidateQueries({ queryKey: ["rfqs"] });
+    void qc.invalidateQueries({ queryKey: ["bid-openings"] });
   };
   const onErr = (e: Error) => setErr(e instanceof ApiRequestError ? e.message : e.message);
 
@@ -97,10 +108,17 @@ export function BidOpeningDetailPage({
               <strong style={{ color: "var(--ink)" }}>{evNames}</strong>
             </div>
             {o.technicalOpened ? (
-              <button type="button" className="btn btn-pri" onClick={onScore}>
-                <Icon name="edit" size={15} /> {o.techFinalized ? "View technical scoring" : "Continue technical scoring"}
-              </button>
-            ) : (
+              canPermScore ? (
+                <button type="button" className="btn btn-pri" onClick={onScore}>
+                  <Icon name="edit" size={15} /> {o.techFinalized ? "View technical scoring" : "Continue technical scoring"}
+                </button>
+              ) : (
+                <p className="hint" style={{ margin: 0 }}>
+                  Technical scoring needs Score (or View technical) on your role. Contact your admin if this should be
+                  yours.
+                </p>
+              )
+            ) : canPermOpenTech ? (
               <button
                 type="button"
                 className="btn btn-pri"
@@ -109,6 +127,10 @@ export function BidOpeningDetailPage({
               >
                 <Icon name="unlock" size={15} /> Open technical envelope
               </button>
+            ) : (
+              <p className="hint" style={{ margin: 0 }}>
+                Open technical envelope needs the Open technical permission. Contact your admin if this should be yours.
+              </p>
             )}
           </div>
         </div>
@@ -131,24 +153,37 @@ export function BidOpeningDetailPage({
                 : "Sealed until technical scoring is finalized."}
             </div>
             {o.commercialOpened ? (
-              <button type="button" className="btn btn-pri" onClick={onAward}>
-                <Icon name="award" size={15} /> View commercial evaluation
-              </button>
+              canPermViewAward ? (
+                <button type="button" className="btn btn-pri" onClick={onAward}>
+                  <Icon name="award" size={15} /> View commercial evaluation
+                </button>
+              ) : (
+                <p className="hint" style={{ margin: 0 }}>
+                  Viewing commercial / award needs View award on your role. Contact your admin if this should be yours.
+                </p>
+              )
+            ) : canPermOpenComm ? (
+              <>
+                <button
+                  type="button"
+                  className={`btn ${o.canOpenCommercial ? "btn-pri" : "btn-out"}`}
+                  disabled={!o.canOpenCommercial || openC.isPending}
+                  onClick={() => openC.mutate()}
+                >
+                  <Icon name="unlock" size={15} /> Open commercial envelope
+                </button>
+                {!o.canOpenCommercial && (o.techFinalized || single) ? (
+                  <p className="hint" style={{ marginTop: 8 }}>
+                    A commercial evaluator listed on this RFQ must open this envelope.
+                  </p>
+                ) : null}
+              </>
             ) : (
-              <button
-                type="button"
-                className={`btn ${o.canOpenCommercial ? "btn-pri" : "btn-out"}`}
-                disabled={!o.canOpenCommercial}
-                onClick={() => openC.mutate()}
-              >
-                <Icon name="unlock" size={15} /> Open commercial envelope
-              </button>
-            )}
-            {!o.commercialOpened && !o.canOpenCommercial && (o.techFinalized || single) ? (
-              <p className="hint" style={{ marginTop: 8 }}>
-                A commercial evaluator must open this envelope.
+              <p className="hint" style={{ margin: 0 }}>
+                Open commercial envelope needs the Open commercial permission. Contact your admin if this should be
+                yours.
               </p>
-            ) : null}
+            )}
           </div>
         </div>
       </div>

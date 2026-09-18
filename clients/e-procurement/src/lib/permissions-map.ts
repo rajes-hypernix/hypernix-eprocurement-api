@@ -74,6 +74,15 @@ export function hasOldAction(
   if (action === "ViewStatements") {
     return granted.includes(mapped) || granted.includes(FshPermissions.statements.viewMine);
   }
+  // CommEvaluator is often granted OpenCommercial without ViewOpening.
+  if (action === "ViewBidOpenings") {
+    return (
+      granted.includes(mapped) ||
+      granted.includes(FshPermissions.evaluation.openCommercial) ||
+      granted.includes(FshPermissions.evaluation.openTechnical) ||
+      granted.includes(FshPermissions.evaluation.score)
+    );
+  }
   // Lookups hub covers geo, lists, and org — view or manage unlocks the nav item.
   if (action === "ManageLookups") {
     return (
@@ -152,6 +161,8 @@ export function isPathAllowedByNav(pathname: string, groups: NavGroup[]): boolea
 export function isExtraWorkspacePathAllowed(pathname: string, granted: readonly string[]): boolean {
   if (pathname.startsWith("/consolidate")) return hasOldAction(granted, "ViewRequisitions");
   if (pathname.startsWith("/order-builder")) return hasOldAction(granted, "ViewPos");
+  // Bid Openings "View commercial" lands on /awards/:rfqId — not a top-level evaluator nav item.
+  if (pathname.startsWith("/awards")) return hasOldAction(granted, "ViewAwards");
   return false;
 }
 

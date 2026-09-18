@@ -27,6 +27,12 @@ public sealed class GetBidOpeningQueryHandler(
             throw new ForbiddenException("Vendors cannot open sealed bid openings.");
         }
 
+        if (!await BidOpeningAccess.CanViewAsync(userService, currentUser.GetUserId().ToString(), cancellationToken)
+                .ConfigureAwait(false))
+        {
+            throw new ForbiddenException("Not authorized to view bid openings.");
+        }
+
         var rfq = await dbContext.Rfqs
             .Include(r => r.Invitations)
             .Include(r => r.Events)

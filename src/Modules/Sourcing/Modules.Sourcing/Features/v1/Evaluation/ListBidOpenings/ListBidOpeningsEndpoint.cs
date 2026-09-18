@@ -1,5 +1,3 @@
-using FSH.Framework.Shared.Identity.Authorization;
-using FSH.Modules.Sourcing.Contracts.Authorization;
 using FSH.Modules.Sourcing.Contracts.v1.Evaluation;
 using Mediator;
 using Microsoft.AspNetCore.Builder;
@@ -16,6 +14,6 @@ public static class ListBidOpeningsEndpoint
                 (IMediator mediator, CancellationToken ct) => mediator.Send(new ListBidOpeningsQuery(), ct))
             .WithName("ListBidOpenings")
             .WithSummary("List RFQs ready for envelope opening and evaluation")
-            .RequirePermission(SourcingPermissions.Evaluation.ViewOpening);
+            .RequireAuthorization();
     }
 }

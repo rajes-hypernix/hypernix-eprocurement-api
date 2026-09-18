@@ -1,5 +1,3 @@
-using FSH.Framework.Shared.Identity.Authorization;
-using FSH.Modules.Sourcing.Contracts.Authorization;
 using FSH.Modules.Sourcing.Contracts.v1.Evaluation;
 using Mediator;
 using Microsoft.AspNetCore.Builder;
@@ -17,6 +15,6 @@ public static class GetBidOpeningEndpoint
                     mediator.Send(new GetBidOpeningQuery(rfqId), ct))
             .WithName("GetBidOpening")
             .WithSummary("Get the envelope-opening/finalization gate status for an RFQ")
-            .RequirePermission(SourcingPermissions.Evaluation.ViewOpening);
+            .RequireAuthorization();
     }
 }

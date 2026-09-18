@@ -26,6 +26,7 @@ export function AwardWorkspacePage({ rfqId, onBack }: { rfqId: string; onBack: (
   const qc = useQueryClient();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const canViewPos = user?.permissions.includes(FshPermissions.purchaseOrders.view) ?? false;
   const [err, setErr] = useState<string | null>(null);
   const [approving, setApproving] = useState(false);
   const [generatedPos, setGeneratedPos] = useState<string[] | null>(null);
@@ -41,6 +42,7 @@ export function AwardWorkspacePage({ rfqId, onBack }: { rfqId: string; onBack: (
   const { data: pos } = useQuery({
     queryKey: ["purchase-orders"],
     queryFn: listPurchaseOrders,
+    enabled: canViewPos,
   });
 
   const refresh = () => {

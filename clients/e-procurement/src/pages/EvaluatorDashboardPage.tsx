@@ -14,7 +14,11 @@ export function EvaluatorDashboardPage() {
   const navigate = useNavigate();
   const { user, rolePreview } = useAuth();
   const granted = user?.permissions ?? [];
-  const canOpenings = granted.includes(FshPermissions.evaluation.viewOpening);
+  const canOpenings =
+    granted.includes(FshPermissions.evaluation.viewOpening) ||
+    granted.includes(FshPermissions.evaluation.openCommercial) ||
+    granted.includes(FshPermissions.evaluation.openTechnical) ||
+    granted.includes(FshPermissions.evaluation.score);
   const canNotif = granted.includes(FshPermissions.notifications.view);
   const kind = evaluatorKind({
     roles: user?.roles ?? [],
